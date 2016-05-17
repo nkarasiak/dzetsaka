@@ -192,7 +192,7 @@ class dzetsaka ( QDialog ):
 
         
         if sender == self.dockwidget.checkOutModel and self.dockwidget.checkOutModel.isChecked():
-            fileName = QFileDialog.getOpenFileName(self.dockwidget, "Select your file","")
+            fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file")
             if fileName!='':
                 self.dockwidget.outModel.setText(fileName)
                 self.dockwidget.outModel.setEnabled(True)

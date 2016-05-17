@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'dzetsaka_dock.ui'
 #
-# Created: Tue May 17 16:33:39 2016
+# Created: Tue May 17 17:22:19 2016
 #      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -26,8 +26,8 @@ except AttributeError:
 class Ui_DockWidget(object):
     def setupUi(self, DockWidget):
         DockWidget.setObjectName(_fromUtf8("DockWidget"))
-        DockWidget.resize(400, 416)
-        DockWidget.setMinimumSize(QtCore.QSize(400, 400))
+        DockWidget.resize(370, 420)
+        DockWidget.setMinimumSize(QtCore.QSize(350, 420))
         DockWidget.setMaximumSize(QtCore.QSize(524287, 500))
         self.dockWidgetContents = QtGui.QWidget()
         self.dockWidgetContents.setObjectName(_fromUtf8("dockWidgetContents"))
@@ -36,12 +36,10 @@ class Ui_DockWidget(object):
         self.gridLayout_2 = QtGui.QGridLayout()
         self.gridLayout_2.setObjectName(_fromUtf8("gridLayout_2"))
         self.inField = QtGui.QComboBox(self.dockWidgetContents)
-        self.inField.setMinimumSize(QtCore.QSize(180, 0))
+        self.inField.setMinimumSize(QtCore.QSize(160, 0))
         self.inField.setMaximumSize(QtCore.QSize(16777215, 30))
         self.inField.setObjectName(_fromUtf8("inField"))
         self.gridLayout_2.addWidget(self.inField, 3, 1, 1, 2)
-        spacerItem = QtGui.QSpacerItem(20, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
-        self.gridLayout_2.addItem(spacerItem, 5, 4, 1, 2)
         self.label_3 = QtGui.QLabel(self.dockWidgetContents)
         self.label_3.setMaximumSize(QtCore.QSize(25, 60))
         self.label_3.setText(_fromUtf8(""))
@@ -49,7 +47,7 @@ class Ui_DockWidget(object):
         self.label_3.setObjectName(_fromUtf8("label_3"))
         self.gridLayout_2.addWidget(self.label_3, 1, 0, 1, 1)
         self.inShape = gui.QgsMapLayerComboBox(self.dockWidgetContents)
-        self.inShape.setMinimumSize(QtCore.QSize(180, 0))
+        self.inShape.setMinimumSize(QtCore.QSize(160, 0))
         self.inShape.setMaximumSize(QtCore.QSize(16777215, 30))
         self.inShape.setFilters(gui.QgsMapLayerProxyModel.PluginLayer|gui.QgsMapLayerProxyModel.PolygonLayer)
         self.inShape.setObjectName(_fromUtf8("inShape"))
@@ -97,12 +95,14 @@ class Ui_DockWidget(object):
         self.label.setMaximumSize(QtCore.QSize(25, 25))
         self.label.setObjectName(_fromUtf8("label"))
         self.gridLayout_2.addWidget(self.label, 1, 3, 2, 1)
-        spacerItem1 = QtGui.QSpacerItem(20, 17, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
-        self.gridLayout_2.addItem(spacerItem1, 5, 0, 1, 2)
+        spacerItem = QtGui.QSpacerItem(10, 17, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
+        self.gridLayout_2.addItem(spacerItem, 5, 0, 1, 2)
         self.performMagic = QtGui.QToolButton(self.dockWidgetContents)
         self.performMagic.setMinimumSize(QtCore.QSize(184, 0))
         self.performMagic.setObjectName(_fromUtf8("performMagic"))
         self.gridLayout_2.addWidget(self.performMagic, 5, 2, 1, 2)
+        spacerItem1 = QtGui.QSpacerItem(20, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
+        self.gridLayout_2.addItem(spacerItem1, 5, 4, 1, 2)
         self.gridLayout.addLayout(self.gridLayout_2, 1, 0, 1, 3)
         self.label_7 = QtGui.QLabel(self.dockWidgetContents)
         self.label_7.setObjectName(_fromUtf8("label_7"))
