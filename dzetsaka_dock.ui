@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>370</width>
-    <height>420</height>
+    <width>350</width>
+    <height>400</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>350</width>
-    <height>420</height>
+    <height>400</height>
    </size>
   </property>
   <property name="maximumSize">
@@ -26,82 +26,25 @@
    <string>dzetsaka : classification tool</string>
   </property>
   <widget class="QWidget" name="dockWidgetContents">
-   <layout class="QGridLayout" name="gridLayout">
+   <layout class="QGridLayout" name="gridLayout_3">
+    <item row="0" column="0" colspan="3">
+     <widget class="QLabel" name="label_8">
+      <property name="minimumSize">
+       <size>
+        <width>300</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+      <property name="pixmap">
+       <pixmap resource="resources.qrc">:/plugins/dzetsaka/img/guyane.jpg</pixmap>
+      </property>
+     </widget>
+    </item>
     <item row="1" column="0" colspan="3">
-     <layout class="QGridLayout" name="gridLayout_2">
-      <item row="3" column="1" colspan="2">
-       <widget class="QComboBox" name="inField">
-        <property name="minimumSize">
-         <size>
-          <width>160</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>16777215</width>
-          <height>30</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_3">
-        <property name="maximumSize">
-         <size>
-          <width>25</width>
-          <height>60</height>
-         </size>
-        </property>
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Your ROI&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="text">
-         <string/>
-        </property>
-        <property name="pixmap">
-         <pixmap resource="resources.qrc">:/plugins/dzetsaka/img/vector.svg</pixmap>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1" colspan="2">
-       <widget class="QgsMapLayerComboBox" name="inShape">
-        <property name="minimumSize">
-         <size>
-          <width>160</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>16777215</width>
-          <height>30</height>
-         </size>
-        </property>
-        <property name="filters">
-         <set>QgsMapLayerProxyModel::PluginLayer|QgsMapLayerProxyModel::PolygonLayer</set>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1" colspan="5">
-       <widget class="QgsMapLayerComboBox" name="inRaster">
-        <property name="minimumSize">
-         <size>
-          <width>200</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>16777215</width>
-          <height>30</height>
-         </size>
-        </property>
-        <property name="filters">
-         <set>QgsMapLayerProxyModel::PluginLayer|QgsMapLayerProxyModel::RasterLayer</set>
-        </property>
-       </widget>
-      </item>
+     <layout class="QGridLayout" name="gridLayout">
       <item row="0" column="0">
        <widget class="QLabel" name="label_2">
         <property name="minimumSize">
@@ -130,42 +73,77 @@
         </property>
        </widget>
       </item>
-      <item row="4" column="0" colspan="5">
-       <widget class="QLineEdit" name="outRaster">
+      <item row="0" column="1" colspan="4">
+       <widget class="QgsMapLayerComboBox" name="inRaster">
+        <property name="minimumSize">
+         <size>
+          <width>200</width>
+          <height>0</height>
+         </size>
+        </property>
         <property name="maximumSize">
          <size>
           <width>16777215</width>
           <height>30</height>
          </size>
         </property>
-        <property name="placeholderText">
-         <string>Classification. Leave empty for temporary file</string>
+        <property name="filters">
+         <set>QgsMapLayerProxyModel::PluginLayer|QgsMapLayerProxyModel::RasterLayer</set>
         </property>
        </widget>
       </item>
-      <item row="2" column="4" rowspan="2" colspan="2">
-       <widget class="QLineEdit" name="inModel">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_3">
         <property name="maximumSize">
          <size>
-          <width>110</width>
-          <height>16777215</height>
+          <width>25</width>
+          <height>60</height>
          </size>
         </property>
-        <property name="inputMask">
-         <string/>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Your ROI&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="text">
          <string/>
         </property>
-        <property name="placeholderText">
-         <string>Model</string>
+        <property name="pixmap">
+         <pixmap resource="resources.qrc">:/plugins/dzetsaka/img/vector.svg</pixmap>
         </property>
        </widget>
       </item>
-      <item row="1" column="4" colspan="2">
+      <item row="1" column="1">
+       <widget class="QgsMapLayerComboBox" name="inShape">
+        <property name="minimumSize">
+         <size>
+          <width>150</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="filters">
+         <set>QgsMapLayerProxyModel::PluginLayer|QgsMapLayerProxyModel::PolygonLayer</set>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="QLabel" name="label">
+        <property name="maximumSize">
+         <size>
+          <width>25</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>or</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="3" colspan="2">
        <widget class="QCheckBox" name="checkInModel">
         <property name="maximumSize">
          <size>
@@ -178,14 +156,7 @@
         </property>
        </widget>
       </item>
-      <item row="4" column="5">
-       <widget class="QToolButton" name="outRasterButton">
-        <property name="text">
-         <string>...</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
+      <item row="2" column="0">
        <widget class="QLabel" name="label_4">
         <property name="maximumSize">
          <size>
@@ -207,20 +178,69 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="3" rowspan="2">
-       <widget class="QLabel" name="label">
-        <property name="maximumSize">
+      <item row="2" column="1">
+       <widget class="QComboBox" name="inField">
+        <property name="minimumSize">
          <size>
-          <width>25</width>
-          <height>25</height>
+          <width>100</width>
+          <height>0</height>
          </size>
         </property>
-        <property name="text">
-         <string>or</string>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>30</height>
+         </size>
         </property>
        </widget>
       </item>
-      <item row="5" column="0" colspan="2">
+      <item row="2" column="3" colspan="2">
+       <widget class="QLineEdit" name="inModel">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>110</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="inputMask">
+         <string/>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="placeholderText">
+         <string>Model</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="4">
+       <widget class="QLineEdit" name="outRaster">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="placeholderText">
+         <string>Classification. Leave empty for temporary file</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="4">
+       <widget class="QToolButton" name="outRasterButton">
+        <property name="text">
+         <string>...</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item row="2" column="0" colspan="3">
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="0">
        <spacer name="horizontalSpacer">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -230,17 +250,17 @@
         </property>
         <property name="sizeHint" stdset="0">
          <size>
-          <width>10</width>
+          <width>13</width>
           <height>17</height>
          </size>
         </property>
        </spacer>
       </item>
-      <item row="5" column="2" colspan="2">
+      <item row="0" column="1">
        <widget class="QToolButton" name="performMagic">
         <property name="minimumSize">
          <size>
-          <width>184</width>
+          <width>175</width>
           <height>0</height>
          </size>
         </property>
@@ -249,7 +269,7 @@
         </property>
        </widget>
       </item>
-      <item row="5" column="4" colspan="2">
+      <item row="0" column="2">
        <spacer name="horizontalSpacer_2">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -267,27 +287,27 @@
       </item>
      </layout>
     </item>
-    <item row="2" column="0" colspan="2">
+    <item row="3" column="0" colspan="2">
      <widget class="QLabel" name="label_7">
       <property name="text">
        <string>&gt; Optional</string>
       </property>
      </widget>
     </item>
-    <item row="2" column="2">
+    <item row="3" column="2">
      <spacer name="horizontalSpacer_3">
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
       <property name="sizeHint" stdset="0">
        <size>
-        <width>318</width>
+        <width>180</width>
         <height>20</height>
        </size>
       </property>
      </spacer>
     </item>
-    <item row="3" column="0">
+    <item row="4" column="0">
      <widget class="QLabel" name="label_5">
       <property name="maximumSize">
        <size>
@@ -309,21 +329,21 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="1">
+    <item row="4" column="1">
      <widget class="QCheckBox" name="checkInMask">
       <property name="text">
        <string>Mask</string>
       </property>
      </widget>
     </item>
-    <item row="3" column="2">
+    <item row="4" column="2">
      <widget class="QLineEdit" name="inMask">
       <property name="enabled">
        <bool>false</bool>
       </property>
       <property name="minimumSize">
        <size>
-        <width>200</width>
+        <width>120</width>
         <height>0</height>
        </size>
       </property>
@@ -332,7 +352,7 @@
       </property>
      </widget>
     </item>
-    <item row="4" column="0">
+    <item row="5" column="0">
      <widget class="QLabel" name="label_6">
       <property name="maximumSize">
        <size>
@@ -354,21 +374,21 @@
       </property>
      </widget>
     </item>
-    <item row="4" column="1">
+    <item row="5" column="1">
      <widget class="QCheckBox" name="checkOutModel">
       <property name="text">
        <string>Save model</string>
       </property>
      </widget>
     </item>
-    <item row="4" column="2">
+    <item row="5" column="2">
      <widget class="QLineEdit" name="outModel">
       <property name="enabled">
        <bool>false</bool>
       </property>
       <property name="minimumSize">
        <size>
-        <width>200</width>
+        <width>12</width>
         <height>0</height>
        </size>
       </property>
@@ -377,7 +397,7 @@
       </property>
      </widget>
     </item>
-    <item row="5" column="2">
+    <item row="6" column="2">
      <spacer name="verticalSpacer_4">
       <property name="orientation">
        <enum>Qt::Vertical</enum>
@@ -385,26 +405,10 @@
       <property name="sizeHint" stdset="0">
        <size>
         <width>20</width>
-        <height>29</height>
+        <height>5</height>
        </size>
       </property>
      </spacer>
-    </item>
-    <item row="0" column="0" colspan="3">
-     <widget class="QLabel" name="label_8">
-      <property name="minimumSize">
-       <size>
-        <width>300</width>
-        <height>0</height>
-       </size>
-      </property>
-      <property name="text">
-       <string/>
-      </property>
-      <property name="pixmap">
-       <pixmap resource="resources.qrc">:/plugins/dzetsaka/img/guyane.jpg</pixmap>
-      </property>
-     </widget>
     </item>
    </layout>
   </widget>
