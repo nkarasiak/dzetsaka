@@ -379,14 +379,25 @@ class dzetsaka ( QDialog ):
             self.dockwidget.show()
 
     def runMagic(self):
+        
+        #verif before doing the job 
         message=''
-        """
-        if self.dockwidget.inModel.text()=='' or self.dockwidget.inShape.currentLayer()=='NoneType':
-            message = "Sorry, you have to specify a model or shape"
-        """
+        
+        if self.dockwidget.inModel.text()=='':
+            try:
+                self.dockwidget.inShape.currentLayer().dataProvider().dataSourceUri()
+            except:            
+                message = "Sorry, if you don't use a model, please specify a vector"
+        try:
+            self.dockwidget.inRaster.currentLayer().dataProvider().dataSourceUri()
+        except:
+            message = "Sorry, you need a raster to make a classification."
+        
+            
         if message != '':
             QtGui.QMessageBox.warning(self, 'Information missing or invalid', message, QtGui.QMessageBox.Ok)
-                                    
+        
+        # all is ok, so do the job !
         else:
             # create temp if not output raster
             if self.dockwidget.outRaster.text()=='':
