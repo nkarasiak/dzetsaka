@@ -1,11 +1,11 @@
-## dzetsaka, classification tool
+## dzetsaka : classification tool
 ![Inselberg in Guiana Amazonian Park](https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/guyane.jpg)
 
 dzetsaka <img src="https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/icon.png" alt="dzetsaka logo" width="30px"/> is very fast and easy to use but also a **powerful classification plugin for Qgis**. Based on Gaussian Mixture Model classifier developped by  [Mathieu Fauvel](http://fauvel.mathieu.free.fr), this plugin is a more generalist tool than [Historical Map](https://github.com/lennepkade/HistoricalMap) which was dedicated to classify forests from old maps.
 This plugin has by developped by [Nicolaï Van Lennepkade](http://www.lennepka.de/) (aka Nicolas Karasiak).
 
 ### What does dzetsaka mean ?
-As this tool was developped during my work in the Guiana Amazonian Park to classify different kind of vegetation, I gave an Teko name (a native-american language from a nation which lives in french Guiana) which means.
+As this tool was developped during my work in the Guiana Amazonian Park to classify different kind of vegetation, I gave an Teko name (a native-american language from a nation which lives in french Guiana) which represent the objects we use to see the world through, such as satellites, microscope, camera... 
 
 ### Discover the magic of dzetsaka
 `dzetsaka : Classification tool` runs with scipy library. You can download package like [Spider by Anaconda](https://docs.continuum.io/anaconda/) for a very easy setup. 
@@ -23,5 +23,5 @@ The shapefile must have a column which contains your classification numbers *(1,
 
 ### Todo
 - Generate confusion matrix on demand
-- Implement different but fast classifiers. Badly those in scipy (like Random Forest) took hours to classify.
+- Implement different but fast classifiers. Badly those in scikit (like Random Forest or SVM) took hours to classify.
 
