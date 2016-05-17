@@ -30,7 +30,7 @@ tags=classification,automatic,gaussian,mixture,model
 
 homepage=http://www.github.com/lennepkade/dzetsaka
 category=Raster
-icon=icon.png
+icon=img/icon.png
 # experimental flag
 experimental=False
 
