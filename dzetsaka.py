@@ -21,19 +21,33 @@
  ***************************************************************************/
 """
 from PyQt4 import QtGui, uic
-from PyQt4.QtGui import QAction, QIcon, QFileDialog, QDialog
+from PyQt4.QtGui import QAction, QIcon, QFileDialog, QDialog, QDockWidget
 from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt, pyqtSignal, pyqtSlot
 from qgis.core import QgsMessageLog
 # Initialize Qt resources from file resources.py
 import resources
 
 # Import the code for the DockWidget
-from dzetsaka_dock import dzetsakaDockWidget
+# from dzetsaka_loaddock import dzetsakaDockWidget
 # 
 import os
 from scripts import mainfunction
 import tempfile
 
+# load dock 
+from dzetsaka_dock import Ui_DockWidget
+
+class dzetsakaDockWidget(QDockWidget, Ui_DockWidget):
+    closingPlugin = pyqtSignal()
+    def __init__(self, parent=None):
+        super(dzetsakaDockWidget, self).__init__(parent)
+        self.setupUi(self)
+        
+    def closeEvent(self, event):
+        self.closingPlugin.emit()
+        event.accept()
+
+      
 class dzetsaka ( QDialog ):
     """QGIS Plugin Implementation."""
 
@@ -159,28 +173,50 @@ class dzetsaka ( QDialog ):
             fileName = QFileDialog.getOpenFileName(self.dockwidget, "Select your file","")
             if fileName!='':
                 self.dockwidget.inModel.setText(fileName)
+                self.dockwidget.inModel.setEnabled(True)
+                # Disable training, so disable vector choise
+                self.dockwidget.inShape.setEnabled(False)
+                self.dockwidget.inField.setEnabled(False)
+                
             else:
                 self.dockwidget.checkInModel.setChecked(False)
+                self.dockwidget.inModel.setEnabled(False)
+                self.dockwidget.inShape.setEnabled(True)
+                self.dockwidget.inField.setEnabled(True)
+
         elif sender == self.dockwidget.checkInModel :
             self.dockwidget.inModel.clear()
+            self.dockwidget.inModel.setEnabled(False)
+            self.dockwidget.inShape.setEnabled(True)
+            self.dockwidget.inField.setEnabled(True)
+
         
         if sender == self.dockwidget.checkOutModel and self.dockwidget.checkOutModel.isChecked():
             fileName = QFileDialog.getOpenFileName(self.dockwidget, "Select your file","")
             if fileName!='':
                 self.dockwidget.outModel.setText(fileName)
+                self.dockwidget.outModel.setEnabled(True)
+
             else:
                 self.dockwidget.checkOutModel.setChecked(False)
+                self.dockwidget.outModel.setEnabled(False)
+                
         elif sender == self.dockwidget.checkOutModel :
             self.dockwidget.outModel.clear()
+            self.dockwidget.outModel.setEnabled(False)
+
         
         if sender == self.dockwidget.checkInMask and self.dockwidget.checkInMask.isChecked():
             fileName = QFileDialog.getOpenFileName(self.dockwidget, "Select your file")
             if fileName!='':
                 self.dockwidget.inMask.setText(fileName)
+                self.dockwidget.inMask.setEnabled(True)
             else:
                 self.dockwidget.checkInMask.setChecked(False)
+                self.dockwidget.inMask.setEnabled(False)
         elif sender == self.dockwidget.checkInMask :
             self.dockwidget.inMask.clear()
+            self.dockwidget.inMask.setEnabled(False)
         
      
     
@@ -292,6 +328,7 @@ class dzetsaka ( QDialog ):
         #print "** CLOSING dzetsaka"
 
         # disconnects
+        
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
 
         # remove this statement if dockwidget is to remain

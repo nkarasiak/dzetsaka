@@ -1,7 +1,7 @@
 <RCC>
   <qresource prefix="/plugins/dzetsaka">
-    <file>img/guyane.jpg</file>
     <file>img/icon.png</file>
+    <file>img/guyane.jpg</file>
     <file>img/column.svg</file>
     <file>img/mask.svg</file>
     <file>img/model.svg</file>

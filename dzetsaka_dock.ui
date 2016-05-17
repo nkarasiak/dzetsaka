@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>404</width>
-    <height>461</height>
+    <width>444</width>
+    <height>420</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>404</width>
-    <height>461</height>
+    <width>444</width>
+    <height>420</height>
    </size>
   </property>
   <property name="maximumSize">
@@ -55,7 +55,7 @@
         </property>
         <property name="sizeHint" stdset="0">
          <size>
-          <width>115</width>
+          <width>20</width>
           <height>20</height>
          </size>
         </property>
@@ -246,7 +246,7 @@
         </property>
         <property name="sizeHint" stdset="0">
          <size>
-          <width>112</width>
+          <width>20</width>
           <height>17</height>
          </size>
         </property>
@@ -254,8 +254,14 @@
       </item>
       <item row="5" column="2" colspan="2">
        <widget class="QToolButton" name="performMagic">
+        <property name="minimumSize">
+         <size>
+          <width>184</width>
+          <height>0</height>
+         </size>
+        </property>
         <property name="text">
-         <string>Perform the magic !</string>
+         <string>Perform the classification</string>
         </property>
        </widget>
       </item>
@@ -410,5 +416,8 @@
    <header>qgsmaplayercombobox.h</header>
   </customwidget>
  </customwidgets>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
  <connections/>
 </ui>

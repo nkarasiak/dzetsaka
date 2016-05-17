@@ -7,17 +7,17 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=Houdini Magic Classification
+name=dzetsaka : Classification tool
 qgisMinimumVersion=2.0
-description=Fast and Easy Classification
+description=Fast and Easy Classification plugin for Qgis
 version=0.1
 author=Nicolaï Van Lennepkade
 email=karasiak.nicolas@gmail.com
 
 about=Plugin for semi-automatic classification with Gaussian Mixture Model classifier. Very easy and fast. You need to have scipy installed on your computer.
 
-tracker=https://github.com/lennepkade/Houdini/issues
-repository=http://www.github.com/lennepkade/Houdini
+tracker=https://github.com/lennepkade/dzetsaka/issues
+repository=http://www.github.com/lennepkade/dzetsaka
 # End of mandatory metadata
 
 # Recommended items:
@@ -28,7 +28,7 @@ repository=http://www.github.com/lennepkade/Houdini
 # Tags are comma separated with spaces allowed
 tags=classification,automatic,gaussian,mixture,model
 
-homepage=http://www.github.com/lennepkade/Houdini
+homepage=http://www.github.com/lennepkade/dzetsaka
 category=Raster
 icon=icon.png
 # experimental flag
