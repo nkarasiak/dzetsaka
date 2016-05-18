@@ -1,0 +1,11 @@
+<RCC>
+  <qresource prefix="/plugins/dzetsaka">
+    <file>img/icon.png</file>
+    <file>img/guyane.jpg</file>
+    <file>img/column.svg</file>
+    <file>img/mask.svg</file>
+    <file>img/model.svg</file>
+    <file>img/raster.svg</file>
+    <file>img/vector.svg</file>
+  </qresource>
+</RCC>
