@@ -26,7 +26,7 @@ The shapefile must have a column which contains your classification numbers *(1,
 - Implement different but fast classifiers. Badly those in scikit (like Random Forest or SVM) took hours to classify.
 
 ### Thanks to...
-I would like to thank the [Guiana Amazonian Park](http://www.parc-amazonien-guyane.fr/) for their confidence in my work, and my school formation [Sigma](http://sigma.univ-toulouse.fr/en/welcome.html) for their excellent lessons in geomatics.
+I would like to thank the [Guiana Amazonian Park](http://www.parc-amazonien-guyane.fr/) for their confidence in my work, and the Master 2 Geomatics [Sigma](http://sigma.univ-toulouse.fr/en/welcome.html) for their excellent lessons in geomatics.
 
 <img height="30px" src="https://rawgit.com/lennepkade/dzetsaka/master/img/logo-pag.jpg" alt="Parc amazonien de Guyane"/>
 <img height="30px" src="https://raw.githubusercontent.com/lennepkade/HistoricalMap/master/img/dynafor.gif" alt="Dynafor"/>
