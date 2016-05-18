@@ -413,6 +413,16 @@ class dzetsaka ( QDialog ):
             inRaster=self.dockwidget.inRaster.currentLayer()
             inRaster=inRaster.dataProvider().dataSourceUri()
             
+            inMask=self.dockwidget.inMask.text()
+            # check if mask with _mask.extension
+                        
+            autoMask=os.path.splitext(inRaster)
+            autoMask=autoMask[0]+str('_mask')+autoMask[1]
+            if os.path.exists(autoMask):
+                inMask=autoMask
+
+            if inMask=='':
+                inMask=None
             
             # Check if model, else perform training
             if self.dockwidget.inModel.text()!='':
@@ -436,7 +446,7 @@ class dzetsaka ( QDialog ):
             # Perform classification
             try:
                 temp=mainfunction.classifyImage()
-                temp.initPredict(inRaster,model,outRaster)
+                temp.initPredict(inRaster,model,outRaster,inMask)
                 self.iface.addRasterLayer(outRaster)
             except:
                 

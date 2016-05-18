@@ -34,88 +34,6 @@ from PyQt4 import QtCore
 from qgis.utils import iface
 from qgis.core import QgsMessageLog
 
-class historicalFilter():  
-    """!@brief Filter a raster with median and closing filter.
-    
-    Filter class to isolate the forest, delete dark lines and fonts from Historical Map
-    
-    Input :
-        inImage : image name to filter ('text.tif',str)
-        outName : outname name of the filtered file (str)
-        inShapeGrey : Size for the grey closing convolution matrix (odd number, int)
-        inShapeMedian : Size for the median convolution matrix (odd  number, int)
-        
-    Output :
-        Nothing except a raster file (outName)
-        
-    """
-    
-    def __init__(self,inImage,outName,inShapeGrey,inShapeMedian,iterMedian):
-        # open data with Gdal
-        try:
-            data,im=dataraster.open_data_band(inImage)
-        except:
-            print 'Cannot open image'
-
-        # get proj,geo and dimension (d) from data
-        proj = data.GetProjection()
-        geo = data.GetGeoTransform()
-        d = data.RasterCount
-        
-        # Progress Bar
-        maxStep=d+d*iterMedian
-        try:
-            filterProgress=progressBar(' Filtering...',maxStep)
-        except:
-            print 'Failed loading progress Bar'
-        
-        # Try all, if error close filterProgress        
-        try:            
-            # create empty geotiff with d dimension, geotransform & projection
-            
-            try:
-                outFile=dataraster.create_empty_tiff(outName,im,d,geo,proj)
-            except:
-                print 'Cannot write empty image '+outName
-            
-            # fill outFile with filtered band
-            for i in range(d):
-                # Read data from the right band
-                try:
-                    filterProgress.addStep()
-                    temp = data.GetRasterBand(i+1).ReadAsArray()
-                    
-                except:
-                    print 'Cannot get rasterband'+i
-                    QgsMessageLog.logMessage("Problem reading band "+str(i)+" from image "+inImage)
-                # Filter with greyclosing, then with median filter
-                try:
-                    temp = ndimage.morphology.grey_closing(temp,size=(inShapeGrey,inShapeGrey))
-                except:
-                    print 'Cannot filter with Grey_Closing'
-                    QgsMessageLog.logMessage("Problem with Grey Closing")
-    
-                for j in range(iterMedian):
-                    try:
-                        filterProgress.addStep()
-                        temp = ndimage.filters.median_filter(temp,size=(inShapeMedian,inShapeMedian))
-                    except:
-                        print 'Cannot filter with Median'
-                        QgsMessageLog.logMessage("Problem with median filter")
-                    
-                # Save bandand outFile
-                try:
-                    out=outFile.GetRasterBand(i+1)
-                    out.WriteArray(temp)
-                    out.FlushCache()
-                    temp = None
-                except:
-                    QgsMessageLog.logMessage("Cannot save band"+str(i)+" on image" + outName)
-                    
-            filterProgress.reset()
-        except:
-            filterProgress.reset()
-                
 class learnModel():
     """!@brief Learn model with a shp file and a raster image.
     
@@ -342,7 +260,7 @@ class classifyImage():
     """
             
         
-    def initPredict(self,inRaster,inModel,outRaster):
+    def initPredict(self,inRaster,inModel,outRaster,inMask=None):
         
 
         # Load model
@@ -365,54 +283,12 @@ class classifyImage():
             QgsMessageLog.logMessage("Cannot create temp file "+rasterTemp)
             # Process the data
         try:
-            predictedImage=self.predict_image(inRaster,outRaster,tree,None,-10000,SCALE=[M,m])
+            predictedImage=self.predict_image(inRaster,outRaster,tree,inMask,-10000,SCALE=[M,m])
         except:
             QgsMessageLog.logMessage("Problem while predicting "+inRaster+" in temp"+rasterTemp)
         
         return predictedImage
     
-    
-    def rasterMod(self,rasterTemp,inClassForest):
-        try:
-            data,im=dataraster.open_data_band(rasterTemp)
-            # get proj,geo and dimension (d) from data
-            proj = data.GetProjection()
-            geo = data.GetGeoTransform()
-            d = data.RasterCount
-            
-            rasterTemp=rasterTemp+'f'
-        except:
-            QgsMessageLog.logMessage("Cant opening band")
-        try:     
-            outFile=dataraster.create_empty_tiff(rasterTemp,im,1,geo,proj)
-        except:
-            QgsMessageLog.logMessage("Cannot create empty tif in "+rasterTemp)
-    
-        try:
-            temp = data.GetRasterBand(1).ReadAsArray()
-            # All data which is not forest is set to 0, so we fill all for the forest only, because it's a binary fill holes.            
-            # Set selected class as 1                   
-            temp[temp!=inClassForest]=0
-            temp[temp==inClassForest]=1
-            
-            temp = ndimage.morphology.binary_fill_holes(temp)
-            #temp = ndimage.median_filter(temp,size=(3,3)).astype(int)
-        except:
-            QgsMessageLog.logMessage("Cannot fill binary holes")
-
-        # All non forest, or non selected class is set to 2
-        #temp[temp==0]=2
-        
-        try :
-            out=outFile.GetRasterBand(1)
-            out.WriteArray(temp)
-            out.FlushCache()
-            temp = None
-            # Cleaning outFile or vectorizing doesn't work
-            outFile= None
-        except:
-                print 'Cannot save '+rasterTemp
-        return rasterTemp
                 
     def scale(self,x,M=None,m=None):  # TODO:  DO IN PLACE SCALING
         """!@brief Function that standardize the data
@@ -469,15 +345,9 @@ class classifyImage():
             print 'Impossible to open '+inRaster
             exit()
         
-        # If provided, open mask
-        splitext=os.path.splitext(inRaster)
-        foundMask=splitext[0]+str('_mask')+splitext[1]
-        
-        if inMask is None or not os.path.exists(foundMask):
+        if inMask is None:
             mask=None
         else:
-            if inMask is None:
-                inMask=os.path.exists(splitext[0]+str('_mask')+splitext[1])
             mask = gdal.Open(inMask,gdal.GA_ReadOnly)
             if mask is None:
                 print 'Impossible to open '+inMask
