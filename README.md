@@ -25,7 +25,7 @@ The shapefile must have a column which contains your classification numbers *(1,
 
 ## Todo
 - Generate confusion matrix on demand
-- Implement different but fast classifiers. Badly those in scikit (like Random Forest or SVM) took hours to classify.
+- Implement different but classifiers
 
 ### Thanks to...
 I would like to thank the [Guiana Amazonian Park](http://www.parc-amazonien-guyane.fr/) for their confidence in my work, and the Master 2 Geomatics [Sigma](http://sigma.univ-toulouse.fr/en/welcome.html) for their excellent lessons in geomatics.
