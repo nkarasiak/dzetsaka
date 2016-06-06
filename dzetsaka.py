@@ -640,16 +640,16 @@ class dzetsaka ( QDialog ):
             sieveSize = self.historicalmap.sieveSize.value()
             inClassNumber = self.historicalmap.classNumber.value()
             
-            worker = filtersFunction()
-            outRaster = worker.historicalMapPostRaster(inRaster,sieveSize,inClassNumber,outShp)
-            outShp = worker.historicalMapPostVector(outRaster,outShp)
-            self.iface.addVectorLayer(outShp,os.path.splitext(os.path.basename(outShp))[0],'ogr')
-            
-            """            
-            self.iface.addVectorLayer(outShp,os.path.splitext(os.path.basename(outShp))[0],'ogr')
-            self.iface.messageBar().pushMessage("New vector : ",os.path.splitext(os.path.basename(outShp))[0], 3, duration=10)
-            """
+            try:
+                worker = filtersFunction()
+                outRaster = worker.historicalMapPostRaster(inRaster,sieveSize,inClassNumber,outShp)
+                outShp = worker.historicalMapPostVector(outRaster,outShp)
+                self.iface.addVectorLayer(outShp,os.path.splitext(os.path.basename(outShp))[0],'ogr')
+            except:
+                QtGui.QMessageBox.warning(self, 'Problem with Processing', 'Did you activate \'Processing\' plugin in Qgis ?', QtGui.QMessageBox.Ok)
 
+
+            
     def helpPage(self):
         self.helpdock=help_dock()
         self.helpdock.show()

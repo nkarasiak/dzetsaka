@@ -4,6 +4,8 @@
 dzetsaka <img src="https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/icon.png" alt="dzetsaka logo" width="30px"/> is very fast and easy to use but also a **powerful classification plugin for Qgis**. Based on Gaussian Mixture Model classifier developped by  [Mathieu Fauvel](http://fauvel.mathieu.free.fr), this plugin is a more generalist tool than [Historical Map](https://github.com/lennepkade/HistoricalMap) which was dedicated to classify forests from old maps.
 This plugin has by developped by [Nicolaï Van Lennepkade](http://www.lennepka.de/) (aka Nicolas Karasiak).
 
+A **quick tutorial is available online** ([dzetsaka : how to make your first classification in qgis ?](http://www.lennepka.de/dzetsaka-how-to-make-your-first-classification-in-qgis/)), or you can just [download samples](https://github.com/lennepkade/dzetsaka/archive/docs.zip) to test the plugin on your own.
+
 ## What does dzetsaka mean ?
 As this tool was developped during my work in the Guiana Amazonian Park to classify different kind of vegetation, I gave an Teko name (a native-american language from a nation which lives in french Guiana) which represent the objects we use to see the world through, such as satellites, microscope, camera... 
 
@@ -23,10 +25,10 @@ The shapefile must have a column which contains your classification numbers *(1,
 
 ## Todo
 - Generate confusion matrix on demand
-- Implement different but fast classifiers. Badly those in scikit (like Random Forest or SVM) took hours to classify.
+- Implement different classifiers
 
 ### Thanks to...
-I would like to thank the [Guiana Amazonian Park](http://www.parc-amazonien-guyane.fr/) for their confidence in my work, and my school formation [Sigma](http://sigma.univ-toulouse.fr/en/welcome.html) for their excellent lessons in geomatics.
+I would like to thank the [Guiana Amazonian Park](http://www.parc-amazonien-guyane.fr/) for their confidence in my work, and the Master 2 Geomatics [Sigma](http://sigma.univ-toulouse.fr/en/welcome.html) for their excellent lessons in geomatics.
 
 <img height="30px" src="https://rawgit.com/lennepkade/dzetsaka/master/img/logo-pag.jpg" alt="Parc amazonien de Guyane"/>
 <img height="30px" src="https://raw.githubusercontent.com/lennepkade/HistoricalMap/master/img/dynafor.gif" alt="Dynafor"/>
