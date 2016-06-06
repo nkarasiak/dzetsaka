@@ -24,7 +24,7 @@ The shapefile must have a column which contains your classification numbers *(1,
 - If you want to keep your spectral ROI model from an image, you can save your model to use it on another image.
 
 ## Todo
-- Generate confusion matrix on demand
+
 - Implement different classifiers
 
 ### Thanks to...
