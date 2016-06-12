@@ -100,47 +100,49 @@ class filtersFunction():
         except:
             filterProgress.reset()
     
-    def historicalMapPostRaster(self,inRaster,sieveSize,inClassNumber,outShp):
-        import processing
-
-        rasterTemp = tempfile.mkstemp('.tif')[1]
-
-        processing.runalg('gdalogr:sieve',inRaster,sieveSize,0,rasterTemp)
+    def historicalMapPostClass(self,inRaster,sieveSize,inClassNumber,outShp):        
         
-        ### remove unwanted classe
-
-        data,im=dataraster.open_data_band(rasterTemp)
-
-        # get proj,geo and dimension (d) from data
-        proj = data.GetProjection()
-        geo = data.GetGeoTransform()
+        Progress=progressBar(' Post-classification...',10)
         
-        outFile=dataraster.create_empty_tiff(rasterTemp,im,1,geo,proj)
+        rasterTemp = tempfile.mktemp('.tif')
+                
+        datasrc = gdal.Open(inRaster)
+        srcband = datasrc.GetRasterBand(1)
+        data,im=dataraster.open_data_band(inRaster)        
+
+        drv = gdal.GetDriverByName('GTiff')
+        dst_ds = drv.Create(rasterTemp,datasrc.RasterXSize,datasrc.RasterXSize,1,srcband.DataType)
+        dst_ds.SetGeoTransform(datasrc.GetGeoTransform())
+        dst_ds.SetProjection(datasrc.GetProjection())
     
-        try:
-            temp = data.GetRasterBand(1).ReadAsArray()
+        dstband=dst_ds.GetRasterBand(1)
+
+        def sieve(srcband,dstband,sieveSize):
+            gdal.SieveFilter(srcband,None,dstband,sieveSize)
+        
+        sieve(srcband,dstband,sieveSize)
+        Progress.addStep(2)
+        dst_ds =None
+        
+        def reclass(rasterTemp,inClassNumber):
+            dst_ds = gdal.Open(rasterTemp,gdal.GA_Update)
+            srcband = dst_ds.GetRasterBand(1).ReadAsArray()
             # All data which is not forest is set to 0, so we fill all for the forest only, because it's a binary fill holes.            
             # Set selected class as 1                   
-            temp[temp!=inClassNumber]=0
-            temp[temp==inClassNumber]=1
-                        #temp = ndimage.median_filter(temp,size=(3,3)).astype(int)
-        except:
-            QgsMessageLog.logMessage("Cannot sieve")
+            srcband[srcband !=inClassNumber]=0
+            srcband[srcband ==inClassNumber]=1
+            #QgsMessageLog.logMessage("Cannot sieve")
+                
+            dst_ds.GetRasterBand(1).WriteArray(srcband)
+            dst_ds.FlushCache()
+            return rasterTemp
+        
+        rasterTemp = reclass(rasterTemp,inClassNumber)
+        Progress.addStep(1)
+        
+        def polygonize(rasterTemp,outShp):
             
-        out=outFile.GetRasterBand(1)
-        out.WriteArray(temp)
-        out.FlushCache()
-        temp = None
-        # Cleaning outFile or vectorizing doesn't work
-        outFile= None
-        
-        return rasterTemp
-        
-    def historicalMapPostVector(self,inRaster,outShp):
-        
-        historicalProgress=progressBar('Vectorizing...',2)
-        try:
-            sourceRaster = gdal.Open(inRaster)
+            sourceRaster = gdal.Open(rasterTemp)
             band = sourceRaster.GetRasterBand(1)
             driver = ogr.GetDriverByName("ESRI Shapefile")
             # If shapefile already exist, delete it
@@ -157,33 +159,38 @@ class filtersFunction():
       
             newField = ogr.FieldDefn('Class', ogr.OFTInteger)
             outLayer.CreateField(newField)
+            print('vectorizing')
             gdal.Polygonize(band, None,outLayer, 0,[],callback=None)  
+            print('vectorized')
             outDatasource.Destroy()
             sourceRaster=None
+            band=None
+                    #    QgsMessageLog.logMessage("Cannot vectorize "+rasterTemp)
             
-        except:
-            QgsMessageLog.logMessage("Cannot vectorize "+rasterTemp)
-        
-        ioShpFile = ogr.Open(outShp, update = 1)
-        
-        historicalProgress.addStep()        
-        
-        lyr = ioShpFile.GetLayerByIndex(0)
-        lyr.ResetReading()    
-        
-        for i in lyr:
-            # feat = lyr.GetFeature(i) 
+            ioShpFile = ogr.Open(outShp, update = 1)
             
-            lyr.SetFeature(i)
-            lyr.SetFeature(i)
-        # if area is less than inMinSize or if it isn't forest, remove polygon 
-            if i.GetField('Class')!=1:
-                lyr.DeleteFeature(i.GetFID())        
-        ioShpFile.Destroy()
-        
-        historicalProgress.reset()
-        return outShp
+            
+            lyr = ioShpFile.GetLayerByIndex(0)
+            nbFeatures = lyr.GetFeatureCount()
+            lyr.ResetReading()    
 
+            for i in lyr:
+                lyr.SetFeature(i)
+            # if area is less than inMinSize or if it isn't forest, remove polygon 
+                if i.GetField('Class')!=1:
+                    lyr.DeleteFeature(i.GetFID())        
+            ioShpFile.Destroy()
+            
+            #historicalProgress.reset()
+            
+            return outShp
+        
+        outShp = polygonize(rasterTemp,outShp)  
+        Progress.addStep(7)
+        Progress.reset()
+        return outShp
+        
+        
     def filters(self,inImage,outRaster,inFilter,inFilterSize,inFilterIter):
         # open data with Gdal        
         self.processed = 0
@@ -289,13 +296,14 @@ class optimizeFilters(QtCore.QObject):
         
 
 if __name__=="__main__":
-    inRaster = '/home/lennepkade/Bureau/datapag/02-Results/02-Data/spot/pansharp-Spot7_arvi.tif'
+    inRaster = '/home/lennepkade/Bureau/datapag/02-Results/02-Data/spot/pred.tif'
     outRaster = '/home/lennepkade/Bureau/datapag/02-Results/02-Data/spot/closing.tif'
     inFilter = 'Gaussian'
     inFilterSize = 10
     inFilterIter = 1
     
     worker=filtersFunction()
-    worker.filters(inRaster,outRaster,inFilter,10,1)
-    
+    #worker.filters(inRaster,outRaster,inFilter,10,1)
+    worker.historicalMapPostClass(inRaster,40,2,'/home/lennepkade/Bureau/datapag/02-Results/02-Data/spot/closing.shp')
+    #worker.historicalMapReclass('/tmp/nana2.tif',2)
     print(outRaster)

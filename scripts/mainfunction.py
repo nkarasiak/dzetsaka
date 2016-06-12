@@ -458,11 +458,12 @@ class progressBar():
             # set Maximum for progressBar
             prgBar.setMaximum(inMaxStep)
             
-    def addStep(self):
+    def addStep(self,step=1):
         """!@brief Add a step to the progressBar
         addStep() simply add +1 to current value of the progressBar
+        addStep(3) will add 3 steps
         """
-        plusOne=self.prgBar.value()+1
+        plusOne=self.prgBar.value()+step
         self.prgBar.setValue(plusOne)
     def reset(self):
         """!@brief Simply remove progressBar and reset cursor

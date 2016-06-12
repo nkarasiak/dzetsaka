@@ -15,7 +15,7 @@ def open_data_band(filename):
             im : empty table with right dimension (array)
     
     """
-    data = gdal.Open(filename,gdal.GA_ReadOnly)
+    data = gdal.Open(filename,gdal.GA_Update)
     if data is None:
         print 'Impossible to open '+filename
         exit()

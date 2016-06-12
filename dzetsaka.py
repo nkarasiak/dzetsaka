@@ -122,7 +122,6 @@ class dzetsaka ( QDialog ):
         self.dockwidget.outMatrix.clear()
         self.dockwidget.checkOutMatrix.clicked.connect(self.checkbox_state)
         
-        ## init fields   
         self.dockwidget.inField.clear()
         self.dockwidget.inShape.currentIndexChanged[int].connect(self.onChangedLayer)
         
@@ -134,11 +133,14 @@ class dzetsaka ( QDialog ):
             fields = provider.fields()
             listFieldNames = [field.name() for field in fields]
             self.dockwidget.inField.addItems(listFieldNames)
-            
+         
+         ##
+        
+        self.dockwidget.setMaximumHeight(400)
         ## let's run the classification ! 
         self.dockwidget.performMagic.clicked.connect(self.runMagic)
-        
 
+        
     def onChangedLayer(self):
         """!@brief If active layer is changed, change column combobox"""
         # We clear combobox
@@ -156,8 +158,11 @@ class dzetsaka ( QDialog ):
     def select_output_file(self):
         """!@brief Select file to save, and gives the right extension if the user don't put it"""
         sender = self.sender()
-
-        fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","TIF (*.tif)")
+        
+        if sender == self.historicalmap.outShpButton:
+            fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","SHP (*.shp)")
+        else:
+            fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","TIF (*.tif)")
         
         if not fileName:
             return
@@ -180,13 +185,14 @@ class dzetsaka ( QDialog ):
                 self.historicalmap.outShp.setText(fileName+'.shp')
             else:
                 self.historicalmap.outShp.setText(fileName+fileExtension)
-      
-        if sender == self.filters_dock.outRasterButton:
-            if fileExtension!='.tif':
-                self.filters_dock.outRaster.setText(fileName+'.tif')
+        try:
+            if sender == self.filters_dock.outRasterButton:
+                if fileExtension!='.tif':
+                    self.filters_dock.outRaster.setText(fileName+'.tif')
             else:
                 self.filters_dock.outRaster.setText(fileName+fileExtension)
-        
+        except:
+            print('ko')
     
     def checkbox_state(self):
         sender=self.sender()
@@ -510,7 +516,7 @@ class dzetsaka ( QDialog ):
         self.filters_dock.inFilter.addItems(filtersList)
         
         # make choice
-        if self.sender() == self.menu.filterErosion:
+        if self.sender() == self.menu.filterOpening:
             self.filters_dock.inFilter.setCurrentIndex(0)
         elif self.sender() == self.menu.filterClosing:
             self.filters_dock.inFilter.setCurrentIndex(1)
@@ -559,7 +565,7 @@ class dzetsaka ( QDialog ):
             inFilterIter = self.filters_dock.inFilterIter.value()
             
             if self.filters_dock.outRaster.text()=='':
-               self.outRaster= tempfile.mkstemp('.tif')[1]
+               self.outRaster= tempfile.mktemp('.tif')
             else:
                self.outRaster= self.dockwidget.outRaster.text()
             
@@ -605,7 +611,7 @@ class dzetsaka ( QDialog ):
             inRaster=inRaster.dataProvider().dataSourceUri()
             
             if self.historicalmap.outRaster.text()=='':
-                outRaster = tempfile.mkstemp('.tif')[1]
+                outRaster = tempfile.mktemp('.tif')
             else:
                 outRaster = self.historicalmap.outRaster.text()
             
@@ -633,20 +639,21 @@ class dzetsaka ( QDialog ):
             inRaster=inRaster.dataProvider().dataSourceUri()
             
             if self.historicalmap.outShp.text()=='':
-                outShp = tempfile.mkstemp('.shp')[1]
+                outShp = tempfile.mktemp('.shp')
             else:
                 outShp = self.historicalmap.outShp.text()
             
             sieveSize = self.historicalmap.sieveSize.value()
             inClassNumber = self.historicalmap.classNumber.value()
             
-            try:
-                worker = filtersFunction()
-                outRaster = worker.historicalMapPostRaster(inRaster,sieveSize,inClassNumber,outShp)
-                outShp = worker.historicalMapPostVector(outRaster,outShp)
-                self.iface.addVectorLayer(outShp,os.path.splitext(os.path.basename(outShp))[0],'ogr')
-            except:
-                QtGui.QMessageBox.warning(self, 'Problem with Processing', 'Did you activate \'Processing\' plugin in Qgis ?', QtGui.QMessageBox.Ok)
+    
+            worker = filtersFunction()
+            outShp = worker.historicalMapPostClass(inRaster,sieveSize,inClassNumber,outShp)
+            
+            #outShp = worker.historicalMapPostVector(outRaster,outShp)
+            self.iface.addVectorLayer(outShp,os.path.splitext(os.path.basename(outShp))[0],'ogr')
+            #except:
+            #    QtGui.QMessageBox.warning(self, 'Problem with Processing', 'Did you activate \'Processing\' plugin in Qgis ?', QtGui.QMessageBox.Ok)
 
 
             
@@ -678,7 +685,7 @@ class dzetsaka ( QDialog ):
         else:
             # create temp if not output raster
             if self.dockwidget.outRaster.text()=='':
-                outRaster= tempfile.mkstemp()[1]
+                outRaster= tempfile.mktemp('.tif')
             else:
                 outRaster= self.dockwidget.outRaster.text()
             
@@ -707,7 +714,7 @@ class dzetsaka ( QDialog ):
             # Perform training
             else:
                 if self.dockwidget.outModel.text()=='':
-                    model=tempfile.mkstemp()[1]
+                    model=tempfile.mktemp('.'+str(model))
                 else:
                     model=self.dockwidget.outModel.text()
                 

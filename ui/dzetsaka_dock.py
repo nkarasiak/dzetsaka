@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'dzetsaka_dock.ui'
 #
-# Created: Sat May 28 22:59:25 2016
+# Created: Sun Jun 12 09:26:04 2016
 #      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
