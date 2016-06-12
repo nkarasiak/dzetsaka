@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'dzetsaka_dock.ui'
 #
-# Created: Sun Jun 12 09:26:04 2016
+# Created: Sun Jun 12 19:22:23 2016
 #      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -160,7 +160,7 @@ class Ui_DockWidget(object):
         self.label_11 = QtGui.QLabel(self.mGroupBox)
         self.label_11.setMaximumSize(QtCore.QSize(25, 25))
         self.label_11.setText(_fromUtf8(""))
-        self.label_11.setPixmap(QtGui.QPixmap(_fromUtf8(":/plugins/dzetsaka/img/model.svg")))
+        self.label_11.setPixmap(QtGui.QPixmap(_fromUtf8(":/plugins/dzetsaka/img/table.png")))
         self.label_11.setScaledContents(True)
         self.label_11.setObjectName(_fromUtf8("label_11"))
         self.gridLayout_3.addWidget(self.label_11, 2, 0, 1, 1)

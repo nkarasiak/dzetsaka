@@ -473,37 +473,41 @@ class progressBar():
         self.iface.messageBar().clearWidgets()
         self.iface.mapCanvas().refresh()
         QApplication.restoreOverrideCursor()
-            
-#if __name__=='__main__':
-    
 
+class confusionMatrix():
     
-    # Image to work on
-#
-#    inImage='img/samples/map.tif'
-#        
-#    inFile,inExtension = os.path.splitext(inImage) # Split filename and extension
-#    outFilter=inFile+'_filtered'+inExtension 
-#    
-#    # Filtering....
-#    filtered=historicalFilter(inImage,outFilter,inShapeGrey=11,inShapeMedian=11, iterMedian=1)
-#    print 'Image saved as : '+outFilter
-#    
-##    #Learn Model...
-##    inVector='img/samples/train.shp'
-##    inClassifier='GMM'
-#    outModel='/home/sigma/test/modelGMM'
-##    inSeed=0
-##    
-##    model=learnModel('img/samples/map_filtered.tif','img/samples/train.shp',inField='Class',inSplit=0.5,inSeed=0,outModel='img/samples/model',outMatrix='img/samples/matrix.csv',inClassifier=inClassifier)   
-##    print 'Model saved as : '+outModel
-##    print 'Confusion matrix saved as : '+str(inFile)+'_'+str(inClassifier)+'_'+str(inSeed)+'_confu.csv'
-    
-    #Classify image...
-    
-#    outShpFile='img/samples/SHP/vectorized.shp'
-#    classifyImage('/home/sigma/test/map_fltr.tif','/home/sigma/test/modelGMM','/home/sigma/test/vec.shp',None,5000,-10000,1)
-    #classified=classifyImage(outFilter,outModel,outShpFile,None,6000,-10000,1)
-    
-#    inFilteredStep3,inTrainingStep3,outRasterClass,None,inMinSize,None,'Class',inNODATA=-10000
-#    inRaster,inModel,outRaster,inMask=None,inMinSize=6,outShpFolder='img/samples/outSHP/',inField='Class',inNODATA=-10000
+    def __init__(self):
+        self.confusion_matrix= None
+        self.OA= None
+        self.Kappa = None
+        
+        
+    def computeStatistics(self,inRaster,inShape,inField):
+        progress = progressBar('Computing statistics...',0)
+        rasterized = self.rasterize(inRaster,inShape,inField)
+        Yp,Yt = dataraster.get_samples_from_roi(inRaster,rasterized)
+        CONF = ai.CONFUSION_MATRIX()
+        CONF.compute_confusion_matrix(Yp,Yt)
+        self.confusion_matrix = CONF.confusion_matrix
+        self.Kappa = CONF.Kappa
+        self.OA = CONF.OA
+        progress.reset()
+        
+
+    def rasterize(self,inRaster,inShape,inField):
+        filename = tempfile.mktemp('.tif')        
+        data = gdal.Open(inRaster,gdal.GA_ReadOnly)
+        shp = ogr.Open(inShape)
+        
+        lyr = shp.GetLayer()
+
+        driver = gdal.GetDriverByName('GTiff')
+        dst_ds = driver.Create(filename,data.RasterXSize,data.RasterYSize, 1,gdal.GDT_Byte)
+        dst_ds.SetGeoTransform(data.GetGeoTransform())
+        dst_ds.SetProjection(data.GetProjection())
+        OPTIONS = 'ATTRIBUTE='+inField
+        gdal.RasterizeLayer(dst_ds, [1], lyr, None,options=[OPTIONS])
+        data,dst_ds,shp,lyr=None,None,None,None
+        
+        
+        return filename

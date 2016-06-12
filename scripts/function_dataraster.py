@@ -412,3 +412,13 @@ def smooth_image(raster_name,mask_name,output_name,l,t):
     mask = None
     dst_ds = None
 
+if __name__=="__main__":
+    Raster="/home/lennepkade/test/testSpot7.tif"
+    ROI="/tmp/tmp4i1jQ_/temp.tif"
+    X,Y=get_samples_from_roi(Raster,ROI)
+    
+    import accuracy_index as ai
+    print(X.shape)
+    print(Y.shape)
+    worker=ai.CONFUSION_MATRIX()
+    worker.compute_confusion_matrix(X,Y)

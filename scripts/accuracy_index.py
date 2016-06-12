@@ -33,35 +33,3 @@ class CONFUSION_MATRIX:
         self.Kappa = ((n**2)*self.OA - sp.sum(nc*nl))/(n**2-sp.sum(nc*nl))
         
         # TBD Variance du Kappa
-if __name__=='__main__':
-    import function_dataraster as dataraster
-    # Convert vector to raster
-    from osgeo import ogr, gdal
-    import tempfile
-    import os
-    temp_folder = tempfile.mkdtemp()
-    filename = os.path.join(temp_folder, 'temp.tif')
-    inRaster = '/home/lennepkade/Bureau/datapag/02-Results/02-Data/spot/pansharp-Spot7.tif'
-    data = gdal.Open(inRaster,gdal.GA_ReadOnly)
-    inVector = '/home/lennepkade/Bureau/datapag/02-Results/02-Data/spot/pansharp-Spot7.shp'
-    
-    shp = ogr.Open(inVector)
-    
-    lyr = shp.GetLayer()
-    driver = gdal.GetDriverByName('GTiff')
-    dst_ds = driver.Create(filename,data.RasterXSize,data.RasterYSize, 1,gdal.GDT_Byte)
-    dst_ds.SetGeoTransform(data.GetGeoTransform())
-    dst_ds.SetProjection(data.GetProjection())
-    OPTIONS = 'ATTRIBUTE='+'class'
-    gdal.RasterizeLayer(dst_ds, [1], lyr, None,options=[OPTIONS])
-    data,dst_ds,shp,lyr=None,None,None,None
-
-    X,Y = dataraster.get_samples_from_roi(inRaster,filename)
-
-    yp=sp.random.randint(5,10,500).reshape(100,5)
-    yt=sp.random.randint(5,10,500).reshape(100,5)
-    CONF=CONFUSION_MATRIX()
-    CONF.compute_confusion_matrix(yp,yt)
-    print CONF.confusion_matrix
-    print CONF.OA
-    print CONF.Kappa

@@ -33,10 +33,12 @@ import resources
 import os
 from scripts import mainfunction
 import tempfile
-
+import scipy as sp
+import gdal
 # load dock 
 from ui.dzetsaka_dock import Ui_DockWidget
-from ui import filters_dock, historical_dock, help_dock
+from ui import filters_dock, historical_dock, help_dock, confusion_dock
+
 
 
 # Load main widget
@@ -66,9 +68,8 @@ class dzetsaka ( QDialog ):
         self.iface = iface
         QDialog.__init__(self)
         sender = self.sender()
-        
+    
         # Save reference to the QGIS interface
-
         legendInterface = self.iface.legendInterface()
 
         # initialize plugin directory
@@ -105,7 +106,9 @@ class dzetsaka ( QDialog ):
         self.dockwidget = None
         
         self.dockwidget = dzetsakaDockWidget()
-        
+        self.historicalmap = historical_dock()
+        self.filters_dock = filters_dock()
+        self.confusiondock = confusion_dock()
         ## Init to choose file (to load or to save)
         self.dockwidget.outRaster.clear()
         self.dockwidget.outRasterButton.clicked.connect(self.select_output_file)
@@ -123,36 +126,30 @@ class dzetsaka ( QDialog ):
         self.dockwidget.checkOutMatrix.clicked.connect(self.checkbox_state)
         
         self.dockwidget.inField.clear()
-        self.dockwidget.inShape.currentIndexChanged[int].connect(self.onChangedLayer)
+        
         
         self.dockwidget.inField.clear()
         # Then we fill it with new selected Layer
-        if self.dockwidget.inField.currentText() == '' and self.dockwidget.inShape.currentLayer() and self.dockwidget.inShape.currentLayer()!='NoneType':
-            activeLayer = self.dockwidget.inShape.currentLayer()
-            provider = activeLayer.dataProvider()
-            fields = provider.fields()
-            listFieldNames = [field.name() for field in fields]
-            self.dockwidget.inField.addItems(listFieldNames)
-         
-         ##
+        def onChangedLayer():
+            """!@brief If active layer is changed, change column combobox"""
+            # We clear combobox
+            self.dockwidget.inField.clear()
+            # Then we fill it with new selected Layer
+            if self.dockwidget.inField.currentText() == '' and self.dockwidget.inShape.currentLayer() and self.dockwidget.inShape.currentLayer()!='NoneType':
+                activeLayer = self.dockwidget.inShape.currentLayer()
+                provider = activeLayer.dataProvider()
+                fields = provider.fields()
+                listFieldNames = [field.name() for field in fields]
+                self.dockwidget.inField.addItems(listFieldNames)
+            
+        #
+        onChangedLayer()
+        self.dockwidget.inShape.currentIndexChanged[int].connect(onChangedLayer)
         
         self.dockwidget.setMaximumHeight(400)
         ## let's run the classification ! 
         self.dockwidget.performMagic.clicked.connect(self.runMagic)
 
-        
-    def onChangedLayer(self):
-        """!@brief If active layer is changed, change column combobox"""
-        # We clear combobox
-        self.dockwidget.inField.clear()
-        # Then we fill it with new selected Layer
-        if self.dockwidget.inField.currentText() == '' and self.dockwidget.inShape.currentLayer() and self.dockwidget.inShape.currentLayer()!='NoneType':
-            activeLayer = self.dockwidget.inShape.currentLayer()
-            provider = activeLayer.dataProvider()
-            fields = provider.fields()
-            listFieldNames = [field.name() for field in fields]
-            self.dockwidget.inField.addItems(listFieldNames)
-        
         
 
     def select_output_file(self):
@@ -166,8 +163,7 @@ class dzetsaka ( QDialog ):
         
         if not fileName:
             return
-            
-        # If user give right file extension, we don't add it
+    # If user give right file extension, we don't add it
             
         fileName,fileExtension=os.path.splitext(fileName)
         if sender == self.dockwidget.outRasterButton: 
@@ -185,14 +181,11 @@ class dzetsaka ( QDialog ):
                 self.historicalmap.outShp.setText(fileName+'.shp')
             else:
                 self.historicalmap.outShp.setText(fileName+fileExtension)
-        try:
-            if sender == self.filters_dock.outRasterButton:
-                if fileExtension!='.tif':
-                    self.filters_dock.outRaster.setText(fileName+'.tif')
-            else:
-                self.filters_dock.outRaster.setText(fileName+fileExtension)
-        except:
-            print('ko')
+        if sender == self.filters_dock.outRasterButton:
+            if fileExtension!='.tif':
+                self.filters_dock.outRaster.setText(fileName+'.tif')
+        else:
+            self.filters_dock.outRaster.setText(fileName+fileExtension)
     
     def checkbox_state(self):
         sender=self.sender()
@@ -406,11 +399,16 @@ class dzetsaka ( QDialog ):
         ## Separator
         filterMenu.addSeparator()
         
-        ## Historical map
+        # Historical map
         self.menu.historicalMap = QAction(QIcon(":/plugins/dzetsaka/img/historicalmap.png"), "Historical Map Process", self.iface.mainWindow())
         QObject.connect(self.menu.historicalMap, SIGNAL("triggered()"), self.loadHistoricalMap)
         self.menu.addAction(self.menu.historicalMap)
-                    
+        
+        # Confusion matrix
+        self.menu.confusionDock = QAction(QIcon(":/plugins/dzetsaka/img/table.png"), "Confusion matrix", self.iface.mainWindow())
+        QObject.connect(self.menu.confusionDock, SIGNAL("triggered()"), self.loadConfusion)
+        self.menu.addAction(self.menu.confusionDock)
+            
         # Help
         self.menu.help = QAction(QIcon(":/plugins/dzetsaka/img/icon.png"), "Help", self.iface.mainWindow())
         QObject.connect(self.menu.help, SIGNAL("triggered()"), self.helpPage)
@@ -420,6 +418,80 @@ class dzetsaka ( QDialog ):
         menuBar = self.iface.mainWindow().menuBar()
         menuBar.insertMenu(self.iface.firstRightStandardMenu().menuAction(), self.menu)
         
+    def loadConfusion(self):
+        self.confusiondock = confusion_dock()
+        self.confusiondock.show()
+        
+        
+        def onChangedLayer():
+            self.confusiondock.inField.clear()
+            # Then we fill it with new selected Layer
+            if self.confusiondock.inField.currentText() == '' and self.confusiondock.inShape.currentLayer() and self.confusiondock.inShape.currentLayer()!='NoneType':
+                activeLayer = self.confusiondock.inShape.currentLayer()
+                provider = activeLayer.dataProvider()
+                fields = provider.fields()
+                listFieldNames = [field.name() for field in fields]
+                self.confusiondock.inField.addItems(listFieldNames)
+        
+        # automatic find column
+        onChangedLayer()    
+        # if layer change, update
+        self.confusiondock.inShape.currentIndexChanged[int].connect(onChangedLayer)
+        
+        # verif process
+        self.confusiondock.compare.clicked.connect(self.performConfusion)
+        
+    def performConfusion(self):
+        message =''
+        
+        try:
+            self.confusiondock.inRaster.currentLayer().dataProvider().dataSourceUri()
+        except:
+            message = "Sorry, you need a raster to make a classification."            
+       
+        inRaster=self.confusiondock.inRaster.currentLayer()
+        inRaster=inRaster.dataProvider().dataSourceUri()
+        datasrc = gdal.Open(inRaster)
+        if datasrc.RasterCount>1:
+            message='Your prediction must have only one dimension (no multi bands support)'
+
+        if message != '':
+            QtGui.QMessageBox.warning(self, 'Information missing or invalid', message, QtGui.QMessageBox.Ok)
+        
+        else:        
+     
+            inShape = self.confusiondock.inShape.currentLayer()
+            # Remove layerid=0 from SHP Path
+            inShape=inShape.dataProvider().dataSourceUri().split('|')[0]
+            
+            inField = self.confusiondock.inField.currentText()
+            
+            worker=mainfunction.confusionMatrix()
+            worker.computeStatistics(inRaster,inShape,inField)
+            self.confusiondock.OA.setText(str(round(worker.OA*100,2))+str('%'))           
+            self.confusiondock.kappa.setText(str(round(worker.Kappa*100,2))+str('%'))
+            
+            ## Create and save CSV
+            import csv
+            outCsv = tempfile.mktemp('.csv')        
+            sp.savetxt(outCsv,worker.confusion_matrix,delimiter=',',fmt='%1.4d')
+        
+            self.model = QStandardItemModel(self)    
+            ## add csv to Qtable
+            
+            with open(outCsv, "rb") as fileInput:
+                for row in csv.reader(fileInput):    
+                    items = [
+                        QStandardItem(field)
+                        for field in row
+                    ]
+                    self.model.appendRow(items)
+    
+            self.confusiondock.confusionTable.setModel(self.model)
+            
+            # Auto adapt size to width
+            header = self.confusiondock.confusionTable.horizontalHeader()
+            header.setResizeMode(QHeaderView.Stretch)
         
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
@@ -579,8 +651,11 @@ class dzetsaka ( QDialog ):
     def loadHistoricalMap(self):
         
         self.historicalmap = historical_dock()
+        
         self.historicalmap.show()
-    
+        
+        
+        
         # save raster 
         self.historicalmap.outRasterButton.clicked.connect(self.select_output_file)
         self.historicalmap.outShpButton.clicked.connect(self.select_output_file)
