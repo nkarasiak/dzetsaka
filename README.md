@@ -18,6 +18,21 @@ Then, as this plugin is very simple, you will just need two things for making a 
 
 The shapefile must have a column which contains your classification numbers *(1,3,4...)*. Otherwise if you use text or anything else it certainly won't work.
 
+## Installation of scikit-learn
+On Linux simply open terminal and type : 
+`pip install scikit-learn`
+
+On Windows, you have few more steps to do. Open Windows menu, and search for OsGeo Shell, then type :<br/> 
+`curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py`
+
+After get-pip.py has been downloaded write :<br/> 
+`python get-pip.py`
+
+Now use pip in OsGeo Shell like on Linux. Just type :<br/> 
+`pip install scikit-learn`
+
+You can now use **Random Forest**, **SVM**, or **KNN** !
+
 ## Tips
 
 - If your raster is *spot6scene.tif*, you can create your mask under the name *spot6scene_mask.tif* and the script will detect it automatically.
@@ -25,7 +40,7 @@ The shapefile must have a column which contains your classification numbers *(1,
 
 ## Todo
 
-- Implement different classifiers
+- Implement best progress bar for classifier like Random Forest / K-Nearest Neighbors.
 
 ### Thanks to...
 I would like to thank the [Guiana Amazonian Park](http://www.parc-amazonien-guyane.fr/) for their confidence in my work, and the Master 2 Geomatics [Sigma](http://sigma.univ-toulouse.fr/en/welcome.html) for their excellent lessons in geomatics.

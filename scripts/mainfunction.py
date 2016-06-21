@@ -88,6 +88,7 @@ class learnModel():
             except:
                 QgsMessageLog.logMessage("Problem while getting samples from ROI with"+inRaster)
                 QgsMessageLog.logMessage("Are you sure to have only integer values in your "+str('inField')+" column ?")
+                
             
             [n,d] = X.shape
             C = int(Y.max())
@@ -133,15 +134,15 @@ class learnModel():
             
             learningProgress.addStep() # Add Step to ProgressBar
             # Train Classifier
-            try:
-                if inClassifier == 'GMM':
+            if inClassifier == 'GMM':
+                try:
                     # tau=10.0**sp.arange(-8,8,0.5)
                     model = gmmr.GMMR()
                     model.learn(x,y)
                     # htau,err = model.cross_validation(x,y,tau)
                     # model.tau = htau
-            except:
-                QgsMessageLog.logMessage("Cannot train with GMMM")
+                except:
+                    QgsMessageLog.logMessage("Cannot train with GMMM")
             else:
                 try:                    
                     from sklearn import neighbors
@@ -149,39 +150,37 @@ class learnModel():
                     from sklearn.ensemble import RandomForestClassifier
                     from sklearn.cross_validation import StratifiedKFold
                     from sklearn.grid_search import GridSearchCV
+                    try:    
+                        if inClassifier == 'RF':
+                            param_grid_rf = dict(n_estimators=3**sp.arange(1,5),max_features=sp.arange(1,4))
+                            y.shape=(y.size,)    
+                            cv = StratifiedKFold(y, n_folds=3)
+                            grid = GridSearchCV(RandomForestClassifier(), param_grid=param_grid_rf, cv=cv,n_jobs=1)
+                            grid.fit(x, y)
+                            model = grid.best_estimator_
+                            model.fit(x,y)        
+                        elif inClassifier == 'SVM':
+                            param_grid_svm = dict(gamma=2.0**sp.arange(-4,4), C=10.0**sp.arange(-2,5))
+                            y.shape=(y.size,)    
+                            cv = StratifiedKFold(y, n_folds=5)
+                            grid = GridSearchCV(SVC(), param_grid=param_grid_svm, cv=cv,n_jobs=1)
+                            grid.fit(x, y)
+                            model = grid.best_estimator_
+                            model.fit(x,y)
+                        elif inClassifier == 'KNN':
+                            param_grid_knn = dict(n_neighbors = sp.arange(1,20,4))
+                            y.shape=(y.size,)    
+                            cv = StratifiedKFold(y, n_folds=3)
+                            grid = GridSearchCV(neighbors.KNeighborsClassifier(), param_grid=param_grid_knn, cv=cv,n_jobs=1)
+                            grid.fit(x, y)
+                            model = grid.best_estimator_
+                            model.fit(x,y)
+                    except:
+                        QgsMessageLog.logMessage("Cannot train with classifier "+inClassifier)
+                
                 except:
-                    QgsMessageLog.logMessage("You must have sklearn dependencies on your computer. Please consult the documentation")
-                try:    
-                    if inClassifier == 'RF':
-                        param_grid_rf = dict(n_estimators=5**sp.arange(1,5),max_features=sp.arange(1,4))
-                        y.shape=(y.size,)    
-                        cv = StratifiedKFold(y, n_folds=5)
-                        grid = GridSearchCV(RandomForestClassifier(), param_grid=param_grid_rf, cv=cv,n_jobs=-1)
-                        grid.fit(x, y)
-                        model = grid.best_estimator_
-                        model.fit(x,y)        
-                    elif inClassifier == 'SVM':
-                        param_grid_svm = dict(gamma=2.0**sp.arange(-4,4), C=10.0**sp.arange(-2,5))
-                        y.shape=(y.size,)    
-                        cv = StratifiedKFold(y, n_folds=5)
-                        grid = GridSearchCV(SVC(), param_grid=param_grid_svm, cv=cv,n_jobs=-1)
-                        grid.fit(x, y)
-                        model = grid.best_estimator_
-                        model.fit(x,y)
-                    elif inClassifier == 'KNN':
-                        param_grid_knn = dict(n_neighbors = sp.arange(1,50,5))
-                        y.shape=(y.size,)    
-                        cv = StratifiedKFold(y, n_folds=5)
-                        grid = GridSearchCV(neighbors.KNeighborsClassifier(), param_grid=param_grid_knn, cv=cv,n_jobs=-1)
-                        grid.fit(x, y)
-                        model = grid.best_estimator_
-                        model.fit(x,y)
-                except:
-                    print 'Cannot train with Classifier '+inClassifier
-                    QgsMessageLog.logMessage("Cannot train with Classifier"+inClassifier)
-    
-                    
-            
+                    QgsMessageLog.logMessage("You must have sklearn dependencies on your computer. Please consult the documentation for installation.")
+                
             learningProgress.prgBar.setValue(5) # Add Step to ProgressBar
             # Assess the quality of the model
             if SPLIT < 1 :

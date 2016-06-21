@@ -12,5 +12,6 @@
     <file>img/help.png</file>
     <file>img/historical_logo.jpg</file>
     <file>img/table.png</file>
+	<file>img/settings.png</file>
   </qresource>
 </RCC>
