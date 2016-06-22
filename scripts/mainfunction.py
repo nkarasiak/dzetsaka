@@ -483,13 +483,16 @@ class confusionMatrix():
         
     def computeStatistics(self,inRaster,inShape,inField):
         progress = progressBar('Computing statistics...',0)
-        rasterized = self.rasterize(inRaster,inShape,inField)
-        Yp,Yt = dataraster.get_samples_from_roi(inRaster,rasterized)
-        CONF = ai.CONFUSION_MATRIX()
-        CONF.compute_confusion_matrix(Yp,Yt)
-        self.confusion_matrix = CONF.confusion_matrix
-        self.Kappa = CONF.Kappa
-        self.OA = CONF.OA
+        try:
+            rasterized = self.rasterize(inRaster,inShape,inField)
+            Yp,Yt = dataraster.get_samples_from_roi(inRaster,rasterized)
+            CONF = ai.CONFUSION_MATRIX()
+            CONF.compute_confusion_matrix(Yp,Yt)
+            self.confusion_matrix = CONF.confusion_matrix
+            self.Kappa = CONF.Kappa
+            self.OA = CONF.OA
+        except:
+            QgsMessageLog.logMessage('Error during statitics calculation')
         progress.reset()
         
 

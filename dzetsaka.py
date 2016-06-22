@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+Created on Wed Jun 22 07:52:11 2016
+
+@author: nkarasiak
+"""
+
+# -*- coding: utf-8 -*-
+"""
 /***************************************************************************
  dzetsaka
                                  A QGIS plugin
@@ -26,33 +33,22 @@ from PyQt4.QtCore import *
 from qgis.core import QgsMessageLog
 # Initialize Qt resources from file resources.py
 import resources
-import ConfigParser
-# Import the code for the DockWidget
-# from dzetsaka_loaddock import dzetsakaDockWidget
-# 
+
+# import librairies
+import ConfigParser 
 import os
-from scripts import mainfunction
 import tempfile
 import scipy as sp
 from osgeo import gdal
+
 # load dock 
-from ui.dzetsaka_dock import Ui_DockWidget
-from ui import filters_dock, historical_dock, help_dock, confusion_dock, settings_dock
+#from ui.dzetsaka_dock import Ui_DockWidget
+from ui import dzetsakaDockWidget, filters_dock, historical_dock, help_dock, confusion_dock, settings_dock
 
+# import functions
+from scripts import mainfunction
 
-
-# Load main widget
-class dzetsakaDockWidget(QDockWidget, Ui_DockWidget):
-    closingPlugin = pyqtSignal()
-    def __init__(self, parent=None):
-        super(dzetsakaDockWidget, self).__init__(parent)
-        self.setupUi(self)
-        
-    def closeEvent(self, event):
-        self.closingPlugin.emit()
-        event.accept()
-
-      
+   
 class dzetsaka ( QDialog ):
     """QGIS Plugin Implementation."""
 
@@ -107,13 +103,15 @@ class dzetsaka ( QDialog ):
         self.pluginIsActive = False
         self.dockwidget = None
         
+        # load all docks
         self.dockwidget = dzetsakaDockWidget()
-        self.historicalmap = historical_dock()
-        self.filters_dock = filters_dock()
-        self.confusiondock = confusion_dock()
-        self.settingsdock = settings_dock()
+        self.loadMainDock()
+        
 
-		
+
+    def loadMainDock(self):
+        """!@brief class that load main dock and init fields
+        """
         ## Init to choose file (to load or to save)
         self.dockwidget.outRaster.clear()
         self.dockwidget.outRasterButton.clicked.connect(self.select_output_file)
@@ -135,7 +133,7 @@ class dzetsaka ( QDialog ):
         self.dockwidget.settingsButton.clicked.connect(self.loadSettings)
         # Then we fill it with new selected Layer
         def onChangedLayer():
-            """!@brief If active layer is changed, change column combobox"""
+            """!@brief Update columns if vector changes"""
             # We clear combobox
             self.dockwidget.inField.clear()
             # Then we fill it with new selected Layer
@@ -156,12 +154,8 @@ class dzetsaka ( QDialog ):
         
         ## let's run the classification ! 
         self.dockwidget.performMagic.clicked.connect(self.runMagic)
-
-        
     def loadConfig(self):
-        """!@brief Class that loads all saved settings from config.txt
-        """
-        
+        """!@brief Class that loads all saved settings from config.txt"""        
         
         try :
             
@@ -188,11 +182,13 @@ class dzetsaka ( QDialog ):
         """!@brief Select file to save, and gives the right extension if the user don't put it"""
         sender = self.sender()
         
-        if sender == self.historicalmap.outShpButton:
-            fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","SHP (*.shp)")
+        # check if historical map run
+        if 'self.historicalmap' in locals():
+            if sender == self.historicalmap.outShpButton:
+                fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","SHP (*.shp)")
         else:
             fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","TIF (*.tif)")
-        
+            
         if not fileName:
             return
     # If user give right file extension, we don't add it
@@ -203,23 +199,29 @@ class dzetsaka ( QDialog ):
                 self.dockwidget.outRaster.setText(fileName+'.tif')
             else:
                 self.dockwidget.outRaster.setText(fileName+fileExtension)
-        if sender == self.historicalmap.outRasterButton:
-            if fileExtension!='.tif':
-                self.historicalmap.outRaster.setText(fileName+'.tif')
+        
+        # check if historical map run
+        if 'self.historicalmap' in locals():
+            if sender == self.historicalmap.outRasterButton:
+                if fileExtension!='.tif':
+                    self.historicalmap.outRaster.setText(fileName+'.tif')
+                else:
+                    self.historicalmap.outRaster.setText(fileName+fileExtension)
+            if sender == self.historicalmap.outShpButton:
+                if fileExtension!='.shp':
+                    self.historicalmap.outShp.setText(fileName+'.shp')
+                else:
+                    self.historicalmap.outShp.setText(fileName+fileExtension)
+        # check if filters_dock run
+        if 'self.filters_dock' in locals():
+            if sender == self.filters_dock.outRasterButton:
+                if fileExtension!='.tif':
+                    self.filters_dock.outRaster.setText(fileName+'.tif')
             else:
-                self.historicalmap.outRaster.setText(fileName+fileExtension)
-        if sender == self.historicalmap.outShpButton:
-            if fileExtension!='.shp':
-                self.historicalmap.outShp.setText(fileName+'.shp')
-            else:
-                self.historicalmap.outShp.setText(fileName+fileExtension)
-        if sender == self.filters_dock.outRasterButton:
-            if fileExtension!='.tif':
-                self.filters_dock.outRaster.setText(fileName+'.tif')
-        else:
-            self.filters_dock.outRaster.setText(fileName+fileExtension)
+                self.filters_dock.outRaster.setText(fileName+fileExtension)
     
     def checkbox_state(self):
+        """!@brief Manage checkbox in main dock"""
         sender=self.sender()
         
         # If load model
@@ -388,6 +390,7 @@ class dzetsaka ( QDialog ):
         return action
 
     def loadMenu(self):
+        """!@brief Create dzetsaka menu in Qgis"""
         self.menu = QtGui.QMenu(self.iface.mainWindow())
         self.menu.setObjectName("dzetsakaMenu")
         self.menu.setTitle("dzetsaka")
@@ -456,13 +459,11 @@ class dzetsaka ( QDialog ):
         # Add menu
         menuBar = self.iface.mainWindow().menuBar()
         menuBar.insertMenu(self.iface.firstRightStandardMenu().menuAction(), self.menu)
-        
-    def loadConfusion(self):
-        self.confusiondock = confusion_dock()
-        self.confusiondock.show()
+
     
     def loadSettings(self):
-         
+         """!@brief load settings dock"""
+         self.settingsdock = settings_dock()
          self.settingsdock.show()
          
          try:
@@ -498,7 +499,7 @@ class dzetsaka ( QDialog ):
              QgsMessageLog.logMessage('Failed to load settings...')
     
     def saveSettings(self):
-        
+        """!@brief save settings if modifications"""
         # Change classifier
         if self.sender() == self.settingsdock.selectClassifier:
             if self.settingsdock.selectClassifier.currentText() !='Gaussian Mixture Model':
@@ -533,15 +534,22 @@ class dzetsaka ( QDialog ):
         self.Config.write(configFile)
         configFile.close()
         
-    def onChangedLayer():
-        self.confusiondock.inField.clear()
-        # Then we fill it with new selected Layer
-        if self.confusiondock.inField.currentText() == '' and self.confusiondock.inShape.currentLayer() and self.confusiondock.inShape.currentLayer()!='NoneType':
-            activeLayer = self.confusiondock.inShape.currentLayer()
-            provider = activeLayer.dataProvider()
-            fields = provider.fields()
-            listFieldNames = [field.name() for field in fields]
-            self.confusiondock.inField.addItems(listFieldNames)
+    def loadConfusion(self):
+        """!@brief Load confusion dock, init button, and combobox fields """
+        self.confusiondock = confusion_dock()
+        self.confusiondock.show()
+        
+        
+        def onChangedLayer():
+            """!@brief Update columns if vector changes"""
+            self.confusiondock.inField.clear()
+            # Then we fill it with new selected Layer
+            if self.confusiondock.inField.currentText() == '' and self.confusiondock.inShape.currentLayer() and self.confusiondock.inShape.currentLayer()!='NoneType':
+                activeLayer = self.confusiondock.inShape.currentLayer()
+                provider = activeLayer.dataProvider()
+                fields = provider.fields()
+                listFieldNames = [field.name() for field in fields]
+                self.confusiondock.inField.addItems(listFieldNames)
         
         # automatic find column
         onChangedLayer()    
@@ -552,8 +560,9 @@ class dzetsaka ( QDialog ):
         self.confusiondock.compare.clicked.connect(self.performConfusion)
         
     def performConfusion(self):
-        message =''
+        """!@brief Run confusion matrix and show it with kappa and overall accuraccy in confusion dock"""
         
+        message =''        
         try:
             self.confusiondock.inRaster.currentLayer().dataProvider().dataSourceUri()
         except:
@@ -576,32 +585,37 @@ class dzetsaka ( QDialog ):
             
             inField = self.confusiondock.inField.currentText()
             
-            worker=mainfunction.confusionMatrix()
-            worker.computeStatistics(inRaster,inShape,inField)
-            self.confusiondock.OA.setText(str(round(worker.OA*100,2))+str('%'))           
-            self.confusiondock.kappa.setText(str(round(worker.Kappa*100,2))+str('%'))
+            try:
+                    
+                worker=mainfunction.confusionMatrix()
+                worker.computeStatistics(inRaster,inShape,inField)
+                self.confusiondock.OA.setText(str(round(worker.OA*100,2))+str('%'))           
+                self.confusiondock.kappa.setText(str(round(worker.Kappa*100,2))+str('%'))
+                
+                ## Create and save CSV
+                import csv
+                outCsv = tempfile.mktemp('.csv')        
+                sp.savetxt(outCsv,worker.confusion_matrix,delimiter=',',fmt='%1.4d')
             
-            ## Create and save CSV
-            import csv
-            outCsv = tempfile.mktemp('.csv')        
-            sp.savetxt(outCsv,worker.confusion_matrix,delimiter=',',fmt='%1.4d')
+                self.model = QStandardItemModel(self)    
+                ## add csv to Qtable
+                
+                with open(outCsv, "rb") as fileInput:
+                    for row in csv.reader(fileInput):    
+                        items = [
+                            QStandardItem(field)
+                            for field in row
+                        ]
+                        self.model.appendRow(items)
         
-            self.model = QStandardItemModel(self)    
-            ## add csv to Qtable
-            
-            with open(outCsv, "rb") as fileInput:
-                for row in csv.reader(fileInput):    
-                    items = [
-                        QStandardItem(field)
-                        for field in row
-                    ]
-                    self.model.appendRow(items)
-    
-            self.confusiondock.confusionTable.setModel(self.model)
-            
-            # Auto adapt size to width
-            header = self.confusiondock.confusionTable.horizontalHeader()
-            header.setResizeMode(QHeaderView.Stretch)
+                self.confusiondock.confusionTable.setModel(self.model)
+                
+                # Auto adapt size to width
+                header = self.confusiondock.confusionTable.horizontalHeader()
+                header.setResizeMode(QHeaderView.Stretch)
+                
+            except:
+                QtGui.QMessageBox.warning(self, 'Error', 'dzetsaka cannot perform confusion matrix.', QtGui.QMessageBox.Ok)
         
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
@@ -687,13 +701,12 @@ class dzetsaka ( QDialog ):
         self.dockwidget.closingPlugin.connect(self.onClosePlugin)
 
         # show the dockwidget
-        # TODO: fix to allow choice of dock location
         self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
         self.dockwidget.show()
             
     
     def loadFilters(self):
-        """ """
+        """!@brief Load and init filters dock"""
         self.filters_dock = filters_dock()
         filtersList=['Opening','Closing','Dilation','Erosion','Median']
         self.filters_dock.inFilter.addItems(filtersList)
@@ -719,10 +732,8 @@ class dzetsaka ( QDialog ):
         self.filters_dock.runFilter.clicked.connect(self.runFilter)
         
         
-        
-            
     def runFilter(self):
-        """ """
+        """!@brief Perform filtering"""
                 #verif before doing the job 
         message=''
         
@@ -760,7 +771,7 @@ class dzetsaka ( QDialog ):
 
     
     def loadHistoricalMap(self):
-        
+        """!@brief Load and init historical map dock"""
         self.historicalmap = historical_dock()
         
         self.historicalmap.show()
@@ -778,6 +789,7 @@ class dzetsaka ( QDialog ):
         self.historicalmap.show()
         
     def runHistoricalMapStep1(self):
+        """!@brief Perform pre-classification for historical map"""
         message = ''
         
         try:
@@ -809,6 +821,7 @@ class dzetsaka ( QDialog ):
             worker.historicalMapFilter(inRaster,outRaster,inShapeGrey,inShapeMedian,iterMedian)
                  
     def runHistoricalMapStep2(self):
+        """!@brief Perform post-classification for historical map"""
         message = ''
         
         try:
@@ -849,6 +862,7 @@ class dzetsaka ( QDialog ):
     
 
     def runMagic(self):
+        """!@brief Perform training and classification for dzetsaka"""
         
         #verif before doing the job 
         message=''

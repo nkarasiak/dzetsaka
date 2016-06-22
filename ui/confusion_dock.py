@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'confusion_dock.ui'
 #
-# Created: Sun Jun 12 16:28:12 2016
+# Created: Wed Jun 22 08:26:39 2016
 #      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -67,9 +67,9 @@ class Ui_confusionDock(object):
         self.gridLayout.addWidget(self.label, 4, 0, 1, 1)
         self.kappa = QtGui.QLabel(confusionDock)
         font = QtGui.QFont()
-        font.setPointSize(12)
-        font.setBold(True)
-        font.setWeight(75)
+        font.setPointSize(10)
+        font.setBold(False)
+        font.setWeight(50)
         self.kappa.setFont(font)
         self.kappa.setText(_fromUtf8(""))
         self.kappa.setObjectName(_fromUtf8("kappa"))
@@ -80,9 +80,9 @@ class Ui_confusionDock(object):
         self.gridLayout.addWidget(self.label_2, 4, 2, 1, 1)
         self.OA = QtGui.QLabel(confusionDock)
         font = QtGui.QFont()
-        font.setPointSize(12)
-        font.setBold(True)
-        font.setWeight(75)
+        font.setPointSize(10)
+        font.setBold(False)
+        font.setWeight(50)
         self.OA.setFont(font)
         self.OA.setText(_fromUtf8(""))
         self.OA.setObjectName(_fromUtf8("OA"))
