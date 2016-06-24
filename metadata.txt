@@ -1,4 +1,4 @@
-﻿# This file contains metadata for your plugin. Since 
+# This file contains metadata for your plugin. Since 
 # version 2.0 of QGIS this is the proper way to supply 
 # information about a plugin. The old method of 
 # embedding metadata in __init__.py will 
@@ -8,9 +8,9 @@
 
 [general]
 name=dzetsaka : Classification tool
-qgisMinimumVersion=2.0.1
+qgisMinimumVersion=2.0
 description=Fast and Easy Classification plugin for Qgis
-version=2.0
+version=2.0.1
 author=Nicolaï Van Lennepkade
 email=karasiak.nicolas@gmail.com
 
@@ -23,7 +23,7 @@ repository=http://www.github.com/lennepkade/dzetsaka
 # Recommended items:
 
 # Uncomment the following line and add your changelog:
-changelog= Now support Random Forest, SVM and KNN classifiers (v2.0). Correct some bugs (split classification) and add classification to vector in filters menu.
+changelog= Now support Random Forest, SVM and KNN classifiers (v2.0). Correct some bugs and add settings management.
 # Tags are comma separated with spaces allowed
 tags=classification,semi-automatic,gaussian,mixture,model,random forest,svm,knn,forest
 
