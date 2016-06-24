@@ -432,6 +432,13 @@ class dzetsaka ( QDialog ):
         self.menu.filterMedian = QAction(QIcon(":/plugins/dzetsaka/img/filter.png"), "Median", self.iface.mainWindow())
         QObject.connect(self.menu.filterMedian, SIGNAL("triggered()"), self.loadFilters)
         filterMenu.addAction(self.menu.filterMedian)
+        
+        ## Separator
+        filterMenu.addSeparator()
+        
+        self.menu.filterClass = QAction(QIcon(":/plugins/dzetsaka/img/historicalmap.png"), "Classification to Vector (single class)", self.iface.mainWindow())
+        QObject.connect(self.menu.filterClass, SIGNAL("triggered()"), self.loadHistoricalMap)
+        filterMenu.addAction(self.menu.filterClass)
 
         ## Separator
         filterMenu.addSeparator()
@@ -774,9 +781,10 @@ class dzetsaka ( QDialog ):
         """!@brief Load and init historical map dock"""
         self.historicalmap = historical_dock()
         
+        if self.sender()==self.menu.filterClass:
+           self.historicalmap.tabWidget.setCurrentIndex(1)
+        
         self.historicalmap.show()
-        
-        
         
         # save raster 
         self.historicalmap.outRasterButton.clicked.connect(self.select_output_file)

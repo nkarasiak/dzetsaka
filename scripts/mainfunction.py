@@ -103,7 +103,7 @@ class learnModel():
             learningProgress.addStep() # Add Step to ProgressBar
     
             # Learning process take split of groundthruth pixels for training and the remaining for testing
-            """
+            
             
             try:
                 if SPLIT < 1:
@@ -128,7 +128,7 @@ class learnModel():
                         #Add Pb
             except:
                 QgsMessageLog.logMessage("Problem while learning if SPLIT <1")
-            """        
+                  
             
             x,y=X,Y
             
@@ -150,12 +150,20 @@ class learnModel():
                     from sklearn.ensemble import RandomForestClassifier
                     from sklearn.cross_validation import StratifiedKFold
                     from sklearn.grid_search import GridSearchCV
-                    try:    
+                    try:   
+                        
+                        # AS Qgis in Windows doensn't manage multiprocessing, force to use 1 thread for not linux system
+                        if os.name == 'posix':
+                            n_jobs=-1
+                        else:
+                            n_jobs=1
+                        
+                        # 
                         if inClassifier == 'RF':
                             param_grid_rf = dict(n_estimators=3**sp.arange(1,5),max_features=sp.arange(1,4))
                             y.shape=(y.size,)    
                             cv = StratifiedKFold(y, n_folds=3)
-                            grid = GridSearchCV(RandomForestClassifier(), param_grid=param_grid_rf, cv=cv,n_jobs=1)
+                            grid = GridSearchCV(RandomForestClassifier(), param_grid=param_grid_rf, cv=cv,n_jobs=n_jobs)
                             grid.fit(x, y)
                             model = grid.best_estimator_
                             model.fit(x,y)        
@@ -163,7 +171,7 @@ class learnModel():
                             param_grid_svm = dict(gamma=2.0**sp.arange(-4,4), C=10.0**sp.arange(-2,5))
                             y.shape=(y.size,)    
                             cv = StratifiedKFold(y, n_folds=5)
-                            grid = GridSearchCV(SVC(), param_grid=param_grid_svm, cv=cv,n_jobs=1)
+                            grid = GridSearchCV(SVC(), param_grid=param_grid_svm, cv=cv,n_jobs=n_jobs)
                             grid.fit(x, y)
                             model = grid.best_estimator_
                             model.fit(x,y)
@@ -171,7 +179,7 @@ class learnModel():
                             param_grid_knn = dict(n_neighbors = sp.arange(1,20,4))
                             y.shape=(y.size,)    
                             cv = StratifiedKFold(y, n_folds=3)
-                            grid = GridSearchCV(neighbors.KNeighborsClassifier(), param_grid=param_grid_knn, cv=cv,n_jobs=1)
+                            grid = GridSearchCV(neighbors.KNeighborsClassifier(), param_grid=param_grid_knn, cv=cv,n_jobs=n_jobs)
                             grid.fit(x, y)
                             model = grid.best_estimator_
                             model.fit(x,y)
