@@ -912,14 +912,14 @@ class dzetsaka ( QDialog ):
             
             inMask=self.dockwidget.inMask.text()
             
+            if inMask=='':
+                inMask=None
+            
             # check if mask with _mask.extension                        
             autoMask=os.path.splitext(inRaster)
             autoMask=autoMask[0]+self.maskSuffix+autoMask[1]
             if os.path.exists(autoMask):
                 inMask=autoMask
-
-            if inMask=='':
-                inMask=None
             
             # Check if model, else perform training
             if self.dockwidget.inModel.text()!='':
