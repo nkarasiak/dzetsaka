@@ -912,19 +912,20 @@ class dzetsaka ( QDialog ):
             
             inMask=self.dockwidget.inMask.text()
             
+            if inMask=='':
+                inMask=None
             # check if mask with _mask.extension                        
             autoMask=os.path.splitext(inRaster)
             autoMask=autoMask[0]+self.maskSuffix+autoMask[1]
             if os.path.exists(autoMask):
                 inMask=autoMask
-
-            if inMask=='':
-                inMask=None
+                QgsMessageLog.logMessage('Mask found :'+str(autoMask))
             
             # Check if model, else perform training
-            if self.dockwidget.inModel.text()!='':
-                model=self.dockwidget.inModel.text()
+            QgsMessageLog.logMessage(self.dockwidget.inModel.text())
             
+            if self.dockwidget.inModel.text() != '':
+                model=self.dockwidget.inModel.text()
             
             # Perform training & classification
             else:
@@ -962,12 +963,13 @@ class dzetsaka ( QDialog ):
                     QtGui.QMessageBox.warning(self, 'Problem while training model', 'Something went wrong during the training. Are you sure to have only integer values in your '+str(inField)+' column ?', QtGui.QMessageBox.Ok)       
             
             # Perform classification
-            try:
-                QgsMessageLog.logMessage('Begin classification with '+inClassifier+ ' classifier')
+            try:                    
+                QgsMessageLog.logMessage('Begin classification')
                 temp=mainfunction.classifyImage()
                 temp.initPredict(inRaster,model,outRaster,inMask)
+                QgsMessageLog.logMessage('Classification done. Adding raster to Qgis')
                 self.iface.addRasterLayer(outRaster)
             except:
+                QtGui.QMessageBox.warning(self, 'Problem while training model', 'Something went wrong during the training. Are you sure to have only integer values in your selected column ?', QtGui.QMessageBox.Ok)       
                 
-                QtGui.QMessageBox.warning(self, 'Problem while training model', 'Something went wrong during the training.<br><br> Are you sure to have only <b>integer values</b> in your <b>'+str(inField)+'</b> column ? <br><br> Please show Qgis log for more information.', QtGui.QMessageBox.Ok)       
           
