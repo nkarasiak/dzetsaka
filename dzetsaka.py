@@ -963,11 +963,11 @@ class dzetsaka ( QDialog ):
             
             # Perform classification
             try:
-                QgsMessageLog.logMessage('Begin classification with '+inClassifier+ ' classifier')
+                QgsMessageLog.logMessage('Begin classification...')
                 temp=mainfunction.classifyImage()
                 temp.initPredict(inRaster,model,outRaster,inMask)
                 self.iface.addRasterLayer(outRaster)
             except:
                 
-                QtGui.QMessageBox.warning(self, 'Problem while training model', 'Something went wrong during the training.<br><br> Are you sure to have only <b>integer values</b> in your <b>'+str(inField)+'</b> column ? <br><br> Please show Qgis log for more information.', QtGui.QMessageBox.Ok)       
+                QtGui.QMessageBox.warning(self, 'Problem while training model', 'Something went wrong during the training. Are you sure to have only integer values in your selected column ?', QtGui.QMessageBox.Ok)
           
