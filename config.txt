@@ -1,0 +1,6 @@
+[Classification]
+classifier = Gaussian Mixture Model
+suffix = _class
+prefix = 
+masksuffix = _mask
+
