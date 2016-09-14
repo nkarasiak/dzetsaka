@@ -10,7 +10,7 @@ A **quick tutorial is available online** ([dzetsaka : how to make your first cla
 ## What does dzetsaka mean ?
 As this tool was developped during my work in the Guiana Amazonian Park to classify different kind of vegetation, I gave an Teko name (a native-american language from a nation which lives in french Guiana) which represent the objects we use to see the world through, such as satellites, microscope, camera... 
 
-## Discover the magic of dzetsaka
+## Discover dzetsaka
 `dzetsaka : Classification tool` runs with scipy library. You can download package like [Spider by Anaconda](https://docs.continuum.io/anaconda/) for a very easy setup. 
 
 Then, as this plugin is very simple, you will just need two things for making a good classification : 
@@ -42,6 +42,8 @@ You can now use **Random Forest**, **SVM**, or **KNN** !
 ## Todo
 
 - Implement best progress bar for classifier like Random Forest / K-Nearest Neighbors.
+
+[Online technical documentation is available on the doxygen branch](https://rawgit.com/lennepkade/dzetsaka/doxygen/index.html ).
 
 ### Thanks to...
 I would like to thank the [Guiana Amazonian Park](http://www.parc-amazonien-guyane.fr/) for their trust in my work, and the Master 2 Geomatics [Sigma](http://sigma.univ-toulouse.fr/en/welcome.html) for their excellent lessons in geomatics.
