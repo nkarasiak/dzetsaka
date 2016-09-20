@@ -92,7 +92,7 @@ class learnModel():
             
             [n,d] = X.shape
             C = int(Y.max())
-            SPLIT = inSplit
+            SPLIT = inSplit/100
             os.remove(filename)
             os.rmdir(temp_folder)
             
