@@ -1,4 +1,5 @@
 # dzetsaka : classification tool
+
 ![Inselberg in Guiana Amazonian Park](https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/guyane.jpg)
 
 dzetsaka <img src="https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/icon.png" alt="dzetsaka logo" width="30px"/> is very fast and easy to use but also a **powerful classification plugin for Qgis**. Initially based on Gaussian Mixture Model classifier developped by  [Mathieu Fauvel](http://fauvel.mathieu.free.fr) (now supports Random Forest, KNN and SVM), this plugin is a more generalist tool than [Historical Map](https://github.com/lennepkade/HistoricalMap) which was dedicated to classify forests from old maps.
@@ -45,8 +46,4 @@ You can now use **Random Forest**, **SVM**, or **KNN** !
 ### Thanks to...
 I would like to thank the [Guiana Amazonian Park](http://www.parc-amazonien-guyane.fr/) for their trust in my work, and the Master 2 Geomatics [Sigma](http://sigma.univ-toulouse.fr/en/welcome.html) for their excellent lessons in geomatics.
 
-<img height="30px" src="https://rawgit.com/lennepkade/dzetsaka/master/img/logo-pag.jpg" alt="Parc amazonien de Guyane"/>
-<img height="30px" src="https://raw.githubusercontent.com/lennepkade/HistoricalMap/master/img/dynafor.gif" alt="Dynafor"/>
-<img height="30px" src="https://raw.githubusercontent.com/lennepkade/HistoricalMap/master/img/ensat.gif" alt="ENSAT"/>
-<img height="30px" src="https://raw.githubusercontent.com/lennepkade/HistoricalMap/master/img/ut2j.png" alt="UT2J"/>
-<img height="30px" src="https://raw.githubusercontent.com/lennepkade/HistoricalMap/master/img/sigma.gif" alt="Sigma"/>
+![Sponsors of Qgis](https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/logo.png)
