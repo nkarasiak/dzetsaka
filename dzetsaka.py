@@ -945,7 +945,7 @@ class dzetsaka ( QDialog ):
                     inSeed = 0
                     if self.dockwidget.checkOutMatrix.isChecked():
                         outMatrix = self.dockwidget.outMatrix.text()
-                        inSplit = self.dockwidget.inSplit.value()
+                        inSplit = self.dockwidget.inSplit.value()/100
                     else:
                         inSplit = 1
                         outMatrix = None
