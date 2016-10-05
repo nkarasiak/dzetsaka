@@ -23,7 +23,7 @@ The shapefile must have a column which contains your classification numbers *(1,
 On Linux simply open terminal and type : 
 `pip install scikit-learn`
 
-On Windows, you have few more steps to do. Open Windows menu, and search for OsGeo Shell, then type :<br/> 
+On Windows, you have few more steps to do. Open Windows menu, and search for *OsGeo4W Shell*, open it as administrator (left click > open as an administrator), then type :<br/> 
 `curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py`
 
 After get-pip.py has been downloaded write :<br/> 
