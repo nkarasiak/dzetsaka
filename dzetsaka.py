@@ -48,7 +48,12 @@ from ui import dzetsakaDockWidget, filters_dock, historical_dock, help_dock, con
 # import functions
 from scripts import mainfunction
 
-   
+import os
+import sys
+import inspect
+from processing.core.Processing import Processing
+from convert_processing.moduleName_provider import classNameProvider
+
 class dzetsaka ( QDialog ):
     """QGIS Plugin Implementation."""
 
@@ -107,6 +112,9 @@ class dzetsaka ( QDialog ):
         self.dockwidget = dzetsakaDockWidget()
         self.loadMainDock()
         
+	# add to processing
+        self.provider = classNameProvider()
+
 
 
     def loadMainDock(self):
@@ -647,6 +655,9 @@ class dzetsaka ( QDialog ):
         
         # load dzetsaka menu
         self.loadMenu()
+
+	#  add to processing
+        Processing.addProvider(self.provider)
         
     #--------------------------------------------------------------------------
     
@@ -685,6 +696,9 @@ class dzetsaka ( QDialog ):
         """
         self.menu.deleteLater()
         self.dockwidget.deleteLater()
+	
+	# remove from processing
+	Processing.removeProvider(self.provider)
         
 
     #--------------------------------------------------------------------------
