@@ -2,7 +2,7 @@
 
 """
 /***************************************************************************
- className
+ processing
                                  A QGIS plugin
  description
                               -------------------
@@ -39,7 +39,7 @@ from algorithms.classify import classifyAlgorithm
 from algorithms.sieveArea import sieveAreaAlgorithm
 
 
-class classNameProvider(AlgorithmProvider):
+class processingProvider(AlgorithmProvider):
 
     MY_DUMMY_SETTING = 'MY_DUMMY_SETTING'
 
@@ -70,7 +70,7 @@ class classNameProvider(AlgorithmProvider):
         """
         AlgorithmProvider.initializeSettings(self)
         ProcessingConfig.addSetting(Setting('Example algorithms',
-            classNameProvider.MY_DUMMY_SETTING,
+            processingProvider.MY_DUMMY_SETTING,
             'Example setting', 'Default value'))
 
     def unload(self):
@@ -79,7 +79,7 @@ class classNameProvider(AlgorithmProvider):
         """
         AlgorithmProvider.unload(self)
         ProcessingConfig.removeSetting(
-            classNameProvider.MY_DUMMY_SETTING)
+            processingProvider.MY_DUMMY_SETTING)
 
     def getName(self):
         """This is the name that will appear on the toolbox group.

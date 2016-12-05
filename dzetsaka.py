@@ -52,7 +52,7 @@ import os
 import sys
 import inspect
 from processing.core.Processing import Processing
-from convert_processing.moduleName_provider import classNameProvider
+from convert_processing.processingProvider import processingProvider
 
 class dzetsaka ( QDialog ):
     """QGIS Plugin Implementation."""
@@ -113,7 +113,7 @@ class dzetsaka ( QDialog ):
         self.loadMainDock()
         
 	# add to processing
-        self.provider = classNameProvider()
+        self.provider = processingProvider()
 
 
 
