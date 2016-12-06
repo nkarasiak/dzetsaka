@@ -10,11 +10,14 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=2.0
 description=Fast and Easy Classification plugin for Qgis
-version=2.1
+version=2.1.1
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
-about=Plugin for semi-automatic classification with Gaussian Mixture Model classifier. Very easy and fast.<br>You need to have scipy and scitkit-learn libraries.<br>For more information on this tool you can go on your homepage <a href="https://github.com/lennepkade/dzetsaka/">Dzetsaka Classification Tool on Github</a>
+about=
+      Plugin for semi-automatic classification with Gaussian Mixture Model classifier. Very easy and fast.
+      You need to have scipy and scitkit-learn libraries.
+      For more information on this tool check our github :  https://github.com/lennepkade/dzetsaka/
 
 tracker=https://github.com/lennepkade/dzetsaka/issues
 repository=http://www.github.com/lennepkade/dzetsaka
@@ -24,6 +27,9 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+      2.1.1
+        * Automatic adding to processing tool
+        * Alert user when missing scikit-learn
       2.1
         * Add filters (median/closing) to processing tool
 	* Add learning and classification to processing tool

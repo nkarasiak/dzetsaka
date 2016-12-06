@@ -92,12 +92,11 @@ class sieveAreaAlgorithm(GeoAlgorithm):
         int(self.CONNECTIVITY[INPUT_CONNECTIVITY])
         
         # convert meter to ha
-        SIZE_HA = int((SIZE_HA)*10000)
+        SIZE_HA = int((SIZE_HA)*1000)
         
         from osgeo import gdal
-        
-
-        
+    
+    
         # begin sieve
                         
         datasrc = gdal.Open(INPUT_RASTER)

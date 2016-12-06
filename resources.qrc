@@ -13,5 +13,6 @@
     <file>img/historical_logo.jpg</file>
     <file>img/table.png</file>
 	<file>img/settings.png</file>
+	<file>img/iconHM.png</file>
   </qresource>
 </RCC>

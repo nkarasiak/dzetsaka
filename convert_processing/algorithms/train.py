@@ -36,6 +36,8 @@ from processing.core.parameters import ParameterBoolean
 from processing.core.parameters import ParameterSelection
 from processing.core.outputs import OutputFile
 from qgis.core import QgsMessageLog
+from PyQt4.QtGui import QMessageBox
+import sys
 
 class trainAlgorithm(GeoAlgorithm):
     INPUT_RASTER = 'INPUT_RASTER'
@@ -119,9 +121,21 @@ class trainAlgorithm(GeoAlgorithm):
         
         # Retrieve algo from code
         SELECTED_ALGORITHM = self.TRAIN_ALGORITHMS_CODE[TRAIN]
-            
+        
+        libOk = True
+        
+        if SELECTED_ALGORITHM=='RF' or SELECTED_ALGORITHM=='SVM' or SELECTED_ALGORITHM=='KNN':
+            try:
+                import sklearn
+            except:
+                libOk = False
+                
         # learn model
-        mainfunction.learnModel(INPUT_RASTER,INPUT_LAYER,INPUT_COLUMN,OUTPUT_MODEL,SPLIT_PERCENT,0,OUTPUT_MATRIX,SELECTED_ALGORITHM)
+        if libOk:
+            mainfunction.learnModel(INPUT_RASTER,INPUT_LAYER,INPUT_COLUMN,OUTPUT_MODEL,SPLIT_PERCENT,0,OUTPUT_MATRIX,SELECTED_ALGORITHM)
+        else:
+            QMessageBox.information(None, "Please install scikit-learn library to use:", str(SELECTED_ALGORITHM)) 
+
         
         
 

@@ -102,8 +102,8 @@ class filtersFunction():
     
     def historicalMapPostClass(self,inRaster,sieveSize,inClassNumber,outShp):        
         
-        Progress=progressBar(' Post-classification...',10)
-        
+        #Progress=progressBar(' Post-classification...',10)
+            
         rasterTemp = tempfile.mktemp('.tif')
                 
         datasrc = gdal.Open(inRaster)
@@ -121,7 +121,7 @@ class filtersFunction():
             gdal.SieveFilter(srcband,None,dstband,sieveSize)
         
         sieve(srcband,dstband,sieveSize)
-        Progress.addStep(2)
+        #Progress.addStep(2)
         dst_ds =None
         
         def reclass(rasterTemp,inClassNumber):
@@ -137,8 +137,9 @@ class filtersFunction():
             dst_ds.FlushCache()
             return rasterTemp
         
+        
         rasterTemp = reclass(rasterTemp,inClassNumber)
-        Progress.addStep(1)
+        #Progress.addStep(1)
         
         def polygonize(rasterTemp,outShp):
             
@@ -152,7 +153,7 @@ class filtersFunction():
             outDatasource = driver.CreateDataSource(outShp)            
             # get proj from raster            
             srs = osr.SpatialReference()
-            srs.ImportFromWkt( sourceRaster.GetProjectionRef() )
+            srs.ImportFromWkt(sourceRaster.GetProjectionRef())
             # create layer with proj
             outLayer = outDatasource.CreateLayer(outShp,srs)
             # Add class column (1,2...) to shapefile
@@ -186,8 +187,8 @@ class filtersFunction():
             return outShp
         
         outShp = polygonize(rasterTemp,outShp)  
-        Progress.addStep(7)
-        Progress.reset()
+        #Progress.addStep(7)
+        #Progress.reset()
         return outShp
         
         
@@ -296,14 +297,11 @@ class optimizeFilters(QtCore.QObject):
         
 
 if __name__=="__main__":
-    inRaster = '/home/lennepkade/Bureau/datapag/02-Results/02-Data/spot/pred.tif'
-    outRaster = '/home/lennepkade/Bureau/datapag/02-Results/02-Data/spot/closing.tif'
-    inFilter = 'Gaussian'
-    inFilterSize = 10
-    inFilterIter = 1
+    inRaster = '/tmp/tmp0BeSgc/map_class.tif'
+    outVector = '/tmp/processingfe206327dd344fa0bd47a73e280660e6/15a60020fa0c4715b2730c81c87f1f13/OUTPUTVECTOR.shp'
     
     worker=filtersFunction()
     #worker.filters(inRaster,outRaster,inFilter,10,1)
-    worker.historicalMapPostClass(inRaster,40,2,'/home/lennepkade/Bureau/datapag/02-Results/02-Data/spot/closing.shp')
+    worker.historicalMapPostClass(inRaster,31,1,outVector)
     #worker.historicalMapReclass('/tmp/nana2.tif',2)
-    print(outRaster)
+    

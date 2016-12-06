@@ -22,6 +22,7 @@
 """
 
 import dzetsaka.scripts.function_dataraster as dataraster
+
 from PyQt4.QtGui import QIcon
 from PyQt4.QtCore import QSettings
 

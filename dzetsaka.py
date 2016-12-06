@@ -114,6 +114,7 @@ class dzetsaka ( QDialog ):
         
 	# add to processing
         self.provider = processingProvider()
+        Processing.addProvider(self.provider, True)
 
 
 
@@ -656,8 +657,7 @@ class dzetsaka ( QDialog ):
         # load dzetsaka menu
         self.loadMenu()
 
-	#  add to processing
-        Processing.addProvider(self.provider)
+
         
     #--------------------------------------------------------------------------
     

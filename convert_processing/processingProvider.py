@@ -37,7 +37,8 @@ from algorithms.closingFilter import closingFilterAlgorithm
 from algorithms.train import trainAlgorithm
 from algorithms.classify import classifyAlgorithm
 from algorithms.sieveArea import sieveAreaAlgorithm
-
+#from algorithms.historicalFilter import historicalFilterAlgorithm
+#from algorithms.historicalPostClassification import historicalPostClassAlgorithm
 
 class processingProvider(AlgorithmProvider):
 
@@ -54,7 +55,8 @@ class processingProvider(AlgorithmProvider):
                         closingFilterAlgorithm(),
                         trainAlgorithm(),
                         classifyAlgorithm(),
-                        sieveAreaAlgorithm()]
+                        sieveAreaAlgorithm(),
+                        ]
         for alg in self.alglist:
             alg.provider = self
             
