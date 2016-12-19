@@ -192,15 +192,9 @@ class dzetsaka ( QDialog ):
         """!@brief Select file to save, and gives the right extension if the user don't put it"""
         sender = self.sender()
         
-        try :
-            if sender == self.confusiondock.saveas:
-                fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","CSV (*.csv)")
-        except : 
-            confusiondockExists = False
+    
+        fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","TIF (*.tif)")
         
-        else :
-            
-            fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","TIF (*.tif)")
             
         if not fileName:
             return
@@ -235,16 +229,7 @@ class dzetsaka ( QDialog ):
             else:
                 self.filters_dock.outRaster.setText(fileName+fileExtension)
                 
-        # save confusion matrix
-        if sender == self.confusiondock.saveas:
-            if fileExtension != '.csv':
-                fileName=fileName+'.csv'
-                # save to CSV
-                try :
-                    sp.savetxt(fileName,self.lastConfusionMatrix ,delimiter=',',fmt='%1.4d')
-                except : 
-                    QtGui.QMessageBox.warning(self, 'Missing confusion matrix ? ', 'Cannot save confusion matrix. Are you sure to have generated it before ?', QtGui.QMessageBox.Ok)
-                    
+   
            
     def checkbox_state(self):
         """!@brief Manage checkbox in main dock"""
@@ -596,7 +581,7 @@ class dzetsaka ( QDialog ):
         # verif process
         self.confusiondock.compare.clicked.connect(self.performConfusion)
         
-        self.confusiondock.saveas.clicked.connect(self.select_output_file)
+        self.confusiondock.saveas.clicked.connect(self.saveConfusion)
         
     def performConfusion(self):
         """!@brief Run confusion matrix and show it with kappa and overall accuraccy in confusion dock"""
@@ -662,7 +647,21 @@ class dzetsaka ( QDialog ):
                 
             except:
                 QtGui.QMessageBox.warning(self, 'Error', 'dzetsaka cannot perform confusion matrix.', QtGui.QMessageBox.Ok)
-    
+    def saveConfusion(self):
+        """
+        Open window and save confusion shown in qtableview
+        """
+        fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","CSV (*.csv)")
+        fileName,fileExtension=os.path.splitext(fileName)
+        if fileExtension != '.csv':
+            fileName=fileName+'.csv'
+     
+        # save to CSV
+        try :
+            sp.savetxt(fileName,self.lastConfusionMatrix ,delimiter=',',fmt='%1.4d')
+        except : 
+            QtGui.QMessageBox.warning(self, 'Missing confusion matrix ? ', 'Cannot save confusion matrix. Are you sure to have generated it before ?', QtGui.QMessageBox.Ok)
+
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
         """
