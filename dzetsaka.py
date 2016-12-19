@@ -192,12 +192,11 @@ class dzetsaka ( QDialog ):
         """!@brief Select file to save, and gives the right extension if the user don't put it"""
         sender = self.sender()
         
-        # check if historical map run
-        if 'self.historicalmap' in locals():
-            if sender == self.historicalmap.outShpButton:
-                fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","SHP (*.shp)")
-        if sender == self.confusiondock.saveas :
-            fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","CSV (*.csv)")
+        try :
+            if sender == self.confusiondock.saveas:
+                fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","CSV (*.csv)")
+        except : 
+            confusiondockExists = False
         
         else :
             
