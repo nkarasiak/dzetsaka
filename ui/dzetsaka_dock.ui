@@ -39,7 +39,7 @@
        <string/>
       </property>
       <property name="pixmap">
-       <pixmap resource="../resources.qrc">:/plugins/dzetsaka/img/parcguyane.jpg</pixmap>
+       <pixmap>:/plugins/dzetsaka/img/parcguyane.jpg</pixmap>
       </property>
      </widget>
     </item>
@@ -66,7 +66,7 @@
          <string/>
         </property>
         <property name="pixmap">
-         <pixmap resource="../resources.qrc">:/plugins/dzetsaka/img/raster.svg</pixmap>
+         <pixmap>:/plugins/dzetsaka/img/raster.svg</pixmap>
         </property>
         <property name="scaledContents">
          <bool>true</bool>
@@ -107,7 +107,7 @@
          <string/>
         </property>
         <property name="pixmap">
-         <pixmap resource="../resources.qrc">:/plugins/dzetsaka/img/vector.svg</pixmap>
+         <pixmap>:/plugins/dzetsaka/img/vector.svg</pixmap>
         </property>
         <property name="scaledContents">
          <bool>true</bool>
@@ -150,13 +150,13 @@
        <widget class="QCheckBox" name="checkInModel">
         <property name="minimumSize">
          <size>
-          <width>75</width>
+          <width>110</width>
           <height>0</height>
          </size>
         </property>
         <property name="maximumSize">
          <size>
-          <width>75</width>
+          <width>110</width>
           <height>16777215</height>
          </size>
         </property>
@@ -180,7 +180,7 @@
          <string/>
         </property>
         <property name="pixmap">
-         <pixmap resource="../resources.qrc">:/plugins/dzetsaka/img/column.svg</pixmap>
+         <pixmap>:/plugins/dzetsaka/img/column.svg</pixmap>
         </property>
         <property name="scaledContents">
          <bool>true</bool>
@@ -216,13 +216,13 @@
         </property>
         <property name="minimumSize">
          <size>
-          <width>90</width>
+          <width>110</width>
           <height>0</height>
          </size>
         </property>
         <property name="maximumSize">
          <size>
-          <width>100</width>
+          <width>160</width>
           <height>16777215</height>
          </size>
         </property>
@@ -328,7 +328,7 @@
       <property name="maximumSize">
        <size>
         <width>16777215</width>
-        <height>20</height>
+        <height>23</height>
        </size>
       </property>
       <property name="title">
@@ -376,7 +376,7 @@
             <string/>
            </property>
            <property name="pixmap">
-            <pixmap resource="../resources.qrc">:/plugins/dzetsaka/img/mask.svg</pixmap>
+            <pixmap>:/plugins/dzetsaka/img/mask.svg</pixmap>
            </property>
            <property name="scaledContents">
             <bool>true</bool>
@@ -421,7 +421,7 @@
             <string/>
            </property>
            <property name="pixmap">
-            <pixmap resource="../resources.qrc">:/plugins/dzetsaka/img/model.svg</pixmap>
+            <pixmap>:/plugins/dzetsaka/img/model.svg</pixmap>
            </property>
            <property name="scaledContents">
             <bool>true</bool>
@@ -466,7 +466,7 @@
             <string/>
            </property>
            <property name="pixmap">
-            <pixmap resource="../resources.qrc">:/plugins/dzetsaka/img/table.png</pixmap>
+            <pixmap>:/plugins/dzetsaka/img/table.png</pixmap>
            </property>
            <property name="scaledContents">
             <bool>true</bool>

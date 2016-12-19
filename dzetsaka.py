@@ -43,7 +43,7 @@ from osgeo import gdal
 
 # load dock 
 #from ui.dzetsaka_dock import Ui_DockWidget
-from ui import dzetsakaDockWidget, filters_dock, historical_dock, help_dock, confusion_dock, settings_dock
+from ui import dzetsakaDockWidget, filters_dock, help_dock, confusion_dock, settings_dock
 
 # import functions
 from scripts import mainfunction
@@ -112,16 +112,15 @@ class dzetsaka ( QDialog ):
         self.dockwidget = dzetsakaDockWidget()
         self.loadMainDock()
         
-	# add to processing
+        # add to processing
         self.provider = processingProvider()
         Processing.addProvider(self.provider, True)
-
-
-
+        
     def loadMainDock(self):
         """!@brief class that load main dock and init fields
         """
         ## Init to choose file (to load or to save)
+        
         self.dockwidget.outRaster.clear()
         self.dockwidget.outRasterButton.clicked.connect(self.select_output_file)
 
@@ -140,6 +139,7 @@ class dzetsaka ( QDialog ):
         self.dockwidget.inField.clear()
         
         self.dockwidget.settingsButton.clicked.connect(self.loadSettings)
+        
         # Then we fill it with new selected Layer
         def onChangedLayer():
             """!@brief Update columns if vector changes"""
@@ -147,18 +147,18 @@ class dzetsaka ( QDialog ):
             self.dockwidget.inField.clear()
             # Then we fill it with new selected Layer
             if self.dockwidget.inField.currentText() == '' and self.dockwidget.inShape.currentLayer() and self.dockwidget.inShape.currentLayer()!='NoneType':
-                activeLayer = self.dockwidget.inShape.currentLayer()
-                provider = activeLayer.dataProvider()
-                fields = provider.fields()
-                listFieldNames = [field.name() for field in fields]
-                self.dockwidget.inField.addItems(listFieldNames)
+                try :
+                    activeLayer = self.dockwidget.inShape.currentLayer()
+                    provider = activeLayer.dataProvider()
+                    fields = provider.fields()
+                    listFieldNames = [field.name() for field in fields]
+                    self.dockwidget.inField.addItems(listFieldNames)
+                except : 
+                    QgsMessageLog.logMessage('dzetsaka cannot change active layer. Maybe you opened an OSM/Online background ?')
             
         #
         onChangedLayer()
         self.dockwidget.inShape.currentIndexChanged[int].connect(onChangedLayer)
-        
-        #self.dockwidget.setMaximumHeight(360)
-        
                 
         
         ## let's run the classification ! 
@@ -187,6 +187,7 @@ class dzetsaka ( QDialog ):
             
             QgsMessageLog.logMessage('failed to open config file '+self.configFile)
             
+
     def select_output_file(self):
         """!@brief Select file to save, and gives the right extension if the user don't put it"""
         sender = self.sender()
@@ -195,14 +196,20 @@ class dzetsaka ( QDialog ):
         if 'self.historicalmap' in locals():
             if sender == self.historicalmap.outShpButton:
                 fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","SHP (*.shp)")
-        else:
+        if sender == self.confusiondock.saveas :
+            fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","CSV (*.csv)")
+        
+        else :
+            
             fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","TIF (*.tif)")
             
         if not fileName:
             return
+            
     # If user give right file extension, we don't add it
             
         fileName,fileExtension=os.path.splitext(fileName)
+        
         if sender == self.dockwidget.outRasterButton: 
             if fileExtension!='.tif':
                 self.dockwidget.outRaster.setText(fileName+'.tif')
@@ -228,7 +235,18 @@ class dzetsaka ( QDialog ):
                     self.filters_dock.outRaster.setText(fileName+'.tif')
             else:
                 self.filters_dock.outRaster.setText(fileName+fileExtension)
-    
+                
+        # save confusion matrix
+        if sender == self.confusiondock.saveas:
+            if fileExtension != '.csv':
+                fileName=fileName+'.csv'
+                # save to CSV
+                try :
+                    sp.savetxt(fileName,self.lastConfusionMatrix ,delimiter=',',fmt='%1.4d')
+                except : 
+                    QtGui.QMessageBox.warning(self, 'Missing confusion matrix ? ', 'Cannot save confusion matrix. Are you sure to have generated it before ?', QtGui.QMessageBox.Ok)
+                    
+           
     def checkbox_state(self):
         """!@brief Manage checkbox in main dock"""
         sender=self.sender()
@@ -443,19 +461,23 @@ class dzetsaka ( QDialog ):
         filterMenu.addAction(self.menu.filterMedian)
         
         ## Separator
+        """
         filterMenu.addSeparator()
         
         self.menu.filterClass = QAction(QIcon(":/plugins/dzetsaka/img/historicalmap.png"), "Classification to Vector (single class)", self.iface.mainWindow())
         QObject.connect(self.menu.filterClass, SIGNAL("triggered()"), self.loadHistoricalMap)
         filterMenu.addAction(self.menu.filterClass)
+        """
 
         ## Separator
         filterMenu.addSeparator()
         
+        """
         # Historical map
         self.menu.historicalMap = QAction(QIcon(":/plugins/dzetsaka/img/historicalmap.png"), "Historical Map Process", self.iface.mainWindow())
         QObject.connect(self.menu.historicalMap, SIGNAL("triggered()"), self.loadHistoricalMap)
         self.menu.addAction(self.menu.historicalMap)
+        """
         
         # Confusion matrix
         self.menu.confusionDock = QAction(QIcon(":/plugins/dzetsaka/img/table.png"), "Confusion matrix", self.iface.mainWindow())
@@ -488,7 +510,7 @@ class dzetsaka ( QDialog ):
              # Classification settings
 
              ## classifier 
-             QgsMessageLog.logMessage('Current classifier : '+self.classifier)
+             
              for i, cls in enumerate(self.classifiers):
                  if self.classifier == cls:
                      self.settingsdock.selectClassifier.setCurrentIndex(i)
@@ -525,7 +547,7 @@ class dzetsaka ( QDialog ):
                     if self.classifier != self.settingsdock.selectClassifier.currentText():
                         self.modifyConfig('Classification','classifier',self.settingsdock.selectClassifier.currentText())
                 except:
-                    QtGui.QMessageBox.warning(self, 'Library missing', 'Scikit-learn library is missing on your computer.<br><br> You must use Gaussian Mixture Model, or consult dzetsaka help for installation.', QtGui.QMessageBox.Ok)
+                    QtGui.QMessageBox.warning(self, 'Library missing', 'Scikit-learn library is missing on your computer.<br><br> You must use Gaussian Mixture Model, or <a href=\'https://github.com/lennepkade/dzetsaka/#installation-of-scikit-learn/\'>consult dzetsaka homepage to learn on to install the missing library</a>.', QtGui.QMessageBox.Ok)
                     #reset to GMM
                     self.settingsdock.selectClassifier.setCurrentIndex(0)
                     self.modifyConfig('Classification','classifier','Gaussian Mixture Model')
@@ -575,6 +597,8 @@ class dzetsaka ( QDialog ):
         # verif process
         self.confusiondock.compare.clicked.connect(self.performConfusion)
         
+        self.confusiondock.saveas.clicked.connect(self.select_output_file)
+        
     def performConfusion(self):
         """!@brief Run confusion matrix and show it with kappa and overall accuraccy in confusion dock"""
         
@@ -584,11 +608,16 @@ class dzetsaka ( QDialog ):
         except:
             message = "Sorry, you need a raster to make a classification."            
        
-        inRaster=self.confusiondock.inRaster.currentLayer()
-        inRaster=inRaster.dataProvider().dataSourceUri()
-        datasrc = gdal.Open(inRaster)
-        if datasrc.RasterCount>1:
-            message='Your prediction must have only one dimension (no multi bands support)'
+        try :
+            inRaster=self.confusiondock.inRaster.currentLayer()
+            inRaster=inRaster.dataProvider().dataSourceUri()
+            datasrc = gdal.Open(inRaster)
+            
+        
+            if datasrc.RasterCount>1:
+                message = 'Your prediction must have only one dimension (no multi bands support)'
+        except : 
+            message = "Sorry, you need a raster to make a classification." 
 
         if message != '':
             QtGui.QMessageBox.warning(self, 'Information missing or invalid', message, QtGui.QMessageBox.Ok)
@@ -612,8 +641,10 @@ class dzetsaka ( QDialog ):
                 import csv
                 outCsv = tempfile.mktemp('.csv')        
                 sp.savetxt(outCsv,worker.confusion_matrix,delimiter=',',fmt='%1.4d')
+                self.lastConfusionMatrix = worker.confusion_matrix
             
                 self.model = QStandardItemModel(self)    
+                
                 ## add csv to Qtable
                 
                 with open(outCsv, "rb") as fileInput:
@@ -632,7 +663,7 @@ class dzetsaka ( QDialog ):
                 
             except:
                 QtGui.QMessageBox.warning(self, 'Error', 'dzetsaka cannot perform confusion matrix.', QtGui.QMessageBox.Ok)
-        
+    
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
         """
@@ -696,9 +727,9 @@ class dzetsaka ( QDialog ):
         """
         self.menu.deleteLater()
         self.dockwidget.deleteLater()
-	
-	# remove from processing
-	Processing.removeProvider(self.provider)
+        	
+        # remove from processing
+        Processing.removeProvider(self.provider)
         
 
     #--------------------------------------------------------------------------
@@ -790,9 +821,9 @@ class dzetsaka ( QDialog ):
             self.iface.addRasterLayer(self.outRaster)
              
 
-    
+    """
     def loadHistoricalMap(self):
-        """!@brief Load and init historical map dock"""
+        #!@brief Load and init historical map dock
         self.historicalmap = historical_dock()
         
         if self.sender()==self.menu.filterClass:
@@ -811,7 +842,7 @@ class dzetsaka ( QDialog ):
         self.historicalmap.show()
         
     def runHistoricalMapStep1(self):
-        """!@brief Perform pre-classification for historical map"""
+        #!@brief Perform pre-classification for historical map
         message = ''
         
         try:
@@ -843,7 +874,7 @@ class dzetsaka ( QDialog ):
             worker.historicalMapFilter(inRaster,outRaster,inShapeGrey,inShapeMedian,iterMedian)
                  
     def runHistoricalMapStep2(self):
-        """!@brief Perform post-classification for historical map"""
+        #!@brief Perform post-classification for historical map
         message = ''
         
         try:
@@ -876,7 +907,7 @@ class dzetsaka ( QDialog ):
             #except:
             #    QtGui.QMessageBox.warning(self, 'Problem with Processing', 'Did you activate \'Processing\' plugin in Qgis ?', QtGui.QMessageBox.Ok)
 
-
+    """
             
     def helpPage(self):
         self.helpdock=help_dock()
