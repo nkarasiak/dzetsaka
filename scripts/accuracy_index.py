@@ -13,16 +13,13 @@ class CONFUSION_MATRIX:
         Compute the confusion matrix
         '''
         # Initialization
-        n = yp.shape[0]
+        n = yp.size
         C=int(yr.max())
-        self.confusion_matrix=sp.zeros((C+1,C+1))
-        self.confusion_matrix[0]=range(0,int(self.confusion_matrix[0].shape[0]))
-        self.confusion_matrix[:,0]=range(0,int(self.confusion_matrix[0].shape[0]))
-        
+        self.confusion_matrix=sp.zeros((C,C))
         
         # Compute confusion matrix
         for i in range(n):
-            self.confusion_matrix[yp[i].astype(int),yr[i].astype(int)] +=1
+            self.confusion_matrix[yp[i].astype(int)-1,yr[i].astype(int)-1] +=1
         
         # Compute overall accuracy
         self.OA=sp.sum(sp.diag(self.confusion_matrix))/n
