@@ -216,7 +216,8 @@ def predict_image(raster_name,classif_name,classifier,mask_name=None):
     """
     # Parameters
     block_sizes = 512
-
+    from qgis.core import QgsMessageLog
+    QgsMessageLog.logMessage('here it is !')
     # Open Raster and get additionnal information
     raster = gdal.Open(raster_name,gdal.GA_ReadOnly)
     if raster is None:

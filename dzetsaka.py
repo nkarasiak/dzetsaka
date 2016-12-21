@@ -116,6 +116,14 @@ class dzetsaka ( QDialog ):
         self.provider = processingProvider()
         Processing.addProvider(self.provider, True)
         
+        # param
+        self.lastSaveDir = ''
+        
+        if self.classifier == 'Gaussian Mixture Model':
+            self.enableConfidence = True
+        else :
+            self.enableConfidence = False
+        
     def loadMainDock(self):
         """!@brief class that load main dock and init fields
         """
@@ -135,6 +143,9 @@ class dzetsaka ( QDialog ):
             
         self.dockwidget.outMatrix.clear()
         self.dockwidget.checkOutMatrix.clicked.connect(self.checkbox_state)
+        
+        self.dockwidget.outConfidenceMap.clear()
+        self.dockwidget.checkInConfidence.clicked.connect(self.checkbox_state)
         
         self.dockwidget.inField.clear()
         
@@ -186,15 +197,19 @@ class dzetsaka ( QDialog ):
         except :
             
             QgsMessageLog.logMessage('failed to open config file '+self.configFile)
-            
+    
+    def rememberLastSaveDir(self,fileName):
+        """!@brief Remember last saved dir when saving or loading file"""
+        if fileName!='':
+            self.lastSaveDir = fileName
 
     def select_output_file(self):
         """!@brief Select file to save, and gives the right extension if the user don't put it"""
         sender = self.sender()
         
     
-        fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","TIF (*.tif)")
-        
+        fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file",self.lastSaveDir,"TIF (*.tif)")
+        self.rememberLastSaveDir(fileName)
             
         if not fileName:
             return
@@ -237,7 +252,8 @@ class dzetsaka ( QDialog ):
         
         # If load model
         if sender == self.dockwidget.checkInModel and self.dockwidget.checkInModel.isChecked():
-            fileName = QFileDialog.getOpenFileName(self.dockwidget, "Select your file","")
+            fileName = QFileDialog.getOpenFileName(self.dockwidget, "Select your file",self.lastSaveDir)            
+            self.rememberLastSaveDir(fileName)
             if fileName!='':
                 self.dockwidget.inModel.setText(fileName)
                 self.dockwidget.inModel.setEnabled(True)
@@ -259,7 +275,8 @@ class dzetsaka ( QDialog ):
 
         # If save model
         if sender == self.dockwidget.checkOutModel and self.dockwidget.checkOutModel.isChecked():
-            fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file")
+            fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file",self.lastSaveDir)
+            self.rememberLastSaveDir(fileName)
             if fileName!='':
                 self.dockwidget.outModel.setText(fileName)
                 self.dockwidget.outModel.setEnabled(True)
@@ -274,7 +291,8 @@ class dzetsaka ( QDialog ):
 
         # If mask
         if sender == self.dockwidget.checkInMask and self.dockwidget.checkInMask.isChecked():
-            fileName = QFileDialog.getOpenFileName(self.dockwidget, "Select your file")
+            fileName = QFileDialog.getOpenFileName(self.dockwidget, "Select your file",self.lastSaveDir)
+            self.rememberLastSaveDir(fileName)
             if fileName!='':
                 self.dockwidget.inMask.setText(fileName)
                 self.dockwidget.inMask.setEnabled(True)
@@ -287,8 +305,8 @@ class dzetsaka ( QDialog ):
 
         # If save matrix            
         if sender == self.dockwidget.checkOutMatrix and self.dockwidget.checkOutMatrix.isChecked():
-            fileName = QFileDialog.getSaveFileName(self.dockwidget, "Save to a *.csv file", "", "CSV (*.csv)")
-            
+            fileName = QFileDialog.getSaveFileName(self.dockwidget, "Save to a *.csv file",self.lastSaveDir, "CSV (*.csv)")
+            self.rememberLastSaveDir(fileName)
             if fileName!='':
                 self.dockwidget.outMatrix.setText(fileName)
                 self.dockwidget.outMatrix.setEnabled(True)
@@ -310,7 +328,30 @@ class dzetsaka ( QDialog ):
             self.dockwidget.inSplit.setValue(100)
         
      
-    
+      # If save model
+         # retrieve shortname classifier
+        if sender == self.dockwidget.checkInConfidence and self.dockwidget.checkInConfidence.isChecked() and self.enableConfidence :
+            fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file (*.tif)",self.lastSaveDir,"TIF (*.tif)")            
+            self.rememberLastSaveDir(fileName)
+            if fileName!='':
+                fileName,fileExtension = os.path.splitext(fileName)
+                if fileExtension != ".tif":
+                    fileName=fileName+'.tif'
+                self.dockwidget.outConfidenceMap.setText(fileName)
+                self.dockwidget.outConfidenceMap.setEnabled(True)
+
+            else:
+                self.dockwidget.checkInConfidence.setChecked(False)
+                self.dockwidget.outConfidenceMap.setEnabled(False)
+                
+        elif sender == self.dockwidget.checkInConfidence :
+            self.dockwidget.outConfidenceMap.clear()
+            self.dockwidget.checkInConfidence.setChecked(False)
+            self.dockwidget.outConfidenceMap.setEnabled(False)
+            if not self.enableConfidence:
+                QtGui.QMessageBox.warning(self, 'Wrong classifier', 'We apologize, but confidence map is only available for GMM classifier. We\'re working to make it work with RF,SVM and KNN.<br>Thanks for your understanding.', QtGui.QMessageBox.Ok)
+                
+
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
         """Get the translation for a string using Qt translation API.
@@ -530,6 +571,8 @@ class dzetsaka ( QDialog ):
                     from sklearn import neighbors
                     if self.classifier != self.settingsdock.selectClassifier.currentText():
                         self.modifyConfig('Classification','classifier',self.settingsdock.selectClassifier.currentText())
+                        self.enableConfidence = False
+
                 except:
                     QtGui.QMessageBox.warning(self, 'Library missing', 'Scikit-learn library is missing on your computer.<br><br> You must use Gaussian Mixture Model, or <a href=\'https://github.com/lennepkade/dzetsaka/#installation-of-scikit-learn/\'>consult dzetsaka homepage to learn on to install the missing library</a>.', QtGui.QMessageBox.Ok)
                     #reset to GMM
@@ -538,6 +581,7 @@ class dzetsaka ( QDialog ):
                     
             else:
                 self.modifyConfig('Classification','classifier','Gaussian Mixture Model')
+                self.enableConfidence = True
                     
         if self.sender() == self.settingsdock.classSuffix:
             if self.classSuffix != self.settingsdock.classSuffix.text():
@@ -642,6 +686,7 @@ class dzetsaka ( QDialog ):
                 self.confusiondock.confusionTable.setModel(self.model)
                 
                 # Auto adapt size to width
+                
                 header = self.confusiondock.confusionTable.horizontalHeader()
                 header.setResizeMode(QHeaderView.Stretch)
                 
@@ -651,7 +696,8 @@ class dzetsaka ( QDialog ):
         """
         Open window and save confusion shown in qtableview
         """
-        fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file","","CSV (*.csv)")
+        fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file",self.lastSaveDir,"CSV (*.csv)")
+        self.rememberLastSaveDir(fileName)
         fileName,fileExtension=os.path.splitext(fileName)
         if fileExtension != '.csv':
             fileName=fileName+'.csv'
@@ -939,8 +985,8 @@ class dzetsaka ( QDialog ):
             # Get model if given
             
             model=self.dockwidget.inModel.text()
-            # if model not given, perform training
             
+            # if model not given, perform training
             inRaster=self.dockwidget.inRaster.currentLayer()
             inRaster=inRaster.dataProvider().dataSourceUri()
             
@@ -952,6 +998,16 @@ class dzetsaka ( QDialog ):
             else:
                 outRaster= self.dockwidget.outRaster.text()
             
+            # Confidence map
+            
+            if self.dockwidget.checkInConfidence.isChecked():
+                confidenceMap = self.dockwidget.outConfidenceMap.text()
+            elif self.enableConfidence:
+                confidenceMap = None
+            else :
+                confidenceMap = None
+                
+                
             
             inMask=self.dockwidget.inMask.text()
             
@@ -1005,13 +1061,15 @@ class dzetsaka ( QDialog ):
                 except:
                     QtGui.QMessageBox.warning(self, 'Problem while training model', 'Something went wrong during the training. Are you sure to have only integer values in your '+str(inField)+' column ?', QtGui.QMessageBox.Ok)       
             
-            # Perform classification
+            
             try:                    
                 QgsMessageLog.logMessage('Begin classification')
                 temp=mainfunction.classifyImage()
-                temp.initPredict(inRaster,model,outRaster,inMask)
+                temp.initPredict(inRaster,model,outRaster,inMask,confidenceMap)
                 QgsMessageLog.logMessage('Classification done. Adding raster to Qgis')
                 self.iface.addRasterLayer(outRaster)
+                if confidenceMap:
+                    self.iface.addRasterLayer(confidenceMap)
             except:
                 QtGui.QMessageBox.warning(self, 'Problem while training model', 'Something went wrong during the training. Are you sure to have only integer values in your selected column ?', QtGui.QMessageBox.Ok)       
                 

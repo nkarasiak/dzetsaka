@@ -147,7 +147,7 @@ class GMMR:
             self.L[c,:] = L[idx]
             self.Q[c,:,:]=Q[:,idx]
 
-    def predict(self,xt,tau=None,proba=None):
+    def predict(self,xt,tau=None,confidenceMap=None):
         '''
         Function that predict the label for sample xt using the learned model
         Inputs:
@@ -156,6 +156,10 @@ class GMMR:
             y: the class
             K: the decision value for each class
         '''
+        
+        MAX = sp.finfo(sp.float64).max
+        E_MAX = sp.log(MAX) # Maximum value that is possible to compute with sp.exp
+
         ## Get information from the data
         nt = xt.shape[0]        # Number of testing samples
         C = self.ni.shape[0]    # Number of classes
@@ -175,18 +179,28 @@ class GMMR:
             xtc = xt-self.mean[c,:]
             temp = sp.dot(invCov,xtc.T).T
             K[:,c] = sp.sum(xtc*temp,axis=1)+cst
-            del temp,xtc
-
-        ##
+            del temp,xtc        
+        
+        yp = sp.argmin(K,1)
             
-        ## Assign the label save in classnum to the minimum value of K 
-        yp = self.classnum[sp.argmin(K,1)]
-        
-        ## Reassign label with real value
-        
-        if proba is None:
+        if confidenceMap is None:
+
+            ## Assign the label save in classnum to the minimum value of K 
+            yp = self.classnum[yp]
+            
             return yp
+            
         else:
+
+            K *= -0.5
+            K[K>E_MAX],K[K<-E_MAX] = E_MAX,-E_MAX
+            sp.exp(K,out=K)
+            K /= K.sum(axis=1).reshape(nt,1)
+            K = sp.diag(K[:,yp])
+            
+            
+            yp = self.classnum[yp]
+            
             return yp,K
 
     def compute_inverse_logdet(self,c,tau):

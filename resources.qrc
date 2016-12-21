@@ -1,6 +1,7 @@
 <RCC>
   <qresource prefix="/plugins/dzetsaka">
     <file>img/icon.png</file>
+    <file>img/confidence.png</file>
     <file>img/parcguyane.jpg</file>
     <file>img/column.svg</file>
     <file>img/mask.svg</file>
@@ -12,7 +13,7 @@
     <file>img/help.png</file>
     <file>img/historical_logo.jpg</file>
     <file>img/table.png</file>
-	<file>img/settings.png</file>
-	<file>img/iconHM.png</file>
+    <file>img/settings.png</file>
+    <file>img/iconHM.png</file>
   </qresource>
 </RCC>

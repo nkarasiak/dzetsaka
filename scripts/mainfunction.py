@@ -150,6 +150,7 @@ class learnModel():
                     from sklearn.ensemble import RandomForestClassifier
                     from sklearn.cross_validation import StratifiedKFold
                     from sklearn.grid_search import GridSearchCV
+                    
                     try:   
                         
                         # AS Qgis in Windows doensn't manage multiprocessing, force to use 1 thread for not linux system
@@ -267,7 +268,7 @@ class classifyImage():
     """
             
         
-    def initPredict(self,inRaster,inModel,outRaster,inMask=None):
+    def initPredict(self,inRaster,inModel,outRaster,inMask=None,confidenceMap=None):
         
 
         # Load model
@@ -290,7 +291,7 @@ class classifyImage():
             QgsMessageLog.logMessage("Cannot create temp file "+rasterTemp)
             # Process the data
         try:
-            predictedImage=self.predict_image(inRaster,outRaster,tree,inMask,-10000,SCALE=[M,m])
+            predictedImage=self.predict_image(inRaster,outRaster,tree,inMask,confidenceMap,-10000,SCALE=[M,m])
         except:
             QgsMessageLog.logMessage("Problem while predicting "+inRaster+" in temp"+rasterTemp)
         
@@ -329,7 +330,7 @@ class classifyImage():
     
         return xs
         
-    def predict_image(self,inRaster,outRaster,model,inMask=None,NODATA=-10000,SCALE=None):
+    def predict_image(self,inRaster,outRaster,model,inMask=None,confidenceMap=None,NODATA=-10000,SCALE=None):
         """!@brief The function classify the whole raster image, using per block image analysis.
         
         The classifier is given in classifier and options in kwargs
@@ -339,11 +340,12 @@ class classifyImage():
                 outRaster :Raster image name ('outputraster.tif',str)
                 model : model file got from precedent step ('model', str)
                 inMask : mask to 
+                confidenceMap :  map of confidence per pixel
                 NODATA : Default set to -10000 (int)
                 SCALE : Default set to None
                 
             Output :
-                nothing but save a raster image
+                nothing but save a raster image and a confidence map if asked
         """
         # Open Raster and get additionnal information
         
@@ -383,14 +385,21 @@ class classifyImage():
         del band
         
         ## Initialize the output
-        driver = gdal.GetDriverByName('GTiff')
+        driver = gdal.GetDriverByName('GTiff')        
         dst_ds = driver.Create(outRaster, nc,nl, 1, gdal.GDT_Byte)
         dst_ds.SetGeoTransform(GeoTransform)
-        dst_ds.SetProjection(Projection)
+        dst_ds.SetProjection(Projection)        
         out = dst_ds.GetRasterBand(1)
+
+        if confidenceMap : 
+            dst_confidenceMap = driver.Create(confidenceMap, nc,nl, 1, gdal.GDT_Float32)
+            dst_confidenceMap.SetGeoTransform(GeoTransform)
+            dst_confidenceMap.SetProjection(Projection)
+            out_confidenceMap = dst_confidenceMap.GetRasterBand(1)
         
         ## Perform the classification
-        predictProgress=progressBar('Classifying image...',nl*y_block_size)        
+        predictProgress=progressBar('Classifying image...',nl*y_block_size)       
+        
         for i in range(0,nl,y_block_size):
             predictProgress.addStep()
             if i + y_block_size < nl: # Check for size consistency in Y
@@ -412,19 +421,34 @@ class classifyImage():
                 if mask is None:
                     mask_temp=raster.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
                     t = sp.where((mask_temp!=0) & (X[:,0]!=NODATA))[0]
-                    yp=sp.zeros((cols*lines,))
+                    yp = sp.zeros((cols*lines,))
+                    K = sp.zeros((cols*lines,))
+
                 else :
                     mask_temp=mask.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
                     t = sp.where((mask_temp!=0) & (X[:,0]!=NODATA))[0]
-                    yp=sp.zeros((cols*lines,))
+                    yp = sp.zeros((cols*lines,))
+                    K = sp.zeros((cols*lines,))
     
                 # TODO: Change this part accorindgly ...
                 if t.size > 0:
-                    yp[t]= model.predict(self.scale(X[t,:],M=M,m=m)).astype('uint8')
-                
+                    if confidenceMap :
+                        yp[t],K[t] = model.predict(self.scale(X[t,:],M=M,m=m),None,confidenceMap)                    
+                        #yp[t],K[t] = model.predict(self.scale(X[t,:],M=M,m=m),None,proba=confidenceMap)
+                        
+                    else :
+                        yp[t] = model.predict(self.scale(X[t,:],M=M,m=m))                    
+                    
+                    
                 # Write the data
                 out.WriteArray(yp.reshape(lines,cols),j,i)
                 out.FlushCache()
+                
+                if confidenceMap:
+                    out_confidenceMap.WriteArray(K.reshape(lines,cols),j,i)
+                    out_confidenceMap.FlushCache()
+                
+        
                 del X,yp
     
         # Clean/Close variables    
