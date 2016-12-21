@@ -1000,13 +1000,12 @@ class dzetsaka ( QDialog ):
             
             # Confidence map
             
-            if self.dockwidget.checkInConfidence.isChecked():
+            if self.dockwidget.checkInConfidence.isChecked() and self.enableConfidence:
                 confidenceMap = self.dockwidget.outConfidenceMap.text()
-            elif self.enableConfidence:
-                confidenceMap = None
             else :
                 confidenceMap = None
-                
+                QgsMessageLog.logMessage('confidenceMap to None')
+            QgsMessageLog.logMessage(confidenceMap)    
                 
             
             inMask=self.dockwidget.inMask.text()
