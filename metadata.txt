@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=2.0
 description=Fast and Easy Classification plugin for Qgis
-version=2.2
+version=2.3
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -27,6 +27,10 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+      2.3
+	* Add confidence map for ALL algorithms
+	* Improve speed for GMM confidence map
+	* Correct bugs while using model
       2.2
 	* Add confidence map for GMM classifier
 	* Remember last saved dir

@@ -119,10 +119,6 @@ class dzetsaka ( QDialog ):
         # param
         self.lastSaveDir = ''
         
-        if self.classifier == 'Gaussian Mixture Model':
-            self.enableConfidence = True
-        else :
-            self.enableConfidence = False
         
     def loadMainDock(self):
         """!@brief class that load main dock and init fields
@@ -330,13 +326,12 @@ class dzetsaka ( QDialog ):
      
       # If save model
          # retrieve shortname classifier
-        if sender == self.dockwidget.checkInConfidence and self.dockwidget.checkInConfidence.isChecked() and self.enableConfidence :
+        if sender == self.dockwidget.checkInConfidence and self.dockwidget.checkInConfidence.isChecked() :
             fileName = QFileDialog.getSaveFileName(self.dockwidget, "Select output file (*.tif)",self.lastSaveDir,"TIF (*.tif)")            
             self.rememberLastSaveDir(fileName)
             if fileName!='':
                 fileName,fileExtension = os.path.splitext(fileName)
-                if fileExtension != ".tif":
-                    fileName=fileName+'.tif'
+                fileName=fileName+'.tif'
                 self.dockwidget.outConfidenceMap.setText(fileName)
                 self.dockwidget.outConfidenceMap.setEnabled(True)
 
@@ -348,8 +343,6 @@ class dzetsaka ( QDialog ):
             self.dockwidget.outConfidenceMap.clear()
             self.dockwidget.checkInConfidence.setChecked(False)
             self.dockwidget.outConfidenceMap.setEnabled(False)
-            if not self.enableConfidence:
-                QtGui.QMessageBox.warning(self, 'Wrong classifier', 'We apologize, but confidence map is only available for GMM classifier. We\'re working to make it work with RF,SVM and KNN.<br>Thanks for your understanding.', QtGui.QMessageBox.Ok)
                 
 
     # noinspection PyMethodMayBeStatic
@@ -571,7 +564,6 @@ class dzetsaka ( QDialog ):
                     from sklearn import neighbors
                     if self.classifier != self.settingsdock.selectClassifier.currentText():
                         self.modifyConfig('Classification','classifier',self.settingsdock.selectClassifier.currentText())
-                        self.enableConfidence = False
 
                 except:
                     QtGui.QMessageBox.warning(self, 'Library missing', 'Scikit-learn library is missing on your computer.<br><br> You must use Gaussian Mixture Model, or <a href=\'https://github.com/lennepkade/dzetsaka/#installation-of-scikit-learn/\'>consult dzetsaka homepage to learn on to install the missing library</a>.', QtGui.QMessageBox.Ok)
@@ -581,7 +573,6 @@ class dzetsaka ( QDialog ):
                     
             else:
                 self.modifyConfig('Classification','classifier','Gaussian Mixture Model')
-                self.enableConfidence = True
                     
         if self.sender() == self.settingsdock.classSuffix:
             if self.classSuffix != self.settingsdock.classSuffix.text():
@@ -1000,7 +991,7 @@ class dzetsaka ( QDialog ):
             
             # Confidence map
             
-            if self.dockwidget.checkInConfidence.isChecked() and self.enableConfidence:
+            if self.dockwidget.checkInConfidence.isChecked() :
                 confidenceMap = self.dockwidget.outConfidenceMap.text()
             else :
                 confidenceMap = None
@@ -1019,12 +1010,17 @@ class dzetsaka ( QDialog ):
                 inMask=autoMask
                 QgsMessageLog.logMessage('Mask found :'+str(autoMask))
             
+            # Get Classifier
+            # retrieve shortname classifier
+            classifierShortName = ['GMM','RF','SVM','KNN']
+            for i, cls in enumerate(self.classifiers):
+                if self.classifier == cls:
+                    inClassifier=classifierShortName[i]
             # Check if model, else perform training
-            QgsMessageLog.logMessage(self.dockwidget.inModel.text())
-            
-            if self.dockwidget.inModel.text() != '':
+          
+            if model != '':
                 model=self.dockwidget.inModel.text()
-            
+                            
             # Perform training & classification
             else:
                 try:
@@ -1048,11 +1044,7 @@ class dzetsaka ( QDialog ):
                         inSplit = 1
                         outMatrix = None
                     
-                    # retrieve shortname classifier
-                    classifierShortName = ['GMM','RF','SVM','KNN']
-                    for i, cls in enumerate(self.classifiers):
-                        if self.classifier == cls:
-                            inClassifier=classifierShortName[i]
+                  
                     QgsMessageLog.logMessage('Begin training with '+inClassifier+ ' classifier')
                     # perform learning
                     temp=mainfunction.learnModel(inRaster,inShape,inField,model,inSplit,inSeed,outMatrix,inClassifier)
@@ -1061,15 +1053,20 @@ class dzetsaka ( QDialog ):
                     QtGui.QMessageBox.warning(self, 'Problem while training model', 'Something went wrong during the training. Are you sure to have only integer values in your '+str(inField)+' column ?', QtGui.QMessageBox.Ok)       
             
             
-            try:                    
-                QgsMessageLog.logMessage('Begin classification')
-                temp=mainfunction.classifyImage()
-                temp.initPredict(inRaster,model,outRaster,inMask,confidenceMap)
-                QgsMessageLog.logMessage('Classification done. Adding raster to Qgis')
-                self.iface.addRasterLayer(outRaster)
-                if confidenceMap:
-                    self.iface.addRasterLayer(confidenceMap)
-            except:
-                QtGui.QMessageBox.warning(self, 'Problem while training model', 'Something went wrong during the training. Are you sure to have only integer values in your selected column ?', QtGui.QMessageBox.Ok)       
+            #try:                    
+            QgsMessageLog.logMessage('Begin classification with '+str(inClassifier))
+            temp=mainfunction.classifyImage()
+            temp.initPredict(inRaster,model,outRaster,inMask,confidenceMap,inClassifier)
+            QgsMessageLog.logMessage('Classification done.')
+            self.iface.addRasterLayer(outRaster)
+            
+            if confidenceMap :
+                self.iface.addRasterLayer(confidenceMap)
+#            except:
+#                QtGui.QMessageBox.warning(self, 'Problem while training model', 'Something went wrong during the classification.', QtGui.QMessageBox.Ok)       
+#                QgsMessageLog.logMessage("model is "+str(model))
+#                QgsMessageLog.logMessage("inRaster is "+str(inRaster))
+#                QgsMessageLog.logMessage("confidenceMap is "+str(confidenceMap))
+#                QgsMessageLog.logMessage("inClassifier is "+str(inClassifier))
                 
           

@@ -196,8 +196,8 @@ class GMMR:
             K[K>E_MAX],K[K<-E_MAX] = E_MAX,-E_MAX
             sp.exp(K,out=K)
             K /= K.sum(axis=1).reshape(nt,1)
-            K = sp.diag(K[:,yp])
-            
+            K = K[sp.arange(len(K)),yp]
+            #K = sp.diag(K[:,yp])
             
             yp = self.classnum[yp]
             

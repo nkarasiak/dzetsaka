@@ -268,7 +268,7 @@ class classifyImage():
     """
             
         
-    def initPredict(self,inRaster,inModel,outRaster,inMask=None,confidenceMap=None):
+    def initPredict(self,inRaster,inModel,outRaster,inMask=None,confidenceMap=None,classifier='GMM'):
         
 
         # Load model
@@ -290,10 +290,10 @@ class classifyImage():
         except:
             QgsMessageLog.logMessage("Cannot create temp file "+rasterTemp)
             # Process the data
-        try:
-            predictedImage=self.predict_image(inRaster,outRaster,tree,inMask,confidenceMap,-10000,SCALE=[M,m])
-        except:
-            QgsMessageLog.logMessage("Problem while predicting "+inRaster+" in temp"+rasterTemp)
+        #try:
+        predictedImage=self.predict_image(inRaster,outRaster,tree,inMask,confidenceMap,-10000,SCALE=[M,m],classifier=classifier)
+        #except:
+         #   QgsMessageLog.logMessage("Problem while predicting "+inRaster+" in temp"+rasterTemp)
         
         return predictedImage
     
@@ -330,7 +330,7 @@ class classifyImage():
     
         return xs
         
-    def predict_image(self,inRaster,outRaster,model,inMask=None,confidenceMap=None,NODATA=-10000,SCALE=None):
+    def predict_image(self,inRaster,outRaster,model,inMask=None,confidenceMap=None,NODATA=-10000,SCALE=None,classifier='GMM'):
         """!@brief The function classify the whole raster image, using per block image analysis.
         
         The classifier is given in classifier and options in kwargs
@@ -343,6 +343,7 @@ class classifyImage():
                 confidenceMap :  map of confidence per pixel
                 NODATA : Default set to -10000 (int)
                 SCALE : Default set to None
+                classifier = Default 'GMM'
                 
             Output :
                 nothing but save a raster image and a confidence map if asked
@@ -432,19 +433,24 @@ class classifyImage():
     
                 # TODO: Change this part accorindgly ...
                 if t.size > 0:
-                    if confidenceMap :
-                        yp[t],K[t] = model.predict(self.scale(X[t,:],M=M,m=m),None,confidenceMap)                    
-                        #yp[t],K[t] = model.predict(self.scale(X[t,:],M=M,m=m),None,proba=confidenceMap)
+                    if confidenceMap and classifier=='GMM' :
+                        yp[t],K[t] = model.predict(self.scale(X[t,:],M=M,m=m),None,confidenceMap)  
+                        
+                    elif confidenceMap :
+                        yp[t] = model.predict(self.scale(X[t,:],M=M,m=m))
+                        K[t] = sp.amax(model.predict_proba(self.scale(X[t,:],M=M,m=m)),axis=1)
                         
                     else :
                         yp[t] = model.predict(self.scale(X[t,:],M=M,m=m))                    
+                        
+                        #QgsMessageLog.logMessage('amax from predict proba is : '+str(sp.amax(model.predict.proba(self.scale(X[t,:],M=M,m=m)),axis=1)))
                     
                     
                 # Write the data
                 out.WriteArray(yp.reshape(lines,cols),j,i)
                 out.FlushCache()
                 
-                if confidenceMap:
+                if confidenceMap :
                     out_confidenceMap.WriteArray(K.reshape(lines,cols),j,i)
                     out_confidenceMap.FlushCache()
                 
