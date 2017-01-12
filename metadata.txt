@@ -27,6 +27,8 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+      2.3.1
+	* Correct minor bugs (alert window)
       2.3
 	* Add confidence map for ALL algorithms
 	* Improve speed for GMM confidence map

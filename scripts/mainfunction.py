@@ -87,7 +87,7 @@ class learnModel():
                 X,Y =  dataraster.get_samples_from_roi(inRaster,filename)
             except:
                 QgsMessageLog.logMessage("Problem while getting samples from ROI with"+inRaster)
-                QgsMessageLog.logMessage("Are you sure to have only integer values in your "+str('inField')+" column ?")
+                QgsMessageLog.logMessage("Are you sure to have only integer values in your "+str(inField)+" column ?")
                 
             
             [n,d] = X.shape

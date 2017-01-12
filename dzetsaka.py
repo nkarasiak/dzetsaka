@@ -1023,6 +1023,7 @@ class dzetsaka ( QDialog ):
                             
             # Perform training & classification
             else:
+               
                 try:
                         
                     if self.dockwidget.outModel.text()=='':
@@ -1049,24 +1050,18 @@ class dzetsaka ( QDialog ):
                     # perform learning
                     temp=mainfunction.learnModel(inRaster,inShape,inField,model,inSplit,inSeed,outMatrix,inClassifier)
                 
-                except:
-                    QtGui.QMessageBox.warning(self, 'Problem while training model', 'Something went wrong during the training. Are you sure to have only integer values in your '+str(inField)+' column ?', QtGui.QMessageBox.Ok)       
-            
-            
-            #try:                    
-            QgsMessageLog.logMessage('Begin classification with '+str(inClassifier))
-            temp=mainfunction.classifyImage()
-            temp.initPredict(inRaster,model,outRaster,inMask,confidenceMap,inClassifier)
-            QgsMessageLog.logMessage('Classification done.')
-            self.iface.addRasterLayer(outRaster)
-            
-            if confidenceMap :
-                self.iface.addRasterLayer(confidenceMap)
-#            except:
-#                QtGui.QMessageBox.warning(self, 'Problem while training model', 'Something went wrong during the classification.', QtGui.QMessageBox.Ok)       
-#                QgsMessageLog.logMessage("model is "+str(model))
-#                QgsMessageLog.logMessage("inRaster is "+str(inRaster))
-#                QgsMessageLog.logMessage("confidenceMap is "+str(confidenceMap))
-#                QgsMessageLog.logMessage("inClassifier is "+str(inClassifier))
                 
+                    QgsMessageLog.logMessage('Begin classification with '+str(inClassifier))
+                    temp=mainfunction.classifyImage()
+                    temp.initPredict(inRaster,model,outRaster,inMask,confidenceMap,inClassifier)
+                    QgsMessageLog.logMessage('Classification done.')
+                    self.iface.addRasterLayer(outRaster)
+                    
+                    if confidenceMap :
+                        self.iface.addRasterLayer(confidenceMap)
+
+                except:
+                    message = ('Something went wrong during the training. Please make sure you respect these conditions : <br> - Are you sure to have only integer values in your '+str(inField)+' column ? <br> - Do your shapefile and raster have the same projection ?')
+                    QtGui.QMessageBox.warning(self, 'dzetsaka has encountered a problem', message, QtGui.QMessageBox.Ok)
+       
           
