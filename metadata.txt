@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=2.0
 description=Fast and Easy Classification plugin for Qgis
-version=2.3
+version=2.4
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -27,6 +27,9 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+      2.4
+	* Add DTW (Dynamic Time Warping) to processing tool
+	* Adapt code to scikit-learn >= 0.2
       2.3.1
 	* Correct minor bugs (alert window)
       2.3
