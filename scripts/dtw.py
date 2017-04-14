@@ -9,6 +9,7 @@ from sampler import DTWSampler
 import scipy as sp
 import gdal
 import os
+from mainfunction import progressBar
 #from joblib import Parallel, delayed
 #npy_arr = 0
 
@@ -61,6 +62,132 @@ def getSizes(im):
     return raster,x,y,d
    
     
+def DTW(im1,ref1,im2,ref2,outputFolder,mask=None,nodata=-10000,n_color_bands=1,scaling_col_idx=0,reference_idx=0,n_samples=100,save_path=False):
+    #global npy_arr,data
+    global max_sz
+    # Open Mask and get additionnal information
+    
+    
+    
+    r1,x1,y1,d1 = getSizes(im1)
+    
+    if r1 is None:
+        print 'Impossible to open '+im1
+        exit()
+    
+    for r in im2:
+    
+        r2,x2,y2,d2 = getSizes(r)
+        if r2 is None:
+            print 'Impossible to open '+r
+            exit()
+        elif (x1 != x2) or (y1 != y2):
+            print 'Image and ref should be of the same size'
+            exit() 
+    
+    if mask:
+        rm,xm,ym,dm = getSizes(mask)
+        if (x1 != xm) or (y1 != ym):
+            print "Ref image and mask should be the same size"
+            exit()
+    
+    d  = d1
+    nc = x1
+    nl = y1
+    
+    feat = n_color_bands+1
+#    data_3d = sp.zeros([(d),1],int)
+
+    # Get the geoinformation    
+    geo = r1.GetGeoTransform()
+    proj = r1.GetProjection()
+
+    # Get block size
+    band = r1.GetRasterBand(1)
+    block_sizes = band.GetBlockSize()
+    x_block_size = block_sizes[0]
+    y_block_size = block_sizes[1]
+    del band
+    
+    dtwProgress=progressBar(' DTW...',nl*y_block_size)
+    
+    imageList = im2[:]
+    imageList.insert(0,im1)
+    refList = ref2[:]
+    refList.insert(0,ref1)  
+    #create Tif
+    dst_ds = []
+    for imToCreate in imageList:
+        dst_ds.append(createTif(os.path.join(outputFolder,os.path.basename(imToCreate)),nc,nl,n_samples*n_color_bands,geo,proj,gdal.GDT_Int16))
+        
+    
+    for i in xrange(0,nl,y_block_size):
+        dtwProgress.addStep()
+        if i + y_block_size < nl: # Check for size consistency in Y
+            lines = y_block_size
+        else:
+            lines = nl - i
+        for j in xrange(0,nc,x_block_size): # Check for size consistency in X
+            if j + x_block_size < nc:
+                cols = x_block_size
+            else:
+                cols = nc - j
+
+            data = []
+            
+            # mask support 
+            global M
+            M = sp.zeros((cols*lines))
+            if mask:
+                masktemp = rm.GetRasterBand(1)
+                M[:] = masktemp.ReadAsArray(j, i, cols, lines).reshape(cols*lines)
+            
+            # 
+            
+            for image in imageList:
+                
+                # fill block for each image
+                data_src = gdal.Open(image)
+                d = data_src.RasterCount
+                
+                X = sp.empty((cols*lines,d))
+                    
+                #if not fully masked
+                if sp.any(M==0):
+                    for b in xrange(d):
+                        
+                        temp = data_src.GetRasterBand(b+1)
+                        X[:,b] = temp.ReadAsArray(j, i, cols, lines).reshape(cols*lines)    
+
+                    data.append(X)
+                
+            
+            max_sz = max([ref.shape[0] for ref in refList])
+            global Xf
+            Xf = sp.empty((cols*lines,len(imageList),n_samples*n_color_bands))
+            
+            #Xf[:,:] = Parallel(n_jobs=-1,verbose=False)(delayed(transformDTW)(data,Xf,n_color_bands,max_sz,feat,ind) for ind in range(cols*lines))
+            
+            # if not fully masked
+            if sp.any(M==0):
+                for ind in xrange(cols*lines):
+                    if M[ind] >0: # if single pixel masked
+                        Xf[ind,:,:] = nodata
+                    else:
+                        Xf[ind,:,:] = transformDTW(data,refList,Xf,n_color_bands,max_sz,feat,ind)[:,:,:].reshape((len(imageList),-1))
+            else: #if all block masked
+                Xf[:,:,:] = nodata
+      
+            for imidx,image in enumerate(imageList):
+                for b in xrange(n_samples*n_color_bands):
+                    out = dst_ds[imidx].GetRasterBand(b+1)
+                    out.SetNoDataValue(nodata)
+                    out.WriteArray(Xf[:,imidx,b].reshape(lines,cols),j,i)
+                    out.FlushCache()
+    
+    dtwProgress.reset()
+
+"""
 def DTW(im1,ref1,im2,ref2,outputFolder,mask=None,nodata=-10000,n_color_bands=1,scaling_col_idx=0,reference_idx=0,n_samples=100,save_path=False):
     #global npy_arr,data
     global max_sz
@@ -177,7 +304,7 @@ def DTW(im1,ref1,im2,ref2,outputFolder,mask=None,nodata=-10000,n_color_bands=1,s
                     out.SetNoDataValue(nodata)
                     out.WriteArray(Xf[:,imidx,b].reshape(lines,cols),j,i)
                     out.FlushCache()
-
+"""
           
           
 if __name__ == '__main__' : 
@@ -221,10 +348,10 @@ if __name__ == '__main__' :
         DJ2012[a] = DJ2012plusDate[:,3][sp.where(DJ2012plusDate[:,0]==datetime.datetime.strptime(str(b), '%Y%m%d').strftime('%d/%m/%Y'))[0][0]]
     
     
-    im1 = "/home/nkarasiak/Bureau/Rennes/SITS_10DAYS/crop_2010.tif"
-    im2 = ["/home/nkarasiak/Bureau/Rennes/SITS_10DAYS/crop_2012.tif","/home/nkarasiak/Bureau/Rennes/SITS_10DAYS/crop_2013.tif"]
-    ref1 = DJ2010
-    ref2 = [DJ2012,DJ2012]
+    im2 = ["/home/nkarasiak/Bureau/Rennes/SITS_10DAYS/crop_2010.tif"]
+    im1 = "/home/nkarasiak/Bureau/Rennes/SITS_10DAYS/crop_2012.tif"
+    ref2 = [DJ2010]
+    ref1 = DJ2012
     
     mask = "/home/nkarasiak/Bureau/Rennes/SITS_10DAYS/mask.tif"
     
@@ -245,5 +372,5 @@ if __name__ == '__main__' :
     t0 = time.time()
     
     outputFolder = "/home/nkarasiak/Bureau/Rennes/DTW/"
-    DTW(im1,ref1,im2,ref2,outputFolder,mask=mask,n_color_bands=4,n_samples=n_samples)
+    DTW(im1,ref1,im2,ref2,outputFolder,mask=False,n_color_bands=4,n_samples=n_samples)
     print(time.time()-t0)

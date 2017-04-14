@@ -123,10 +123,56 @@ class dtwAlgorithm(GeoAlgorithm):
         OutputDirectory(
             self.OUTPUT_FOLDER,
             self.tr('Output folder')))
+            
+            
+    def checkParameterValuesBeforeExecuting(self):
+        message = False
+        """ GET VARIABLES """
+        REF_RASTER = self.getParameterValue(self.REF_RASTER)
+        SYNC_RASTER = self.getParameterValue(self.SYNC_RASTER)
+        #N_SAMPLES = self.getParameterValue(self.N_SAMPLES)
+        #N_SPECTRAL_BANDS = self.getParameterValue(self.N_SPECTRAL_BANDS)
+        
+        #REF_CSV = self.getParameterValue(self.REF_CSV)
+        #SYNC_CSV = self.getParameterValue(self.SYNC_CSV)
+        #OUTPUT_FOLDER = self.getOutputValue(self.OUTPUT_FOLDER)
+        MASK_RASTER = self.getParameterValue(self.MASK_RASTER)                
+        """              """
+        #QgsMessageLog.logMessage('self ref raster is '+self.REF_RASTER)
+        
+        r1,x1,y1,d1 = getSizes(REF_RASTER)
+        if r1 is None:
+            message =  'Impossible to open '+str(REF_RASTER)
+        
+        SYNC_RASTER = SYNC_RASTER.split(';')
 
+        for r in SYNC_RASTER:
+    
+            r2,x2,y2,d2 = getSizes(r)
+            if r2 is None:
+                message = 'Impossible to open ' +str(r)
+            
+            elif (x1 != x2) or (y1 != y2):
+                message = 'Sync image and ref should be of the same size'
+    
+        if MASK_RASTER is None:
+            MASK_RASTER = False
+            
+        if MASK_RASTER:
+            rm,xm,ym,dm = getSizes(MASK_RASTER)
+            if (x1 != xm) or (y1 != ym):
+                message = "Ref image and mask should be the same size"
+        if message:                
+            #QgsMessageLog.logMessage('error is :'+str(message))
+            return self.tr(message)
+        else:
+            pass
+
+
+        
     def processAlgorithm(self, progress):
 
-
+        """ GET VARIABLES """
         REF_RASTER = self.getParameterValue(self.REF_RASTER)
         SYNC_RASTER = self.getParameterValue(self.SYNC_RASTER)
         N_SAMPLES = self.getParameterValue(self.N_SAMPLES)
@@ -137,57 +183,44 @@ class dtwAlgorithm(GeoAlgorithm):
         OUTPUT_FOLDER = self.getOutputValue(self.OUTPUT_FOLDER)
         MASK_RASTER = self.getParameterValue(self.MASK_RASTER)
         
+        
+        """ PARSE THEME """
         refCsv = sp.loadtxt(REF_CSV,float,delimiter=',')
         
         
         QgsMessageLog.logMessage("MASK_RASTER is  "+str(MASK_RASTER))
-        
+        if MASK_RASTER is None:
+            MASK_RASTER = False
         
         SYNC_CSV = SYNC_CSV.split(';')
         syncCsvList = [sp.loadtxt(i,float,delimiter=',') for i in SYNC_CSV]
         
         SYNC_RASTER = SYNC_RASTER.split(';')
         
-        CSVs = syncCsvList[:]
-        CSVs.insert(0,refCsv)
         
-        QgsMessageLog.logMessage("CSVs is is "+str(CSVs))
+        #QgsMessageLog.logMessage("CSVs is is "+str(CSVs))
         """
         VERIFY TEST
-        """
-        
-        message = False
-                
-        r1,x1,y1,d1 = getSizes(REF_RASTER)        
-        if r1 is None:
-            message =  'Impossible to open '+str(REF_RASTER)
-        
-    
-        for r in SYNC_RASTER:
-    
-            r2,x2,y2,d2 = getSizes(r)
-            if r2 is None:
-                message = 'Impossible to open ' +str(r)
-            
-            elif (x1 != x2) or (y1 != y2):
-                message = 'Sync image and ref should be of the same size'
-    
-        if MASK_RASTER:
-            rm,xm,ym,dm = getSizes(MASK_RASTER)
-            if (x1 != xm) or (y1 != ym):
-                message = "Ref image and mask should be the same size"
+        """        
     
         """
         RUN IF OK
         """
         
+        
         if N_SAMPLES == -1:
+            # Get all length in reference
+            CSVs = syncCsvList[:]
+            CSVs.insert(0,refCsv)        
+            # Get the max ref
             N_SAMPLES = max([ref.shape[0] for ref in CSVs])
         
+        """
         if message:
-            QMessageBox.information(None, message) 
+            QMessageBox.information(None,"Error : ",message) 
         else:
-            DTW(REF_RASTER,refCsv,SYNC_RASTER,syncCsvList,OUTPUT_FOLDER,mask=MASK_RASTER,n_color_bands=N_SPECTRAL_BANDS,n_samples=N_SAMPLES)
+        """
+        DTW(REF_RASTER,refCsv,SYNC_RASTER,syncCsvList,OUTPUT_FOLDER,mask=MASK_RASTER,n_color_bands=N_SPECTRAL_BANDS,n_samples=N_SAMPLES)
 
         
         
