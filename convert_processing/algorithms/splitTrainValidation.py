@@ -55,7 +55,7 @@ class splitTrainValidation(GeoAlgorithm):
     def defineCharacteristics(self):
 
         # The name that the user will see in the toolbox
-        self.name = 'Split train and validation within subsets'
+        self.name = 'Split train and validation'
 
         # The branch of the toolbox under which the algorithm will appear
         self.group = 'Vector manipulation'	
