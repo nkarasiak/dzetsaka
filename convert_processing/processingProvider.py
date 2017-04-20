@@ -38,6 +38,7 @@ from algorithms.train import trainAlgorithm
 from algorithms.classify import classifyAlgorithm
 from algorithms.sieveArea import sieveAreaAlgorithm
 from algorithms.DTW import dtwAlgorithm
+from algorithms.splitTrainValidation import splitTrainValidation
 #from algorithms.historicalFilter import historicalFilterAlgorithm
 #from algorithms.historicalPostClassification import historicalPostClassAlgorithm
 
@@ -57,7 +58,8 @@ class processingProvider(AlgorithmProvider):
                         trainAlgorithm(),
                         classifyAlgorithm(),
                         sieveAreaAlgorithm(),
-                        dtwAlgorithm()
+                        dtwAlgorithm(),
+                        splitTrainValidation()
                         ]
         for alg in self.alglist:
             alg.provider = self
