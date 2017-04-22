@@ -11,7 +11,7 @@ import scipy as sp
 try:
     from sklearn.model_selection import train_test_split
 except:
-    print('Cannot import sklearn')
+    print('Cannot import train_test_split from sklearn')
 
 class randomInSubset():
 
