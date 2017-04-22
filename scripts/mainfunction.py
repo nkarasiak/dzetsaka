@@ -148,7 +148,11 @@ class learnModel():
                     from sklearn import neighbors
                     from sklearn.svm import SVC
                     from sklearn.ensemble import RandomForestClassifier
-                    from sklearn.model_selection import StratifiedKFold
+                    try:
+                        from sklearn.model_selection import StratifiedKFold
+                    except:
+                        from sklearn.cross_validation import StratifiedKFold
+                     
                     from sklearn.grid_search import GridSearchCV
                     
                     try:   
