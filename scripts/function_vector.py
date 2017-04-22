@@ -7,7 +7,11 @@ import os
 #import random
 from osgeo import ogr
 import scipy as sp
-from sklearn.model_selection import train_test_split
+
+try:
+    from sklearn.model_selection import train_test_split
+except:
+    print('Cannot import sklearn')
 
 class randomInSubset():
 
