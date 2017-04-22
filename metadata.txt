@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=2.0
 description=Fast and Easy Classification plugin for Qgis
-version=2.4.1
+version=2.4.2
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -27,6 +27,8 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+      2.4.2
+	* correct bug if test/train from scikit-learn is missing
       2.4.1
 	* Add Split Train/Validation vector in Processing tool
       2.4
