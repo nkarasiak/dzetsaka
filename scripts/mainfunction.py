@@ -149,10 +149,10 @@ class learnModel():
                     from sklearn.svm import SVC
                     from sklearn.ensemble import RandomForestClassifier
                     try:
-                        from sklearn.model_selection import StratifiedKFold
-                    except:
                         from sklearn.cross_validation import StratifiedKFold
-                     
+                    except:
+                        from sklearn.model_selection import StratifiedKFold
+                        
                     from sklearn.grid_search import GridSearchCV
                     
                     try:   
