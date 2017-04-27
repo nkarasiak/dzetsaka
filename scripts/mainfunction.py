@@ -148,13 +148,17 @@ class learnModel():
                     from sklearn import neighbors
                     from sklearn.svm import SVC
                     from sklearn.ensemble import RandomForestClassifier
-                    try:
-                        from sklearn.cross_validation import StratifiedKFold
-                    except:
-                        from sklearn.model_selection import StratifiedKFold
-                        
-                    from sklearn.grid_search import GridSearchCV
                     
+                    try:
+                        model_selection = True
+                        from sklearn.model_selection import StratifiedKFold
+                        from sklearn.model_selection import GridSearchCV
+                        
+                    except:
+                        model_selection = False
+                        from sklearn.cross_validation import StratifiedKFold
+                        from sklearn.grid_search import GridSearchCV
+
                     try:   
                         
                         # AS Qgis in Windows doensn't manage multiprocessing, force to use 1 thread for not linux system
@@ -167,7 +171,12 @@ class learnModel():
                         if inClassifier == 'RF':
                             param_grid_rf = dict(n_estimators=3**sp.arange(1,5),max_features=sp.arange(1,4))
                             y.shape=(y.size,)    
-                            cv = StratifiedKFold(y, n_folds=3)
+                            if model_selection : 
+                                cv = StratifiedKFold(n_splits=3).split(x,y)
+                                #cv = cv.get_n_splits(y)
+                            else:
+                                cv = StratifiedKFold(y, n_folds=3)
+                                
                             grid = GridSearchCV(RandomForestClassifier(), param_grid=param_grid_rf, cv=cv,n_jobs=n_jobs)
                             grid.fit(x, y)
                             model = grid.best_estimator_
@@ -175,7 +184,10 @@ class learnModel():
                         elif inClassifier == 'SVM':
                             param_grid_svm = dict(gamma=2.0**sp.arange(-4,4), C=10.0**sp.arange(-2,5))
                             y.shape=(y.size,)    
-                            cv = StratifiedKFold(y, n_folds=5)
+                            if model_selection : 
+                                cv = StratifiedKFold(n_splits=5).split(x,y)
+                            else:
+                                cv = StratifiedKFold(y, n_folds=5)
                             grid = GridSearchCV(SVC(), param_grid=param_grid_svm, cv=cv,n_jobs=n_jobs)
                             grid.fit(x, y)
                             model = grid.best_estimator_
@@ -183,7 +195,10 @@ class learnModel():
                         elif inClassifier == 'KNN':
                             param_grid_knn = dict(n_neighbors = sp.arange(1,20,4))
                             y.shape=(y.size,)    
-                            cv = StratifiedKFold(y, n_folds=3)
+                            if model_selection : 
+                                cv = StratifiedKFold(n_splits=3).split(x,y)
+                            else:
+                                cv = StratifiedKFold(y, n_folds=3)
                             grid = GridSearchCV(neighbors.KNeighborsClassifier(), param_grid=param_grid_knn, cv=cv,n_jobs=n_jobs)
                             grid.fit(x, y)
                             model = grid.best_estimator_
