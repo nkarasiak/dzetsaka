@@ -50,7 +50,7 @@ class processingProvider(AlgorithmProvider):
         AlgorithmProvider.__init__(self)
 
         # Deactivate provider by default
-        self.activate = False
+        self.activate = True
 
         # Load algorithms
         self.alglist = [medianFilterAlgorithm(),
@@ -75,7 +75,7 @@ class processingProvider(AlgorithmProvider):
         deactivating the algorithms in the provider.
         """
         AlgorithmProvider.initializeSettings(self)
-        ProcessingConfig.addSetting(Setting('Example algorithms',
+        ProcessingConfig.addSetting(Setting('dzetsaka algorithms',
             processingProvider.MY_DUMMY_SETTING,
             'Example setting', 'Default value'))
 
