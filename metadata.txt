@@ -15,7 +15,8 @@ author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
 about=
-      Plugin for semi-automatic classification with Gaussian Mixture Model classifier. Very easy and fast.
+      Plugin for semi-automatic classification with Gaussian Mixture Model, Random Forest, and SVM classifiers.
+      Very easy and fast to use.
       You need to have scipy and scitkit-learn libraries.
       For more information on this tool check our github :  https://github.com/lennepkade/dzetsaka/
 
