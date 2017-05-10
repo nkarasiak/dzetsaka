@@ -4,66 +4,67 @@ from scipy.interpolate import interp1d
 
 __author__ = 'Romain Tavenard romain.tavenard[at]univ-rennes2.fr'
 
+try:
+	from sklearn.base import BaseEstimator, TransformerMixin
+	class DTWSampler(BaseEstimator, TransformerMixin):
 
-class DTWSampler(BaseEstimator, TransformerMixin):
-    try:
-        from sklearn.base import BaseEstimator, TransformerMixin
-    except:
-        print('sklearn not available')
-    saved_dtw_path = []
-    
-    def __init__(self, scaling_col_idx=0, reference_idx=0, d=1, n_samples=100,interp_kind="slinear",save_path=False):
-        self.scaling_col_idx = scaling_col_idx
-        self.reference_idx = reference_idx
-        self.n_samples = n_samples
-        self.d = d
-        self.interp_kind = interp_kind
-        self.reference_series = None
-        
-        # if saving dtw_Path
-        self.save_path = save_path
-        
-    def fit(self, X):
-        _X = X.reshape((X.shape[0], -1, self.d))
-        end = last_index(_X[self.reference_idx])
-        self.reference_series = resampled(_X[self.reference_idx, :end, self.scaling_col_idx], n_samples=self.n_samples,
-                                          kind=self.interp_kind)
-        return self
+		saved_dtw_path = []
+		
+		def __init__(self, scaling_col_idx=0, reference_idx=0, d=1, n_samples=100,interp_kind="slinear",save_path=False):
+			self.scaling_col_idx = scaling_col_idx
+			self.reference_idx = reference_idx
+			self.n_samples = n_samples
+			self.d = d
+			self.interp_kind = interp_kind
+			self.reference_series = None
+			
+			# if saving dtw_Path
+			self.save_path = save_path
+			
+		def fit(self, X):
+			_X = X.reshape((X.shape[0], -1, self.d))
+			end = last_index(_X[self.reference_idx])
+			self.reference_series = resampled(_X[self.reference_idx, :end, self.scaling_col_idx], n_samples=self.n_samples,
+											  kind=self.interp_kind)
+			return self
 
-    def transform_3d(self, X):
-        X_resampled = sp.zeros((X.shape[0], self.n_samples, X.shape[2]))
-        xnew = sp.linspace(0, 1, self.n_samples)
-        for i in range(X.shape[0]):
-            end = last_index(X[i])
-            for j in range(X.shape[2]):
-                X_resampled[i, :, j] = resampled(X[i, :end, j], n_samples=self.n_samples, kind=self.interp_kind)
-            # Compute indices based on alignment of dimension self.scaling_col_idx with the reference
-            indices_xy = [[] for _ in range(self.n_samples)]
-            
-            if self.save_path and len(DTWSampler.saved_dtw_path)==(self.d+1): # verify if full dtw path already exists
-                current_path = DTWSampler.saved_dtw_path[i]
-            else:
-                # append path
-                current_path = dtw_path(X_resampled[i, :, self.scaling_col_idx], self.reference_series)           
-                if self.save_path: # save current path is asked
-                    DTWSampler.saved_dtw_path.append(current_path)                
+		def transform_3d(self, X):
+			X_resampled = sp.zeros((X.shape[0], self.n_samples, X.shape[2]))
+			xnew = sp.linspace(0, 1, self.n_samples)
+			for i in range(X.shape[0]):
+				end = last_index(X[i])
+				for j in range(X.shape[2]):
+					X_resampled[i, :, j] = resampled(X[i, :end, j], n_samples=self.n_samples, kind=self.interp_kind)
+				# Compute indices based on alignment of dimension self.scaling_col_idx with the reference
+				indices_xy = [[] for _ in range(self.n_samples)]
+				
+				if self.save_path and len(DTWSampler.saved_dtw_path)==(self.d+1): # verify if full dtw path already exists
+					current_path = DTWSampler.saved_dtw_path[i]
+				else:
+					# append path
+					current_path = dtw_path(X_resampled[i, :, self.scaling_col_idx], self.reference_series)           
+					if self.save_path: # save current path is asked
+						DTWSampler.saved_dtw_path.append(current_path)                
 
-            for t_current, t_ref in current_path:
-                indices_xy[t_ref].append(t_current)
-            for j in range(X.shape[2]):
-                if False and j == self.scaling_col_idx:
-                    X_resampled[i, :, j] = xnew
-                else:
-                    ynew = sp.array([sp.mean(X_resampled[i, indices, j]) for indices in indices_xy])
-                    X_resampled[i, :, j] = ynew
-        return X_resampled
+				for t_current, t_ref in current_path:
+					indices_xy[t_ref].append(t_current)
+				for j in range(X.shape[2]):
+					if False and j == self.scaling_col_idx:
+						X_resampled[i, :, j] = xnew
+					else:
+						ynew = sp.array([sp.mean(X_resampled[i, indices, j]) for indices in indices_xy])
+						X_resampled[i, :, j] = ynew
+			return X_resampled
 
-    def transform(self, X):
-        _X = X.reshape((X.shape[0], -1, self.d))
-        return self.transform_3d(_X).reshape((X.shape[0], -1))
+		def transform(self, X):
+			_X = X.reshape((X.shape[0], -1, self.d))
+			return self.transform_3d(_X).reshape((X.shape[0], -1))
 
-    def dump(self, fname):
-        sp.savetxt(fname, self.reference_series)
+		def dump(self, fname):
+			sp.savetxt(fname, self.reference_series)
+
+except:
+	print('sklearn not available')
 
 
 def resampled(X, n_samples=100, kind="linear"):

@@ -4,8 +4,10 @@ Created on Tue Apr  4 17:24:02 2017
 
 @author: nkarasiak
 """
-
-from sampler import DTWSampler
+try:
+	from sampler import DTWSampler
+except:
+	print('Cannot import DTWSampler')
 import scipy as sp
 import gdal
 import os
