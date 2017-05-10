@@ -114,7 +114,6 @@ class dzetsaka ( QDialog ):
         
         # add to processing
         self.provider = processingProvider()
-        Processing.addProvider(self.provider, True)
         
         # param
         self.lastSaveDir = ''
@@ -717,12 +716,15 @@ class dzetsaka ( QDialog ):
             callback=self.loadWidget,
             parent=self.iface.mainWindow())
         
+        
+        # load in processing
+        Processing.addProvider(self.provider)
+        
         # load default classification widget
         self.loadWidget()
         
         # load dzetsaka menu
         self.loadMenu()
-
 
         
     #--------------------------------------------------------------------------
