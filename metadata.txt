@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=2.0
 description=Fast and Easy Classification plugin for Qgis
-version=2.4.3
+version=2.4.4
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -27,6 +27,8 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+      2.4.4
+      	* correct bug with windows & sklearn not available (cannot import sklearn.base...)
       2.4.3
         * correct bug with StratifiedKFold (model_selection.StratifiedKFold)
       2.4.2
