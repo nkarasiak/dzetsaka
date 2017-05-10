@@ -1,5 +1,4 @@
 import scipy as sp
-from sklearn.base import BaseEstimator, TransformerMixin
 
 from scipy.interpolate import interp1d
 
@@ -7,6 +6,10 @@ __author__ = 'Romain Tavenard romain.tavenard[at]univ-rennes2.fr'
 
 
 class DTWSampler(BaseEstimator, TransformerMixin):
+    try:
+        from sklearn.base import BaseEstimator, TransformerMixin
+    except:
+        print('sklearn not available')
     saved_dtw_path = []
     
     def __init__(self, scaling_col_idx=0, reference_idx=0, d=1, n_samples=100,interp_kind="slinear",save_path=False):
