@@ -107,7 +107,6 @@ class learnModel():
             
             try:
                 if SPLIT < 1:
-                    # progressBar, set Max to C
                     
                     # Random selection of the sample
                     x = sp.array([]).reshape(0,d)
@@ -125,13 +124,12 @@ class learnModel():
                         xt = sp.concatenate((X[t[rp[ns:]],:],xt))
                         y = sp.concatenate((Y[t[rp[0:ns]]],y))
                         yt = sp.concatenate((Y[t[rp[ns:]]],yt))
-                        #Add Pb
+                        
+                else:
+                    x,y=X,Y
             except:
                 QgsMessageLog.logMessage("Problem while learning if SPLIT <1")
                   
-            
-            x,y=X,Y
-            
             learningProgress.addStep() # Add Step to ProgressBar
             # Train Classifier
             if inClassifier == 'GMM':

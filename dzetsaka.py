@@ -39,7 +39,7 @@ import ConfigParser
 import os
 import tempfile
 import scipy as sp
-from osgeo import gdal
+from osgeo import gdal,ogr,osr
 
 # load dock 
 #from ui.dzetsaka_dock import Ui_DockWidget
@@ -954,21 +954,73 @@ class dzetsaka ( QDialog ):
     def runMagic(self):
         """!@brief Perform training and classification for dzetsaka"""
         
+        """ 
+        VERIFICATION STEP
+        """
+        
         #verif before doing the job 
-        message=''
+        message=' '
         
         if self.dockwidget.inModel.text()=='':
             try:
                 self.dockwidget.inShape.currentLayer().dataProvider().dataSourceUri()
             except:            
-                message = "Sorry, if you don't use a model, please specify a vector"
+                message = "\n - If you don't use a model, please specify a vector"
         try:
             self.dockwidget.inRaster.currentLayer().dataProvider().dataSourceUri()
         except:
-            message = "Sorry, you need a raster to make a classification."
+            message = message + str("\n - You need a raster to make a classification.")
         
-
-        if message != '':
+        try: 
+            # verif srs
+            # get vector
+            inShape = self.dockwidget.inShape.currentLayer()
+            inShape=inShape.dataProvider().dataSourceUri().split('|')[0] # Remove layerid=0 from SHP Path
+            
+            # get raster
+            inRaster=self.dockwidget.inRaster.currentLayer()
+            inRaster=inRaster.dataProvider().dataSourceUri()
+            
+            # get raster proj 
+            inRasterOp = gdal.Open(inRaster)
+            inRasterProj = inRasterOp.GetProjection()
+            inRasterProj = osr.SpatialReference(inRasterProj)
+            
+            # get shp proj 
+            inShapeOp = ogr.Open(inShape)
+            inShapeLyr = inShapeOp.GetLayer()
+            inShapeProj = inShapeLyr.GetSpatialRef()
+            
+            # chekc IsSame Projection
+            if inShapeProj.IsSameGeogCS(inRasterProj) == 0:
+                 message = message + str("\n - Raster and ROI do not have the same projection.")
+        except:
+            message = message+str('\n - Can\'t compare projection between raster and vector.')
+            
+        try:
+            inMask=self.dockwidget.inMask.text()
+            
+            if inMask=='':
+                    inMask=None
+            # check if mask with _mask.extension                        
+            autoMask=os.path.splitext(inRaster)
+            autoMask=autoMask[0]+self.maskSuffix+autoMask[1]
+            
+            if os.path.exists(autoMask):
+                inMask=autoMask
+                QgsMessageLog.logMessage('Mask found : '+str(autoMask))
+            
+            if inMask is not None :
+                mask = gdal.Open(inMask,gdal.GA_ReadOnly)
+            # Check size
+                if (inRasterOp.RasterXSize != mask.RasterXSize) or (inRasterOp.RasterYSize != mask.RasterYSize):
+                    message = message+str('\n - Raster image and mask do not have the same size.')
+       
+        except:
+            message = message+str('\n - Can\'t compare mask and raster size.')
+        """ END OF VERIFICATION STEP """
+        
+        if message != ' ':
             QtGui.QMessageBox.warning(self, 'Information missing or invalid', message, QtGui.QMessageBox.Ok)
         
         # all is ok, so do the job !
@@ -976,12 +1028,13 @@ class dzetsaka ( QDialog ):
             # get config 
             self.loadConfig()
             # Get model if given
-            
             model=self.dockwidget.inModel.text()
             
-            # if model not given, perform training
-            inRaster=self.dockwidget.inRaster.currentLayer()
-            inRaster=inRaster.dataProvider().dataSourceUri()
+#==============================================================================
+#             # if model not given, perform training
+#             inRaster=self.dockwidget.inRaster.currentLayer()
+#             inRaster=inRaster.dataProvider().dataSourceUri()
+#==============================================================================
             
             # create temp if not output raster
             if self.dockwidget.outRaster.text()=='':
@@ -1001,17 +1054,7 @@ class dzetsaka ( QDialog ):
             QgsMessageLog.logMessage(confidenceMap)    
                 
             
-            inMask=self.dockwidget.inMask.text()
-            
-            if inMask=='':
-                inMask=None
-            # check if mask with _mask.extension                        
-            autoMask=os.path.splitext(inRaster)
-            autoMask=autoMask[0]+self.maskSuffix+autoMask[1]
-            if os.path.exists(autoMask):
-                inMask=autoMask
-                QgsMessageLog.logMessage('Mask found :'+str(autoMask))
-            
+
             # Get Classifier
             # retrieve shortname classifier
             classifierShortName = ['GMM','RF','SVM','KNN']
@@ -1033,10 +1076,12 @@ class dzetsaka ( QDialog ):
                     else:
                         model=self.dockwidget.outModel.text()
                     
-                    inShape = self.dockwidget.inShape.currentLayer()
-                    # Remove layerid=0 from SHP Path
-                    inShape=inShape.dataProvider().dataSourceUri().split('|')[0]
-                    
+#==============================================================================
+#                     inShape = self.dockwidget.inShape.currentLayer()
+#                     # Remove layerid=0 from SHP Path
+#                     inShape=inShape.dataProvider().dataSourceUri().split('|')[0]
+#                     
+#==============================================================================
                     inField = self.dockwidget.inField.currentText()
                     
                     inSeed = 0
