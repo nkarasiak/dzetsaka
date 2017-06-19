@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=2.0
 description=Fast and Easy Classification plugin for Qgis
-version=2.5
+version=2.5.1
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -28,6 +28,8 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+      2.5.1
+	* correct bug with confusion matrix
       2.5
 	* add verification step and correct bug with split <1
       2.4.4
@@ -73,4 +75,3 @@ experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
-
