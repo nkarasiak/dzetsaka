@@ -5,4 +5,6 @@ Move files *Filter map.model* and *Train and classify.model* in folder of proces
 
 **Restart Qgis**.
 
+![Historical Map in Processing Toolbox](https://raw.githubusercontent.com/lennepkade/dzetsaka/historicalmap/HistoricalMapProcess.png)
+
 Enjoy Historical map in Dzetsaka !
