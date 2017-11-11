@@ -1,0 +1,208 @@
+{
+    "values": {
+        "inputs": {
+            "imagefiltrer": {
+                "values": {
+                    "pos": {
+                        "values": {
+                            "y": 101.0, 
+                            "x": 171.0
+                        }, 
+                        "class": "point"
+                    }, 
+                    "param": {
+                        "values": {
+                            "isAdvanced": false, 
+                            "name": "imagefiltrer", 
+                            "showSublayersDialog": true, 
+                            "default": null, 
+                            "value": null, 
+                            "exported": null, 
+                            "hidden": false, 
+                            "optional": false, 
+                            "description": "Image \u00e0 filtrer"
+                        }, 
+                        "class": "processing.core.parameters.ParameterRaster"
+                    }
+                }, 
+                "class": "processing.modeler.ModelerAlgorithm.ModelerParameter"
+            }, 
+            "closingsize": {
+                "values": {
+                    "pos": {
+                        "values": {
+                            "y": 60.0, 
+                            "x": 611.0
+                        }, 
+                        "class": "point"
+                    }, 
+                    "param": {
+                        "values": {
+                            "isAdvanced": false, 
+                            "name": "closingsize", 
+                            "min": 3, 
+                            "default": 9, 
+                            "max": 999, 
+                            "value": 9, 
+                            "hidden": false, 
+                            "isInteger": true, 
+                            "optional": false, 
+                            "description": "closing size"
+                        }, 
+                        "class": "processing.core.parameters.ParameterNumber"
+                    }
+                }, 
+                "class": "processing.modeler.ModelerAlgorithm.ModelerParameter"
+            }, 
+            "medianiter": {
+                "values": {
+                    "pos": {
+                        "values": {
+                            "y": 286.0, 
+                            "x": 640.0
+                        }, 
+                        "class": "point"
+                    }, 
+                    "param": {
+                        "values": {
+                            "isAdvanced": false, 
+                            "name": "medianiter", 
+                            "min": 1, 
+                            "default": 5, 
+                            "max": 999, 
+                            "value": 5, 
+                            "hidden": false, 
+                            "isInteger": true, 
+                            "optional": false, 
+                            "description": "median iter"
+                        }, 
+                        "class": "processing.core.parameters.ParameterNumber"
+                    }
+                }, 
+                "class": "processing.modeler.ModelerAlgorithm.ModelerParameter"
+            }, 
+            "mediansize": {
+                "values": {
+                    "pos": {
+                        "values": {
+                            "y": 172.0, 
+                            "x": 658.0
+                        }, 
+                        "class": "point"
+                    }, 
+                    "param": {
+                        "values": {
+                            "isAdvanced": false, 
+                            "name": "mediansize", 
+                            "min": 3, 
+                            "default": 9, 
+                            "max": 999, 
+                            "value": 9, 
+                            "hidden": false, 
+                            "isInteger": true, 
+                            "optional": false, 
+                            "description": "median size"
+                        }, 
+                        "class": "processing.core.parameters.ParameterNumber"
+                    }
+                }, 
+                "class": "processing.modeler.ModelerAlgorithm.ModelerParameter"
+            }
+        }, 
+        "helpContent": {}, 
+        "group": "Historical Map", 
+        "name": "Filter map", 
+        "algs": {
+            "dzetsakaMEDIANFILTER_1": {
+                "values": {
+                    "name": "dzetsakaMEDIANFILTER_1", 
+                    "paramsFolded": true, 
+                    "outputs": {
+                        "OUTPUT_RASTER": {
+                            "values": {
+                                "description": "filtered_map", 
+                                "pos": {
+                                    "values": {
+                                        "y": 527.8, 
+                                        "x": 436.04999999999995
+                                    }, 
+                                    "class": "point"
+                                }
+                            }, 
+                            "class": "processing.modeler.ModelerAlgorithm.ModelerOutput"
+                        }
+                    }, 
+                    "outputsFolded": true, 
+                    "pos": {
+                        "values": {
+                            "y": 445.0, 
+                            "x": 256.0
+                        }, 
+                        "class": "point"
+                    }, 
+                    "dependencies": [], 
+                    "params": {
+                        "INPUT_RASTER": {
+                            "values": {
+                                "alg": "dzetsakaCLOSINGFILTER_1", 
+                                "output": "OUTPUT_RASTER"
+                            }, 
+                            "class": "processing.modeler.ModelerAlgorithm.ValueFromOutput"
+                        }, 
+                        "MEDIAN_ITER": {
+                            "values": {
+                                "name": "mediansize"
+                            }, 
+                            "class": "processing.modeler.ModelerAlgorithm.ValueFromInput"
+                        }, 
+                        "MEDIAN_SIZE": {
+                            "values": {
+                                "name": "medianiter"
+                            }, 
+                            "class": "processing.modeler.ModelerAlgorithm.ValueFromInput"
+                        }
+                    }, 
+                    "active": true, 
+                    "consoleName": "dzetsaka:medianfilter", 
+                    "description": "Median filter"
+                }, 
+                "class": "processing.modeler.ModelerAlgorithm.Algorithm"
+            }, 
+            "dzetsakaCLOSINGFILTER_1": {
+                "values": {
+                    "name": "dzetsakaCLOSINGFILTER_1", 
+                    "paramsFolded": true, 
+                    "outputs": {}, 
+                    "pos": {
+                        "values": {
+                            "y": 251.0, 
+                            "x": 159.0
+                        }, 
+                        "class": "point"
+                    }, 
+                    "outputsFolded": true, 
+                    "dependencies": [], 
+                    "params": {
+                        "INPUT_RASTER": {
+                            "values": {
+                                "name": "imagefiltrer"
+                            }, 
+                            "class": "processing.modeler.ModelerAlgorithm.ValueFromInput"
+                        }, 
+                        "CLOSING_SIZE": {
+                            "values": {
+                                "name": "closingsize"
+                            }, 
+                            "class": "processing.modeler.ModelerAlgorithm.ValueFromInput"
+                        }
+                    }, 
+                    "active": true, 
+                    "consoleName": "dzetsaka:closingfilter", 
+                    "description": "Closing filter"
+                }, 
+                "class": "processing.modeler.ModelerAlgorithm.Algorithm"
+            }
+        }
+    }, 
+    "class": "processing.modeler.ModelerAlgorithm.ModelerAlgorithm"
+}
