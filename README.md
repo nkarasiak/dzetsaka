@@ -1,6 +1,7 @@
 # Historical Map Process for Dzetsaka
 
-For more information about [Historical Map Process, check out github page](https://github.com/lennepkade/HistoricalMap).
+For more information about [Historical Map Process, check out wiki](https://github.com/lennepkade/HistoricalMap/wiki).
+
 ## Move files
 Move files *FilterMap.model* and *TrainAndClassify.model* in folder of processing models : *~/.qgis2/processing/models*.
 
