@@ -1,9 +1,12 @@
 # Historical Map Process for Dzetsaka
 
+For more information about [Historical Map Process, check out github page](https://github.com/lennepkade/HistoricalMap).
 ## Move files
-Move files *Filter map.model* and *Train and classify.model* in folder of processing models : *~/.qgis2/processing/models*.
+Move files *FilterMap.model* and *TrainAndClassify.model* in folder of processing models : *~/.qgis2/processing/models*.
 
 **Restart Qgis**.
+
+In Models of Processing Toolbox window, you will notice a new cateogry : "Historical Map".
 
 ![Historical Map in Processing Toolbox](https://raw.githubusercontent.com/lennepkade/dzetsaka/historicalmap/HistoricalMapProcess.png)
 
