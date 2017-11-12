@@ -5,8 +5,8 @@
                 "values": {
                     "pos": {
                         "values": {
-                            "y": 736.0, 
-                            "x": 564.0
+                            "y": 396.42031823015753, 
+                            "x": 132.59241953908997
                         }, 
                         "class": "point"
                     }, 
@@ -32,8 +32,8 @@
                 "values": {
                     "pos": {
                         "values": {
-                            "y": 361.5000000000001, 
-                            "x": 686.8499999999999
+                            "y": 147.0846975, 
+                            "x": 132.94380187499985
                         }, 
                         "class": "point"
                     }, 
@@ -60,8 +60,8 @@
                 "values": {
                     "pos": {
                         "values": {
-                            "y": 284.0, 
-                            "x": 687.0
+                            "y": 236.6799328438598, 
+                            "x": 134.1680988119052
                         }, 
                         "class": "point"
                     }, 
@@ -87,8 +87,8 @@
                 "values": {
                     "pos": {
                         "values": {
-                            "y": 423.6999999999998, 
-                            "x": 685.75
+                            "y": 191.65201578530227, 
+                            "x": 133.41085420793686
                         }, 
                         "class": "point"
                     }, 
@@ -102,7 +102,7 @@
                             "datatype": -1, 
                             "hidden": false, 
                             "optional": false, 
-                            "description": "ROI column"
+                            "description": "ROI field"
                         }, 
                         "class": "processing.core.parameters.ParameterTableField"
                     }
@@ -113,8 +113,8 @@
                 "values": {
                     "pos": {
                         "values": {
-                            "y": 75.0, 
-                            "x": 686.0
+                            "y": 71.8015215251939, 
+                            "x": 131.512260334126
                         }, 
                         "class": "point"
                     }, 
@@ -128,7 +128,7 @@
                             "exported": null, 
                             "hidden": false, 
                             "optional": false, 
-                            "description": "Carte filtr\u00e9e"
+                            "description": "Filtered map"
                         }, 
                         "class": "processing.core.parameters.ParameterRaster"
                     }
@@ -147,11 +147,11 @@
                     "outputs": {
                         "OUTPUT_RASTER": {
                             "values": {
-                                "description": "Resultat_brut", 
+                                "description": "Raw_result", 
                                 "pos": {
                                     "values": {
-                                        "y": 657.9500000000003, 
-                                        "x": 335.45
+                                        "y": 359.3001143750002, 
+                                        "x": 699.1902453125
                                     }, 
                                     "class": "point"
                                 }
@@ -162,8 +162,8 @@
                     "outputsFolded": true, 
                     "pos": {
                         "values": {
-                            "y": 612.9500000000003, 
-                            "x": 135.45
+                            "y": 314.30011437500025, 
+                            "x": 491.53255593750004
                         }, 
                         "class": "point"
                     }, 
@@ -198,8 +198,8 @@
                     "outputsFolded": true, 
                     "pos": {
                         "values": {
-                            "y": 841.9499999999998, 
-                            "x": 172.44999999999993
+                            "y": 424.60592906249974, 
+                            "x": 491.52039062499995
                         }, 
                         "class": "point"
                     }, 
@@ -234,8 +234,8 @@
                     "outputsFolded": true, 
                     "pos": {
                         "values": {
-                            "y": 484.5999999999999, 
-                            "x": 388.80000000000007
+                            "y": 258.69816343749994, 
+                            "x": 487.07368031250013
                         }, 
                         "class": "point"
                     }, 
@@ -281,8 +281,8 @@
                     "outputsFolded": true, 
                     "pos": {
                         "values": {
-                            "y": 948.2369490110777, 
-                            "x": 189.2036522660162
+                            "y": 476.01277088607776, 
+                            "x": 489.12981945351635
                         }, 
                         "class": "point"
                     }, 
@@ -296,6 +296,7 @@
                         "INPUT_C": null, 
                         "BAND_A": "1", 
                         "RTYPE": 0, 
+                        "EXTRA": null, 
                         "BAND_D": "1", 
                         "NO_DATA": "0", 
                         "BAND_E": "1", 
@@ -308,8 +309,7 @@
                             "class": "processing.modeler.ModelerAlgorithm.ValueFromOutput"
                         }, 
                         "INPUT_B": null, 
-                        "BAND_C": "1", 
-                        "EXTRA": null
+                        "BAND_C": "1"
                     }, 
                     "active": true, 
                     "consoleName": "gdalogr:rastercalculator", 
@@ -324,11 +324,11 @@
                     "outputs": {
                         "OUTPUT": {
                             "values": {
-                                "description": "shp", 
+                                "description": "Final vector", 
                                 "pos": {
                                     "values": {
-                                        "y": 1104.6999999999998, 
-                                        "x": 550.1500000000001
+                                        "y": 580.1482778124995, 
+                                        "x": 699.4749428124999
                                     }, 
                                     "class": "point"
                                 }
@@ -339,8 +339,8 @@
                     "outputsFolded": true, 
                     "pos": {
                         "values": {
-                            "y": 1059.6999999999998, 
-                            "x": 350.1500000000001
+                            "y": 533.8719962499996, 
+                            "x": 490.540971875
                         }, 
                         "class": "point"
                     }, 
