@@ -22,11 +22,13 @@
 """
 
 
+from builtins import str
+from builtins import range
 import dzetsaka.scripts.function_dataraster as dataraster
 
 
-from PyQt4.QtCore import QSettings
-from PyQt4.QtGui import QIcon
+from qgis.PyQt.QtCore import QSettings
+from qgis.PyQt.QtGui import QIcon
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import ParameterRaster
 from processing.core.parameters import ParameterNumber

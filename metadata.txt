@@ -7,71 +7,33 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=dzetsaka : Classification tool
-qgisMinimumVersion=2.0
-description=Fast and Easy Classification plugin for Qgis
-version=2.5.1
+name=pluginName
+qgisMinimumVersion=3.0
+description=desc
+version=3.0
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
-about=
-      Plugin for semi-automatic classification with Gaussian Mixture Model, Random Forest, and SVM classifiers.
-      Very easy and fast to use.
-      You need to have scipy and scitkit-learn libraries.
-      For more information on this tool check our github :  https://github.com/lennepkade/dzetsaka/
+about=Provide a brief description of the plugin and its purpose.
 
-tracker=https://github.com/lennepkade/dzetsaka/issues
-repository=http://www.github.com/lennepkade/dzetsaka
+tracker=http://bugs
+repository=http://repo
 # End of mandatory metadata
 
 # Recommended items:
 
 # Uncomment the following line and add your changelog:
-changelog=
-      2.5.1
-	* correct bug with confusion matrix
-      2.5
-	* add verification step and correct bug with split <1
-      2.4.4
-      	* correct bug with windows & sklearn not available (cannot import sklearn.base...)
-      2.4.3
-        * correct bug with StratifiedKFold (model_selection.StratifiedKFold)
-      2.4.2
-	* correct bug if test/train from scikit-learn is missing
-      2.4.1
-	* Add Split Train/Validation vector in Processing tool
-      2.4
-	* Add DTW (Dynamic Time Warping) to processing tool
-	* Adapt code to scikit-learn >= 0.2
-      2.3.1
-	* Correct minor bugs (alert window)
-      2.3
-	* Add confidence map for ALL algorithms
-	* Improve speed for GMM confidence map
-	* Correct bugs while using model
-      2.2
-	* Add confidence map for GMM classifier
-	* Remember last saved dir
-      2.1.2
-	* Add saving option to Confusion Matrix Menu
-	* Debug when layer is OSM or online background
-	* Add instructions for installing scikit-learn when choosing RF, SVM, or KNN
-      2.1.1
-        * Automatic adding to processing tool
-        * Alert user when missing scikit-learn
-      2.1
-        * Add filters (median/closing) to processing tool
-	* Add learning and classification to processing tool
-      2.0.3
-        * Correct bug with SPLIT to export confusion matrix.
-# Tags are comma separated with spaces allowed
-tags=classification,semi-automatic,gaussian,mixture,model,random forest,svm,knn,forest
+# changelog=
 
-homepage=http://www.github.com/lennepkade/dzetsaka
-category=Raster
+# Tags are comma separated with spaces allowed
+tags=python
+
+homepage=http://homepage
+category=Analysis
 icon=img/icon.png
 # experimental flag
 experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
+

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 """
 /***************************************************************************
  className
@@ -19,21 +20,36 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
- This script initializes the plugin, making it known to QGIS.
 """
 
 __author__ = 'Nicolas Karasiak'
 __date__ = '2018-02-24'
 __copyright__ = '(C) 2018 by Nicolas Karasiak'
 
+# This will get replaced with a git SHA1 when you do a git archive
 
-# noinspection PyPep8Naming
-def classFactory(iface):  # pylint: disable=invalid-name
-    """Load className class from file className.
+__revision__ = '$Format:%H$'
 
-    :param iface: A QGIS interface instance.
-    :type iface: QgsInterface
-    """
-    #
-    from .moduleName import classNamePlugin
-    return classNamePlugin()
+import os
+import sys
+import inspect
+
+from qgis.core import QgsProcessingAlgorithm, QgsApplication
+from .moduleName_provider import classNameProvider
+
+cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
+
+if cmd_folder not in sys.path:
+    sys.path.insert(0, cmd_folder)
+
+
+class classNamePlugin(object):
+
+    def __init__(self):
+        self.provider = classNameProvider()
+
+    def initGui(self):
+        QgsApplication.processingRegistry().addProvider(self.provider)
+
+    def unload(self):
+        QgsApplication.processingRegistry().removeProvider(self.provider)

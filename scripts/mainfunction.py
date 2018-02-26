@@ -19,22 +19,20 @@
  *                                                                         *
  ***************************************************************************/
 """
-# -*- coding: utf-8 -*-
-import function_dataraster as dataraster
+
+from . import function_dataraster as dataraster
 import pickle
 import os
-import accuracy_index as ai
+from . import accuracy_index as ai
 import tempfile
-import gmm_ridge as gmmr
+from . import gmm_ridge as gmmr
 import scipy as sp
-from scipy import ndimage
-from osgeo import gdal, ogr, osr
-from PyQt4.QtGui import QProgressBar, QApplication
-from PyQt4 import QtCore
-from qgis.utils import iface
-from qgis.core import QgsMessageLog
+#from scipy import ndimage
+from osgeo import (gdal, ogr, osr)
+#from qgis.PyQt.QtWidgets import QProgressBar, QApplication
 
-class learnModel():
+
+class learnModel(object):
     """!@brief Learn model with a shp file and a raster image.
     
     Input :
@@ -55,7 +53,7 @@ class learnModel():
     def __init__(self,inRaster,inVector,inField='Class',outModel=None,inSplit=1,inSeed=0,outMatrix=None,inClassifier='GMM'):
           
           
-        learningProgress=progressBar('Learning model...',6)
+        #learningProgress=progressBar('Learning model...',6)
  
         # Convert vector to raster
         try:
@@ -100,13 +98,13 @@ class learnModel():
             X,M,m = self.scale(X)
             
             
-            learningProgress.addStep() # Add Step to ProgressBar
+            #learningProgress.addStep() # Add Step to ProgressBar
     
             # Learning process take split of groundthruth pixels for training and the remaining for testing
             
             
             try:
-                if SPLIT < 1:
+                if SPLIT < 100:
                     
                     # Random selection of the sample
                     x = sp.array([]).reshape(0,d)
@@ -118,7 +116,7 @@ class learnModel():
                     for i in range(C):            
                         t = sp.where((i+1)==Y)[0]
                         nc = t.size
-                        ns = int(nc*SPLIT)
+                        ns = int(nc*(SPLIT/float(100)))
                         rp =  sp.random.permutation(nc)
                         x = sp.concatenate((X[t[rp[0:ns]],:],x))
                         xt = sp.concatenate((X[t[rp[ns:]],:],xt))
@@ -130,7 +128,7 @@ class learnModel():
             except:
                 QgsMessageLog.logMessage("Problem while learning if SPLIT <1")
                   
-            learningProgress.addStep() # Add Step to ProgressBar
+            #learningProgress.addStep() # Add Step to ProgressBar
             # Train Classifier
             if inClassifier == 'GMM':
                 try:
@@ -207,9 +205,9 @@ class learnModel():
                 except:
                     QgsMessageLog.logMessage("You must have sklearn dependencies on your computer. Please consult the documentation for installation.")
                 
-            learningProgress.prgBar.setValue(5) # Add Step to ProgressBar
+            #learningProgress.prgBar.setValue(5) # Add Step to ProgressBar
             # Assess the quality of the model
-            if SPLIT < 1 :
+            if SPLIT < 100 :
                 # if  inClassifier == 'GMM':
                 #          = model.predict(xt)[0]
                 # else:
@@ -225,13 +223,14 @@ class learnModel():
                 pickle.dump([model,M,m], output)
                 output.close()
             
-            learningProgress.addStep() # Add Step to ProgressBar   
+            #learningProgress.addStep() # Add Step to ProgressBar   
             
             # Close progressBar
-            learningProgress.reset()
-            learningProgress=None
+            #learningProgress.reset()
+            #learningProgress=None
         except:
-            learningProgress.reset()
+            print('null')
+            #learningProgress.reset()
             
     def scale(self,x,M=None,m=None):
         """!@brief Function that standardize the data.
@@ -263,7 +262,7 @@ class learnModel():
     
         return xs,M,m
         
-class classifyImage():
+class classifyImage(object):
     """!@brief Classify image with learn clasifier and learned model
     
     Create a raster file, fill hole from your give class (inClassForest), convert to a vector,
@@ -292,7 +291,8 @@ class classifyImage():
         try:
             model = open(inModel,'rb') # TODO: Update to scale the data 
             if model is None:
-                print "Model not load"
+                # fix_print_with_import
+                print("Model not load")
                 QgsMessageLog.logMessage("Model : "+inModel+" is none")
             else:
                 tree,M,m = pickle.load(model)
@@ -369,7 +369,8 @@ class classifyImage():
         
         raster = gdal.Open(inRaster,gdal.GA_ReadOnly)
         if raster is None:
-            print 'Impossible to open '+inRaster
+            # fix_print_with_import
+            print('Impossible to open '+inRaster)
             exit()
         
         if inMask is None:
@@ -377,11 +378,13 @@ class classifyImage():
         else:
             mask = gdal.Open(inMask,gdal.GA_ReadOnly)
             if mask is None:
-                print 'Impossible to open '+inMask
+                # fix_print_with_import
+                print('Impossible to open '+inMask)
                 exit()
             # Check size
             if (raster.RasterXSize != mask.RasterXSize) or (raster.RasterYSize != mask.RasterYSize):
-                print 'Image and mask should be of the same size'
+                # fix_print_with_import
+                print('Image and mask should be of the same size')
                 exit()   
         if SCALE is not None:
             M,m=sp.asarray(SCALE[0]),sp.asarray(SCALE[1])
@@ -432,7 +435,7 @@ class classifyImage():
                            
                 # Load the data and Do the prediction
                 X = sp.empty((cols*lines,d))
-                for ind in xrange(d):
+                for ind in range(d):
                     X[:,ind] = raster.GetRasterBand(int(ind+1)).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
                     
                 # Do the prediction
@@ -480,55 +483,57 @@ class classifyImage():
         dst_ds = None
         return outRaster
         
-        
-class progressBar():
-    """!@brief Manage progressBar and loading cursor.
-    Allow to add a progressBar in Qgis and to change cursor to loading
-    input:
-        -inMsg : Message to show to the user (str)
-        -inMax : The steps of the script (int)
-    
-    output:
-        nothing but changing cursor and print progressBar inside Qgis
-    """
-    def __init__(self,inMsg=' Loading...',inMaxStep=1):
-            # initialize progressBar            
-            """
-            """# Save reference to the QGIS interface
-            QApplication.processEvents() # Help to keep UI alive
-            
-            widget = iface.messageBar().createMessage('Please wait  ',inMsg)            
-            prgBar = QProgressBar()
-            self.prgBar=prgBar
-            self.iface=iface
 
-            widget.layout().addWidget(self.prgBar)
-            iface.messageBar().pushWidget(widget, iface.messageBar().WARNING)
-            QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-            
-            # if Max 0 and value 0, no progressBar, only cursor loading
-            # default is set to 0
-            prgBar.setValue(1)
-            # set Maximum for progressBar
-            prgBar.setMaximum(inMaxStep)
-            
-    def addStep(self,step=1):
-        """!@brief Add a step to the progressBar
-        addStep() simply add +1 to current value of the progressBar
-        addStep(3) will add 3 steps
-        """
-        plusOne=self.prgBar.value()+step
-        self.prgBar.setValue(plusOne)
-    def reset(self):
-        """!@brief Simply remove progressBar and reset cursor
-        
-        """
-        # Remove progressBar and back to default cursor
-        self.iface.messageBar().clearWidgets()
-        self.iface.mapCanvas().refresh()
-        QApplication.restoreOverrideCursor()
+# =============================================================================
+# class progressBar(object):
+#     """!@brief Manage progressBar and loading cursor.
+#     Allow to add a progressBar in Qgis and to change cursor to loading
+#     input:
+#         -inMsg : Message to show to the user (str)
+#         -inMax : The steps of the script (int)
+#     
+#     output:
+#         nothing but changing cursor and print progressBar inside Qgis
+#     """
+#     def __init__(self,inMsg=' Loading...',inMaxStep=1):
+#             # initialize progressBar            
+#             """
+#             """# Save reference to the QGIS interface
+#             QApplication.processEvents() # Help to keep UI alive
+#             
+#             widget = iface.messageBar().createMessage('Please wait  ',inMsg)            
+#             prgBar = QProgressBar()
+#             self.prgBar=prgBar
+#             self.iface=iface
+# 
+#             widget.layout().addWidget(self.prgBar)
+#             iface.messageBar().pushWidget(widget, iface.messageBar().WARNING)
+#             QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+#             
+#             # if Max 0 and value 0, no progressBar, only cursor loading
+#             # default is set to 0
+#             prgBar.setValue(1)
+#             # set Maximum for progressBar
+#             prgBar.setMaximum(inMaxStep)
+#             
+#     def addStep(self,step=1):
+#         """!@brief Add a step to the progressBar
+#         addStep() simply add +1 to current value of the progressBar
+#         addStep(3) will add 3 steps
+#         """
+#         plusOne=self.prgBar.value()+step
+#         self.prgBar.setValue(plusOne)
+#     def reset(self):
+#         """!@brief Simply remove progressBar and reset cursor
+#         
+#         """
+#         # Remove progressBar and back to default cursor
+#         self.iface.messageBar().clearWidgets()
+#         self.iface.mapCanvas().refresh()
+#         QApplication.restoreOverrideCursor()
+# =============================================================================
 
-class confusionMatrix():
+class confusionMatrix(object):
     
     def __init__(self):
         self.confusion_matrix= None

@@ -21,85 +21,70 @@
  ***************************************************************************/
 """
 
+from dzetsaka.scripts.mainfunction import classifyImage
 
-#import dzetsaka.scripts.function_dataraster as dataraster
-
-from dzetsaka.scripts.filters import filtersFunction
-
-from PyQt4.QtCore import QSettings
-from PyQt4.QtGui import QIcon
+from qgis.PyQt.QtGui import QIcon
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import ParameterRaster
-from processing.core.parameters import ParameterNumber
-
 from processing.core.outputs import OutputRaster
+from processing.core.parameters import ParameterFile
+from qgis.core import QgsMessageLog
 
-class historicalFilterAlgorithm(GeoAlgorithm):
+class classifyAlgorithm(GeoAlgorithm):
+
     INPUT_RASTER = 'INPUT_RASTER'
+    INPUT_MASK = "INPUT_MASK"
+    INPUT_MODEL = "INPUT_MODEL"
     OUTPUT_RASTER = "OUTPUT_RASTER"
-    MEDIAN_SIZE = 'MEDIAN_SIZE'
-    MEDIAN_ITER = 'MEDIAN_ITER'
-    CLOSING_SIZE = 'CLOSING_SIZE'
-        
+    
     def getIcon(self):
-        return QIcon(":/plugins/dzetsaka/img/iconHM.png")
+        return QIcon(":/plugins/dzetsaka/img/icon.png")
         
     def defineCharacteristics(self):
+        """Here we define the inputs and output of the algorithm, along
+        with some other properties.
+        """
 
         # The name that the user will see in the toolbox
-        self.name = 'Filter map'
+        self.name = 'Classify model'
 
         # The branch of the toolbox under which the algorithm will appear
-        self.group = 'Historical Map Process'
+        self.group = 'Learning and classification'	
 
         self.addParameter(
         ParameterRaster(
             self.INPUT_RASTER,
             self.tr('Input raster'),
             False))
-    
-        # add num
-        self.addParameter(
-        ParameterNumber(
-            self.CLOSING_SIZE,
-            self.tr('Window size of closing filter'),
-            minValue=3,
-            default=5))
-        
-        # add num
-        self.addParameter(
-        ParameterNumber(
-            self.MEDIAN_SIZE,
-            self.tr('Window size of median filter'),
-            minValue=3,
-            default=5))
-        
-        # add num
-        self.addParameter(
-        ParameterNumber(
-            self.MEDIAN_ITER,
-            self.tr('Number of iteration for median filter'),
-            minValue=1,
-            default=3))
 
-        # We add a vector layer as output
+        self.addParameter(
+        ParameterRaster(
+            self.INPUT_MASK,
+            self.tr('Input mask'),
+            True))
+        
+        self.addParameter(
+        ParameterFile(
+            self.INPUT_MODEL,
+            self.tr('Input model'),
+            False))
+
         self.addOutput(
         OutputRaster(
             self.OUTPUT_RASTER,
-            self.tr('Output raster')))
-
+            self.tr('Output raster (classification)')))
 
     def processAlgorithm(self, progress):
-
+        """Here is where the processing itself takes place."""
 
         INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
+        INPUT_MODEL = self.getParameterValue(self.INPUT_MODEL)
+        INPUT_MASK = self.getParameterValue(self.INPUT_MASK)
         OUTPUT_RASTER = self.getOutputValue(self.OUTPUT_RASTER)
-        CLOSING_SIZE = self.getParameterValue(self.CLOSING_SIZE)
-        MEDIAN_ITER = self.getParameterValue(self.MEDIAN_ITER)
-        MEDIAN_SIZE = self.getParameterValue(self.MEDIAN_SIZE)
-
-        worker = filtersFunction()
-        worker.historicalMapFilter(INPUT_RASTER,OUTPUT_RASTER,CLOSING_SIZE,MEDIAN_SIZE,MEDIAN_ITER)
+        
+        worker = classifyImage()
+        #classify
+        worker.initPredict(INPUT_RASTER,INPUT_MODEL,OUTPUT_RASTER,INPUT_MASK)
         
         
 

@@ -1,5 +1,9 @@
 """!@brief Script by Mathieu Fauvel which performs Gaussian Mixture Model
 """# -*- coding: utf-8 -*-
+from __future__ import print_function
+from builtins import str
+from builtins import range
+from builtins import object
 import scipy as sp
 from scipy import linalg
 import multiprocessing as mp
@@ -14,7 +18,7 @@ def predict(tau,model,xT,yT):
     return err
     
 
-class CV:
+class CV(object):
     '''
     This class implements the generation of several folds to be used in the cross validation
     '''
@@ -40,7 +44,7 @@ class CV:
                 
         for i in range(v):
             self.iT.append(sp.asarray(indices[i]))
-            l = range(v)
+            l = list(range(v))
             l.remove(i)
             temp = sp.empty(0,dtype=sp.int64)
             for j in l:            
@@ -69,7 +73,8 @@ class CV:
                 nc = t.size
                 stepc = nc // v # Step size for each class
                 if stepc == 0:
-                    print "Not enough sample to build "+ str(v) +" folds in class " + str(i)                                    
+                    # fix_print_with_import
+                    print("Not enough sample to build "+ str(v) +" folds in class " + str(i))                                    
                 sp.random.seed(i)   # Set the random generator to the same initial state
                 tc = t[sp.random.permutation(nc)] # Random sampling of indices of samples for class i
                         
@@ -79,7 +84,7 @@ class CV:
                 else:
                     start,end = j*stepc,nc
                 tempiT.extend(sp.asarray(tc[start:end])) #Testing
-                k = range(v)
+                k = list(range(v))
                 k.remove(j)
                 for l in k:
                     if l < (v-1):
@@ -93,7 +98,7 @@ class CV:
             
 
 
-class GMMR:
+class GMMR(object):
     def __init__(self):
         self.ni = []
         self.prop = []
