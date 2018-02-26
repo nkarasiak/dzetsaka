@@ -7,30 +7,39 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=pluginName
+name=dzetsaka 3 : Classification tool
 qgisMinimumVersion=3.0
-description=desc
-version=3.0
+description=Fast and Easy Classification plugin for Qgis
+version=3.0.0
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
-about=Provide a brief description of the plugin and its purpose.
+about=
+      Plugin for semi-automatic classification with Gaussian Mixture Model, Random Forest, and SVM classifiers.
+      Very easy and fast to use.
+      You need to have scipy and scitkit-learn libraries.
+      For more information on this tool check our github :  https://github.com/lennepkade/dzetsaka/
 
-tracker=http://bugs
-repository=http://repo
+tracker=https://github.com/lennepkade/dzetsaka/issues
+repository=http://www.github.com/lennepkade/dzetsaka
+
 # End of mandatory metadata
 
 # Recommended items:
 
 # Uncomment the following line and add your changelog:
-# changelog=
+changelog=
+	3.0.0
+	  * First version for Qgis 3. Algorithms are only available in the processing toolbox for now.
+	  * User Interface will be available as soon as possible.
 
 # Tags are comma separated with spaces allowed
-tags=python
+tags=classification,semi-automatic,gaussian,mixture,model,random forest,svm,knn,forest
 
-homepage=http://homepage
-category=Analysis
+homepage=http://www.github.com/lennepkade/dzetsaka
+category=Raster
 icon=img/icon.png
+
 # experimental flag
 experimental=False
 

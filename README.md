@@ -39,10 +39,6 @@ You can now use **Random Forest**, **SVM**, or **KNN** !
 - If your raster is *spot6scene.tif*, you can create your mask under the name *spot6scene_mask.tif* and the script will detect it automatically.
 - If you want to keep your spectral ROI model from an image, you can save your model to use it on another image.
 
-## Todo
-
-- Implement best progress bar for classifier like Random Forest / K-Nearest Neighbors.
-
 Online dev documentation is available throught the [doxygen branch](https://rawgit.com/lennepkade/dzetsaka/doxygen/index.html).
 ### Thanks to...
 I would like to thank the [Guiana Amazonian Park](http://www.parc-amazonien-guyane.fr/) for their trust in my work, and the Master 2 Geomatics [Sigma](http://sigma.univ-toulouse.fr/en/welcome.html) for their excellent lessons in geomatics.

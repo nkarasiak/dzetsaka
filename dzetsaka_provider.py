@@ -32,18 +32,18 @@ __revision__ = '$Format:%H$'
 
 from qgis.core import QgsProcessingProvider
 #from .moduleName_algorithm import classNameAlgorithm
-from .processing.moduleName_algorithm import classNameAlgorithm
+#from .processing.moduleName_algorithm import classNameAlgorithm
 from .processing.medianFilter import medianFilterAlgorithm
 from .processing.train import trainAlgorithm
 
 
-class classNameProvider(QgsProcessingProvider):
+class dzetsakaProvider(QgsProcessingProvider):
 
     def __init__(self):
         QgsProcessingProvider.__init__(self)
 
         # Load algorithms
-        self.alglist = [classNameAlgorithm(),medianFilterAlgorithm(),trainAlgorithm()]
+        self.alglist = [medianFilterAlgorithm(),trainAlgorithm()]
 
     def unload(self):
         """
