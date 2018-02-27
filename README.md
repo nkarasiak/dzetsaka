@@ -26,6 +26,10 @@ On **Linux** simply open terminal and type :
 On **Windows**, you have few more steps to do. In the explorer, search for OsGeo4W Shell, right click to open it as an administrator. Now use pip in OsGeo Shell like on Linux. Just type :<br/>
 `pip install scikit-learn`
 
+If you do not have pip installed, open *osgeo4w-setup-x86_64.exe*, select *Advanced install* and install these libraries :
+- scipy
+- pip
+
 You can now use **Random Forest**, **SVM**, or **KNN** !
 
 ## Tips
