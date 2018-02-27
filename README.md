@@ -20,16 +20,10 @@ Then, as this plugin is very simple, you will just need two things for making a 
 The shapefile must have a column which contains your classification numbers *(1,3,4...)*. Otherwise if you use text or anything else it certainly won't work.
 
 ## Installation of scikit-learn
-On Linux simply open terminal and type : 
+On **Linux** simply open terminal and type : 
 `pip install scikit-learn`
 
-On Windows, you have few more steps to do. Open Windows menu, and search for *OsGeo4W Shell*, open it as administrator (left click > open as an administrator), then type :<br/> 
-`curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py`
-
-After get-pip.py has been downloaded write :<br/> 
-`python get-pip.py`
-
-Now use pip in OsGeo Shell like on Linux. Just type :<br/> 
+On **Windows**, you have few more steps to do. In the explorer, search for OsGeo4W Shell, right click to open it as an administrator. Now use pip in OsGeo Shell like on Linux. Just type :<br/>
 `pip install scikit-learn`
 
 You can now use **Random Forest**, **SVM**, or **KNN** !
