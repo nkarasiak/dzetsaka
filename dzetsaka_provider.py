@@ -38,9 +38,9 @@ from .processing.medianFilter import medianFilterAlgorithm
 from .processing.train import trainAlgorithm
 from .processing.classify import classifyAlgorithm
 from .processing.splitTrainValidation import splitTrain
-from processing.core.ProcessingConfig import ProcessingConfig, Setting
+
 pluginPath = os.path.dirname(__file__)
-from qgis.core import QgsMessageLog
+
 """
 import sys
 sys.setrecursionlimit(10000) # 10000 is an example, try with different values
@@ -52,7 +52,7 @@ class dzetsakaProvider(QgsProcessingProvider):
         QgsProcessingProvider.__init__(self)
     
         # Load algorithms
-        self.alglist = [medianFilterAlgorithm(),trainAlgorithm(),classifyAlgorithm(),splitTrain()]
+        self.alglist = [medianFilterAlgorithm(),trainAlgorithm(),classifyAlgorithm(),splitTrain()]#,classifyAlgorithm(),splitTrain()]
     
     def icon(self):
         """

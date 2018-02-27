@@ -26,7 +26,7 @@ from builtins import str
 
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QCoreApplication
-from PyQt5.QtWidgets import QMessageBox
+#from PyQt5.QtWidgets import QMessageBox
 
 from qgis.core import (QgsMessageLog,
                        QgsProcessingAlgorithm,
@@ -38,7 +38,7 @@ from qgis.core import (QgsMessageLog,
                        QgsProcessingParameterFileDestination)
 
 import os
-from ..scripts import function_dataraster as dataraster
+
 from ..scripts import mainfunction
 
 pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__),os.pardir))
@@ -130,10 +130,10 @@ class trainAlgorithm(QgsProcessingAlgorithm):
     def processAlgorithm(self, parameters,context,feedback):
 
         INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
-        INPUT_RASTER_src = INPUT_RASTER.source()
+        
 
         INPUT_LAYER = self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
-        INPUT_LAYER_src = INPUT_LAYER.source()
+        
         
         INPUT_COLUMN = self.parameterAsFields(parameters, self.INPUT_COLUMN, context)
         SPLIT_PERCENT = self.parameterAsInt(parameters, self.SPLIT_PERCENT, context)

@@ -8,10 +8,6 @@ import os
 from osgeo import ogr
 import numpy as np
 
-try:
-    from sklearn.model_selection import train_test_split
-except:
-    print('Cannot import train_test_split from sklearn')
 
 class randomInSubset():
 

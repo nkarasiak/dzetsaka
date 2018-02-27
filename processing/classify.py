@@ -23,10 +23,9 @@
 
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QCoreApplication
-from PyQt5.QtWidgets import QMessageBox
+#from PyQt5.QtWidgets import QMessageBox
 
-from qgis.core import (QgsMessageLog,
-                       QgsProcessingAlgorithm,
+from qgis.core import (QgsProcessingAlgorithm,
                        QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterFile,
                        QgsProcessingParameterRasterDestination)

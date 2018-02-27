@@ -21,9 +21,6 @@
  ***************************************************************************/
 """
 
-
-from builtins import str
-
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QCoreApplication
 
@@ -36,7 +33,7 @@ from qgis.core import (QgsMessageLog,
                        QgsProcessingParameterVectorDestination)
 
 import os
-from PyQt5.QtWidgets import QMessageBox
+#from PyQt5.QtWidgets import QMessageBox
 from ..scripts import function_vector
 pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__),os.pardir))
 
@@ -133,13 +130,11 @@ class splitTrain(QgsProcessingAlgorithm):
         except:
             libOk = False
             
-        # learn model
         if libOk:
             function_vector.randomInSubset(INPUT_LAYER.source(),str(INPUT_COLUMN[0]),OUTPUT_VALIDATION,OUTPUT_TRAIN,VALUE,percent)
             return {'Output train' : str(OUTPUT_TRAIN), 'Output validation' : str(OUTPUT_VALIDATION)}
-
         else:
-            QMessageBox(None, "Please install scikit-learn library")
+            #QMessageBox(None, "Please install scikit-learn library")
             QgsMessageLog.logMessage("Please install scikit-learn library") 
 
         
