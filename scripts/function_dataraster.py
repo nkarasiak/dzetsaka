@@ -3,6 +3,7 @@
 
 import scipy as sp
 from osgeo import gdal
+
 def open_data(filename):
     '''
     The function open and load the image given its name. 

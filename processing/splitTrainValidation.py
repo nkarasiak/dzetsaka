@@ -26,34 +26,29 @@ from builtins import str
 
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QCoreApplication
-from PyQt5.QtWidgets import QMessageBox
+#from PyQt5.QtWidgets import QMessageBox
 
 from qgis.core import (QgsMessageLog,
                        QgsProcessingAlgorithm,
-                       QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterVectorLayer,
                        QgsProcessingParameterField,
                        QgsProcessingParameterEnum,
                        QgsProcessingParameterNumber,
-                       QgsProcessingParameterFileDestination)
+                       QgsProcessingParameterVectorDestination)
 
 import os
-from ..scripts import function_dataraster as dataraster
-from ..scripts import mainfunction
 
+#from ..scripts import function_vector
 pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__),os.pardir))
 
-class trainAlgorithm(QgsProcessingAlgorithm):
-    INPUT_RASTER = 'INPUT_RASTER'
+class splitTrain(QgsProcessingAlgorithm):
     INPUT_LAYER = 'INPUT_LAYER'
     INPUT_COLUMN = 'INPUT_COLUMN'
-    TRAIN = "TRAIN"
-    TRAIN_ALGORITHMS = ['Gaussian Mixture Model','Random-Forest','K-Nearest Neighbors','Support Vector Machine']
-    TRAIN_ALGORITHMS_CODE = ['GMM','RF','KNN','SVM']
-    SPLIT_PERCENT= 'SPLIT_PERCENT'
-    OUTPUT_MODEL = "OUTPUT_MODEL"
-    OUTPUT_MATRIX = "OUTPUT_MATRIX"
-    
+    METHOD = "METHOD"
+    METHOD_VALUES = ['Percent','Count value']
+    VALUE = 'VALUE'
+    OUTPUT_VALIDATION = "OUTPUT_VALIDATION"
+    OUTPUT_TRAIN = "OUTPUT_TRAIN"
     
     def name(self):
         """
@@ -63,7 +58,7 @@ class trainAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Train algorithm'
+        return 'Split train and validation'
     
     def icon(self):
 
@@ -71,17 +66,6 @@ class trainAlgorithm(QgsProcessingAlgorithm):
         
     def initAlgorithm(self,config=None):
 
-        # The name that the user will see in the toolbox
-        
-        self.addParameter(
-                QgsProcessingParameterRasterLayer(
-                self.INPUT_RASTER,
-                self.tr('Input raster')
-            )   
-        )
-
-        # ROI
-        # VECTOR
         self.addParameter(
         QgsProcessingParameterVectorLayer(
             self.INPUT_LAYER,
@@ -99,77 +83,59 @@ class trainAlgorithm(QgsProcessingAlgorithm):
         
         self.addParameter(
         QgsProcessingParameterEnum(
-        self.TRAIN,"Select algorithm to train",
-        self.TRAIN_ALGORITHMS, 0))
+        self.METHOD,"Select method for splitting dataset",
+        self.METHOD_VALUES, 0))
         
         # SPLIT %
         
         self.addParameter(
         QgsProcessingParameterNumber(
-            self.SPLIT_PERCENT,
-            self.tr('Pixels (0.5 for 50%) to keep for classification'),
+            self.VALUE,
+            self.tr('Select 50 for 50% if PERCENT method. Else, value represents whole size of test sample.'),
             type=QgsProcessingParameterNumber.Integer,
-            minValue=0,maxValue=100,defaultValue=50))
+            minValue=1,maxValue=99999,defaultValue=50))
         
         # SAVE AS
         # SAVE MODEL
         self.addParameter(
-        QgsProcessingParameterFileDestination(
-            self.OUTPUT_MODEL,
-            self.tr("Output model (to use for classifying)")))
+        QgsProcessingParameterVectorDestination(
+            self.OUTPUT_VALIDATION,
+            self.tr("Output validation")))
             
-        # SAVE CONFUSION MATRIX
         self.addParameter(
-        QgsProcessingParameterFileDestination(
-            self.OUTPUT_MATRIX,
-            self.tr("Output confusion matrix"),
-            fileFilter='csv'))#,
-            #ext='csv'))
+        QgsProcessingParameterVectorDestination(
+            self.OUTPUT_TRAIN,
+            self.tr("Output train")))
+        
         
         
     def processAlgorithm(self, parameters,context,feedback):
-
-        INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
-        INPUT_RASTER_src = INPUT_RASTER.source()
-
+        
         INPUT_LAYER = self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
-        INPUT_LAYER_src = INPUT_LAYER.source()
-        
         INPUT_COLUMN = self.parameterAsFields(parameters, self.INPUT_COLUMN, context)
-        SPLIT_PERCENT = self.parameterAsInt(parameters, self.SPLIT_PERCENT, context)
-        TRAIN = self.parameterAsEnums(parameters, self.TRAIN, context)
-        #INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
-        OUTPUT_MODEL = self.parameterAsFileOutput(parameters, self.OUTPUT_MODEL, context)
-        OUTPUT_MATRIX = self.parameterAsFileOutput(parameters, self.OUTPUT_MATRIX, context)
-
-
-        # Retrieve algo from code        
-        SELECTED_ALGORITHM = self.TRAIN_ALGORITHMS_CODE[TRAIN[0]]
-        QgsMessageLog.logMessage(str(SELECTED_ALGORITHM))        
-       
+        METHOD = self.parameterAsEnums(parameters,self.INPUT_METHOD,context)
         
-        libOk = True
+        OUTPUT_TRAIN = self.parameterAsVectorOutput(parameters,self.OUTPUT_TRAIN,context)
+        OUTPUT_VALIDATION = self.parameterAsVectorOutput(parameters,self.OUTPUT_VALIDATION,context)
         
-        if SELECTED_ALGORITHM=='RF' or SELECTED_ALGORITHM=='SVM' or SELECTED_ALGORITHM=='KNN':
-            try:
-                import sklearn
-            except:
-                libOk = False
-                
-        # learn model
-        if libOk:
-            mainfunction.learnModel(INPUT_RASTER.source(),INPUT_LAYER.source(),INPUT_COLUMN[0],OUTPUT_MODEL,SPLIT_PERCENT,0,OUTPUT_MATRIX,SELECTED_ALGORITHM,feedback=feedback)
+        VALUE = self.parameterAsInt(parameters,self.VALUE,context)
+        # Retrieve algo from code
+        selectedMETHOD  = self.METHOD_VALUES[METHOD]
+        
+        if selectedMETHOD == 'Percent' :
+            percent = True
         else:
-            QMessageBox.information(None, "Please install scikit-learn library to use:", str(SELECTED_ALGORITHM)) 
-        
-        return {'Output matrix' : str(OUTPUT_MATRIX), 'Output model' : str(OUTPUT_MODEL)}
+            percent = False
+            
+        function_vector.randomInSubset(INPUT_LAYER.source(),str(INPUT_COLUMN[0]),OUTPUT_VALIDATION,OUTPUT_TRAIN,VALUE,percent) 
+        return {'Output train' : str(OUTPUT_TRAIN), 'Output validation' : str(OUTPUT_VALIDATION)}
 
         
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return trainAlgorithm()
+        return splitTrain()
     
     def displayName(self):
         """
@@ -192,4 +158,4 @@ class trainAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Classification tools'
+        return 'Vector manipulation'

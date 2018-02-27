@@ -21,71 +21,117 @@
  ***************************************************************************/
 """
 
-from dzetsaka.scripts.mainfunction import classifyImage
-
 from qgis.PyQt.QtGui import QIcon
-from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.parameters import ParameterRaster
-from processing.core.outputs import OutputRaster
-from processing.core.parameters import ParameterFile
-from qgis.core import QgsMessageLog
+from PyQt5.QtCore import QCoreApplication
+from PyQt5.QtWidgets import QMessageBox
 
-class classifyAlgorithm(GeoAlgorithm):
+from qgis.core import (QgsMessageLog,
+                       QgsProcessingAlgorithm,
+                       QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterFile,
+                       QgsProcessingParameterRasterDestination)
 
+import os
+
+#from ..scripts.mainfunction import classifyImage
+
+
+pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__),os.pardir))
+
+class classifyAlgorithm(QgsProcessingAlgorithm):
     INPUT_RASTER = 'INPUT_RASTER'
     INPUT_MASK = "INPUT_MASK"
     INPUT_MODEL = "INPUT_MODEL"
     OUTPUT_RASTER = "OUTPUT_RASTER"
     
-    def getIcon(self):
-        return QIcon(":/plugins/dzetsaka/img/icon.png")
-        
-    def defineCharacteristics(self):
-        """Here we define the inputs and output of the algorithm, along
-        with some other properties.
+    def name(self):
         """
+        Returns the algorithm name, used for identifying the algorithm. This
+        string should be fixed for the algorithm, and must not be localised.
+        The name should be unique within each provider. Names should contain
+        lowercase alphanumeric characters only and no spaces or other
+        formatting characters.
+        """
+        return 'Predict model (classification map)'
+    
+    def icon(self):
 
-        # The name that the user will see in the toolbox
-        self.name = 'Classify model'
+        return QIcon(os.path.join(pluginPath,'img','icon.png'))
+        
+    def initAlgorithm(self,config=None):
 
-        # The branch of the toolbox under which the algorithm will appear
-        self.group = 'Learning and classification'	
-
+        # inputs       
         self.addParameter(
-        ParameterRaster(
-            self.INPUT_RASTER,
-            self.tr('Input raster'),
-            False))
+                QgsProcessingParameterRasterLayer(
+                self.INPUT_RASTER,
+                self.tr('Input raster')
+            )   
+        )
 
+  
         self.addParameter(
-        ParameterRaster(
-            self.INPUT_MASK,
-            self.tr('Input mask'),
-            True))
+                QgsProcessingParameterRasterLayer(
+                self.INPUT_MASK,
+                self.tr('Mask raster')
+            )   
+        )
         
         self.addParameter(
-        ParameterFile(
-            self.INPUT_MODEL,
-            self.tr('Input model'),
-            False))
+                QgsProcessingParameterFile(
+                self.INPUT_MODEL,
+                self.tr('Model learned')
+            )   
+        )
+        
+        # output
+        self.addParameter(
+            QgsProcessingParameterRasterDestination(
+                self.OUTPUT_RASTER,
+                self.tr('Output raster')
+            )
+        )    
+        
+    def processAlgorithm(self, parameters,context,feedback):
 
-        self.addOutput(
-        OutputRaster(
-            self.OUTPUT_RASTER,
-            self.tr('Output raster (classification)')))
-
-    def processAlgorithm(self, progress):
-        """Here is where the processing itself takes place."""
-
-        INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
-        INPUT_MODEL = self.getParameterValue(self.INPUT_MODEL)
-        INPUT_MASK = self.getParameterValue(self.INPUT_MASK)
-        OUTPUT_RASTER = self.getOutputValue(self.OUTPUT_RASTER)
+        INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
+        INPUT_MASK = self.parameterAsRasterLayer(parameters, self.INPUT_MASK, context)         
+        INPUT_MODEL = self.parameterAsFile(parameters, self.INPUT_MODEL, context)
+    
+        OUTPUT_RASTER = self.parameterAsRasterDestination(parameters, self.OUTPUT_RASTER, context)        
+        # Retrieve algo from code        
         
         worker = classifyImage()
         #classify
-        worker.initPredict(INPUT_RASTER,INPUT_MODEL,OUTPUT_RASTER,INPUT_MASK)
-        
-        
+        worker.initPredict(INPUT_RASTER.source(),INPUT_MODEL,OUTPUT_RASTER,INPUT_MASK)
+
+        return {'Classification' : str(OUTPUT_RASTER)}
 
         
+    def tr(self, string):
+        return QCoreApplication.translate('Processing', string)
+
+    def createInstance(self):
+        return classifyAlgorithm()
+    
+    def displayName(self):
+        """
+        Returns the translated algorithm name, which should be used for any
+        user-visible display of the algorithm name.
+        """
+        return self.tr(self.name())
+    def group(self):
+        """
+        Returns the name of the group this algorithm belongs to. This string
+        should be localised.
+        """
+        return self.tr(self.groupId())
+
+    def groupId(self):
+        """
+        Returns the unique ID of the group this algorithm belongs to. This
+        string should be fixed for the algorithm, and must not be localised.
+        The group id should be unique within each provider. Group id should
+        contain lowercase alphanumeric characters only and no spaces or other
+        formatting characters.
+        """
+        return 'Classification tools'

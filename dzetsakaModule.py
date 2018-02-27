@@ -36,7 +36,6 @@ import inspect
 
 from qgis.core import QgsProcessingAlgorithm, QgsApplication
 from .dzetsaka_provider import dzetsakaProvider
-
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 
 if cmd_folder not in sys.path:
@@ -47,7 +46,7 @@ class dzetsakaPlugin(object):
 
     def __init__(self):
         self.provider = dzetsakaProvider()
-
+    
     def initGui(self):
         QgsApplication.processingRegistry().addProvider(self.provider)
 

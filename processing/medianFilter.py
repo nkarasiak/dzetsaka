@@ -134,7 +134,7 @@ class medianFilterAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'median filter'
+        return 'Median filter'
 
     def processAlgorithm(self, parameters,context,feedback):
         """Here is where the processing itself takes place."""
@@ -161,7 +161,7 @@ class medianFilterAlgorithm(QgsProcessingAlgorithm):
         
         
         
-        #    from scipy import ndimage
+        from scipy import ndimage
             
         
         data,im=dataraster.open_data_band(INPUT_RASTER_src)
@@ -184,8 +184,9 @@ class medianFilterAlgorithm(QgsProcessingAlgorithm):
             tempBand = data.GetRasterBand(i+1).ReadAsArray()
             
             for j in range(MEDIAN_ITER):
-                #tempBand = ndimage.filters.median_filter(tempBand,size=(MEDIAN_SIZE,MEDIAN_SIZE))
-                tempBand = tempBand
+                
+                tempBand = ndimage.filters.median_filter(tempBand,size=(MEDIAN_SIZE,MEDIAN_SIZE))
+                #tempBand = tempBand
                 iterPos+=j
                 feedback.setProgress(int(iterPos * total))    
                 
@@ -228,4 +229,4 @@ class medianFilterAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'algoGroup'
+        return 'Raster tool'

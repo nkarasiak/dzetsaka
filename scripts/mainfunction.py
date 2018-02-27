@@ -26,9 +26,10 @@ import os
 from . import accuracy_index as ai
 import tempfile
 from . import gmm_ridge as gmmr
-import scipy as sp
+import numpy as np
 #from scipy import ndimage
 from osgeo import (gdal, ogr, osr)
+from qgis.core import QgsMessageLog
 #from qgis.PyQt.QtWidgets import QProgressBar, QApplication
 
 
@@ -50,12 +51,15 @@ class learnModel(object):
         Confusion Matrix.
         
     """
-    def __init__(self,inRaster,inVector,inField='Class',outModel=None,inSplit=1,inSeed=0,outMatrix=None,inClassifier='GMM'):
+    def __init__(self,inRaster,inVector,inField='Class',outModel=None,inSplit=1,inSeed=0,outMatrix=None,inClassifier='GMM',feedback=None):
           
           
         #learningProgress=progressBar('Learning model...',6)
  
         # Convert vector to raster
+        if feedback:
+            total = 100/10
+                        
         try:
             try:
                 temp_folder = tempfile.mkdtemp()
@@ -97,7 +101,9 @@ class learnModel(object):
             # Scale the data
             X,M,m = self.scale(X)
             
-            
+            if feedback:
+                
+                feedback.setProgress(int(1* total))
             #learningProgress.addStep() # Add Step to ProgressBar
     
             # Learning process take split of groundthruth pixels for training and the remaining for testing
@@ -107,27 +113,29 @@ class learnModel(object):
                 if SPLIT < 100:
                     
                     # Random selection of the sample
-                    x = sp.array([]).reshape(0,d)
-                    y = sp.array([]).reshape(0,1)
-                    xt = sp.array([]).reshape(0,d)
-                    yt = sp.array([]).reshape(0,1)
+                    x = np.array([]).reshape(0,d)
+                    y = np.array([]).reshape(0,1)
+                    xt = np.array([]).reshape(0,d)
+                    yt = np.array([]).reshape(0,1)
                     
-                    sp.random.seed(inSeed) # Set the random generator state
+                    np.random.seed(inSeed) # Set the random generator state
                     for i in range(C):            
-                        t = sp.where((i+1)==Y)[0]
+                        t = np.where((i+1)==Y)[0]
                         nc = t.size
                         ns = int(nc*(SPLIT/float(100)))
-                        rp =  sp.random.permutation(nc)
-                        x = sp.concatenate((X[t[rp[0:ns]],:],x))
-                        xt = sp.concatenate((X[t[rp[ns:]],:],xt))
-                        y = sp.concatenate((Y[t[rp[0:ns]]],y))
-                        yt = sp.concatenate((Y[t[rp[ns:]]],yt))
+                        rp =  np.random.permutation(nc)
+                        x = np.concatenate((X[t[rp[0:ns]],:],x))
+                        xt = np.concatenate((X[t[rp[ns:]],:],xt))
+                        y = np.concatenate((Y[t[rp[0:ns]]],y))
+                        yt = np.concatenate((Y[t[rp[ns:]]],yt))
                         
                 else:
                     x,y=X,Y
             except:
                 QgsMessageLog.logMessage("Problem while learning if SPLIT <1")
-                  
+            
+            if feedback:
+                feedback.setProgress(int(2* total))
             #learningProgress.addStep() # Add Step to ProgressBar
             # Train Classifier
             if inClassifier == 'GMM':
@@ -165,7 +173,7 @@ class learnModel(object):
                         
                         # 
                         if inClassifier == 'RF':
-                            param_grid_rf = dict(n_estimators=3**sp.arange(1,5),max_features=sp.arange(1,4))
+                            param_grid_rf = dict(n_estimators=3**np.arange(1,5),max_features=np.arange(1,4))
                             y.shape=(y.size,)    
                             if model_selection : 
                                 cv = StratifiedKFold(n_splits=3).split(x,y)
@@ -178,7 +186,7 @@ class learnModel(object):
                             model = grid.best_estimator_
                             model.fit(x,y)        
                         elif inClassifier == 'SVM':
-                            param_grid_svm = dict(gamma=2.0**sp.arange(-4,4), C=10.0**sp.arange(-2,5))
+                            param_grid_svm = dict(gamma=2.0**np.arange(-4,4), C=10.0**np.arange(-2,5))
                             y.shape=(y.size,)    
                             if model_selection : 
                                 cv = StratifiedKFold(n_splits=5).split(x,y)
@@ -189,7 +197,7 @@ class learnModel(object):
                             model = grid.best_estimator_
                             model.fit(x,y)
                         elif inClassifier == 'KNN':
-                            param_grid_knn = dict(n_neighbors = sp.arange(1,20,4))
+                            param_grid_knn = dict(n_neighbors = np.arange(1,20,4))
                             y.shape=(y.size,)    
                             if model_selection : 
                                 cv = StratifiedKFold(n_splits=3).split(x,y)
@@ -205,7 +213,9 @@ class learnModel(object):
                 except:
                     QgsMessageLog.logMessage("You must have sklearn dependencies on your computer. Please consult the documentation for installation.")
                 
-            #learningProgress.prgBar.setValue(5) # Add Step to ProgressBar
+            if feedback:
+                feedback.setProgress(int(9* total))
+                
             # Assess the quality of the model
             if SPLIT < 100 :
                 # if  inClassifier == 'GMM':
@@ -214,7 +224,7 @@ class learnModel(object):
                 yp = model.predict(xt)
                 CONF = ai.CONFUSION_MATRIX()
                 CONF.compute_confusion_matrix(yp,yt)
-                sp.savetxt(outMatrix,CONF.confusion_matrix,delimiter=',',fmt='%1.4d')
+                np.savetxt(outMatrix,CONF.confusion_matrix,delimiter=',',fmt='%1.4d')
                 
         
             # Save Tree model
@@ -223,6 +233,8 @@ class learnModel(object):
                 pickle.dump([model,M,m], output)
                 output.close()
             
+            if feedback:
+                feedback.setProgress(int(10* total))
             #learningProgress.addStep() # Add Step to ProgressBar   
             
             # Close progressBar
@@ -245,14 +257,14 @@ class learnModel(object):
                 m: the Min vector
         """
         [n,d]=x.shape
-        if not sp.issubdtype(x.dtype,float):
+        if not np.float64 == x.dtype.type:
             x=x.astype('float')
     
         # Initialization of the output
-        xs = sp.empty_like(x)
+        xs = np.empty_like(x)
     
         # get the parameters of the scaling
-        M,m = sp.amax(x,axis=0),sp.amin(x,axis=0)
+        M,m = np.amax(x,axis=0),np.amin(x,axis=0)
         den = M-m
         for i in range(d):
             if den[i] != 0:
@@ -284,10 +296,11 @@ class classifyImage(object):
     """
             
         
-    def initPredict(self,inRaster,inModel,outRaster,inMask=None,confidenceMap=None,classifier='GMM'):
+    def initPredict(self,inRaster,inModel,outRaster,inMask=None,confidenceMap=None,classifier='GMM',feedback=None):
         
 
         # Load model
+        
         try:
             model = open(inModel,'rb') # TODO: Update to scale the data 
             if model is None:
@@ -308,7 +321,7 @@ class classifyImage(object):
             QgsMessageLog.logMessage("Cannot create temp file "+rasterTemp)
             # Process the data
         #try:
-        predictedImage=self.predict_image(inRaster,outRaster,tree,inMask,confidenceMap,-10000,SCALE=[M,m],classifier=classifier)
+        predictedImage=self.predict_image(inRaster,outRaster,tree,inMask,confidenceMap,0,SCALE=[M,m],classifier=classifier,feedback=feedback)
         #except:
          #   QgsMessageLog.logMessage("Problem while predicting "+inRaster+" in temp"+rasterTemp)
         
@@ -328,15 +341,15 @@ class classifyImage(object):
                 m: the Min vector
         """
         [n,d]=x.shape
-        if not sp.issubdtype(x.dtype,float):
+        if not np.issubdtype(x.dtype,float):
             x=x.astype('float')
     
         # Initialization of the output
-        xs = sp.empty_like(x)
+        xs = np.empty_like(x)
     
         # get the parameters of the scaling
         if M is None:
-            M,m = sp.amax(x,axis=0),sp.amin(x,axis=0)
+            M,m = np.amax(x,axis=0),np.amin(x,axis=0)
             
         den = M-m
         for i in range(d):
@@ -347,7 +360,7 @@ class classifyImage(object):
     
         return xs
         
-    def predict_image(self,inRaster,outRaster,model,inMask=None,confidenceMap=None,NODATA=-10000,SCALE=None,classifier='GMM'):
+    def predict_image(self,inRaster,outRaster,model,inMask=None,confidenceMap=None,NODATA=-10000,SCALE=None,classifier='GMM',feedback=None):
         """!@brief The function classify the whole raster image, using per block image analysis.
         
         The classifier is given in classifier and options in kwargs
@@ -387,7 +400,7 @@ class classifyImage(object):
                 print('Image and mask should be of the same size')
                 exit()   
         if SCALE is not None:
-            M,m=sp.asarray(SCALE[0]),sp.asarray(SCALE[1])
+            M,m=np.asarray(SCALE[0]),np.asarray(SCALE[1])
             
         # Get the size of the image
         d  = raster.RasterCount
@@ -419,10 +432,12 @@ class classifyImage(object):
             out_confidenceMap = dst_confidenceMap.GetRasterBand(1)
         
         ## Perform the classification
-        predictProgress=progressBar('Classifying image...',nl*y_block_size)       
         
+        if feedback:
+            total = nl*y_block_size
+            
         for i in range(0,nl,y_block_size):
-            predictProgress.addStep()
+            feedback.setProgress(int(i* total))
             if i + y_block_size < nl: # Check for size consistency in Y
                 lines = y_block_size
             else:
@@ -434,22 +449,22 @@ class classifyImage(object):
                     cols = nc - j
                            
                 # Load the data and Do the prediction
-                X = sp.empty((cols*lines,d))
+                X = np.empty((cols*lines,d))
                 for ind in range(d):
                     X[:,ind] = raster.GetRasterBand(int(ind+1)).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
                     
                 # Do the prediction
                 if mask is None:
                     mask_temp=raster.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
-                    t = sp.where((mask_temp!=0) & (X[:,0]!=NODATA))[0]
-                    yp = sp.zeros((cols*lines,))
-                    K = sp.zeros((cols*lines,))
+                    t = np.where((mask_temp!=0) & (X[:,0]!=NODATA))[0]
+                    yp = np.zeros((cols*lines,))
+                    K = np.zeros((cols*lines,))
 
                 else :
                     mask_temp=mask.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
-                    t = sp.where((mask_temp!=0) & (X[:,0]!=NODATA))[0]
-                    yp = sp.zeros((cols*lines,))
-                    K = sp.zeros((cols*lines,))
+                    t = np.where((mask_temp!=0) & (X[:,0]!=NODATA))[0]
+                    yp = np.zeros((cols*lines,))
+                    K = np.zeros((cols*lines,))
     
                 # TODO: Change this part accorindgly ...
                 if t.size > 0:
@@ -458,7 +473,7 @@ class classifyImage(object):
                         
                     elif confidenceMap :
                         yp[t] = model.predict(self.scale(X[t,:],M=M,m=m))
-                        K[t] = sp.amax(model.predict_proba(self.scale(X[t,:],M=M,m=m)),axis=1)
+                        K[t] = np.amax(model.predict_proba(self.scale(X[t,:],M=M,m=m)),axis=1)
                         
                     else :
                         yp[t] = model.predict(self.scale(X[t,:],M=M,m=m))                    
@@ -478,7 +493,7 @@ class classifyImage(object):
                 del X,yp
     
         # Clean/Close variables    
-        predictProgress.reset()
+        
         raster = None
         dst_ds = None
         return outRaster
@@ -573,3 +588,16 @@ class confusionMatrix(object):
         
         
         return filename
+
+if __name__ == "__main__":
+    
+    INPUT_RASTER = "/mnt/DATA/demo/map.tif"
+    INPUT_LAYER = "/mnt/DATA/demo/train.shp"
+    INPUT_COLUMN = "Class"
+    OUTPUT_MODEL = "/mnt/DATA/demo"
+    SPLIT_PERCENT=50
+    OUTPUT_MATRIX = '/mnt/DATA/demo/test/matrix.csv'
+    SELECTED_ALGORITHM = 'RF'
+    
+    learnModel(INPUT_RASTER,INPUT_LAYER,INPUT_COLUMN,OUTPUT_MODEL,SPLIT_PERCENT,0,OUTPUT_MATRIX,SELECTED_ALGORITHM)
+    
