@@ -26,7 +26,6 @@ from builtins import str
 
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QCoreApplication
-#from PyQt5.QtWidgets import QMessageBox
 
 from qgis.core import (QgsMessageLog,
                        QgsProcessingAlgorithm,
@@ -37,8 +36,8 @@ from qgis.core import (QgsMessageLog,
                        QgsProcessingParameterVectorDestination)
 
 import os
-
-#from ..scripts import function_vector
+from PyQt5.QtWidgets import QMessageBox
+from ..scripts import function_vector
 pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__),os.pardir))
 
 class splitTrain(QgsProcessingAlgorithm):
@@ -113,22 +112,35 @@ class splitTrain(QgsProcessingAlgorithm):
         
         INPUT_LAYER = self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
         INPUT_COLUMN = self.parameterAsFields(parameters, self.INPUT_COLUMN, context)
-        METHOD = self.parameterAsEnums(parameters,self.INPUT_METHOD,context)
+        METHOD = self.parameterAsEnums(parameters,self.METHOD,context)
         
-        OUTPUT_TRAIN = self.parameterAsVectorOutput(parameters,self.OUTPUT_TRAIN,context)
-        OUTPUT_VALIDATION = self.parameterAsVectorOutput(parameters,self.OUTPUT_VALIDATION,context)
+        OUTPUT_TRAIN = self.parameterAsOutputLayer(parameters,self.OUTPUT_TRAIN,context)
+        OUTPUT_VALIDATION = self.parameterAsOutputLayer(parameters,self.OUTPUT_VALIDATION,context)
         
         VALUE = self.parameterAsInt(parameters,self.VALUE,context)
         # Retrieve algo from code
-        selectedMETHOD  = self.METHOD_VALUES[METHOD]
+        selectedMETHOD  = self.METHOD_VALUES[METHOD[0]]
         
         if selectedMETHOD == 'Percent' :
             percent = True
         else:
             percent = False
+			
+        libOk = True
+        
+        try:
+            import sklearn
+        except:
+            libOk = False
             
-        function_vector.randomInSubset(INPUT_LAYER.source(),str(INPUT_COLUMN[0]),OUTPUT_VALIDATION,OUTPUT_TRAIN,VALUE,percent) 
-        return {'Output train' : str(OUTPUT_TRAIN), 'Output validation' : str(OUTPUT_VALIDATION)}
+        # learn model
+        if libOk:
+            function_vector.randomInSubset(INPUT_LAYER.source(),str(INPUT_COLUMN[0]),OUTPUT_VALIDATION,OUTPUT_TRAIN,VALUE,percent)
+            return {'Output train' : str(OUTPUT_TRAIN), 'Output validation' : str(OUTPUT_VALIDATION)}
+
+        else:
+            QMessageBox(None, "Please install scikit-learn library")
+            QgsMessageLog.logMessage("Please install scikit-learn library") 
 
         
     def tr(self, string):

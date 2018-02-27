@@ -33,7 +33,7 @@ from qgis.core import (QgsMessageLog,
 
 import os
 
-#from ..scripts.mainfunction import classifyImage
+from ..scripts.mainfunction import classifyImage
 
 
 pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__),os.pardir))
@@ -72,8 +72,8 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
                 QgsProcessingParameterRasterLayer(
                 self.INPUT_MASK,
-                self.tr('Mask raster')
-            )   
+                self.tr('Mask raster'),
+                optional=True)   
         )
         
         self.addParameter(
@@ -87,7 +87,8 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.OUTPUT_RASTER,
-                self.tr('Output raster')
+                self.tr('Output raster'),
+				False
             )
         )    
         
@@ -97,12 +98,11 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
         INPUT_MASK = self.parameterAsRasterLayer(parameters, self.INPUT_MASK, context)         
         INPUT_MODEL = self.parameterAsFile(parameters, self.INPUT_MODEL, context)
     
-        OUTPUT_RASTER = self.parameterAsRasterDestination(parameters, self.OUTPUT_RASTER, context)        
+        OUTPUT_RASTER = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)        
         # Retrieve algo from code        
-        
         worker = classifyImage()
         #classify
-        worker.initPredict(INPUT_RASTER.source(),INPUT_MODEL,OUTPUT_RASTER,INPUT_MASK)
+        worker.initPredict(INPUT_RASTER.source(),INPUT_MODEL,OUTPUT_RASTER,INPUT_MASK.source(),feedback=feedback)
 
         return {'Classification' : str(OUTPUT_RASTER)}
 

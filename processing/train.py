@@ -159,10 +159,11 @@ class trainAlgorithm(QgsProcessingAlgorithm):
         # learn model
         if libOk:
             mainfunction.learnModel(INPUT_RASTER.source(),INPUT_LAYER.source(),INPUT_COLUMN[0],OUTPUT_MODEL,SPLIT_PERCENT,0,OUTPUT_MATRIX,SELECTED_ALGORITHM,feedback=feedback)
+            return {'Output matrix' : str(OUTPUT_MATRIX), 'Output model' : str(OUTPUT_MODEL)}
+
         else:
-            QMessageBox.information(None, "Please install scikit-learn library to use:", str(SELECTED_ALGORITHM)) 
-        
-        return {'Output matrix' : str(OUTPUT_MATRIX), 'Output model' : str(OUTPUT_MODEL)}
+            return {'Missing library' : str(OUTPUT_MATRIX)}
+            #QMessageBox.about(None, "Missing library", "Please install scikit-learn library to use"+str(SELECTED_ALGORITHM))        
 
         
     def tr(self, string):
