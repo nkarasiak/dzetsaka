@@ -58,7 +58,7 @@ class dzetsakaProvider(QgsProcessingProvider):
         """
         add icon
         """
-        iconPath = os.path.join(pluginPath,'img','icon.png')
+        iconPath = os.path.join(pluginPath,'icon.png')
 
         return QIcon(os.path.join(iconPath))
 

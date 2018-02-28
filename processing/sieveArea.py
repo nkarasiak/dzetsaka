@@ -45,7 +45,7 @@ class sieveAreaAlgorithm(GeoAlgorithm):
     INPUT_CONNECTIVITY = "INPUT_CONNECTIVITY"
     
     def getIcon(self):
-        return QIcon(":/plugins/dzetsaka/img/icon.png")
+        return QIcon(":/plugins/dzetsaka/icon.png")
         
     def defineCharacteristics(self):
 

@@ -55,7 +55,7 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
     
     def icon(self):
 
-        return QIcon(os.path.join(pluginPath,'img','icon.png'))
+        return QIcon(os.path.join(pluginPath,'icon.png'))
         
     def initAlgorithm(self,config=None):
 

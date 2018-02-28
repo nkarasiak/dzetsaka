@@ -81,9 +81,8 @@ class medianFilterAlgorithm(QgsProcessingAlgorithm):
     MEDIAN_ITER = 'MEDIAN_ITER'
     
     def icon(self):
-        #return QIcon(":/plugins/dzetsaka/img/icon.png")
 
-        return QIcon(os.path.join(pluginPath,'img','icon.png'))
+        return QIcon(os.path.join(pluginPath,'icon.png'))
 
     def initAlgorithm(self, config=None):
         """Here we define the inputs and output of the algorithm, along
