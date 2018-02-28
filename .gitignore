@@ -2,6 +2,5 @@
 *.pyc
 *.py~
 *_filtered*
-*resources.py
-*~
+__pycache__
 
