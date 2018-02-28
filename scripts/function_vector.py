@@ -6,12 +6,8 @@ www.karasiak.net
 import os
 #import random
 from osgeo import ogr
-import scipy as sp
+import numpy as np
 
-try:
-    from sklearn.model_selection import train_test_split
-except:
-    print('Cannot import train_test_split from sklearn')
 
 class randomInSubset():
 
@@ -29,7 +25,7 @@ class randomInSubset():
             
         lyr = ogr.Open(inShape)
         lyr1 = lyr.GetLayer()
-        FIDs= sp.zeros(lyr1.GetFeatureCount(),dtype=int)
+        FIDs= np.zeros(lyr1.GetFeatureCount(),dtype=int)
         Features = []
         #unselFeat = []
         #current = 0
@@ -83,8 +79,8 @@ class randomInSubset():
         ds = None
 
 if __name__ == "__main__":
-    inShape = '/home/nkarasiak/GDrive/TEFOR/Données/ROI/ROI_2154.sqlite'
-    inField = 'level3'
+    inShape = '/mnt/DATA/demo/train.shp'
+    inField = 'Class'
     number = 50
     percent = True
     
