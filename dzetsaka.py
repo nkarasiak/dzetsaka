@@ -54,7 +54,7 @@ class dzetsakaGUI ( QDialog ):
         """
         # Save reference to the QGIS interface
         self.iface = iface
-
+        
         # add Processing loadAlgorithms
         self.provider = dzetsakaProvider()
 
@@ -223,15 +223,14 @@ class dzetsakaGUI ( QDialog ):
         """Removes the plugin menu item and icon from QGIS GUI."""
         # Remove processing algorithms
         QgsApplication.processingRegistry().removeProvider(self.provider)
-        
+
         for action in self.actions:
             self.iface.removePluginMenu(
-                self.tr(u'&pluginNameGUI'),
+                self.tr(u'dzetsaka'),
                 action)
             self.iface.removeToolBarIcon(action)
 
         # Remove dock
-        self.dockwidget.deleteLater()
 
 
         # remove the toolbar
@@ -293,7 +292,7 @@ class dzetsakaGUI ( QDialog ):
             # show the dockwidget
             # TODO: fix to allow choice of dock location
             self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
-            self.dockwidget.show()
+
 
             def onChangedLayer():
                 """!@brief Update columns if vector changes"""
