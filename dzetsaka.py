@@ -221,16 +221,17 @@ class dzetsakaGUI ( QDialog ):
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
+        # Remove processing algorithms
         QgsApplication.processingRegistry().removeProvider(self.provider)
-        #print "** UNLOAD dzetsakaGUI"
-
+        
         for action in self.actions:
             self.iface.removePluginMenu(
                 self.tr(u'&pluginNameGUI'),
                 action)
             self.iface.removeToolBarIcon(action)
 
-        # Remove processing algorithms
+        # Remove dock
+        self.dockwidget.deleteLater()
 
 
         # remove the toolbar
