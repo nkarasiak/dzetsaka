@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
 description=Fast and Easy Classification plugin for Qgis
-version=3.0.1
+version=3.0.2
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -29,8 +29,10 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+	3.0.2
+	  * Add progress bar for GUI
 	3.0.1
-	  * Minor fixes (img)
+	  * Minor fixes (with icons)
 	3.0.0
 	  * First version of dzetsaka for Qgis 3.
 	  * TODO : Progress bar when using UI.

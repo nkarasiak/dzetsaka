@@ -284,7 +284,7 @@ class GMMR(object):
         ## Free memory        
         for model in model_cv:
             del model
-        elf
+        
         del processes,pool,model_cv
 
         return tau[err.argmax()],err

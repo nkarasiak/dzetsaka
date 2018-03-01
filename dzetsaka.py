@@ -54,7 +54,7 @@ class dzetsakaGUI ( QDialog ):
         """
         # Save reference to the QGIS interface
         self.iface = iface
-        
+
         # add Processing loadAlgorithms
         self.provider = dzetsakaProvider()
 
@@ -83,16 +83,19 @@ class dzetsakaGUI ( QDialog ):
 
         # Declare instance attributes
         self.actions = []
-        self.menu = self.tr(u'&dzetsaka')
+        self.menu = self.tr(u'&dzetsakaGUI')
         # TODO: We are going to let the user set this up in a future iteration
-        self.toolbar = self.iface.addToolBar(u'dzetsaka')
-        self.toolbar.setObjectName(u'dzetsaka')
+        self.toolbar = self.iface.addToolBar(u'dzetsakaGUI')
+        self.toolbar.setObjectName(u'dzetsakaGUI')
 
         self.pluginIsActive = False
         self.dockwidget = None
 
         # param
         self.lastSaveDir = ''
+
+        # run dock
+        #self.run()
 
     def rememberLastSaveDir(self,fileName):
         """!@brief Remember last saved dir when saving or loading file"""
@@ -206,7 +209,6 @@ class dzetsakaGUI ( QDialog ):
         """Cleanup necessary items here when plugin dockwidget is closed"""
 
         #print "** CLOSING dzetsakaGUI"
-
         # disconnects
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
 
@@ -221,17 +223,20 @@ class dzetsakaGUI ( QDialog ):
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
+
+        # close dock
+        self.pluginIsActive = False
+        if self.dockwidget is not None:
+             self.dockwidget.close()
+
         # Remove processing algorithms
         QgsApplication.processingRegistry().removeProvider(self.provider)
 
         for action in self.actions:
             self.iface.removePluginMenu(
-                self.tr(u'dzetsaka'),
+                self.tr(u'&dzetsakaGUI'),
                 action)
             self.iface.removeToolBarIcon(action)
-
-        # Remove dock
-
 
         # remove the toolbar
         del self.toolbar
@@ -242,7 +247,7 @@ class dzetsakaGUI ( QDialog ):
     def run(self):
         """Run method that loads and starts the plugin"""
 
-        if not self.pluginIsActive:
+        if not self.pluginIsActive or self.dockwidget is None :
             self.pluginIsActive = True
 
             #print "** STARTING dzetsakaGUI"
@@ -254,12 +259,9 @@ class dzetsakaGUI ( QDialog ):
                 # Create the dockwidget (after translation) and keep reference
                 self.dockwidget = ui.dzetsakaDockWidget()
 
-
-
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
 
-            self.pluginIsActive
             from qgis.core import QgsProviderRegistry
             exceptRaster = QgsProviderRegistry.instance().providerList()
             exceptRaster.remove('gdal')
@@ -292,6 +294,7 @@ class dzetsakaGUI ( QDialog ):
             # show the dockwidget
             # TODO: fix to allow choice of dock location
             self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
+            self.dockwidget.show()
 
 
             def onChangedLayer():
@@ -371,13 +374,6 @@ class dzetsakaGUI ( QDialog ):
                     self.filters_dock.outRaster.setText(fileName+'.tif')
             else:
                 self.filters_dock.outRaster.setText(fileName+fileExtension)
-
-
-    def loadMenu(self):
-        # Settings
-        self.menu.settings = QAction(QIcon(":/plugins/dzetsaka/img/settings.png"), "Settings", self.iface.mainWindow())
-        QObject.connect(self.menu.settings, SIGNAL("triggered()"), self.loadSettings)
-        self.menu.addAction(self.menu.settings)
 
 
     def loadConfig(self):
@@ -544,10 +540,6 @@ class dzetsakaGUI ( QDialog ):
                 confidenceMap = self.dockwidget.outConfidenceMap.text()
             else :
                 confidenceMap = None
-                QgsMessageLog.logMessage('confidenceMap to None')
-
-
-
 
             # Get Classifier
             # retrieve shortname classifier
@@ -582,7 +574,7 @@ class dzetsakaGUI ( QDialog ):
                     QgsMessageLog.logMessage('Begin training with '+inClassifier+ ' classifier')
 
                     # perform learning
-                    temp=mainfunction.learnModel(inRaster,inShape,inField,model,inSplit,inSeed,outMatrix,inClassifier)
+                    temp=mainfunction.learnModel(inRaster,inShape,inField,model,inSplit,inSeed,outMatrix,inClassifier,feedback='gui')
 
                     QgsMessageLog.logMessage('Begin classification with '+str(inClassifier))
                     temp=mainfunction.classifyImage()

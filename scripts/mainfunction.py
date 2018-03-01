@@ -29,6 +29,7 @@ import os
 from . import accuracy_index as ai
 import tempfile
 from . import gmm_ridge as gmmr
+from . import progressBar as pB
 import numpy as np
 
 from osgeo import (gdal, ogr)
@@ -55,15 +56,11 @@ class learnModel(object):
 
     """
     def __init__(self,inRaster,inVector,inField='Class',outModel=None,inSplit=1,inSeed=0,outMatrix=None,inClassifier='GMM',feedback=None):
-
-
-        #learningProgress=progressBar('Learning model...',6)
-
         # Convert vector to raster
-        if feedback:
+        if feedback=='gui':
+            learningProgress = pB.progressBar('Learning model...',6)
+        elif feedback:
             total = 100/10
-
-
         try:
             temp_folder = tempfile.mkdtemp()
             filename = os.path.join(temp_folder, 'temp.tif')
@@ -104,9 +101,10 @@ class learnModel(object):
         # Scale the data
         X,M,m = self.scale(X)
 
-        if feedback:
+        if feedback=='gui':
+            learningProgress.addStep() # Add Step to ProgressBar
+        elif feedback:
             feedback.setProgress(int(1* total))
-        #learningProgress.addStep() # Add Step to ProgressBar
 
         # Learning process take split of groundthruth pixels for training and the remaining for testing
 
@@ -136,7 +134,10 @@ class learnModel(object):
         except:
             QgsMessageLog.logMessage("Problem while learning if SPLIT <1")
 
-        if feedback:
+
+        if feedback == 'gui':
+            learningProgress.addStep() # Add Step to ProgressBar
+        elif feedback:
             feedback.setProgress(int(2* total))
         #learningProgress.addStep() # Add Step to ProgressBar
         # Train Classifier
@@ -215,7 +216,10 @@ class learnModel(object):
             except:
                 QgsMessageLog.logMessage("You must have sklearn dependencies on your computer. Please consult the documentation for installation.")
 
-        if feedback:
+
+        if feedback == 'gui':
+            learningProgress.addStep() # Add Step to ProgressBar
+        elif feedback:
             feedback.setProgress(int(9* total))
 
         # Assess the quality of the model
@@ -235,13 +239,13 @@ class learnModel(object):
             pickle.dump([model,M,m,inClassifier], output)
             output.close()
 
-        if feedback:
-            feedback.setProgress(int(10* total))
-        #learningProgress.addStep() # Add Step to ProgressBar
 
-        # Close progressBar
-        #learningProgress.reset()
-        #learningProgress=None
+        if feedback == 'gui':
+            learningProgress.addStep() # Add Step to ProgressBar
+            learningProgress.reset()
+            learningProgress=None
+        elif feedback:
+            feedback.setProgress(int(10* total))
 
     def scale(self,x,M=None,m=None):
         """!@brief Function that standardize the data.
@@ -432,12 +436,18 @@ class classifyImage(object):
 
         ## Perform the classification
 
-        if feedback:
-            total = nl*y_block_size
+        total = nl*y_block_size
+        if feedback=='gui':
+            predictProgress = pB.progressBar('Predicting model...',total)
+
 
         for i in range(0,nl,y_block_size):
-            if feedback:
+
+            if feedback=='gui':
+                predictProgress.addStep()
+            elif feedback:
                 feedback.setProgress(int(i* total))
+
             if i + y_block_size < nl: # Check for size consistency in Y
                 lines = y_block_size
             else:
@@ -495,60 +505,15 @@ class classifyImage(object):
                 del X,yp
 
         # Clean/Close variables
+        if feedback=='gui':
+            predictProgress.reset()
 
         raster = None
         dst_ds = None
         return outRaster
 
 
-# =============================================================================
-# class progressBar(object):
-#     """!@brief Manage progressBar and loading cursor.
-#     Allow to add a progressBar in Qgis and to change cursor to loading
-#     input:
-#         -inMsg : Message to show to the user (str)
-#         -inMax : The steps of the script (int)
-#
-#     output:
-#         nothing but changing cursor and print progressBar inside Qgis
-#     """
-#     def __init__(self,inMsg=' Loading...',inMaxStep=1):
-#             # initialize progressBar
-#             """
-#             """# Save reference to the QGIS interface
-#             QApplication.processEvents() # Help to keep UI alive
-#
-#             widget = iface.messageBar().createMessage('Please wait  ',inMsg)
-#             prgBar = QProgressBar()
-#             self.prgBar=prgBar
-#             self.iface=iface
-#
-#             widget.layout().addWidget(self.prgBar)
-#             iface.messageBar().pushWidget(widget, iface.messageBar().WARNING)
-#             QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-#
-#             # if Max 0 and value 0, no progressBar, only cursor loading
-#             # default is set to 0
-#             prgBar.setValue(1)
-#             # set Maximum for progressBar
-#             prgBar.setMaximum(inMaxStep)
-#
-#     def addStep(self,step=1):
-#         """!@brief Add a step to the progressBar
-#         addStep() simply add +1 to current value of the progressBar
-#         addStep(3) will add 3 steps
-#         """
-#         plusOne=self.prgBar.value()+step
-#         self.prgBar.setValue(plusOne)
-#     def reset(self):
-#         """!@brief Simply remove progressBar and reset cursor
-#
-#         """
-#         # Remove progressBar and back to default cursor
-#         self.iface.messageBar().clearWidgets()
-#         self.iface.mapCanvas().refresh()
-#         QApplication.restoreOverrideCursor()
-# =============================================================================
+
 
 class confusionMatrix(object):
 
