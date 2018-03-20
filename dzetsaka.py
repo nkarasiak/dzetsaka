@@ -444,7 +444,6 @@ class dzetsakaGUI ( QDialog ):
         """
         VERIFICATION STEP
         """
-
         #verif before doing the job
         message=' '
 
@@ -511,10 +510,16 @@ class dzetsakaGUI ( QDialog ):
         """ END OF VERIFICATION STEP """
 
         if message != ' ':
-            QMessageBox.warning(None, 'Information missing or invalid', message, QMessageBox.Ok)
+            
+            reply = QMessageBox.question(self.iface.mainWindow(), 'Informations missing or invalid', 
+                 message+'\n Would you like to continue anyway ?',QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+            if reply == QMessageBox.Yes :
+                message = ' '
+                
 
         # all is ok, so do the job !
-        else:
+        if message == ' ':
             # get config
             self.loadConfig()
             # Get model if given
@@ -547,10 +552,13 @@ class dzetsakaGUI ( QDialog ):
             for i, cls in enumerate(self.classifiers):
                 if self.classifier == cls:
                     inClassifier=classifierShortName[i]
+            
             # Check if model, else perform training
-
+            NODATA = -10000
+            
             if model != '':
                 model=self.dockwidget.inModel.text()
+                
 
             # Perform training & classification
             else:
@@ -574,28 +582,28 @@ class dzetsakaGUI ( QDialog ):
                     QgsMessageLog.logMessage('Begin training with '+inClassifier+ ' classifier')
 
                     # perform learning
+                    
                     temp=mainfunction.learnModel(inRaster,inShape,inField,model,inSplit,inSeed,outMatrix,inClassifier,feedback='gui')
 
-                    QgsMessageLog.logMessage('Begin classification with '+str(inClassifier))
-                    temp=mainfunction.classifyImage()
-
-                    NODATA=-10000
-
-                    temp.initPredict(inRaster,model,outRaster,inMask,confidenceMap,NODATA)
-                    QgsMessageLog.logMessage('Classification done.')
-                    self.iface.addRasterLayer(outRaster)
-
-                    if confidenceMap :
-                        self.iface.addRasterLayer(confidenceMap)
 
                 except:
                     message = ('Something went wrong during the training. Please make sure you respect these conditions : <br> - Are you sure to have only integer values in your '+str(inField)+' column ? <br> - Do your shapefile and raster have the same projection ?')
                     QMessageBox.warning(self, 'dzetsaka has encountered a problem', message, QMessageBox.Ok)
+            
+            # Begin classification
+            QgsMessageLog.logMessage('Begin classification with '+str(inClassifier))
+            temp=mainfunction.classifyImage()
+
+            temp.initPredict(inRaster,model,outRaster,inMask,confidenceMap,NODATA)
+            QgsMessageLog.logMessage('Classification done.')
+            self.iface.addRasterLayer(outRaster)
+
+            if confidenceMap :
+                self.iface.addRasterLayer(confidenceMap)
 
     def checkbox_state(self):
         """!@brief Manage checkbox in main dock"""
 
-        QgsMessageLog.logMessage('checkbox state!')
         sender=self.sender()
 
         # If load model

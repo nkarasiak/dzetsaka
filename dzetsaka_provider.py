@@ -38,6 +38,7 @@ from .processing.medianFilter import medianFilterAlgorithm
 from .processing.train import trainAlgorithm
 from .processing.classify import classifyAlgorithm
 from .processing.splitTrainValidation import splitTrain
+from .processing.shannonEntropy import shannonAlgorithm
 
 pluginPath = os.path.dirname(__file__)
 
@@ -52,7 +53,7 @@ class dzetsakaProvider(QgsProcessingProvider):
         QgsProcessingProvider.__init__(self)
 
         # Load algorithms
-        self.alglist = [medianFilterAlgorithm(),trainAlgorithm(),classifyAlgorithm(),splitTrain()]#,classifyAlgorithm(),splitTrain()]
+        self.alglist = [medianFilterAlgorithm(),trainAlgorithm(),classifyAlgorithm(),splitTrain(),shannonAlgorithm()]#,classifyAlgorithm(),splitTrain()]
 
     def icon(self):
         """
