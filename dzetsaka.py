@@ -1021,10 +1021,15 @@ class dzetsaka ( QDialog ):
         """ END OF VERIFICATION STEP """
         
         if message != ' ':
-            QtGui.QMessageBox.warning(self, 'Information missing or invalid', message, QtGui.QMessageBox.Ok)
+            reply = QMessageBox.question(self.iface.mainWindow(), 'Errors?', 
+                 message+'\n Do you like to continue anyway ?', QMessageBox.Yes, QMessageBox.No)
+                 
+                
+            #QtGui.QMessageBox.warning(self, 'Information missing or invalid', message, QtGui.QMessageBox.Ok)
         
         # all is ok, so do the job !
-        else:
+        if message != '' and reply == QtGui.QMessageBox.Yes or message == ' ':
+        #else:
             # get config 
             self.loadConfig()
             # Get model if given
@@ -1067,21 +1072,22 @@ class dzetsaka ( QDialog ):
                 model=self.dockwidget.inModel.text()
                             
             # Perform training & classification
+        
             else:
-               
                 try:
-                        
+                    
+                    
                     if self.dockwidget.outModel.text()=='':
                         model=tempfile.mktemp('.'+str(model))
                     else:
                         model=self.dockwidget.outModel.text()
                     
-#==============================================================================
-#                     inShape = self.dockwidget.inShape.currentLayer()
-#                     # Remove layerid=0 from SHP Path
-#                     inShape=inShape.dataProvider().dataSourceUri().split('|')[0]
-#                     
-#==============================================================================
+    #==============================================================================
+    #                     inShape = self.dockwidget.inShape.currentLayer()
+    #                     # Remove layerid=0 from SHP Path
+    #                     inShape=inShape.dataProvider().dataSourceUri().split('|')[0]
+    #                     
+    #==============================================================================
                     inField = self.dockwidget.inField.currentText()
                     
                     inSeed = 0
@@ -1096,19 +1102,19 @@ class dzetsaka ( QDialog ):
                     QgsMessageLog.logMessage('Begin training with '+inClassifier+ ' classifier')
                     # perform learning
                     temp=mainfunction.learnModel(inRaster,inShape,inField,model,inSplit,inSeed,outMatrix,inClassifier)
-                
-                
-                    QgsMessageLog.logMessage('Begin classification with '+str(inClassifier))
-                    temp=mainfunction.classifyImage()
-                    temp.initPredict(inRaster,model,outRaster,inMask,confidenceMap,inClassifier)
-                    QgsMessageLog.logMessage('Classification done.')
-                    self.iface.addRasterLayer(outRaster)
                     
-                    if confidenceMap :
-                        self.iface.addRasterLayer(confidenceMap)
-
                 except:
                     message = ('Something went wrong during the training. Please make sure you respect these conditions : <br> - Are you sure to have only integer values in your '+str(inField)+' column ? <br> - Do your shapefile and raster have the same projection ?')
                     QtGui.QMessageBox.warning(self, 'dzetsaka has encountered a problem', message, QtGui.QMessageBox.Ok)
+                
+            QgsMessageLog.logMessage('Begin classification with '+str(inClassifier))
+            temp=mainfunction.classifyImage()
+            temp.initPredict(inRaster,model,outRaster,inMask,confidenceMap,inClassifier)
+            QgsMessageLog.logMessage('Classification done.')
+            self.iface.addRasterLayer(outRaster)
+                    
+            if confidenceMap :
+                self.iface.addRasterLayer(confidenceMap)
+    
        
           
