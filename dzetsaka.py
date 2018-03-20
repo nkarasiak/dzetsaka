@@ -1022,13 +1022,14 @@ class dzetsaka ( QDialog ):
         
         if message != ' ':
             reply = QMessageBox.question(self.iface.mainWindow(), 'Errors?', 
-                 message+'\n Do you like to continue anyway ?', QMessageBox.Yes, QMessageBox.No)
-                 
-                
+                 message+'\n Would you like to continue anyway ?', QMessageBox.Yes, QMessageBox.No)
+            
+            if reply == QtGui.QMessageBox.Yes :
+                message = ' '
             #QtGui.QMessageBox.warning(self, 'Information missing or invalid', message, QtGui.QMessageBox.Ok)
         
         # all is ok, so do the job !
-        if message != '' and reply == QtGui.QMessageBox.Yes or message == ' ':
+        if message == ' ':
         #else:
             # get config 
             self.loadConfig()
