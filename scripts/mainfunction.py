@@ -246,7 +246,7 @@ class learnModel():
                 m: the Min vector
         """
         [n,d]=x.shape
-        if not sp.issubdtype(x.dtype,float):
+        if not sp.float64 == x.dtype.type:
             x=x.astype('float')
     
         # Initialization of the output
@@ -328,7 +328,7 @@ class classifyImage():
                 m: the Min vector
         """
         [n,d]=x.shape
-        if not sp.issubdtype(x.dtype,float):
+        if not sp.float64 == x.dtype.type:
             x=x.astype('float')
     
         # Initialization of the output
