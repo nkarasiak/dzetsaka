@@ -1,26 +1,31 @@
 # -*- coding: utf-8 -*-
 
 """
-/***************************************************************************
- className
-                                 A QGIS plugin
- description
-                              -------------------
-        begin                : 2016-12-03
-        copyright            : (C) 2016 by Nico
-        email                : nico@nico
- ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
-"""
-
+# TO PUT ON PYTHON 3
+##
+##
+#
+# TO PUT ON PYTHON 3
+##
+##
+# TO PUT ON PYTHON 3
+##
+##
+# TO PUT ON PYTHON 3
+##
+##
+# TO PUT ON PYTHON 3
+##
+##
+# TO PUT ON PYTHON 3
+##
+##
+# TO PUT ON PYTHON 3
+##
+##
+# TO PUT ON PYTHON 3
+##
+##
 
 from builtins import str
 from builtins import range
@@ -134,6 +139,6 @@ class sieveAreaAlgorithm(GeoAlgorithm):
         
         
         
-        
+        """
 
         

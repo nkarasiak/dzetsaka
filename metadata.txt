@@ -42,7 +42,7 @@ changelog=
 	  * TODO : Historical Map algorithms
 
 # Tags are comma separated with spaces allowed
-tags=classification,semi-automatic,gaussian,mixture,model,random forest,svm,knn,forest
+tags=classification,semi-automatic,gaussian,mixture,model,random forest,svm,knn,forest,processing
 
 homepage=http://www.github.com/lennepkade/dzetsaka
 category=Raster

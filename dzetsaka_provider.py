@@ -39,6 +39,9 @@ from .processing.train import trainAlgorithm
 from .processing.classify import classifyAlgorithm
 from .processing.splitTrainValidation import splitTrain
 from .processing.shannonEntropy import shannonAlgorithm
+from .processing.resampleImageSameDate import resampleImageSameDateAsSource
+from .processing.domainAdaptation import domainAdaptation
+from .processing.learnWithSpatialSampling import learnWithSpatialSampling
 
 pluginPath = os.path.dirname(__file__)
 
@@ -53,7 +56,8 @@ class dzetsakaProvider(QgsProcessingProvider):
         QgsProcessingProvider.__init__(self)
 
         # Load algorithms
-        self.alglist = [medianFilterAlgorithm(),trainAlgorithm(),classifyAlgorithm(),splitTrain(),shannonAlgorithm()]#,classifyAlgorithm(),splitTrain()]
+        self.alglist = [medianFilterAlgorithm(),trainAlgorithm(),classifyAlgorithm(),splitTrain(),\
+                        shannonAlgorithm(),resampleImageSameDateAsSource(),domainAdaptation(),learnWithSpatialSampling()]#,classifyAlgorithm(),splitTrain()]
 
     def icon(self):
         """

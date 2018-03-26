@@ -44,13 +44,12 @@ from qgis.core import (QgsMessageLog,
                        QgsProcessingAlgorithm,
                        QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterNumber,
+                       QgsProcessingParameterFile,
                        QgsProcessingParameterRasterDestination,
                        QgsRasterLayer)
 import os
-import gdal
-from ..scripts import function_dataraster as dataraster
-import numpy as np
-import math
+#from ..scripts import function_dataraster as dataraster
+from ..scripts.resampleSameDateAsSource import resampleWithSameDateAsSource
 
 pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__),os.pardir))
 ### EX
@@ -61,7 +60,7 @@ from processing.core.parameters import ParameterNumber
 from processing.core.outputs import OutputRaster
 """
 
-class shannonAlgorithm(QgsProcessingAlgorithm):
+class resampleImageSameDateAsSource(QgsProcessingAlgorithm):
     """This is an example algorithm that takes a vector layer and
     creates a new one just with just those features of the input
     layer that are selected.
@@ -78,10 +77,15 @@ class shannonAlgorithm(QgsProcessingAlgorithm):
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
 
-    INPUT_RASTER = 'INPUT_RASTER'
+    SOURCE_RASTER = 'SOURCE_RASTER'
+    TARGET_RASTER = 'TARGET_RASTER'
     OUTPUT_RASTER = 'OUTPUT_RASTER'
 
-
+    TARGET_DATES = 'TARGET_DATES'
+    SOURCE_DATES = 'SOURCE_DATES'
+    
+    N_SPECTRAL_BAND = 'N_SPECTRAL_BAND'
+    
     def icon(self):
 
         return QIcon(os.path.join(pluginPath,'icon.png'))
@@ -90,14 +94,21 @@ class shannonAlgorithm(QgsProcessingAlgorithm):
         """Here we define the inputs and output of the algorithm, along
         with some other properties.
         """
-
+        
         # We add the input vector layer. It can have any kind of geometry
         # It is a mandatory (not optional) one, hence the False argument
         self.addParameter(
                 QgsProcessingParameterRasterLayer(
-                self.INPUT_RASTER,
-                self.tr('Input raster')
-            )
+                self.SOURCE_RASTER,
+                self.tr('Source raster')
+            )   
+        )
+                
+        self.addParameter(
+                QgsProcessingParameterRasterLayer(
+                self.TARGET_RASTER,
+                self.tr('Target raster')
+            )   
         )
 
         # We add a raster as output
@@ -106,10 +117,33 @@ class shannonAlgorithm(QgsProcessingAlgorithm):
                 self.OUTPUT_RASTER,
                 self.tr('Output raster')
             )
+        )    
+        
+        self.addParameter(
+                QgsProcessingParameterFile(
+                self.SOURCE_DATES,
+                self.tr('Source dates (csv)'),
+                extension='csv'
+            )   
         )
+        
+        self.addParameter(
+                QgsProcessingParameterFile(
+                self.TARGET_DATES,
+                self.tr('Target dates (csv)'),
+                extension='csv'
+            )   
+        )
+        
+        self.addParameter(
+        QgsProcessingParameterNumber(
+            self.N_SPECTRAL_BAND,
+            self.tr('Number of spectral bands in your SITS (e.g. 4 if B,R,G,IR)'),
+            type=QgsProcessingParameterNumber.Integer,
+            defaultValue=4,
+            minValue=1))
+
         # add num
-
-
 
     def name(self):
         """
@@ -119,57 +153,53 @@ class shannonAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Shannon entropy'
+        return 'Resample SITS dates'
 
     def processAlgorithm(self, parameters,context,feedback):
         """Here is where the processing itself takes place."""
 
-        INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
-        #INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
+        SOURCE_RASTER = self.parameterAsRasterLayer(parameters, self.SOURCE_RASTER, context)
+        TARGET_RASTER = self.parameterAsRasterLayer(parameters, self.TARGET_RASTER, context)
+        
+        N_SPECTRAL_BAND = self.parameterAsInt(parameters,self.N_SPECTRAL_BAND,context)
+        
+        SOURCE_DATES = self.parameterAsFile(parameters, self.SOURCE_DATES, context)
+        TARGET_DATES = self.parameterAsFile(parameters, self.TARGET_DATES, context)
+        
         OUTPUT_RASTER = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
 
-        """
-        MEDIAN_ITER = self.parameterAsInt(parameters, self.MEDIAN_ITER, context)
-        MEDIAN_SIZE = self.parameterAsInt(parameters, self.MEDIAN_SIZE, context)
-        # First we create the output layer. The output value entered by
-        # the user is a string containing a filename, so we can use it
-        # directly
+        SOURCE_RASTER_src = SOURCE_RASTER.source()
+        TARGET_RASTER_src = TARGET_RASTER.source()
+                       
+        libOk = True
+        libErrors = []
+        commandBashToTest = ['otbcli_BandMath','gdalbuildvrt']
+        for command in commandBashToTest:    
+            if os.system(command) != 256 :
+                libOk = False
+                libErrors.append(command)
+            
+        # learn model
+        if libOk:
+            resampleWithSameDateAsSource(SOURCE_RASTER_src,TARGET_RASTER_src,SOURCE_DATES,TARGET_DATES,N_SPECTRAL_BAND,OUTPUT_RASTER,feedback)
+            return {'Resampled image' : str(OUTPUT_RASTER)}
 
-        #from scipy import ndimage
-        #import gdal
-        """
-        INPUT_RASTER_src = INPUT_RASTER.source()
+        else:
+            return {'Missing library' : 'Error importing {}'.format(libErrors)}
+            #QMessageBox.about(None, "Missing library", "Please install scikit-learn library to use"+str(SELECTED_ALGORITHM))        
 
-        #feedback.pushInfo(str(OUTPUT_RASTER))
-        #QgsMessageLog.logMessage('output is: '+str(OUTPUT_RASTER))
-
-
-        #on importe l'image
-        im=openRaster(INPUT_RASTER_src)
-        #on crée notre image à 6 bandes
-        im2=calcul_shannon(im)
-
-        #data pour l'écriture
-        data = gdal.Open(INPUT_RASTER_src)
-        GeoTransform = data.GetGeoTransform()
-        Projection = data.GetProjection()
-
-        #on l'enregistre
-
-        saveRaster(OUTPUT_RASTER,im2,GeoTransform,Projection)
+           
 
 
-        return {str(OUTPUT_RASTER) : str(OUTPUT_RASTER)}
-
-
+       
         #return OUTPUT_RASTER
-
+        
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return shannonAlgorithm()
-
+        return resampleImageSameDateAsSource()
+    
     def displayName(self):
         """
         Returns the translated algorithm name, which should be used for any
@@ -192,108 +222,3 @@ class shannonAlgorithm(QgsProcessingAlgorithm):
         formatting characters.
         """
         return 'Raster tool'
-
-
-
-def calcul_shannon(image):
-    """
-    The function will set all the first three bands, corresponding to the fractions, to sum unity.
-    INPUT image : Image tableau scipy à 13bandes
-    OUTPUT resultat : Image tableau scipy à 6 bandes avec
-        bande 1: première valeur maximale max1
-        bande 2: deuxième valeur maximale max2
-        bande 3: troisième valeur maximale max3
-        bande 4: catégorie (espèce) correspondante à la valeur max1
-        bande 5: catégorie (espèce) correspondante à la valeur max2
-        bande 6: catégorie (espèce) correspondante à la valeur max3
-    """
-    #on recupère les dimensions de notre image : (4036, 4531, 13)
-    shape=np.shape(image);
-    #on cree notre tableau pour stocker la sortie
-    outputShape=(shape[0],shape[1],1);
-    dimX=outputShape[0];
-    dimY=outputShape[1];
-    nbBandes=shape[2];
-    resultat=np.zeros(outputShape);
-
-    #boucle pour retrouver chaque pixel:
-    for i in range(0,dimX):
-        for j in range(0,dimY):
-            #on est dans un pixel de coordonnees (i,j), array taille 13: image[i,j,:]
-
-            shannon = float(0);
-
-
-            for k in range(0,nbBandes): #de 0 à 13
-                if(image[i,j,k] != 0) : # on stocke max_i
-                     shannon = shannon + image[i,j,k]*math.log(image[i,j,k],2);
-
-            resultat[i,j,0]=-shannon;
-
-    return resultat;
-
-
-def openRaster(filepath):
-    """
-    The function is an adaptation of the rasterTool.py provided
-    It opens the raster located in the given input
-    INPUT filepath : adress of the .tiff file à traiter
-    OUTPUT im : Image tableau scipy contenant les 13 bandes de l'image
-    """
-    # Open the file:
-    data = gdal.Open(filepath);
-    nc = data.RasterXSize;
-    nl = data.RasterYSize;
-    d  = data.RasterCount;
-
-
-    #chech dataType
-    gdal_dt = data.GetRasterBand(1).DataType;
-
-
-    # on met dans un tableau nos 13 bandes
-    print(type(data));
-
-
-    im = np.empty((nl,nc,d),dtype=np.float32);
-    for i in range(d):
-        im[:,:,i]=data.GetRasterBand(i+1).ReadAsArray();
-
-    # Close the file
-    data = None;
-    #On retourne l'image résultante
-    return im;
-
-
-def saveRaster(nomSortie, image, GeoTransform, Projection) :
-    """
-    The function saves the resultant image in the hard disk. Adaptation de write_data sous rasterTool.py
-    INPUT   image : tableau recalculé à 6 bandes.
-            GeoTransform,Projection : informations from original image
-    """
-    nl,nc,d=np.shape(image);
-    #ou image.shape; ?
-
-    #we create an empty image in GeoTiff
-    driver = gdal.GetDriverByName('GTiff')
-
-    dt = image.dtype.name;
-    if(dt == 'float64') :
-        gdal_dt = gdal.GDT_Float64;
-    else :
-        print("Erreur de type de données");
-        print(dt);
-        exit();
-
-    #blehbleh . "on récupére l'image dans le tableau outname avec ses différents bandes et
-    #les métadonnées et la projection données en paramétre de la fonction"
-    dst_ds = driver.Create(nomSortie,nc,nl,d,gdal_dt);
-    dst_ds.SetGeoTransform(GeoTransform);
-    dst_ds.SetProjection(Projection);
-
-    for i in range(d):
-        out = dst_ds.GetRasterBand(i+1);
-        out.WriteArray(image[:,:,i]); #on affecte l'image dans le fichier enregistré
-        out.FlushCache();
-
-    dst_ds = None;

@@ -84,25 +84,7 @@ def open_data_band(filename):
     
     # Get the type of the data
     gdal_dt = data.GetRasterBand(1).DataType
-    if gdal_dt == gdal.GDT_Byte:
-        dt = 'uint8'
-    elif gdal_dt == gdal.GDT_Int16:
-        dt = 'int16'
-    elif gdal_dt == gdal.GDT_UInt16:
-        dt = 'uint16'
-    elif gdal_dt == gdal.GDT_Int32:
-        dt = 'int32'
-    elif gdal_dt == gdal.GDT_UInt32:
-        dt = 'uint32'
-    elif gdal_dt == gdal.GDT_Float32:
-        dt = 'float32'
-    elif gdal_dt == gdal.GDT_Float64:
-        dt = 'float64'
-    elif gdal_dt == gdal.GDT_CInt16 or gdal_dt == gdal.GDT_CInt32 or gdal_dt == gdal.GDT_CFloat32 or gdal_dt == gdal.GDT_CFloat64 :
-        dt = 'complex64'
-    else:
-        print('Data type unkown')
-        #exit()
+    dt = getDTfromGDAL(gdal_dt)
     
     # Initialize the array
     im = sp.empty((nl,nc),dtype=dt) 
@@ -140,25 +122,7 @@ def write_data(outname,im,GeoTransform,Projection):
     driver = gdal.GetDriverByName('GTiff')
     dt = im.dtype.name
     # Get the data type
-    if dt == 'bool' or dt == 'uint8':
-        gdal_dt=gdal.GDT_Byte
-    elif dt == 'int8' or dt == 'int16':
-        gdal_dt=gdal.GDT_Int16
-    elif dt == 'uint16':
-        gdal_dt=gdal.GDT_UInt16
-    elif dt == 'int32':
-        gdal_dt=gdal.GDT_Int32
-    elif dt == 'uint32':
-        gdal_dt=gdal.GDT_UInt32
-    elif dt == 'int64' or dt == 'uint64' or dt == 'float16' or dt == 'float32':
-        gdal_dt=gdal.GDT_Float32
-    elif dt == 'float64':
-        gdal_dt=gdal.GDT_Float64
-    elif dt == 'complex64':
-        gdal_dt=gdal.GDT_CFloat64
-    else:
-        print('Data type non-suported')
-        #exit()
+    gdal_dt = getGDALGDT(dt)
     
     dst_ds = driver.Create(outname,nc,nl, d, gdal_dt)
     dst_ds.SetGeoTransform(GeoTransform)
@@ -192,25 +156,7 @@ def create_empty_tiff(outname,im,d,GeoTransform,Projection):
     driver = gdal.GetDriverByName('GTiff')
     dt = im.dtype.name
     # Get the data type
-    if dt == 'bool' or dt == 'uint8':
-        gdal_dt=gdal.GDT_Byte
-    elif dt == 'int8' or dt == 'int16':
-        gdal_dt=gdal.GDT_Int16
-    elif dt == 'uint16':
-        gdal_dt=gdal.GDT_UInt16
-    elif dt == 'int32':
-        gdal_dt=gdal.GDT_Int32
-    elif dt == 'uint32':
-        gdal_dt=gdal.GDT_UInt32
-    elif dt == 'int64' or dt == 'uint64' or dt == 'float16' or dt == 'float32':
-        gdal_dt=gdal.GDT_Float32
-    elif dt == 'float64':
-        gdal_dt=gdal.GDT_Float64
-    elif dt == 'complex64':
-        gdal_dt=gdal.GDT_CFloat64
-    else:
-        print('Data type non-suported')
-        #exit()
+    gdal_dt = getGDALGDT(dt)
     
     dst_ds = driver.Create(outname,nc,nl, d, gdal_dt)
     dst_ds.SetGeoTransform(GeoTransform)
@@ -314,6 +260,75 @@ def get_samples_from_roi(raster_name,roi_name):
 
     return X,Y
 
+def getDTfromGDAL(gdal_dt):
+    """
+    Returns datatype (numpy/scipy) from gdal_dt.
+    
+    Parameters
+    ----------
+    gdal_dt : datatype
+        data.GetRasterBand(1).DataType
+    
+    Return
+    ----------
+    dt : datatype
+    """
+    if gdal_dt == gdal.GDT_Byte:
+        dt = 'uint8'
+    elif gdal_dt == gdal.GDT_Int16:
+        dt = 'int16'
+    elif gdal_dt == gdal.GDT_UInt16:
+        dt = 'uint16'
+    elif gdal_dt == gdal.GDT_Int32:
+        dt = 'int32'
+    elif gdal_dt == gdal.GDT_UInt32:
+        dt = 'uint32'
+    elif gdal_dt == gdal.GDT_Float32:
+        dt = 'float32'
+    elif gdal_dt == gdal.GDT_Float64:
+        dt = 'float64'
+    elif gdal_dt == gdal.GDT_CInt16 or gdal_dt == gdal.GDT_CInt32 or gdal_dt == gdal.GDT_CFloat32 or gdal_dt == gdal.GDT_CFloat64 :
+        dt = 'complex64'
+    else:
+        print('Data type unkown')
+        #exit()
+    return dt
+   
+def getGDALGDT(dt):
+    """
+    Need arr.dtype.name in entry.
+    Returns gdal_dt from dt (numpy/scipy).
+    
+    Parameters
+    ----------
+    dt : datatype
+    
+    Return
+    ----------
+    gdal_dt : gdal datatype
+    """
+    if dt == 'bool' or dt == 'uint8':
+        gdal_dt=gdal.GDT_Byte
+    elif dt == 'int8' or dt == 'int16':
+        gdal_dt=gdal.GDT_Int16
+    elif dt == 'uint16':
+        gdal_dt=gdal.GDT_UInt16
+    elif dt == 'int32':
+        gdal_dt=gdal.GDT_Int32
+    elif dt == 'uint32':
+        gdal_dt=gdal.GDT_UInt32
+    elif dt == 'int64' or dt == 'uint64' or dt == 'float16' or dt == 'float32':
+        gdal_dt=gdal.GDT_Float32
+    elif dt == 'float64':
+        gdal_dt=gdal.GDT_Float64
+    elif dt == 'complex64':
+        gdal_dt=gdal.GDT_CFloat64
+    else:
+        print('Data type non-suported')
+        #exit()
+    
+    return gdal_dt
+
 def predict_image(raster_name,classif_name,classifier,mask_name=None):
     """!@brief Classify the whole raster image, using per block image analysis
         The classifier is given in classifier and options in kwargs.
@@ -330,8 +345,7 @@ def predict_image(raster_name,classif_name,classifier,mask_name=None):
     """
     # Parameters
     block_sizes = 512
-    from qgis.core import QgsMessageLog
-    QgsMessageLog.logMessage('here it is !')
+    
     # Open Raster and get additionnal information
     raster = gdal.Open(raster_name,gdal.GA_ReadOnly)
     if raster is None:
@@ -432,6 +446,83 @@ def predict_image(raster_name,classif_name,classifier,mask_name=None):
     raster = None
     dst_ds = None
 
+
+def create_uniquevalue_tiff(outname,im,d,GeoTransform,Projection,wholeValue=1):
+    '''!@brief Write an empty image on the hard drive.
+    
+    Input: 
+        outname: the name of the file to be written
+        im: the image cube
+        GeoTransform: the geotransform information 
+        Projection: the projection information
+    Output:
+        Nothing --
+    '''
+    nl = im.shape[0]
+    nc = im.shape[1]
+
+    driver = gdal.GetDriverByName('GTiff')
+    dt = im.dtype.name
+    # Get the data type
+    if dt == 'bool' or dt == 'uint8':
+        gdal_dt=gdal.GDT_Byte
+    elif dt == 'int8' or dt == 'int16':
+        gdal_dt=gdal.GDT_Int16
+    elif dt == 'uint16':
+        gdal_dt=gdal.GDT_UInt16
+    elif dt == 'int32':
+        gdal_dt=gdal.GDT_Int32
+    elif dt == 'uint32':
+        gdal_dt=gdal.GDT_UInt32
+    elif dt == 'int64' or dt == 'uint64' or dt == 'float16' or dt == 'float32':
+        gdal_dt=gdal.GDT_Float32
+    elif dt == 'float64':
+        gdal_dt=gdal.GDT_Float64
+    elif dt == 'complex64':
+        gdal_dt=gdal.GDT_CFloat64
+    else:
+        print('Data type non-suported')
+        gdal_dt=gdal.GDT_Float64
+    
+    dst_ds = driver.Create(outname,nc,nl, d, gdal_dt)
+    dst_ds.SetGeoTransform(GeoTransform)
+    dst_ds.SetProjection(Projection)
+    
+    
+
+    if d==1:
+        im[:]=wholeValue
+        out = dst_ds.GetRasterBand(1)
+        out.WriteArray(im)
+        out.FlushCache()
+    else:
+        for i in range(d):
+            im[:,:,i]=wholeValue
+            out = dst_ds.GetRasterBand(i+1)
+            out.WriteArray(im[:,:,i])
+            out.FlushCache()
+    dst_ds = None
+    
+    return outname    
+
+def rasterize(data,vectorSrc,field,outFile):
+    dataSrc = gdal.Open(data)
+    import ogr
+    shp = ogr.Open(vectorSrc)
+
+    lyr = shp.GetLayer()
+
+    driver = gdal.GetDriverByName('GTiff')
+    dst_ds = driver.Create(outFile,dataSrc.RasterXSize,dataSrc.RasterYSize,1,gdal.GDT_Byte)
+    dst_ds.SetGeoTransform(dataSrc.GetGeoTransform())
+    dst_ds.SetProjection(dataSrc.GetProjection())
+    if field is None:
+        gdal.RasterizeLayer(dst_ds, [1], lyr, None)
+    else:
+        OPTIONS = ['ATTRIBUTE='+field]
+        gdal.RasterizeLayer(dst_ds, [1], lyr, None,options=OPTIONS)
+    
+    data,dst_ds,shp,lyr=None,None,None,None
 
 if __name__=="__main__":
     Raster="/home/lennepkade/test/testSpot7.tif"
