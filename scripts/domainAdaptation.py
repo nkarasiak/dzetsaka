@@ -14,235 +14,378 @@ Created on Thu Mar 15 13:43:14 2018
 @author: nkarasiak
 """
 
-if __name__ == '__main__':
+try:
     import function_dataraster as dataraster
-else:
+    from mainfunction import pushFeedback
+except:
     from . import function_dataraster as dataraster
+    from .mainfunction import pushFeedback
     
+from sklearn.metrics import mean_squared_error
+from itertools import product
+from sklearn.metrics import (f1_score, cohen_kappa_score,accuracy_score)
+from sklearn.metrics import mean_squared_error
+
 import gdal
-import tempfile
-import ot
+#import tempfile
+# import ot
 import os
 #from sklearn import preprocessing
 
+
 import numpy as np
 
-
-def learnTransfer(Xs,ys,Xt,yt=None,transportAlgorithm='EMDTransport',params=None,feedback=None):
+class rasterOT(object):
     """
-    Learn domain adaptation model.
+    Initialize Python Optimal Transport for raster processing.
     
     Parameters
     ----------
-    Xs : array_like
-        Source domain array.
-    ys : array_like
-        Label source array (1d).
-    Xt: array_like
+    transportAlgorithm : str
+        item in list : ['MappingTransport','EMDTransport','SinkhornTransport','SinkhornLpl1Transport','SinkhornL1l2Transport']
+    scaler : bool
+        If scaler is True, use MinMaxScaler with feature_range from -1 to 1.
+    param : dict
         Target domain array.
-    yt: array_like, optional
-        Label target array (1d).
-    Algorithm : str, optional
-        item in list : ['EMDTransport','SinkhornTransport','SinkhornLpl1Transport','SinkhornL1l2Transport']
-        
-    Returns
-    -------
-    transportmodel : object
-        The output model
-
-    """
-    if feedback:
-        feedback.setProgress(10)
-        feedback.setProgressText('Learning Optimal Transport with '+str(transportAlgorithm))
-    transportFunction = getattr(__import__("ot").da,transportAlgorithm)
-    
-    if params is None:
-        transportModel = transportFunction()
-    else:
-        transportModel = transportFunction(**params)
-    
-    # check if label is 1d
-    if len(ys.shape)>1:
-        ys = ys[:,0]
-    if yt is not None:
-        if len(yt.shape)>1:
-            yt = yt[:,0]
-
-    # learn transport        
-    transportModel.fit(Xs,ys=ys,Xt=Xt,yt=yt)    
-    
-    if feedback:
-        feedback.setProgress(20)
-        
-    return transportModel
-
-
-def predictTransfer(model,imageTarget,outRaster,mask=None,NODATA=-9999,feedback=None):
-    """
-    Predict model using domain adaptation.
-    
-    Parameters
-    ----------
-    model : object
-        Model generated from learnTransfer function.
-    imageSource : str
-        Path of image to adapt (source image)
-    outRaster : str
-        Path of tiff image to save as.
-    mask: str, optional
-        Path of raster mask.
-    NODATA : int, optional
-        Default -9999
-    feedback : object, optional
-        For Qgis Processing. Default is None.
-        
-    Returns
-    -------
-    outRaster : str
-        Return the path of the predicted image.
-
-    """
-    if feedback:
-        feedback.setProgressText('Now transporting '+str(os.path.basename(imageTarget)))
-        
-    dataSrc = gdal.Open(imageTarget)
-    # Get the size of the image
-    d  = dataSrc.RasterCount
-    nc = dataSrc.RasterXSize
-    nl = dataSrc.RasterYSize
-
-    # Get the geoinformation
-    GeoTransform = dataSrc.GetGeoTransform()
-    Projection = dataSrc.GetProjection()
-
-    # Get block size
-    band = dataSrc.GetRasterBand(1)
-    block_sizes = band.GetBlockSize()
-    x_block_size = block_sizes[0]
-    y_block_size = block_sizes[1]
-    gdal_dt = band.DataType
-    
-
-    del band
-
-    ## Initialize the output
-    driver = gdal.GetDriverByName('GTiff')
-    
-    dst_ds = driver.Create(outRaster, nc,nl, d, gdal_dt)
-    dst_ds.SetGeoTransform(GeoTransform)
-    dst_ds.SetProjection(Projection)
-    
-    ## Perform the classification
-    if mask is not None:
-        maskData = gdal.Open(mask,gdal.GA_ReadOnly)
-
-    total = nl*y_block_size
-    
-    
-    total = 80/(int(nl/y_block_size))
-
-    for i in range(0,nl,y_block_size):
-        # feedback for Qgis
-        if feedback:
-            feedback.setProgress(int(i * total)+20)    
+    feedback : object
+        feedback object from Qgis Processing
             
-
-        if i + y_block_size < nl: # Check for size consistency in Y
-            lines = y_block_size
+    """
+    def __init__(self,transportAlgorithm="MappingTransport",scaler=False,params=None,feedback=True):
+     
+        self.transportAlgorithm = transportAlgorithm
+        self.feedback = feedback
+        
+        self.params_ = params
+        
+        if scaler:
+            from sklearn.preprocessing import MinMaxScaler
+            self.scaler = MinMaxScaler(feature_range=(0,1))
+            self.scalerTarget = MinMaxScaler(feature_range=(-1,1))
         else:
-            lines = nl - i
-        for j in range(0,nc,x_block_size): # Check for size consistency in X
-            if j + x_block_size < nc:
-                cols = x_block_size
-            else:
-                cols = nc - j
-
-            # Load the data and Do the prediction
-            X = np.empty((cols*lines,d))
-            for ind in range(d):
-                X[:,ind] = dataSrc.GetRasterBand(int(ind+1)).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
-
-
-            # Do the prediction
+            self.scaler = scaler
+        
+    def learnTransfer(self,Xs,ys,Xt,yt=None):
+        """
+        Learn domain adaptation model.
+        
+        Parameters
+        ----------
+        Xs : array_like, shape (n_source_samples, n_features)
+            Source domain array.
+        ys : array_like, shape (n_source_samples,)
+            Label source array (1d).
+        Xt: array_like, shape (n_source_samples, n_features)
+            Target domain array.
+        yt: array_like, shape (n_source_samples,)
+            Label target array (1d).
             
-            if mask is None:
-                mask_temp = dataSrc.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
-            else:
-                mask_temp = maskData.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
-                
-            # check if nodata 
-            t = np.where((mask_temp!=0) & (X[:,0]!=NODATA))[0]
+        Returns
+        -------
+        transportmodel : object
+            The output model
+    
+        """
+        # save original samples
+        self.Xs_ = Xs
+        self.Xt_ = Xt
+        self.params = self.params_
+        
+        if self.feedback:
+            pushFeedback(10)
+            pushFeedback('Learning Optimal Transport with '+str(self.transportAlgorithm))
+        
+        # check if label is 1d
+        if len(ys.shape)>1:
+            ys = ys[:,0]
+        if yt is not None:
+            if len(yt.shape)>1:
+                yt = yt[:,0]
+        
+        
+        # rescale Data
+        if self.scaler:
+            self.scaler.fit(Xs,ys)
+            self.scalerTarget.fit(Xt,yt)
+            Xs = self.scaler.transform(Xs)
+            Xt = self.scalerTarget.transform(Xt)
             
-            # transform array, default has nodata value
-            yp = np.empty((cols*lines,d))
-            yp[:,:] = NODATA
-            # yp = np.nan((cols*lines,d))
-            # K = np.zeros((cols*lines,))
-
-            # TODO: Change this part accorindgly ...
-            #if t.size > 0:
-            if t.size > 0 :
-                yp[t,:] = model.transform(X[t,:])
+        # import Domain Adaptation specific algorithm function from OT Library
+        self.transportFunction = getattr(__import__("ot").da,self.transportAlgorithm)
+        
+        
+        if self.params is None:
+            self.transportModel = self.transportFunction()            
+        else:
+            # order for reproductibility
+            self.params = sorted(self.params.items())
+            
+            # if grid search
+            if self.isGridSearch():
+                # compute combinaison for each param 
+                self.findBestParameters(Xs,ys=ys,Xt=Xt,yt=yt)
                 
-            for ind in range(d):         
-                out = dst_ds.GetRasterBand(ind+1)
-                # Write the data
-                ypTemp = yp[:,ind]
-                out.WriteArray(ypTemp.reshape(lines,cols),j,i)
-                out.SetNoDataValue(NODATA)
-                out.FlushCache()
+                self.transportModel = self.transportFunction(**self.bestParam)
+                
+            else:            
+                # simply train with basic param
+                self.transportModel = self.transportFunction(**self.params_)
 
-            del X,yp
-    
-    return outRaster
+        
+        self.transportModel.fit(Xs,ys=ys,Xt=Xt,yt=yt)    
+        
+        if self.feedback:
+            pushFeedback(20)
+        
 
-if __name__ == '__main__':
+        return self.transportModel
+        
     
-    imageSource = "/mnt/DATA/Test/DA/SENTINEL_20170516.tif"
-    vectorSource = "/mnt/DATA/Test/DA/ROI.sqlite"
-    labelSourceField = "level3"
+    def predictTransfer(self,imageSource,outRaster,mask=None,NODATA=-9999,feedback=None,norm=False):
+        """
+        Predict model using domain adaptation.
+        
+        Parameters
+        ----------
+        model : object
+            Model generated from learnTransfer function.
+        imageSource : str
+            Path of image to adapt (source image)
+        outRaster : str
+            Path of tiff image to save as.
+        mask: str, optional
+            Path of raster mask.
+        NODATA : int, optional
+            Default -9999
+        feedback : object, optional
+            For Qgis Processing. Default is None.
+            
+        Returns
+        -------
+        outRaster : str
+            Return the path of the predicted image.
     
-    imageTarget = "/mnt/DATA/Test/DA/SENTINEL_20171013.tif"
-    vectorTarget = "/mnt/DATA/Test/DA/ROI.sqlite"
-    labelTargetField = "level3"
+        """
+        if self.feedback:
+            pushFeedback('Now transporting '+str(os.path.basename(imageSource)))
+            
+        dataSrc = gdal.Open(imageSource)
+        # Get the size of the image
+        d  = dataSrc.RasterCount
+        nc = dataSrc.RasterXSize
+        nl = dataSrc.RasterYSize
     
-    mask = None# "/mnt/DATA/Test/DA/woodmask.tif"
+        # Get the geoinformation
+        GeoTransform = dataSrc.GetGeoTransform()
+        Projection = dataSrc.GetProjection()
     
-    tempROI = tempfile.mktemp(suffix='.tif')
+        # Get block size
+        band = dataSrc.GetRasterBand(1)
+        block_sizes = band.GetBlockSize()
+        x_block_size = block_sizes[0]
+        y_block_size = block_sizes[1]
+        #gdal_dt = band.DataType
+        
     
-    dataraster.rasterize(imageSource,vectorSource,labelSourceField,tempROI)
+        del band
     
-    Xs,ys = dataraster.get_samples_from_roi(imageSource,tempROI)
+        ## Initialize the output
+        driver = gdal.GetDriverByName('GTiff')
+        
+        dst_ds = driver.Create(outRaster, nc,nl, d, 3)
+        dst_ds.SetGeoTransform(GeoTransform)
+        dst_ds.SetProjection(Projection)
+        
+        ## Perform the classification
+        if mask is not None:
+            maskData = gdal.Open(mask,gdal.GA_ReadOnly)
+    
+        total = nl*y_block_size
+        
+        
+        total = 80/(int(nl/y_block_size))
+    
+        for i in range(0,nl,y_block_size):
+            # feedback for Qgis
+            if self.feedback:
+                pushFeedback(int(i * total)+20)    
+                try:
+                    if self.feedback.isCanceled():
+                        break
+                except:
+                    1==1                    
+    
+            if i + y_block_size < nl: # Check for size consistency in Y
+                lines = y_block_size
+            else:
+                lines = nl - i
+            for j in range(0,nc,x_block_size): # Check for size consistency in X
+                if j + x_block_size < nc:
+                    cols = x_block_size
+                else:
+                    cols = nc - j
+    
+                # Load the data and Do the prediction
+                X = np.empty((cols*lines,d))
+                for ind in range(d):
+                    X[:,ind] = dataSrc.GetRasterBand(int(ind+1)).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
+    
+    
+                # Do the prediction
+                
+                if mask is None:
+                    mask_temp = dataSrc.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
+                else:
+                    mask_temp = maskData.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
+                    
+                # check if nodata 
+                t = np.where((mask_temp!=0) & (X[:,0]!=NODATA))[0]
+                
+                # transform array, default has nodata value
+                yp = np.empty((cols*lines,d))
+                yp[:,:] = NODATA
+                # yp = np.nan((cols*lines,d))
+                # K = np.zeros((cols*lines,))
+    
+                # TODO: Change this part accorindgly ...
+                #if t.size > 0:
+                if t.size > 0 :
+                    tempOT = X[t,:]
+                    yp[t,:] = self.transportModel.transform(tempOT)
+                    
+                for ind in range(d):         
+                    out = dst_ds.GetRasterBand(ind+1)
+                    # Write the data
+                    ypTemp = yp[:,ind]
+                    out.WriteArray(ypTemp.reshape(lines,cols),j,i)
+                    out.SetNoDataValue(NODATA)
+                    out.FlushCache()
+    
+                del X,yp
+        
+        return outRaster
+    
+    def isGridSearch(self):
+        # search for gridSearch
+        paramGrid = []
+        for key in self.params_.keys():
+            
+            if isinstance(self.params_.get(key),(list, np.ndarray)):
+                paramGrid.append(key)
+                
+        if paramGrid == []:
+            self.paramGrid = False
+        else:
+            self.paramGrid = paramGrid
+            self.params = self.params_.copy()
+        
+        if self.paramGrid:
+            return True
+        else:
+            return False
+        
+    
+    def generateParamForGridSearch(self):        
+        hyperParam = {key:self.params_[key] for key in self.paramGrid}
+        items = sorted(hyperParam.items())
+        keys, values = zip(*items)
+        for v in product(*values):
+            paramsToAdd = dict(zip(keys, v))
+            self.params.update(paramsToAdd)
+    
+            yield self.params
+    
+    def findBestParameters(self,Xs,ys,Xt,yt):
+        self.bestScore = None
+        for gridOT in self.generateParamForGridSearch():
+            self.transportModel = self.transportFunction(**gridOT)
+            self.transportModel.fit(Xs,ys,Xt,yt)
+            XsTransformed = self.transportModel.transform(Xs)
+            XsPredict = self.inverseTransform(XsTransformed)
 
+            if self.feedback:
+                pushFeedback('Testing params : '+str(gridOT))
+            """
+            #score = mean_squared_error(Xs,XsPredict)
+            
+            from sklearn.svm import SVC
+            from sklearn.model_selection import StratifiedKFold
+            from sklearn.model_selection import GridSearchCV
+            
+            param_grid = dict(gamma=2.0**np.arange(-4,1), C=10.0**np.arange(-2,3))                 
+            classifier = SVC(probability=False)              
+            cv = StratifiedKFold(n_splits=5)
+            
+            grid = GridSearchCV(classifier,param_grid=param_grid, cv=cv,n_jobs=1)
+            
+            # need to rescale for hyperparameter of svm
+            if self.scaler is False:
+                from sklearn.preprocessing import MinMaxScaler
+                scaler = MinMaxScaler(feature_range=(-1,1))                                
+                scaler.fit(Xs,ys)
+                Xs = scaler.transform(Xs)
+                XsPredict = scaler.transform(XsPredict)
+                #XsPredict = scaler.transform(XsPredict)
+            
+            grid.fit(Xs,ys)
+            model = grid.best_estimator_
+            model.fit(Xs,ys)
 
-    dataraster.rasterize(imageTarget,vectorTarget,labelTargetField,tempROI)
-
-    Xt,yt = dataraster.get_samples_from_roi(imageTarget,tempROI)
-    
-    os.remove(tempROI)
-
-    
-    transportAlgorithms = ['EMDTransport','SinkhornTransport','SinkhornLpl1Transport','SinkhornL1l2Transport']
-    #
-    transportAlgorithm = transportAlgorithms[3]
-
-    params = dict(norm='loglog',mapping='barycentric',reg_e=1e-1,reg_cl=2e0,max_iter=20,verbose=False)
-    
-    #params = {'max_iter': 20.0, 'norm': 'loglog', 'reg_cl': 2.0, 'reg_e': 0.1}
-
-
-    transferModel = learnTransfer(Xs,ys,Xt,yt,transportAlgorithm,params=params,feedback=None)
-   
+            yp = model.predict(XsPredict)
+            currentScore = dict(OA=accuracy_score(yp,ys),Kappa=cohen_kappa_score(yp,ys),F1=f1_score(yp,ys,average='micro'))
+            
+            
+            if self.feedback:
+                pushFeedback('Kappa is : '+str(currentScore.get('Kappa')))
+                        
+            if self.bestScore is None or self.bestScore.get('Kappa') < currentScore.get('Kappa'):
+                self.bestScore = currentScore.copy()
+                self.bestParam = gridOT.copy()
+            """
+            
+            currentScore = mean_squared_error(Xs,XsPredict)
+            
+            if self.feedback:
+                pushFeedback('RMSE is : '+str(currentScore))
+                        
+            if self.bestScore is None or self.bestScore > currentScore:
+                self.bestScore = currentScore
+                self.bestParam = gridOT.copy()
+            """   
+            
+            del self.transportModel,yp
+            """
+        if self.feedback:
+            pushFeedback('Best grid is '+str(self.bestParam))
+            pushFeedback('Best score are '+str(self.bestScore))
+            
+                
+        
     """
-    outModel = '/tmp/learnModel.ot'
-    if outModel is not None :
-        import pickle
-        output = open(outModel, 'wb')
-        pickle.dump(transferModel,output)    
-        output.close()
+    def gridSearchCV(self):
+    """        
+        
+    def inverseTransform(self,Xt):
+        """Transports target samples Xt onto target samples Xs
+        Parameters
+        ----------
+        Xt : array-like, shape (n_source_samples, n_features)
+            The training input samples.
+        Returns
+        -------
+        transp_Xt : array-like, shape (n_source_samples, n_features)
+            The transport source samples.
+            """
     
-    """
-    outRaster = '/tmp/transfert_emd.tif'
+        # perform standard barycentric mapping
+        transp = self.transportModel.coupling_.T / np.sum(self.transportModel.coupling_, 0)[:, None]
     
-    predictTransfer(transferModel,imageTarget,outRaster,mask=mask,NODATA=-9999,feedback=None)
+        # set nans to 0
+        transp[~ np.isfinite(transp)] = 0
     
+        # compute transported samples
+        transp_Xt = np.dot(transp, self.transportModel.xs_)
+
+
+        return transp_Xt
+

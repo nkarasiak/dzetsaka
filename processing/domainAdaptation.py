@@ -28,7 +28,8 @@ from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QCoreApplication
 #from PyQt5.QtWidgets import QMessageBox
 
-from qgis.core import (QgsMessageLog,
+from qgis.core import (QgsProcessingParameterDefinition,
+                       QgsMessageLog,
                        QgsProcessingAlgorithm,
                        QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterVectorLayer,
@@ -57,8 +58,8 @@ class domainAdaptation(QgsProcessingAlgorithm):
     PARAMS = 'PARAMS'
     
     TRAIN = "TRAIN"
-    TRAIN_ALGORITHMS = ['Earth Mover\'s Distance','Sinkhorn Algorithm','Sinkhorn algorithm + l1 class regularization','Sinkhorn algorithm + l1l2 class regularization']
-    TRAIN_ALGORITHMS_CODE = ['EMDTransport','SinkhornTransport','SinkhornLpl1Transport','SinkhornL1l2Transport']
+    TRAIN_ALGORITHMS = ['Gaussian','Earth Mover\'s Distance','Sinkhorn Algorithm','Sinkhorn algorithm + l1 class regularization','Sinkhorn algorithm + l1l2 class regularization']
+    TRAIN_ALGORITHMS_CODE = ['MappingTransport','EMDTransport','SinkhornTransport','SinkhornLpl1Transport','SinkhornL1l2Transport']
     
     TRANSPORTED_IMAGE = 'TRANSPORTED_IMAGE'
     
@@ -77,7 +78,8 @@ class domainAdaptation(QgsProcessingAlgorithm):
     def shortHelpString(self):
         return self.tr("Domain Adaptation for raster images using Python Optimal Transport library. <br>\
                        Help can be found on Python Optimal Transport documentation : http://pot.readthedocs.io/en/stable/all.html#module-ot.da <br>\
-                       <br> Extra parameters for L1L2 sinkhorn algorithm can be for example : reg_e=1e-1, reg_cl=2e0, max_iter=20.")
+                       <br> Extra parameters for L1L2 sinkhorn algorithm can be for example : dict(norm=\"loglog\",reg_e=1e-1, reg_cl=2e0, max_iter=20). <br>\
+                       For Gaussian : dict(norm=\"loglog\",mu=1e0, eta=1e-2, sigma=1, bias=False, max_iter=10)")
 
     def helpUrl(self):
         return "http://pot.readthedocs.io/en/stable/all.html#module-ot.da"
@@ -156,13 +158,13 @@ class domainAdaptation(QgsProcessingAlgorithm):
             )
         )    
       
-        self.addParameter(
-        QgsProcessingParameterString(
+        self.addParameter(QgsProcessingParameterString(
                 self.PARAMS,
                 self.tr('Parameters for the algorithm'),
-                defaultValue='norm="loglog", metric="sqeuclidean"')
+                defaultValue='dict(norm="loglog", metric="sqeuclidean")',
+                	)
         )
-    
+
     def processAlgorithm(self, parameters,context,feedback):
 
         SOURCE_RASTER = self.parameterAsRasterLayer(parameters, self.SOURCE_RASTER, context)
@@ -185,49 +187,25 @@ class domainAdaptation(QgsProcessingAlgorithm):
 
         # Retrieve algo from code        
         SELECTED_ALGORITHM = self.TRAIN_ALGORITHMS_CODE[TRAIN[0]]
-       
-        
-        libOk = True
+
+        if MASK :
+            MASK = MASK.source()
         
         ## Convert param str to param dictionnary
-        
+        msg =''
         try:
-            paramList = PARAMS.split(',')
-            PARAMSdict = {}
-            for param in paramList:
-                name,value = param.split('=')
-                if name.startswith(' '):
-                    name = name.replace(' ','')
-                try:
-                    float(value)
-                    isNumber=True
-                except:
-                    isNumber=False
-                if isNumber:
-                    try:
-                        int(value)
-                        value = int(value)
-                    except:
-                        value = float(value)
-                else:
-                    # check str separator in value arg
-                    value = value.replace(" ","")
-                    value = value.replace("'","")
-                    value = value.replace("\"","")
-                PARAMSdict[name] = value
-        except:
-            libOk = False
-            msg = "Error while parsing parameters. example : \"max_iter=20, norm='loglog'\"."
+            PARAMSdict=eval(PARAMS)
             
-        ###
-        
+        except:
+            msg += 'Unable to identify parameters. Use dict(name=value, name=othervalue). \n'
+            
         try:
             getattr(__import__("ot").da,SELECTED_ALGORITHM)
         except:
-            libOk = False
-            msg = 'Please install POT library : "pip install POT"'
+            msg += 'Please install POT library : "pip install POT" \n'
         # learn model
-        if libOk :
+        
+        if msg =='' :
             feedback.setProgress(1)
             feedback.setProgressText('Computing ROI values')
             import tempfile
@@ -252,11 +230,11 @@ class domainAdaptation(QgsProcessingAlgorithm):
             
             Xt,yt = dataraster.get_samples_from_roi(TARGET_RASTER.source(),tempROI)
             
-            os.remove(tempROI)
-        
+            os.remove(tempROI)                                                                                          
+            
             transferModel = DA.learnTransfer(Xs,ys,Xt,yt,SELECTED_ALGORITHM,params=PARAMSdict,feedback=feedback)
         
-            DA.predictTransfer(transferModel,SOURCE_RASTER.source(),TRANSPORTED_IMAGE,mask=MASK.source(),NODATA=-9999,feedback=feedback)
+            DA.predictTransfer(transferModel,SOURCE_RASTER.source(),TRANSPORTED_IMAGE,mask=MASK,NODATA=-10000,feedback=feedback)
             
             return {'Transported image' : str(TRANSPORTED_IMAGE)}
 

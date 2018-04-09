@@ -35,6 +35,7 @@ from qgis.core import (QgsMessageLog,
                        QgsProcessingParameterField,
                        QgsProcessingParameterEnum,
                        QgsProcessingParameterNumber,
+                       QgsProcessingParameterString,
                        QgsProcessingParameterFileDestination)
 
 import os
@@ -53,8 +54,22 @@ class trainAlgorithm(QgsProcessingAlgorithm):
     SPLIT_PERCENT= 'SPLIT_PERCENT'
     OUTPUT_MODEL = "OUTPUT_MODEL"
     OUTPUT_MATRIX = "OUTPUT_MATRIX"
+    PARAMGRID = "PARAMGRID"
     
-    
+    def shortHelpString(self):
+        return self.tr("Train classifier.\n \n \
+                       Parameters for Cross Validation can be fit using a dictionnary.\n \
+                       \
+                       <h3>Classifier (paramgrid)</h3> \n \
+                       Param grid can be fit for each algorithm : \n \
+                       <h4>Random-Forest</h4> \n \
+                       e.g. : dict(n_estimators=2**np.arange(4,10),max_features=[5,10,20,30,40],min_samples_split=range(2,6)) \n \
+                       More information : http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html#sklearn.ensemble.RandomForestClassifier \n \
+                       \n \
+                       <h4>SVM</h4> \
+                       e.g. : dict(gamma=2.0**np.arange(-4,4), C=10.0**np.arange(-2,5)) \n \
+                       More information : http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html ")
+        
     def name(self):
         """
         Returns the algorithm name, used for identifying the algorithm. This
@@ -107,7 +122,7 @@ class trainAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
         QgsProcessingParameterNumber(
             self.SPLIT_PERCENT,
-            self.tr('Pixels (0.5 for 50%) to keep for classification'),
+            self.tr('Pixels (%) to keep for validation.'),
             type=QgsProcessingParameterNumber.Integer,
             minValue=0,maxValue=100,defaultValue=50))
         
@@ -125,7 +140,11 @@ class trainAlgorithm(QgsProcessingAlgorithm):
             self.tr("Output confusion matrix"),
             fileFilter='csv'))#,
             #ext='csv'))
-        
+        # PARAM GRID
+        self.addParameter(QgsProcessingParameterString(
+        self.PARAMGRID,
+        self.tr('Parameters for the hyperparameters of the algorithm'),
+        optional=True))
         
     def processAlgorithm(self, parameters,context,feedback):
 
@@ -149,6 +168,13 @@ class trainAlgorithm(QgsProcessingAlgorithm):
        
         
         libOk = True
+        PARAMGRID = self.parameterAsString(parameters, self.PARAMGRID, context)
+        if PARAMGRID != '':
+            import numpy as np
+            extraParam = {}
+            extraParam['param_grid'] = eval(PARAMGRID)
+        else:
+            extraParam = None
         
         if SELECTED_ALGORITHM=='RF' or SELECTED_ALGORITHM=='SVM' or SELECTED_ALGORITHM=='KNN':
             try:
@@ -158,7 +184,7 @@ class trainAlgorithm(QgsProcessingAlgorithm):
                 
         # learn model
         if libOk:
-            mainfunction.learnModel(INPUT_RASTER.source(),INPUT_LAYER.source(),INPUT_COLUMN[0],OUTPUT_MODEL,SPLIT_PERCENT,0,OUTPUT_MATRIX,SELECTED_ALGORITHM,feedback=feedback)
+            mainfunction.learnModel(INPUT_RASTER.source(),INPUT_LAYER.source(),INPUT_COLUMN[0],OUTPUT_MODEL,SPLIT_PERCENT,0,OUTPUT_MATRIX,SELECTED_ALGORITHM,extraParam=extraParam,feedback=feedback)
             return {'Output matrix' : str(OUTPUT_MATRIX), 'Output model' : str(OUTPUT_MODEL)}
 
         else:
@@ -193,4 +219,4 @@ class trainAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Classification tools'
+        return 'Classification tool'

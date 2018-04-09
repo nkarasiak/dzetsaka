@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import scipy as sp
+import numpy as np
 from osgeo import gdal
+from osgeo import gdal_array
 
 def open_data(filename):
     '''
@@ -178,7 +180,7 @@ def create_empty_tiff(outname,im,d,GeoTransform,Projection):
 #            out.FlushCache()
 #    dst_ds = None
     
-def get_samples_from_roi(raster_name,roi_name):
+def get_samples_from_roi(raster_name,roi_name,stand_name=False,getCoords=False):
     '''!@brief Get the set of pixels given the thematic map.
     Get the set of pixels given the thematic map. Both map should be of same size. Data is read per block.
         Input:
@@ -190,7 +192,6 @@ def get_samples_from_roi(raster_name,roi_name):
             Y: the label of the pixel
     Written by Mathieu Fauvel.
     ''' 
-    
     ## Open Raster
     raster = gdal.Open(raster_name,gdal.GA_ReadOnly)
     if raster is None:
@@ -202,6 +203,13 @@ def get_samples_from_roi(raster_name,roi_name):
     if roi is None:
         print('Impossible to open '+roi_name)
         #exit()
+
+    if stand_name:
+        ## Open Stand
+        stand = gdal.Open(stand_name,gdal.GA_ReadOnly)
+        if stand is None:
+            print('Impossible to open '+stand_name)
+            #exit()
 
     ## Some tests
     if (raster.RasterXSize != roi.RasterXSize) or (raster.RasterYSize != roi.RasterYSize):
@@ -219,10 +227,32 @@ def get_samples_from_roi(raster_name,roi_name):
     d  = raster.RasterCount
     nc = raster.RasterXSize
     nl = raster.RasterYSize
-
+    
+    ulx, xres, xskew, uly, yskew, yres  = roi.GetGeoTransform()
+    
+    if getCoords :
+        coords = sp.array([],dtype=np.uint16).reshape(0,2)
+        """
+    # Old function which computes metric distance...
+    if getCoords :
+        #list of coords 
+        coords = sp.array([]).reshape(0,2)
+        
+        # convert pixel position to coordinate pos
+        def pixel2coord(coord):
+            #Returns global coordinates from pixel x, y coords
+            x,y=coord
+            xp = xres * x + xskew * y + ulx
+            yp = yskew * x + yres * y + uly
+            return[xp, yp] 
+      """     
+        
+        
     ## Read block data
     X = sp.array([]).reshape(0,d)
     Y = sp.array([]).reshape(0,1)
+    STD = sp.array([]).reshape(0,1)
+    
     for i in range(0,nl,y_block_size):
         if i + y_block_size < nl: # Check for size consistency in Y
             lines = y_block_size
@@ -237,11 +267,31 @@ def get_samples_from_roi(raster_name,roi_name):
             # Load the reference data
             
             ROI = roi.GetRasterBand(1).ReadAsArray(j, i, cols, lines)
+            if stand_name:
+                STAND = stand.GetRasterBand(1).ReadAsArray(j, i, cols, lines)
             
             t = sp.nonzero(ROI)
             
             if t[0].size > 0:
                 Y = sp.concatenate((Y,ROI[t].reshape((t[0].shape[0],1)).astype('uint8')))
+                if stand_name:
+                    STD = sp.concatenate((STD,STAND[t].reshape((t[0].shape[0],1)).astype('uint8')))
+                if getCoords :
+                    #coords = sp.append(coords,(i,j))
+                    #coordsTp = sp.array(([[cols,lines]]))
+                    #coords = sp.concatenate((coords,coordsTp))
+                    #print(t[1])
+                    #print(i)
+                    #sp.array([[t[1],i]])
+                    coordsTp = sp.empty((t[0].shape[0],2))
+                    coordsTp[:,0] = t[1]
+                    coordsTp[:,1] = [i]*t[1].shape[0]
+                    """
+                    for n,p in enumerate(coordsTp):
+                        coordsTp[n] = pixel2coord(p)
+                    """
+                    coords = sp.concatenate((coords,coordsTp))
+
                 # Load the Variables
                 Xtp = sp.empty((t[0].shape[0],d))
                 for k in range(d):
@@ -251,14 +301,43 @@ def get_samples_from_roi(raster_name,roi_name):
                     X = sp.concatenate((X,Xtp))
                 except MemoryError:
                     print('Impossible to allocate memory: ROI too big')
-                    #exit()
+                    exit()
+    
+    
+    """
+    # No conversion anymore as it computes pixel distance and not metrics
+    if convertTo4326:
+        import osr
+        from pyproj import Proj,transform
+        # convert points coords to 4326
+        # if vector 
+        ## inShapeOp = ogr.Open(inVector)
+        ## inShapeLyr = inShapeOp.GetLayer()
+        ## initProj = Proj(inShapeLyr.GetSpatialRef().ExportToProj4()) # proj to Proj4
+        
+        sr = osr.SpatialReference()
+        sr.ImportFromWkt(roi.GetProjection())
+        initProj = Proj(sr.ExportToProj4())
+        destProj = Proj("+proj=longlat +datum=WGS84 +no_defs") # http://epsg.io/4326
+        
+        coords[:,0],coords[:,1] = transform(initProj,destProj,coords[:,0],coords[:,1]) 
+    """
     
     # Clean/Close variables
     del Xtp,band    
     roi = None # Close the roi file
     raster = None # Close the raster file
+    
+    if stand_name:
+        if not getCoords:
+            return X,Y,STD
+        else:
+            return X,Y,STD,coords
+    elif getCoords :
+        return X,Y,coords
+    else:
+        return X,Y
 
-    return X,Y
 
 def getDTfromGDAL(gdal_dt):
     """
@@ -462,27 +541,9 @@ def create_uniquevalue_tiff(outname,im,d,GeoTransform,Projection,wholeValue=1):
     nc = im.shape[1]
 
     driver = gdal.GetDriverByName('GTiff')
-    dt = im.dtype.name
     # Get the data type
-    if dt == 'bool' or dt == 'uint8':
-        gdal_dt=gdal.GDT_Byte
-    elif dt == 'int8' or dt == 'int16':
-        gdal_dt=gdal.GDT_Int16
-    elif dt == 'uint16':
-        gdal_dt=gdal.GDT_UInt16
-    elif dt == 'int32':
-        gdal_dt=gdal.GDT_Int32
-    elif dt == 'uint32':
-        gdal_dt=gdal.GDT_UInt32
-    elif dt == 'int64' or dt == 'uint64' or dt == 'float16' or dt == 'float32':
-        gdal_dt=gdal.GDT_Float32
-    elif dt == 'float64':
-        gdal_dt=gdal.GDT_Float64
-    elif dt == 'complex64':
-        gdal_dt=gdal.GDT_CFloat64
-    else:
-        print('Data type non-suported')
-        gdal_dt=gdal.GDT_Float64
+    gdal_dt=gdal.GDT_Byte
+
     
     dst_ds = driver.Create(outname,nc,nl, d, gdal_dt)
     dst_ds.SetGeoTransform(GeoTransform)
@@ -523,14 +584,58 @@ def rasterize(data,vectorSrc,field,outFile):
         gdal.RasterizeLayer(dst_ds, [1], lyr, None,options=OPTIONS)
     
     data,dst_ds,shp,lyr=None,None,None,None
+    return outFile
 
-if __name__=="__main__":
-    Raster="/home/lennepkade/test/testSpot7.tif"
-    ROI="/tmp/tmp4i1jQ_/temp.tif"
-    X,Y=get_samples_from_roi(Raster,ROI)
+
+def scale(x,M=None,m=None):  # TODO:  DO IN PLACE SCALING
+    """!@brief Function that standardize the data
+        Input:
+            x: the data
+            M: the Max vector
+            m: the Min vector
+        Output:
+            x: the standardize data
+            M: the Max vector
+            m: the Min vector
+    """
+    [n,d]=x.shape
+    if np.float64 != x.dtype.type:
+        x=x.astype('float')
+
+    # Initialization of the output
+    xs = np.empty_like(x)
+
+    # get the parameters of the scaling
+    minMax = False
+    if M is None:
+        minMax = True
+        M,m = np.amax(x,axis=0),np.amin(x,axis=0)
+
+    den = M-m
+    for i in range(d):
+        if den[i] != 0:
+            xs[:,i] = 2*(x[:,i]-m[i])/den[i]-1
+        else:
+            xs[:,i]=x[:,i]
     
+    if minMax:
+        return xs,M,m
+    else:
+        return xs
+
+
+    
+if __name__=="__main__":
+    Raster="/mnt/DATA/Test/DA/SENTINEL_20170516.tif"
+    ROI = '/tmp/testroi.tif'
+    rasterize(Raster,'/mnt/DATA/Test/DA/ROI_2154.sqlite','level2',ROI) 
+    
+    X,Y,coords=get_samples_from_roi(Raster,ROI,getCoords=True)
+    
+    """
     import accuracy_index as ai
     print(X.shape)
     print(Y.shape)
     worker=ai.CONFUSION_MATRIX()
     worker.compute_confusion_matrix(X,Y)
+    """

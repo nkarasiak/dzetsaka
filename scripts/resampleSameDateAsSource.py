@@ -83,7 +83,8 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
     
     GeoTransform = dataTarget.GetGeoTransform()
     Projection = dataTarget.GetProjection()
-    im = dataTarget.GetRasterBand(1).ReadAsArray()
+    #im = dataTarget.GetRasterBand(1).ReadAsArray()
+    im = np.zeros([dataTarget.RasterXSize,dataTarget.RasterYSize])
     
     dataraster.create_uniquevalue_tiff(tempDir+'/mask1.tif',im,1,GeoTransform,Projection,1)
     dataraster.create_uniquevalue_tiff(tempDir+'/mask0.tif',im,1,GeoTransform,Projection,0)
@@ -134,7 +135,7 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
             dates.append(currentDate)
         return dates
     
-    newDates = DOYtoDates(combineDOY,sourceYEAR,convertToInt=True)
+    newDates = np.unique(DOYtoDates(combineDOY,sourceYEAR,convertToInt=True))
     
     np.savetxt(tempDir+'/sampleTime.csv',np.asarray(newDates,dtype=int),fmt='%d')
     
@@ -168,7 +169,7 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
     
     
     
-    sourceDOYidx = np.searchsorted(combineDOY,sourceDOY)
+    sourceDOYidx = np.unique(np.searchsorted(combineDOY,sourceDOY))
     #bandsToKeepInVrt = listToStr(sourceDOYidx+1,sep=' -b ')
     
     

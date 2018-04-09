@@ -101,7 +101,11 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
         # Retrieve algo from code        
         worker = classifyImage()
         #classify
-        worker.initPredict(INPUT_RASTER.source(),INPUT_MODEL,OUTPUT_RASTER,INPUT_MASK.source(),feedback=feedback)
+        if INPUT_MASK is None:
+            mask = None
+        else:
+            mask = INPUT_MASK.source()
+        worker.initPredict(INPUT_RASTER.source(),INPUT_MODEL,OUTPUT_RASTER,mask,feedback=feedback)
 
         return {'Classification' : str(OUTPUT_RASTER)}
 
@@ -133,4 +137,4 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Classification tools'
+        return 'Classification tool'

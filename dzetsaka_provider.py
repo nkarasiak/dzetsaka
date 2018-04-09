@@ -41,7 +41,8 @@ from .processing.splitTrainValidation import splitTrain
 from .processing.shannonEntropy import shannonAlgorithm
 from .processing.resampleImageSameDate import resampleImageSameDateAsSource
 from .processing.domainAdaptation import domainAdaptation
-from .processing.learnWithSpatialSampling import learnWithSpatialSampling
+from .processing.learnWithSpatialSampling import trainSLOOAlgorithm
+from .processing.learnWithStandCV import trainSTANDalgorithm
 
 pluginPath = os.path.dirname(__file__)
 
@@ -57,7 +58,8 @@ class dzetsakaProvider(QgsProcessingProvider):
 
         # Load algorithms
         self.alglist = [medianFilterAlgorithm(),trainAlgorithm(),classifyAlgorithm(),splitTrain(),\
-                        shannonAlgorithm(),resampleImageSameDateAsSource(),domainAdaptation(),learnWithSpatialSampling()]#,classifyAlgorithm(),splitTrain()]
+                        shannonAlgorithm(),resampleImageSameDateAsSource(),domainAdaptation(),\
+                        trainSLOOAlgorithm(),trainSTANDalgorithm()]#,learnWithSpatialSampling()]#,classifyAlgorithm(),splitTrain()]
 
     def icon(self):
         """

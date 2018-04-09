@@ -31,8 +31,8 @@ from qgis.core import (QgsMessageLog,
                        QgsProcessingParameterVectorLayer,
                        QgsProcessingParameterField,
                        QgsProcessingParameterEnum,
+                       QgsProcessingParameterBoolean,
                        QgsProcessingParameterNumber,
-                       QgsProcessingParameterFile,
                        QgsProcessingParameterFolderDestination,
                        QgsProcessingParameterFileDestination)
 
@@ -42,37 +42,25 @@ from ..scripts import mainfunction
 
 pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__),os.pardir))
 
-class trainSLOOAlgorithm(QgsProcessingAlgorithm):
+class trainSTANDalgorithm(QgsProcessingAlgorithm):
     INPUT_RASTER = 'INPUT_RASTER'
     INPUT_LAYER = 'INPUT_LAYER'
     INPUT_COLUMN = 'INPUT_COLUMN'
     TRAIN = "TRAIN"
     TRAIN_ALGORITHMS = ['Random-Forest','K-Nearest Neighbors','Support Vector Machine']
     TRAIN_ALGORITHMS_CODE = ['RF','KNN','SVM']
-
-    DISTANCE = "DISTANCE"
+    SLOO = 'SLOO'
+    STAND_COLUMN = 'STAND_COLUMN'
     MAXITER = "MAXITER"
     PARAMGRID = "PARAMGRID"
-    MINTRAIN = "MINTRAIN"
-    #SPLIT_PERCENT= 'SPLIT_PERCENT'
+    # MINTRAIN = "MINTRAIN"
+    # SPLIT_PERCENT= 'SPLIT_PERCENT'
     OUTPUT_MODEL = "OUTPUT_MODEL"
     # OUTPUT_MATRIX = "OUTPUT_MATRIX"
-    MAX_ITER = "MAX_ITER"
     SAVEDIR = "SAVEDIR"
     
     def shortHelpString(self):
-        return self.tr("Spatial sampling to better learn and estimate prediction.. \n \n \
-                       SLOO : Spatial Leave-One-Out Cross Validation. \n \
-                       \
-                       <h3>Classifier (paramgrid)</h3> \n \
-                       Param grid can be fit for each algorithm : \n \
-                       <h4>Random-Forest</h4> \n \
-                       e.g. : dict(n_estimators=2**np.arange(4,10),max_features=[5,10,20,30,40],min_samples_split=range(2,6)) \n \
-                       More information : http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html#sklearn.ensemble.RandomForestClassifier \n \
-                       \n \
-                       <h4>SVM</h4> \
-                       e.g. : dict(gamma=2.0**sp.arange(-4,4), C=10.0**sp.arange(-2,5)) \n \
-                       More information : http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html ")
+        return self.tr("Learn with Cross Validation with Spatial Leave-One-Out stand to better learn and estimate prediction.")
         
     """
     def helpUrl(self):
@@ -86,7 +74,7 @@ class trainSLOOAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Train algorithm (CV with SLOO)'
+        return 'Train algorithm (CV per stand/polygon)'
     
     def icon(self):
 
@@ -103,6 +91,12 @@ class trainSLOOAlgorithm(QgsProcessingAlgorithm):
             )   
         )
 
+        # SLOO
+        self.addParameter(
+                QgsProcessingParameterBoolean(
+                        self.SLOO,
+                        self.tr('Check for Leave-One-Out validation. Uncheck for 50\\50.'),
+                        defaultValue=True))
         
         # Train algorithm
         
@@ -125,23 +119,22 @@ class trainSLOOAlgorithm(QgsProcessingAlgorithm):
             'Field (column must have classification number (e.g. \'1\' forest, \'2\' water...))',
             parentLayerParameterName = self.INPUT_LAYER,
             optional=False)) # save model
-                        
-        # DISTANCE
+         
         self.addParameter(
-        QgsProcessingParameterNumber(
-            self.DISTANCE,
-            self.tr('Distance in pixels'),
-            type=QgsProcessingParameterNumber.Integer,
-            minValue=0,maxValue=99999,defaultValue=100))
-        
-        # MAX ITER
+        QgsProcessingParameterField(
+            self.STAND_COLUMN,
+            'Stand number (column must have unique id per stand)',
+            parentLayerParameterName = self.INPUT_LAYER,
+            optional=False)) # save model
+                                       
         self.addParameter(
         QgsProcessingParameterNumber(
             self.MAXITER,
-            self.tr('Maximum iteration (default : 0 e.g. class with min effective)'),
+            self.tr('Maximum iteration (default : 5)'),
             type=QgsProcessingParameterNumber.Integer,
-            minValue=0,maxValue=99999,defaultValue=0))
-        #
+            minValue=1,maxValue=99999,defaultValue=5))
+        
+    
         self.addParameter(QgsProcessingParameterString(
                 self.PARAMGRID,
                 self.tr('Parameters for the hyperparameters of the algorithm'),
@@ -174,6 +167,7 @@ class trainSLOOAlgorithm(QgsProcessingAlgorithm):
         INPUT_LAYER = self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
         
         INPUT_COLUMN = self.parameterAsFields(parameters, self.INPUT_COLUMN, context)
+        STAND_COLUMN = self.parameterAsFields(parameters, self.STAND_COLUMN, context)
         # SPLIT_PERCENT = self.parameterAsInt(parameters, self.SPLIT_PERCENT, context)
         #TRAIN = self.parameterAsEnums(parameters, self.TRAIN, context)
         #INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
@@ -181,15 +175,16 @@ class trainSLOOAlgorithm(QgsProcessingAlgorithm):
         #OUTPUT_MATRIX = self.parameterAsFileOutput(parameters, self.OUTPUT_MATRIX, context)
       
         SAVEDIR = self.parameterAsFileOutput(parameters, self.SAVEDIR, context)
-        # Retrieve algo from code        
+        # Retrieve algo from code       
+        SLOO = self.parameterAsBool(parameters, self.SLOO, context)
+        
         extraParam = {}
+        
+        extraParam['SLOO'] = SLOO
         #extraParam['maxIter']=False
         #extraParam['param_grid'] = dict(n_estimators=2**np.arange(4,10),max_features=[5,10,20,30,40],min_samples_split=range(2,6))
         
         MAXITER = self.parameterAsInt(parameters, self.MAXITER, context)
-        DISTANCE = self.parameterAsInt(parameters, self.DISTANCE, context)
-        
-        extraParam['distance'] = DISTANCE
         
         if MAXITER == 0:
             MAXITER = False
@@ -205,24 +200,25 @@ class trainSLOOAlgorithm(QgsProcessingAlgorithm):
         
         extraParam['saveDir'] = SAVEDIR
         
+        extraParam['inStand'] = STAND_COLUMN[0]
         
         TRAIN = self.parameterAsEnums(parameters, self.TRAIN, context)
 
         # Retrieve algo from code        
         SELECTED_ALGORITHM = self.TRAIN_ALGORITHMS_CODE[TRAIN[0]]
         
-        #eval(PARAM_GRID)
-               
-        #QgsMessageLog.logMessage(str(eval(PARAMGRID)))
-        
-        mainfunction.learnModel(INPUT_RASTER.source(),INPUT_LAYER.source(),INPUT_COLUMN[0],OUTPUT_MODEL,'SLOO',0,None,SELECTED_ALGORITHM,feedback=feedback,extraParam=extraParam)
+        #eval(PARAM_GRID        
+
+        # learn model
+        mainfunction.learnModel(INPUT_RASTER.source(),INPUT_LAYER.source(),INPUT_COLUMN[0],OUTPUT_MODEL,'STAND',0,None,SELECTED_ALGORITHM,feedback=feedback,extraParam=extraParam)
         return {'Output dir' : str(SAVEDIR), 'Output model' : str(OUTPUT_MODEL)}
-        
+
+
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return trainSLOOAlgorithm()
+        return trainSTANDalgorithm()
     
     def displayName(self):
         """

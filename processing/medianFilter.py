@@ -158,8 +158,6 @@ class medianFilterAlgorithm(QgsProcessingAlgorithm):
         #feedback.pushInfo(str(OUTPUT_RASTER))
         #QgsMessageLog.logMessage('output is: '+str(OUTPUT_RASTER))
         
-        
-        
         from scipy import ndimage
             
         

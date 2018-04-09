@@ -583,10 +583,13 @@ class dzetsakaGUI ( QDialog ):
 
                     # perform learning
                     
-                    temp=mainfunction.learnModel(inRaster,inShape,inField,model,inSplit,inSeed,outMatrix,inClassifier,feedback='gui')
-
+                    temp=mainfunction.learnModel(inRaster,inShape,inField,model,inSplit,inSeed=inSeed,outMatrix=outMatrix,inClassifier=inClassifier,extraParam=None,feedback='gui')
 
                 except:
+                    QgsMessageLog.logMessage('inSplit is'+str(inSplit))
+                    QgsMessageLog.logMessage('inField is '+str(inField))
+                    QgsMessageLog.logMessage('model is '+str(model))
+                    QgsMessageLog.logMessage('inShape is '+str(inShape))
                     message = ('Something went wrong during the training. Please make sure you respect these conditions : <br> - Are you sure to have only integer values in your '+str(inField)+' column ? <br> - Do your shapefile and raster have the same projection ?')
                     QMessageBox.warning(self, 'dzetsaka has encountered a problem', message, QMessageBox.Ok)
             
