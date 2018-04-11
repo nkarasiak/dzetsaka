@@ -1,6 +1,6 @@
 '''!@brief Accuracy index by Mathieu Fauvel
 '''
-import scipy as sp
+import numpy as sp
 
 class CONFUSION_MATRIX:
     def __init__(self):

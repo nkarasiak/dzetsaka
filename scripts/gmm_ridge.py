@@ -1,8 +1,11 @@
 """!@brief Script by Mathieu Fauvel which performs Gaussian Mixture Model
 """# -*- coding: utf-8 -*-
-import scipy as sp
-from scipy import linalg
-import multiprocessing as mp
+import numpy as sp
+try:
+    from numpy import linalg
+except:
+    pass
+#import multiprocessing as mp
 
 ## Temporary predict function
 def predict(tau,model,xT,yT):

@@ -1,7 +1,7 @@
 """!@brief Manage data (opening/saving raster, get ROI...)"""
 # -*- coding: utf-8 -*-
 
-import scipy as sp
+import numpy as sp
 from osgeo import gdal
 def open_data(filename):
     '''

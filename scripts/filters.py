@@ -7,8 +7,11 @@ Created on Fri Jun  3 08:18:26 2016
 import function_dataraster as dataraster
 import os
 import tempfile
-import scipy as sp
-from scipy import ndimage
+try:
+    import scipy as sp
+    from scipy import ndimage
+except:
+    pass
 from osgeo import gdal, ogr, osr
 from mainfunction import progressBar
 from PyQt4 import QtCore

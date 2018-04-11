@@ -38,7 +38,7 @@ import resources
 import ConfigParser 
 import os
 import tempfile
-import scipy as sp
+import numpy as sp
 from osgeo import gdal,ogr,osr
 
 # load dock 
@@ -47,10 +47,11 @@ from ui import dzetsakaDockWidget, filters_dock, help_dock, confusion_dock, sett
 
 # import functions
 from scripts import mainfunction
-
+"""
 import os
 import sys
 import inspect
+"""
 from processing.core.Processing import Processing
 from convert_processing.processingProvider import processingProvider
 

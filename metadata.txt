@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=2.0
 description=Fast and Easy Classification plugin for Qgis
-version=2.5.2
+version=2.5.3
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -28,6 +28,8 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+	  2.5.3
+		* correct bug when missing scipy. Use numpy instead.
       2.5.2
         * add yes/no confirmation if different projections
 	* correct bug when using model learned before (load model option in GUI)

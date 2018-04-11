@@ -6,7 +6,7 @@ www.karasiak.net
 import os
 #import random
 from osgeo import ogr
-import scipy as sp
+import numpy as sp
 
 try:
     from sklearn.model_selection import train_test_split

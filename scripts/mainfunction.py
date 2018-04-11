@@ -26,8 +26,11 @@ import os
 import accuracy_index as ai
 import tempfile
 import gmm_ridge as gmmr
-import scipy as sp
-from scipy import ndimage
+import numpy as sp
+try:
+    from scipy import ndimage
+except:
+    pass
 from osgeo import gdal, ogr, osr
 from PyQt4.QtGui import QProgressBar, QApplication
 from PyQt4 import QtCore
