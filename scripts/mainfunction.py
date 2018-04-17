@@ -25,13 +25,18 @@ try:
     import function_dataraster as dataraster
     import accuracy_index as ai
     import gmm_ridge as gmmr
-    #import progressBar as pB
+    try:
+        from qgis.core import QgsMessageLog
+        import progressBar as pB
+    except:
+        pass
 except:
     from . import function_dataraster as dataraster
     from . import accuracy_index as ai
     from . import gmm_ridge as gmmr
-    from . import progressBar as pB
+    import progressBar as pB
     from qgis.core import QgsMessageLog
+    
 import pickle
 
 import os
@@ -74,10 +79,11 @@ class learnModel:
         # Convert vector to raster
         
         pushFeedback('Learning model...',feedback=feedback)
-        
-        
         pushFeedback(0,feedback=feedback)
         total = 100/10
+        if feedback=='gui':
+            progress = pB.progressBar('Loading...',6)
+        
         ### New function     
         try:
             SPLIT = inSplit
@@ -108,12 +114,8 @@ class learnModel:
         except:
             msg = "Problem with getting samples from ROI \n \
             Are you sure to have only integer values in your "+str(inField)+" field ?\n  "
-
-            if feedback:
-                feedback.setProgressText(msg)
-            else:
-                print(msg)
-        
+            pushFeedback(msg,feedback=feedback)
+            
         # Create temporary data set
         if SPLIT=='SLOO':
  
@@ -176,9 +178,10 @@ class learnModel:
 
         
         pushFeedback(int(1* total))
-
+        if feedback=='gui':
+            progress.addStep() # Add Step to ProgressBar
         # Learning process take split of groundthruth pixels for training and the remaining for testing
-
+        
 
         try:
             if type(SPLIT)==int or type(SPLIT)==float:
@@ -210,14 +213,18 @@ class learnModel:
                 self.x = x
                 self.y = y
         except:
-            QgsMessageLog.logMessage("Problem while learning if SPLIT <1")
+            pushFeedback("Problem while learning if SPLIT <1",feedback=feedback)
 
 
         pushFeedback(int(2* total),feedback=feedback)
+        if feedback=='gui':
+            progress.addStep()
+            
         pushFeedback('Learning process...',feedback=feedback)
         pushFeedback('This step could take a lot of time... So be patient, even if the progress bar stucks at 20% :)',feedback=feedback)
             
-        #learningProgress.addStep() # Add Step to ProgressBar
+        if feedback=='gui':
+            progress.addStep() # Add Step to ProgressBar
         # Train Classifier
         if inClassifier == 'GMM':
             try:
@@ -364,9 +371,10 @@ class learnModel:
                     n_splits=3
                     
             except:
-                pushFeedback("Cannot train with classifier "+inClassifier)
+                pushFeedback("Cannot train with classifier "+inClassifier,feedback=feedback)
                 
-                
+            if feedback=='gui':
+                progress.prgBar.setValue(5) # Add Step to ProgressBar   
             
             if isinstance(SPLIT,int):
                 cv = StratifiedKFold(n_splits=n_splits)#.split(x,y)
@@ -405,13 +413,12 @@ class learnModel:
                         np.savetxt((saveDir+'matrix/stand_'+str(inField)+'_'+str(i)+'.csv'),CM[i],delimiter=',',fmt='%.d')
 
             
-        if feedback == 'gui':
-            learningProgress.addStep() # Add Step to ProgressBar
-        elif feedback:
-            feedback.setProgress(int(9* total))
+        pushFeedback(int(9* total),feedback=feedback)
 
         # Assess the quality of the model
-        
+        if feedback=='gui':
+            progress.prgBar.setValue(90)
+            
         if inVectorTest or isinstance(SPLIT,int):
             if SPLIT!=100 or inVectorTest:
                 from sklearn.metrics import cohen_kappa_score,accuracy_score,f1_score
@@ -453,12 +460,12 @@ class learnModel:
             pickle.dump([model,M,m,inClassifier], output)
             output.close()
 
-        if feedback == 'gui':
-            learningProgress.addStep() # Add Step to ProgressBar
-            learningProgress.reset()
-            learningProgress=None
-        elif feedback:
-            feedback.setProgress(int(10* total))
+        
+        pushFeedback(int(10* total),feedback=feedback)
+        if feedback=='gui':
+            progress.reset()
+            progress=None
+
         
     def scale(self,x,M=None,m=None):
         """!@brief Function that standardize the data.
@@ -528,14 +535,14 @@ class classifyImage(object):
                 
                 model.close()
         except:
-            QgsMessageLog.logMessage("Error while loading the model : "+inModel)
+            pushFeedback("Error while loading the model : "+inModel,feedback=feedback)
 
         # Creating temp file for saving raster classification
         try:
             temp_folder = tempfile.mkdtemp()
             rasterTemp = os.path.join(temp_folder, 'temp.tif')
         except:
-            QgsMessageLog.logMessage("Cannot create temp file "+rasterTemp)
+            pushFeedback("Cannot create temp file "+rasterTemp,feedback=feedback)
             # Process the data
         #try:
         predictedImage=self.predict_image(inRaster,outRaster,tree,inMask,confidenceMap,confidenceMapPerClass=None,NODATA=NODATA,SCALE=[M,m],classifier=classifier,feedback=feedback)
@@ -660,13 +667,19 @@ class classifyImage(object):
         
         
         pushFeedback('Predicting model...')
-        pushFeedback(total)
+        
+        if feedback=='gui':
+            progress = pB.progressBar('Predicting model...',total/10)
 
 
         for i in range(0,nl,y_block_size):
-
-            
-            pushFeedback(int(i/total*100))
+            if not 'lastBlock' in locals():
+                lastBlock = i
+            if int(lastBlock/total*100)!=int(i/total*100):
+                lastBlock = i
+                pushFeedback(int(i/total*100))
+                if feedback=='gui':
+                    progress.addStep()
 
             if i + y_block_size < nl: # Check for size consistency in Y
                 lines = y_block_size
@@ -743,7 +756,7 @@ class classifyImage(object):
 
         # Clean/Close variables
         if feedback=='gui':
-            predictProgress.reset()
+            progress.reset()
 
         raster = None
         dst_ds = None
@@ -805,13 +818,14 @@ def pushFeedback(message,feedback=None):
             else:
                 feedback.setProgressText(message)
     else:
-        if isNum:
-            print(52*"=")
-            print(int(message/2)*'-'+(str(message)+'%'))
-            print(52*"=")
+        if not isNum:
+            print(str(message))            
+        """
         else:
-            print(str(message))
-    
+            print(52*"=")
+            print(((int(message/2)-3)*'-'+(str(message)+'%')))
+            print(52*"=")
+        """
 if __name__ == "__main__":
             
     INPUT_RASTER = "/mnt/DATA/demo/map.tif"

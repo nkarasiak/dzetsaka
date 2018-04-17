@@ -558,51 +558,55 @@ class dzetsakaGUI ( QDialog ):
             
             if model != '':
                 model=self.dockwidget.inModel.text()
-                
-
-            # Perform training & classification
             else:
-                try:
-                    if self.dockwidget.outModel.text()=='':
-                        model=tempfile.mktemp('.'+str(inClassifier))
-                    else:
-                        model=self.dockwidget.outModel.text()
+                if self.dockwidget.outModel.text()=='':
+                    model=tempfile.mktemp('.'+str(inClassifier))
+                else:
+                    model=self.dockwidget.outModel.text()
 
-                    inField = self.dockwidget.inField.currentText()
+            inField = self.dockwidget.inField.currentText()
+            inSeed = 0
+            # Perform training & classification
+            if self.dockwidget.checkOutMatrix.isChecked():
+                outMatrix = self.dockwidget.outMatrix.text()
+                inSplit = self.dockwidget.inSplit.value()
+            else:
+                inSplit = 100
+                outMatrix = None
+            try:
 
-                    inSeed = 0
-                    if self.dockwidget.checkOutMatrix.isChecked():
-                        outMatrix = self.dockwidget.outMatrix.text()
-                        inSplit = self.dockwidget.inSplit.value()
-                    else:
-                        inSplit = 100
-                        outMatrix = None
 
+                temp=mainfunction.learnModel(inRaster,inShape,inField,model,inSplit,inSeed=inSeed,outMatrix=outMatrix,inClassifier=inClassifier,extraParam=None,feedback='gui')
 
-                    QgsMessageLog.logMessage('Begin training with '+inClassifier+ ' classifier')
+                QgsMessageLog.logMessage('Begin training with '+inClassifier+ ' classifier')
 
-                    # perform learning
-                    
-                    temp=mainfunction.learnModel(inRaster,inShape,inField,model,inSplit,inSeed=inSeed,outMatrix=outMatrix,inClassifier=inClassifier,extraParam=None,feedback='gui')
+                # perform learning
+                
+                QgsMessageLog.logMessage('Begin training with '+inClassifier+ ' classifier')
 
-                except:
-                    QgsMessageLog.logMessage('inSplit is'+str(inSplit))
-                    QgsMessageLog.logMessage('inField is '+str(inField))
-                    QgsMessageLog.logMessage('model is '+str(model))
-                    QgsMessageLog.logMessage('inShape is '+str(inShape))
-                    message = ('Something went wrong during the training. Please make sure you respect these conditions : <br> - Are you sure to have only integer values in your '+str(inField)+' column ? <br> - Do your shapefile and raster have the same projection ?')
-                    QMessageBox.warning(self, 'dzetsaka has encountered a problem', message, QMessageBox.Ok)
-            
-            # Begin classification
-            QgsMessageLog.logMessage('Begin classification with '+str(inClassifier))
-            temp=mainfunction.classifyImage()
-
-            temp.initPredict(inRaster,model,outRaster,inMask,confidenceMap,NODATA)
-            QgsMessageLog.logMessage('Classification done.')
-            self.iface.addRasterLayer(outRaster)
-
-            if confidenceMap :
-                self.iface.addRasterLayer(confidenceMap)
+                stop=False
+            except:
+                QgsMessageLog.logMessage('inRaster is'+str(inRaster))
+                QgsMessageLog.logMessage('inShape is'+str(inShape))
+                QgsMessageLog.logMessage('inSplit is'+str(inSplit))
+                QgsMessageLog.logMessage('inField is '+str(inField))
+                QgsMessageLog.logMessage('model is '+str(model))
+        
+                message = ('Something went wrong during the training. Please make sure you respect these conditions : <br> - Are you sure to have only integer values in your '+str(inField)+' column ? <br> - Do your shapefile and raster have the same projection ?')
+                QMessageBox.warning(self, 'dzetsaka has encountered a problem', message, QMessageBox.Ok)
+                stop=True
+        
+            if not stop:
+                # Begin classification
+                QgsMessageLog.logMessage('Begin classification with '+str(inClassifier))
+                temp=mainfunction.classifyImage()
+    
+                temp.initPredict(inRaster,model,outRaster,inMask,confidenceMap,NODATA,feedback='gui')
+                QgsMessageLog.logMessage('Classification done.')
+                self.iface.addRasterLayer(outRaster)
+    
+                if confidenceMap :
+                    self.iface.addRasterLayer(confidenceMap)
 
     def checkbox_state(self):
         """!@brief Manage checkbox in main dock"""
