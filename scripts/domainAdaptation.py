@@ -61,7 +61,7 @@ class rasterOT(object):
         if scaler:
             from sklearn.preprocessing import MinMaxScaler
             self.scaler = MinMaxScaler(feature_range=(0,1))
-            self.scalerTarget = MinMaxScaler(feature_range=(-1,1))
+            self.scalerTarget = MinMaxScaler(feature_range=(0,1))
         else:
             self.scaler = scaler
         

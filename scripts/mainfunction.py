@@ -42,8 +42,8 @@ import numpy as np
 from osgeo import (gdal, ogr)
 
     
-class learnModel(object):
-    def __init__(self,inRaster,inVector,inField='Class',outModel=None,inSplit=1,inSeed=0,outMatrix=None,inClassifier='GMM',extraParam=False,feedback=None):
+class learnModel:
+    def __init__(self,inRaster,inVector,inField='Class',outModel=None,inSplit=100,inSeed=0,outMatrix=None,inClassifier='GMM',extraParam=False,feedback=None):
         """!@brief Learn model with a shp file and a raster image.
     
         **********
@@ -72,11 +72,12 @@ class learnModel(object):
     
         """
         # Convert vector to raster
-        if feedback=='gui':
-            learningProgress = pB.progressBar('Learning model...',6)
-        elif feedback:
-            feedback.setProgress(0)
-            total = 100/10
+        
+        pushFeedback('Learning model...',feedback=feedback)
+        
+        
+        pushFeedback(0,feedback=feedback)
+        total = 100/10
         ### New function     
         try:
             SPLIT = inSplit
@@ -117,9 +118,9 @@ class learnModel(object):
         if SPLIT=='SLOO':
  
             from sklearn.metrics import confusion_matrix
-            if __name__ == '__main__':
+            try:
                 from function_vector import distanceCV,distMatrix
-            else:
+            except:
                 from .function_vector import distanceCV,distMatrix
             from sklearn.metrics import cohen_kappa_score,accuracy_score,f1_score
             
@@ -173,10 +174,8 @@ class learnModel(object):
         # Scale the data
         X,M,m = self.scale(X)
 
-        if feedback=='gui':
-            learningProgress.addStep() # Add Step to ProgressBar
-        elif feedback:
-            feedback.setProgress(int(1* total))
+        
+        pushFeedback(int(1* total))
 
         # Learning process take split of groundthruth pixels for training and the remaining for testing
 
@@ -214,12 +213,9 @@ class learnModel(object):
             QgsMessageLog.logMessage("Problem while learning if SPLIT <1")
 
 
-        if feedback == 'gui':
-            learningProgress.addStep() # Add Step to ProgressBar
-        elif feedback:
-            feedback.setProgress(int(2* total))
-            feedback.setProgressText('Learning process...')
-            feedback.setProgressText('This step could take a lot of time... So be patient, even if the progress bar stucks at 20% :)')
+        pushFeedback(int(2* total),feedback=feedback)
+        pushFeedback('Learning process...',feedback=feedback)
+        pushFeedback('This step could take a lot of time... So be patient, even if the progress bar stucks at 20% :)',feedback=feedback)
             
         #learningProgress.addStep() # Add Step to ProgressBar
         # Train Classifier
@@ -231,7 +227,7 @@ class learnModel(object):
                 # htau,err = model.cross_validation(x,y,tau)
                 # model.tau = htau
             except:
-                QgsMessageLog.logMessage("Cannot train with GMM")
+                pushFeedback("Cannot train with GMM",feedback=feedback)
         else:
         
             #from sklearn import neighbors
@@ -244,7 +240,11 @@ class learnModel(object):
 
 
             try:
-
+                
+                if extraParam:
+                    if 'param_algo' in extraParam.keys():
+                        param_algo = extraParam['param_algo']
+                        
                 # AS Qgis in Windows doensn't manage multiprocessing, force to use 1 thread for not linux system
                 n_jobs=1    
                 """
@@ -280,7 +280,7 @@ class learnModel(object):
                         if 'distance' in extraParam.keys():
                             distance = extraParam['distance']
                         else: 
-                            print('You need distance in extraParam')
+                            pushFeedback('You need distance in extraParam',feedback=feedback)
                     
                         if 'minTrain' in extraParam.keys():
                             minTrain = float(extraParam['minTrain'])
@@ -304,22 +304,22 @@ class learnModel(object):
                     rawCV = distanceCV(distanceArray,label,distanceThresold=distance,minTrain=minTrain,SLOO=SLOO,maxIter=maxIter,verbose=False,stats=False)                    
                     
                     """
-                    if feedback and feedback != 'gui':
-                        
-                        #feedback.setProgressText('distance is '+str(extraParam['distance']))
-                        feedback.setProgressText('label is '+str(label.shape))
-                        feedback.setProgressText('distance array shape is '+str(distanceArray.shape))
-                        feedback.setProgressText('minTrain is '+str(minTrain))
-                        feedback.setProgressText('SLOO is '+str(SLOO))
-                        feedback.setProgressText('maxIter is '+str(maxIter))
-                        
+                
+                    pushFeedback('label is '+str(label.shape),feedback=feedback)
+                    #feedback.setProgressText('distance is '+str(extraParam['distance']))
+                    pushFeedback('label is '+str(label.shape),feedback=feedback)
+                    pushFeedback('distance array shape is '+str(distanceArray.shape),feedback=feedback)
+                    pushFeedback('minTrain is '+str(minTrain),feedback=feedback)
+                    pushFeedback('SLOO is '+str(SLOO),feedback=feedback)
+                    pushFeedback('maxIter is '+str(maxIter),feedback=feedback)
+                    
                     rawCV = distanceCV(distanceArray,label,distanceThresold=distance,minTrain=minTrain,SLOO=SLOO,maxIter=maxIter,stats=False)
-                    if feedback and feedback != 'gui':
-                        feedback.setProgressText('Computing SLOO Cross Validation')
+                    
+                    pushFeedback('Computing SLOO Cross Validation',feedback=feedback)
                         
                     for tr,vl in rawCV : 
-                        if feedback and feedback != 'gui':
-                            feedback.setProgressText('Training size is '+str(tr.shape))
+                        
+                        pushFeedback('Training size is '+str(tr.shape),feedback=feedback)
                         #sts.append(stat)
                         cvDistance.append((tr,vl))
                     """
@@ -334,7 +334,10 @@ class learnModel(object):
                     from sklearn.ensemble import RandomForestClassifier
 
                     param_grid = dict(n_estimators=3**np.arange(1,5),max_features=range(1,x.shape[1],int(x.shape[1]/3)))                      
-                    classifier = RandomForestClassifier()
+                    if 'param_algo' in locals():
+                        classifier = RandomForestClassifier(**param_algo)
+                    else:
+                        classifier = RandomForestClassifier()
                     n_splits=5                        
 
                     
@@ -342,20 +345,29 @@ class learnModel(object):
                     from sklearn.svm import SVC
 
                     param_grid = dict(gamma=2.0**np.arange(-4,4), C=10.0**np.arange(-2,5))                 
-                    classifier = SVC(probability=True)                        
+                    
+                    if 'param_algo' in locals():
+                        classifier = SVC(probability=True, **param_algo)
+                    else:
+                        classifier = SVC(probability=True) 
                     n_splits=5
                     
                 elif inClassifier == 'KNN':
                     from sklearn import neighbors
 
-                    param_grid = dict(n_neighbors = np.arange(1,20,4))                         
-                    classifier = neighbors.KNeighborsClassifier()
+                    param_grid = dict(n_neighbors = np.arange(1,20,4))            
+                    if 'param_algo' in locals():
+                        classifier = neighbors.KNeighborsClassifier(**param_algo)
+                    else:
+                        classifier = neighbors.KNeighborsClassifier()
+                    
                     n_splits=3
                     
             except:
-                QgsMessageLog.logMessage("Cannot train with classifier "+inClassifier)
+                pushFeedback("Cannot train with classifier "+inClassifier)
                 
-
+                
+            
             if isinstance(SPLIT,int):
                 cv = StratifiedKFold(n_splits=n_splits)#.split(x,y)
             else:
@@ -366,13 +378,15 @@ class learnModel(object):
             if extraParam:
                 if 'param_grid' in extraParam.keys():
                     param_grid = extraParam['param_grid']
-                    if feedback and feedback != 'gui':
-                        feedback.setProgressText('Custom param for Grid Search CV has been found : '+str(param_grid))
+                    
+                    pushFeedback('Custom param for Grid Search CV has been found : '+str(param_grid),feedback=feedback)
                     
             grid = GridSearchCV(classifier,param_grid=param_grid, cv=cv,n_jobs=n_jobs)
             grid.fit(x,y)
             model = grid.best_estimator_
             model.fit(x,y)
+            
+            self.model = model
             
             if isinstance(SPLIT,str):
                 CM = []
@@ -429,11 +443,9 @@ class learnModel(object):
                 
                 res = {'oa':self.oa,'kappa':self.kappa,'f1':self.f1}
                 
-                if feedback == 'gui':
-                    QgsMessageLog.logMessage(str(res))
-                elif feedback:
-                    feedback.setProgressText(str(res))
-
+                for estim in res:
+                    pushFeedback(estim+' : '+str(res[estim]),feedback=feedback)
+                
         # Save Tree model
         
         if outModel is not None:
@@ -646,17 +658,15 @@ class classifyImage(object):
 
         total = nl*y_block_size
         
-        if feedback=='gui':
-            predictProgress = pB.progressBar('Predicting model...',total)
+        
+        pushFeedback('Predicting model...')
+        pushFeedback(total)
 
 
         for i in range(0,nl,y_block_size):
 
-            if feedback=='gui':
-                predictProgress.addStep()
-            elif feedback:
-                #feedback.setProgressText(str(i)+"/"+str(total)+' or '+str(i/total))
-                feedback.setProgress(int(i/total*100))
+            
+            pushFeedback(int(i/total*100))
 
             if i + y_block_size < nl: # Check for size consistency in Y
                 lines = y_block_size
@@ -760,7 +770,7 @@ class confusionMatrix(object):
             self.Kappa = CONF.Kappa
             self.OA = CONF.OA
         except:
-            QgsMessageLog.logMessage('Error during statitics calculation')
+            pushFeedback('Error during statitics calculation')
 
 
 
@@ -795,7 +805,11 @@ def pushFeedback(message,feedback=None):
             else:
                 feedback.setProgressText(message)
     else:
-        if not isNum:
+        if isNum:
+            print(52*"=")
+            print(int(message/2)*'-'+(str(message)+'%'))
+            print(52*"=")
+        else:
             print(str(message))
     
 if __name__ == "__main__":

@@ -32,3 +32,34 @@ class CONFUSION_MATRIX(object):
         self.Kappa = ((n**2)*self.OA - sp.sum(nc*nl))/(n**2-sp.sum(nc*nl))
         
         # TBD Variance du Kappa
+        
+    
+    
+class statsFromConfusionMatrix(object):
+    def __init__(self,confusionMatrix):
+        self.confusionMatrix = confusionMatrix
+        self.n = sp.sum(self.confusionMatrix)
+        self.OA = self.__get_OA()
+        self.kappa = self.__get_kappa()
+        self.F1 = self.__get_F1Mean()
+        
+    def __get_OA(self):
+        """
+        Compute overall accuracy
+        """
+        return sp.sum(sp.diag(self.confusionMatrix))/float(self.n)
+    def __get_kappa(self):
+        """
+        Compute Kappa
+        """
+        nl = sp.sum(self.confusionMatrix,axis=1)
+        nc = sp.sum(self.confusionMatrix,axis=0)
+        OA = sp.sum(sp.diag(self.confusionMatrix))/float(self.n)
+        return ((self.n**2)*OA - sp.sum(nc*nl))/(self.n**2-sp.sum(nc*nl))
+    def __get_F1Mean(self):
+        """
+        Compute F1 Mean
+        """
+        nl = sp.sum(self.confusionMatrix,axis=1,dtype=float)
+        nc = sp.sum(self.confusionMatrix,axis=0,dtype=float)
+        return 2*sp.mean( sp.divide( sp.diag(self.confusionMatrix), (nl + nc)) )
