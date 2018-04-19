@@ -28,9 +28,7 @@ from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QCoreApplication
 #from PyQt5.QtWidgets import QMessageBox
 
-from qgis.core import (QgsProcessingParameterDefinition,
-                       QgsMessageLog,
-                       QgsProcessingAlgorithm,
+from qgis.core import (QgsProcessingAlgorithm,
                        QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterVectorLayer,
                        QgsProcessingParameterField,
@@ -58,7 +56,7 @@ class domainAdaptation(QgsProcessingAlgorithm):
     PARAMS = 'PARAMS'
     
     TRAIN = "TRAIN"
-    TRAIN_ALGORITHMS = ['Gaussian','Earth Mover\'s Distance','Sinkhorn Algorithm','Sinkhorn algorithm + l1 class regularization','Sinkhorn algorithm + l1l2 class regularization']
+    TRAIN_ALGORITHMS = ['Mapping Transport','Earth Mover\'s Distance','Sinkhorn Algorithm','Sinkhorn algorithm + l1 class regularization','Sinkhorn algorithm + l1l2 class regularization']
     TRAIN_ALGORITHMS_CODE = ['MappingTransport','EMDTransport','SinkhornTransport','SinkhornLpl1Transport','SinkhornL1l2Transport']
     
     TRANSPORTED_IMAGE = 'TRANSPORTED_IMAGE'
@@ -232,10 +230,20 @@ class domainAdaptation(QgsProcessingAlgorithm):
             
             os.remove(tempROI)                                                                                          
             
+                
+    
+
+            transferModel = DA.rasterOT(params=PARAMSdict,feedback=feedback)
+            transferModel.learnTransfer(Xs,ys,Xt,None)
+            
+            """
+            transferModel.predictTransfer(SOURCE_RASTER.source(),TRANSPORTED_IMAGE,mask=MASK,NODATA=-10000)
+    
+    
             transferModel = DA.learnTransfer(Xs,ys,Xt,yt,SELECTED_ALGORITHM,params=PARAMSdict,feedback=feedback)
         
             DA.predictTransfer(transferModel,SOURCE_RASTER.source(),TRANSPORTED_IMAGE,mask=MASK,NODATA=-10000,feedback=feedback)
-            
+            """
             return {'Transported image' : str(TRANSPORTED_IMAGE)}
 
         else:

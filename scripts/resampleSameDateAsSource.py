@@ -15,10 +15,10 @@ import glob
 import numpy as np
 import datetime
 
-if __name__ == '__main__':
+try:
     import function_dataraster as dataraster
     from mainfunction import pushFeedback
-else:
+except:
     from . import function_dataraster as dataraster
     from .mainfunction import pushFeedback
 
@@ -49,7 +49,9 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
     
     pushFeedback(1,feedback=feedback)
         
-    tempDir = tempfile.mkdtemp()           
+    tempDir = os.path.dirname(resampledImage)+'/tmp'
+    if not os.path.exists(tempDir):
+        os.makedirs(tempDir)
     
     
     #RefDates = sp.loadtxt("/mnt/Data_2/Formosat/RAW/formosat_SudouestKalideos_2010/sample_time.csv")
@@ -64,8 +66,7 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
     for i in (sourceDatesArr,targetDatesArr):
         DOY.append(convertToDateTime(i,'%Y%m%d',DOY=True))
     
-    
-    
+        
     sourceDOY = np.asarray(DOY[0])
     targetDOY = np.asarray(DOY[1])
     
@@ -73,11 +74,11 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
     
     combineDOY = np.unique(np.sort(np.concatenate((sourceDOY,targetDOY))))
     
-    targetDOYidx = np.searchsorted(combineDOY,targetDOY)
+    sourceDOYidx = np.searchsorted(combineDOY,sourceDOY)
     
-    # needmask if 1, 0 means image is in target Image
+    # needmask if 1, 0 means image is in source Image
     needMask = np.ones(combineDOY.shape)
-    needMask[targetDOYidx] = 0
+    needMask[sourceDOYidx] = 0
 
     # create doy vrt using false image
     dataSource = gdal.Open(sourceImage)
@@ -85,7 +86,7 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
     GeoTransform = dataSource.GetGeoTransform()
     Projection = dataSource.GetProjection()
     #im = dataTarget.GetRasterBand(1).ReadAsArray()
-    im = np.zeros([dataSource.RasterXSize,dataSource.RasterYSize])
+    im = np.zeros([dataSource.RasterYSize,dataSource.RasterXSize])
     
     dataraster.create_uniquevalue_tiff(tempDir+'/mask1.tif',im,1,GeoTransform,Projection,1)
     dataraster.create_uniquevalue_tiff(tempDir+'/mask0.tif',im,1,GeoTransform,Projection,0)
@@ -99,10 +100,10 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
     
     
     # create doy vrt using real image
-    for i,j in enumerate(targetDOY):
+    for i,j in enumerate(sourceDOY):
         for spectral in range(nSpectralBands):
             bandToKeep = (spectral*nTargetBands)+int(i)+1
-            bashCommand = ("gdalbuildvrt -b "+str(bandToKeep)+' '+str(tempDir)+'/temp_'+str(spectral+1)+'_'+str(j)+".tif "+targetImage)
+            bashCommand = ("gdalbuildvrt -b "+str(bandToKeep)+' '+str(tempDir)+'/temp_'+str(spectral+1)+'_'+str(j)+".tif "+sourceImage)
             bashCommandMask = ("gdalbuildvrt "+str(tempDir)+'/temp_'+str(spectral+1)+'_'+str(j)+"_mask.tif "+str(tempDir)+'/mask0.tif')
             os.system(bashCommand)
             os.system(bashCommandMask)
@@ -170,7 +171,7 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
     
     
     
-    sourceDOYidx = np.unique(np.searchsorted(combineDOY,sourceDOY))
+    sourceDOYidx = np.unique(np.searchsorted(combineDOY,targetDOY))
     #bandsToKeepInVrt = listToStr(sourceDOYidx+1,sep=' -b ')
     
     
@@ -189,16 +190,15 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
         toGapFill = glob.glob(tempDir+'/*_'+str(spectral+1)+'_*[0-9].tif')
         toGapFillMask = glob.glob(tempDir+'/*_'+str(spectral+1)+'_*[0-9]_mask.tif')
         
-        vrt = 'gdalbuildvrt '+tempDir+'/temp.vrt'+listToStr(sorted(toGapFill))+' -separate'
+        vrt = 'gdalbuildvrt -separate '+tempDir+'/temp.vrt'+listToStr(sorted(toGapFill))
         os.system(vrt)
         
-        vrtmask = 'gdalbuildvrt '+tempDir+'/temp_mask.vrt'+listToStr(sorted(toGapFillMask))+' -separate'
+        vrtmask = 'gdalbuildvrt -separate '+tempDir+'/temp_mask.vrt'+listToStr(sorted(toGapFillMask))
         os.system(vrtmask)
         
         bashCommand = ("otbcli_ImageTimeSeriesGapFilling -in {0} -mask {1} -out {2} uint16 -comp 1 -it linear -id {3}").format(tempDir+'/temp.vrt',tempDir+'/temp_mask.vrt',tempDir+'/temp_'+str(spectral+1)+'.tif',tempDir+'/sampleTime.csv')
         
-        if feedback:
-            feedback.pushInfo('Executing gap filling : '+bashCommand)
+        pushFeedback('Executing gap filling : '+bashCommand,feedback=feedback)
             
         os.system(bashCommand)
         
@@ -212,7 +212,7 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
             vrt = ('gdalbuildvrt -b {0} {1} '+tempDir+'/temp_{2}.tif').format(j+1,currentVrt,str(spectral+1))
             os.system(vrt)
                 
-        vrt = 'gdalbuildvrt '+tempDir+'/temp_'+str(spectral+1)+'.vrt'+listToStr(tempList)+' -separate '
+        vrt = 'gdalbuildvrt -separate '+tempDir+'/temp_'+str(spectral+1)+'.vrt'+listToStr(tempList)
         os.system(vrt)
 
     bandList = [tempDir+'/temp_'+str(x+1)+'.vrt' for x in range(nSpectralBands)]
@@ -225,12 +225,12 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
     pushFeedback('Executing image concatenation : '+conca,feedback=feedback)
 
     os.system(conca)
-    """
+    
     files = glob.glob(tempDir+'/*')
     for file in files:
         os.remove(file)
     os.removedirs(tempDir)
-    """
+    
     return resampledImage
 
 if __name__ == "__main__":
@@ -245,21 +245,14 @@ if __name__ == "__main__":
     #resampledImage = WDIR+"sameDatesAsRef/SITS_2014as2013.tif"
     resampledImage = '/tmp/OUTPUT_RASTER.tif'
     """
-    
-    """
     targetImage = "/mnt/DATA/Sentinel-2/2017/SITS/T31TCJ/SITS_4bands.tif"
     sourceImage = "/mnt/DATA/Sentinel-2/2017/SITS/T31TDJ/SITS_4bands.tif"
     
     targetDates = "/mnt/DATA/Sentinel-2/2017/SITS/T31TCJ/sample_time.csv"
     sourceDates = "/mnt/DATA/Sentinel-2/2017/SITS/T31TDJ/sample_time.csv"
-    resampledImage = "/media/nkarasiak/Maxtor1/SITS/SITS_T31TDJasT31TCJdates.tif"
-    """
-    sourceDates = "/media/nkarasiak/Maxtor1/Formosat_2006-2014/v2/sample_time_2006bis.csv"
-    sourceImage = "/media/nkarasiak/Maxtor1/Formosat_2006-2014/v2/SITS_2006bis.tif"
-    targetDates = "/media/nkarasiak/Maxtor1/Formosat_2006-2014/v2/sample_time_2013.csv"
-    targetImage = "/media/nkarasiak/Maxtor1/Formosat_2006-2014/v2/SITS_2013.tif"
     
-    resampledImage = "/tmp/2006bis_as2013.tif"
+    
+    resampledImage = "/media/nkarasiak/Maxtor1/SITS/SITS_T31TDJasT31TCJdates.tif"
     nSpectralBands = 4
     
-    resampleWithSameDateAsSource(targetImage,sourceImage,targetDates,sourceDates,nSpectralBands,resampledImage)
+    resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates,nSpectralBands,resampledImage)

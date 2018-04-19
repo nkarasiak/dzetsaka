@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'settings_dock2.ui'
+# Form implementation generated from reading ui file 'settings_dock.ui'
 #
 # Created by: PyQt5 UI code generator 5.9.2
 #
@@ -11,14 +11,12 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_settingsDock(object):
     def setupUi(self, settingsDock):
         settingsDock.setObjectName("settingsDock")
-        settingsDock.resize(317, 200)
-        settingsDock.setMinimumSize(QtCore.QSize(317, 200))
+        settingsDock.resize(317, 202)
+        settingsDock.setMinimumSize(QtCore.QSize(317, 202))
         settingsDock.setMaximumSize(QtCore.QSize(600, 600))
         self.dockWidgetContents = QtWidgets.QWidget()
         self.dockWidgetContents.setObjectName("dockWidgetContents")
-        self.gridLayout = QtWidgets.QGridLayout(self.dockWidgetContents)
-        self.gridLayout.setObjectName("gridLayout")
-        self.formLayout = QtWidgets.QFormLayout()
+        self.formLayout = QtWidgets.QFormLayout(self.dockWidgetContents)
         self.formLayout.setObjectName("formLayout")
         self.label = QtWidgets.QLabel(self.dockWidgetContents)
         self.label.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
@@ -54,7 +52,15 @@ class Ui_settingsDock(object):
         self.maskSuffix.setText("")
         self.maskSuffix.setObjectName("maskSuffix")
         self.formLayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.maskSuffix)
-        self.gridLayout.addLayout(self.formLayout, 0, 0, 1, 1)
+        self.label_5 = QtWidgets.QLabel(self.dockWidgetContents)
+        self.label_5.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.label_5.setObjectName("label_5")
+        self.formLayout.setWidget(4, QtWidgets.QFormLayout.LabelRole, self.label_5)
+        self.selectProviders = QtWidgets.QComboBox(self.dockWidgetContents)
+        self.selectProviders.setObjectName("selectProviders")
+        self.selectProviders.addItem("")
+        self.selectProviders.addItem("")
+        self.formLayout.setWidget(4, QtWidgets.QFormLayout.FieldRole, self.selectProviders)
         settingsDock.setWidget(self.dockWidgetContents)
 
         self.retranslateUi(settingsDock)
@@ -71,4 +77,7 @@ class Ui_settingsDock(object):
         self.label_2.setText(_translate("settingsDock", "Temp suffix :"))
         self.label_3.setText(_translate("settingsDock", "Temp prefix :"))
         self.label_4.setText(_translate("settingsDock", "Mask suffix :"))
+        self.label_5.setText(_translate("settingsDock", "Providers : "))
+        self.selectProviders.setItemText(0, _translate("settingsDock", "Standard"))
+        self.selectProviders.setItemText(1, _translate("settingsDock", "Advanced"))
 

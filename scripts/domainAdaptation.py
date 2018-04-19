@@ -20,11 +20,10 @@ try:
 except:
     from . import function_dataraster as dataraster
     from .mainfunction import pushFeedback
-    
+
 from sklearn.metrics import mean_squared_error
 from itertools import product
 from sklearn.metrics import (f1_score, cohen_kappa_score,accuracy_score)
-from sklearn.metrics import mean_squared_error
 
 import gdal
 #import tempfile
@@ -187,15 +186,15 @@ class rasterOT(object):
         #gdal_dt = band.DataType
         
     
-        del band
     
         ## Initialize the output
         driver = gdal.GetDriverByName('GTiff')
-        
-        dst_ds = driver.Create(outRaster, nc,nl, d, 3)
+
+        dst_ds = driver.Create(outRaster, nc,nl, d, band.DataType)
         dst_ds.SetGeoTransform(GeoTransform)
         dst_ds.SetProjection(Projection)
         
+        del band
         ## Perform the classification
         if mask is not None:
             maskData = gdal.Open(mask,gdal.GA_ReadOnly)

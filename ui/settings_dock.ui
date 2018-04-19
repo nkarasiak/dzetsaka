@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>317</width>
-    <height>200</height>
+    <height>202</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>317</width>
-    <height>200</height>
+    <height>202</height>
    </size>
   </property>
   <property name="maximumSize">
@@ -26,91 +26,111 @@
    <string>dzetsaka : settings panel</string>
   </property>
   <widget class="QWidget" name="dockWidgetContents">
-   <layout class="QGridLayout" name="gridLayout">
+   <layout class="QFormLayout" name="formLayout">
     <item row="0" column="0">
-     <layout class="QFormLayout" name="formLayout">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>Classifier :</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-        </property>
-       </widget>
+     <widget class="QLabel" name="label">
+      <property name="text">
+       <string>Classifier :</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="1">
+     <widget class="QComboBox" name="selectClassifier">
+      <item>
+       <property name="text">
+        <string>Gaussian Mixture Model</string>
+       </property>
       </item>
-      <item row="0" column="1">
-       <widget class="QComboBox" name="selectClassifier">
-        <item>
-         <property name="text">
-          <string>Gaussian Mixture Model</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Random Forest</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Support Vector Machines</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>K-Nearest Neighbors</string>
-         </property>
-        </item>
-       </widget>
+      <item>
+       <property name="text">
+        <string>Random Forest</string>
+       </property>
       </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>Temp suffix :</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-        </property>
-       </widget>
+      <item>
+       <property name="text">
+        <string>Support Vector Machines</string>
+       </property>
       </item>
-      <item row="1" column="1">
-       <widget class="QLineEdit" name="classSuffix"/>
+      <item>
+       <property name="text">
+        <string>K-Nearest Neighbors</string>
+       </property>
       </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_3">
-        <property name="text">
-         <string>Temp prefix :</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-        </property>
-       </widget>
+     </widget>
+    </item>
+    <item row="1" column="0">
+     <widget class="QLabel" name="label_2">
+      <property name="text">
+       <string>Temp suffix :</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="1">
+     <widget class="QLineEdit" name="classSuffix"/>
+    </item>
+    <item row="2" column="0">
+     <widget class="QLabel" name="label_3">
+      <property name="text">
+       <string>Temp prefix :</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="1">
+     <widget class="QLineEdit" name="classPrefix">
+      <property name="text">
+       <string/>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="0">
+     <widget class="QLabel" name="label_4">
+      <property name="text">
+       <string>Mask suffix :</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="1">
+     <widget class="QLineEdit" name="maskSuffix">
+      <property name="text">
+       <string/>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="0">
+     <widget class="QLabel" name="label_5">
+      <property name="text">
+       <string>Providers : </string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="1">
+     <widget class="QComboBox" name="selectProviders">
+      <item>
+       <property name="text">
+        <string>Standard</string>
+       </property>
       </item>
-      <item row="2" column="1">
-       <widget class="QLineEdit" name="classPrefix">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
+      <item>
+       <property name="text">
+        <string>Advanced</string>
+       </property>
       </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_4">
-        <property name="text">
-         <string>Mask suffix :</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1">
-       <widget class="QLineEdit" name="maskSuffix">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-     </layout>
+     </widget>
     </item>
    </layout>
   </widget>

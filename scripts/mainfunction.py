@@ -529,7 +529,7 @@ class classifyImage(object):
             if model is None:
                 # fix_print_with_import
                 print("Model not load")
-                QgsMessageLog.logMessage("Model : "+inModel+" is none")
+                pushFeedback("Model : "+inModel+" is none")
             else:
                 tree,M,m,classifier = pickle.load(model)
                 
@@ -643,6 +643,9 @@ class classifyImage(object):
         del band
 
         ## Initialize the output
+        if not os.path.exists(os.path.dirname(outRaster)):
+            os.makedirs(os.path.dirname(outRaster))
+        
         driver = gdal.GetDriverByName('GTiff')
         dst_ds = driver.Create(outRaster, nc,nl, 1, gdal.GDT_Byte)
         dst_ds.SetGeoTransform(GeoTransform)
