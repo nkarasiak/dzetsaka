@@ -61,6 +61,7 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
     targetDatesArr = np.loadtxt(targetDates)
     
     nTargetBands = len(targetDatesArr)
+    nSourceBands = len(sourceDatesArr)
     
     DOY = []
     for i in (sourceDatesArr,targetDatesArr):
@@ -102,7 +103,7 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
     # create doy vrt using real image
     for i,j in enumerate(sourceDOY):
         for spectral in range(nSpectralBands):
-            bandToKeep = (spectral*nTargetBands)+int(i)+1
+            bandToKeep = (spectral*nSourceBands)+int(i)+1
             bashCommand = ("gdalbuildvrt -b "+str(bandToKeep)+' '+str(tempDir)+'/temp_'+str(spectral+1)+'_'+str(j)+".tif "+sourceImage)
             bashCommandMask = ("gdalbuildvrt "+str(tempDir)+'/temp_'+str(spectral+1)+'_'+str(j)+"_mask.tif "+str(tempDir)+'/mask0.tif')
             os.system(bashCommand)

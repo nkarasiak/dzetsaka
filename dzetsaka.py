@@ -579,13 +579,12 @@ class dzetsakaGUI ( QDialog ):
             try:
 
                 if not self.dockwidget.checkInModel.isChecked():
-                    temp=mainfunction.learnModel(inRaster,inShape,inField,model,inSplit,inSeed=inSeed,outMatrix=outMatrix,inClassifier=inClassifier,extraParam=None,feedback='gui')
-    
                     QgsMessageLog.logMessage('Begin training with '+inClassifier+ ' classifier')
-    
+                    
+                    temp=mainfunction.learnModel(inRaster,inShape,inField,model,inSplit,inSeed=inSeed,outMatrix=outMatrix,inClassifier=inClassifier,extraParam=None,feedback='gui')
+        
                     # perform learning
                     
-                    QgsMessageLog.logMessage('Begin training with '+inClassifier+ ' classifier')
 
                 stop=False
             except:
