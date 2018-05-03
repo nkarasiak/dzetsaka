@@ -1,10 +1,9 @@
 '''!@brief Accuracy index by Mathieu Fauvel
 '''
-from builtins import range
-from builtins import object
+
 import scipy as sp
 
-class CONFUSION_MATRIX(object):
+class CONFUSION_MATRIX:
     def __init__(self):
         self.confusion_matrix=None
         self.OA=None
@@ -35,7 +34,7 @@ class CONFUSION_MATRIX(object):
         
     
     
-class statsFromConfusionMatrix(object):
+class statsFromConfusionMatrix:
     def __init__(self,confusionMatrix):
         self.confusionMatrix = confusionMatrix
         self.n = sp.sum(self.confusionMatrix)

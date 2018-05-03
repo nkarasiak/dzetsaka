@@ -91,8 +91,8 @@ class rasterOT(object):
         self.params = self.params_
         
         if self.feedback:
-            pushFeedback(10)
-            pushFeedback('Learning Optimal Transport with '+str(self.transportAlgorithm))
+            pushFeedback(10,feedback=self.feedback)
+            pushFeedback('Learning Optimal Transport with '+str(self.transportAlgorithm),feedback=self.feedback)
         
         # check if label is 1d
         if len(ys.shape)>1:
@@ -134,9 +134,8 @@ class rasterOT(object):
         self.transportModel.fit(Xs,ys=ys,Xt=Xt,yt=yt)    
         
         if self.feedback:
-            pushFeedback(20)
+            pushFeedback(20,feedback=self.feedback)
         
-
         return self.transportModel
         
     
@@ -190,7 +189,7 @@ class rasterOT(object):
         ## Initialize the output
         driver = gdal.GetDriverByName('GTiff')
 
-        dst_ds = driver.Create(outRaster, nc,nl, d, band.DataType)
+        dst_ds = driver.Create(outRaster, nc,nl, d, 3)
         dst_ds.SetGeoTransform(GeoTransform)
         dst_ds.SetProjection(Projection)
         
@@ -207,12 +206,12 @@ class rasterOT(object):
         for i in range(0,nl,y_block_size):
             # feedback for Qgis
             if self.feedback:
-                pushFeedback(int(i * total)+20)    
+                pushFeedback(int(i * total)+20,feedback=self.feedback)    
                 try:
                     if self.feedback.isCanceled():
                         break
                 except:
-                    1==1                    
+                    pass
     
             if i + y_block_size < nl: # Check for size consistency in Y
                 lines = y_block_size
@@ -303,7 +302,7 @@ class rasterOT(object):
             XsPredict = self.inverseTransform(XsTransformed)
 
             if self.feedback:
-                pushFeedback('Testing params : '+str(gridOT))
+                pushFeedback('Testing params : '+str(gridOT),feedback=self.feedback)
             """
             #score = mean_squared_error(Xs,XsPredict)
             
@@ -345,7 +344,7 @@ class rasterOT(object):
             currentScore = mean_squared_error(Xs,XsPredict)
             
             if self.feedback:
-                pushFeedback('RMSE is : '+str(currentScore))
+                pushFeedback('RMSE is : '+str(currentScore),feedback=self.feedback)
                         
             if self.bestScore is None or self.bestScore > currentScore:
                 self.bestScore = currentScore
@@ -355,8 +354,8 @@ class rasterOT(object):
             del self.transportModel,yp
             """
         if self.feedback:
-            pushFeedback('Best grid is '+str(self.bestParam))
-            pushFeedback('Best score are '+str(self.bestScore))
+            pushFeedback('Best grid is '+str(self.bestParam),feedback=self.feedback)
+            pushFeedback('Best score are '+str(self.bestScore),feedback=self.feedback)
             
                 
         

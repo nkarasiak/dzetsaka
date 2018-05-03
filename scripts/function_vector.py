@@ -594,6 +594,44 @@ def saveToShape(array,srs,outShapeFile):
 
     # Save and close the data source
     ds = None
+
+
+def readROIFromVector(vector,roiprefix,level):
+    """
+    **********
+    Parameters
+    ----------
+    vector : Vector path ('myFolder/class.shp',str).
+    roiprefix : Common suffixof the training shpfile (i.e. 'band_',str).
+    level : Field name containing your class number (i.e. 'class', str).    
+
+    Output
+    ----------
+
+    ROIvalues : array
+    ROIlevels : array
+    """
+    file = ogr.Open(vector)
+    lyr = file.GetLayer()
+    
+    roiFields = []
+    
+    # get all fields and save only roiFields
+    ldefn = lyr.GetLayerDefn()
+    for n in range(ldefn.GetFieldCount()):
+        fdefn = ldefn.GetFieldDefn(n)
+        if fdefn.name.startswith(roiprefix):
+            roiFields.append(fdefn.name)
+    
+    # fill ROI and level
+    ROIvalues = np.zeros([lyr.GetFeatureCount(),len(roiFields)])
+    ROIlevels = np.zeros([lyr.GetFeatureCount(),1])
+    for i,feature in enumerate(lyr):
+        for j,band in enumerate(roiFields):
+            ROIvalues[i,j] = feature.GetField(band)
+            ROIlevels[i,0] = feature.GetField(level)
+    
+    return ROIvalues,ROIlevels
     
 if __name__ == "__main__":
     inRaster = '/mnt/DATA/Sentinel-2/SITS/SITS_TCJ.tif'

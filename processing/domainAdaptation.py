@@ -233,13 +233,14 @@ class domainAdaptation(QgsProcessingAlgorithm):
                 
     
 
-            transferModel = DA.rasterOT(params=PARAMSdict,feedback=feedback)
+            ###
+            transferModel = DA.rasterOT(params=PARAMSdict,transportAlgorithm=SELECTED_ALGORITHM,feedback=feedback)
             transferModel.learnTransfer(Xs,ys,Xt,None)
             
-            """
             transferModel.predictTransfer(SOURCE_RASTER.source(),TRANSPORTED_IMAGE,mask=MASK,NODATA=-10000)
     
-    
+
+            """
             transferModel = DA.learnTransfer(Xs,ys,Xt,yt,SELECTED_ALGORITHM,params=PARAMSdict,feedback=feedback)
         
             DA.predictTransfer(transferModel,SOURCE_RASTER.source(),TRANSPORTED_IMAGE,mask=MASK,NODATA=-10000,feedback=feedback)

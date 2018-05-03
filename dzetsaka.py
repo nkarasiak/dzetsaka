@@ -558,11 +558,13 @@ class dzetsakaGUI ( QDialog ):
             
             if model != '':
                 model=self.dockwidget.inModel.text()
+                QgsMessageLog.logMessage('Model is '+str(model))
             else:
                 if self.dockwidget.outModel.text()=='':
                     model=tempfile.mktemp('.'+str(inClassifier))
                 else:
                     model=self.dockwidget.outModel.text()
+                QgsMessageLog.logMessage('No model loaded')
 
             inField = self.dockwidget.inField.currentText()
             inSeed = 0
@@ -573,16 +575,17 @@ class dzetsakaGUI ( QDialog ):
             else:
                 inSplit = 100
                 outMatrix = None
+            
             try:
 
-
-                temp=mainfunction.learnModel(inRaster,inShape,inField,model,inSplit,inSeed=inSeed,outMatrix=outMatrix,inClassifier=inClassifier,extraParam=None,feedback='gui')
-
-                QgsMessageLog.logMessage('Begin training with '+inClassifier+ ' classifier')
-
-                # perform learning
-                
-                QgsMessageLog.logMessage('Begin training with '+inClassifier+ ' classifier')
+                if not self.dockwidget.checkInModel.isChecked():
+                    temp=mainfunction.learnModel(inRaster,inShape,inField,model,inSplit,inSeed=inSeed,outMatrix=outMatrix,inClassifier=inClassifier,extraParam=None,feedback='gui')
+    
+                    QgsMessageLog.logMessage('Begin training with '+inClassifier+ ' classifier')
+    
+                    # perform learning
+                    
+                    QgsMessageLog.logMessage('Begin training with '+inClassifier+ ' classifier')
 
                 stop=False
             except:

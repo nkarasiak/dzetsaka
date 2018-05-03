@@ -77,99 +77,126 @@ class learnModel:
     
         """
         # Convert vector to raster
-        
+        needXY = True
         pushFeedback('Learning model...',feedback=feedback)
         pushFeedback(0,feedback=feedback)
         total = 100/10
+        
+        SPLIT = inSplit
+        
         if feedback=='gui':
             progress = pB.progressBar('Loading...',6)
-        
-        ### New function     
         try:
-            SPLIT = inSplit
+            if extraParam:
+                if 'readROIFromVector' in extraParam.keys():
+                    if extraParam['readROIFromVector'] is not False:
+                        try:
+                            from function_vector import readROIFromVector
+                            X,Y = readROIFromVector(inVector,extraParam['readROIFromVector'],inField)
+                            needXY = False
+                        
+                        except:
+                            msg = 'Problem when importing readFieldVector from functions in dzetsaka'
+                            pushFeedback(msg,feedback=feedback)
+                            
             
             inVectorTest = False
             if type(SPLIT) == str :
                 if SPLIT.endswith(('.shp','.sqlite')):
                     inVectorTest = SPLIT
-            
+                    
             if extraParam:
                 if 'saveDir' in extraParam.keys():
                     saveDir = extraParam['saveDir']
                     if not os.path.exists(saveDir):
                         os.makedirs(saveDir)
-                    if not os.path.exists(saveDir+'matrix/'):
-                        os.makedirs(saveDir+'matrix/')
+                    if not os.path.exists(os.path.join(saveDir,'matrix/')):
+                        os.makedirs(os.path.join(saveDir,'matrix/'))
+
+            if needXY:
+                ROI = rasterize(inRaster,inVector,inField)
                         
-            ROI = rasterize(inRaster,inVector,inField)
-                    
             if inVectorTest:
                 ROIt = rasterize(inRaster,inVectorTest,inField)
                 X,Y = dataraster.get_samples_from_roi(inRaster,ROI)
                 Xt,yt = dataraster.get_samples_from_roi(inRaster,ROIt)
                 xt,N,n = self.scale(Xt)
-                #x,y = dataraster.get_samples_from_roi(inRaster,ROI,getCoords=True,convertTo4326=True)
+                    #x,y = dataraster.get_samples_from_roi(inRaster,ROI,getCoords=True,convertTo4326=True)
                 y=Y
-                
-        except:
-            msg = "Problem with getting samples from ROI \n \
-            Are you sure to have only integer values in your "+str(inField)+" field ?\n  "
-            pushFeedback(msg,feedback=feedback)
-            
-        # Create temporary data set
-        if SPLIT=='SLOO':
- 
-            from sklearn.metrics import confusion_matrix
-            try:
-                from function_vector import distanceCV,distMatrix
-            except:
-                from .function_vector import distanceCV,distMatrix
-            from sklearn.metrics import cohen_kappa_score,accuracy_score,f1_score
-            
-            """
-            distanceFile = os.path.splitext(inVector)[0]+'_'+str(inField)+'_distMatrix.npy'
-            if os.path.exists(distanceFile):
-                print('Distance array loaded')
-                distanceArray = np.load(distanceFile)
-                X,Y =  dataraster.get_samples_from_roi(inRaster,ROI)
-            else:
-                print('Generate distance array')
-            """
-            X,Y,coords = dataraster.get_samples_from_roi(inRaster,ROI,getCoords=True)                
-            
-            distanceArray = distMatrix(coords)
-            #np.save(os.path.splitext(distanceFile)[0],distanceArray)
-      
-        else:                
-            if SPLIT=='STAND':
-                
+                    
+            # Create temporary data set
+            if SPLIT=='SLOO':
+     
                 from sklearn.metrics import confusion_matrix
-                if __name__ == '__main__':
-                    from function_vector import standCV #,readFieldVector
+                try:
+                    from function_vector import distanceCV,distMatrix
+                except:
+                    from .function_vector import distanceCV,distMatrix
+                from sklearn.metrics import cohen_kappa_score,accuracy_score,f1_score
+                
+                """
+                distanceFile = os.path.splitext(inVector)[0]+'_'+str(inField)+'_distMatrix.npy'
+                if os.path.exists(distanceFile):
+                    print('Distance array loaded')
+                    distanceArray = np.load(distanceFile)
+                    X,Y =  dataraster.get_samples_from_roi(inRaster,ROI)
                 else:
-                    from .function_vector import standCV #,readFieldVector
-                from sklearn.metrics import cohen_kappa_score,accuracy_score,f1_score  
+                    print('Generate distance array')
+                """
                 
-                if 'inStand' in extraParam.keys():
-                    inStand = extraParam['inStand']
+                            
+                if 'readROIFromVector' in extraParam.keys():
+                    if extraParam['readROIFromVector'] is not False:
+                        try:
+                            coords = extraParam['coords']
+                        except:
+                            pushFeedback('Can\'t read coords array',feedback=feedback)                        
+                    else:
+                        X,Y,coords = dataraster.get_samples_from_roi(inRaster,ROI,getCoords=True)                
                 else:
-                    inStand = 'stand'
-                STAND = rasterize(inRaster,inVector,inStand)
-                X,Y,STDs = dataraster.get_samples_from_roi(inRaster,ROI,STAND)
-                #ROIStand = rasterize(inRaster,inVector,inStand)
-                #temp, STDs = dataraster.get_samples_from_roi(inRaster,ROIStand)
+                    X,Y,coords = dataraster.get_samples_from_roi(inRaster,ROI,getCoords=True)                
                 
-                #FIDs,STDs,srs=readFieldVector(inVector,inField,inStand,getFeatures=False)
-                
-            else:
-                X,Y =  dataraster.get_samples_from_roi(inRaster,ROI)
-            
+                distanceArray = distMatrix(coords)
+                #np.save(os.path.splitext(distanceFile)[0],distanceArray)
+          
+            else:                
+                if SPLIT=='STAND':
+                    
+                    from sklearn.metrics import confusion_matrix
+                    if __name__ == '__main__':
+                        from function_vector import standCV #,readFieldVector
+                    else:
+                        from .function_vector import standCV #,readFieldVector
+                    from sklearn.metrics import cohen_kappa_score,accuracy_score,f1_score  
+                    
+                    if 'inStand' in extraParam.keys():
+                        inStand = extraParam['inStand']
+                    else:
+                        inStand = 'stand'
+                    STAND = rasterize(inRaster,inVector,inStand)
+                    X,Y,STDs = dataraster.get_samples_from_roi(inRaster,ROI,STAND)
+                    #ROIStand = rasterize(inRaster,inVector,inStand)
+                    #temp, STDs = dataraster.get_samples_from_roi(inRaster,ROIStand)
+                    
+                    #FIDs,STDs,srs=readFieldVector(inVector,inField,inStand,getFeatures=False)
+                    
+                elif needXY:
+                    X,Y =  dataraster.get_samples_from_roi(inRaster,ROI)
+        
+        except:                                        
+            msg = "Problem with getting samples from ROI \n \
+                Are you sure to have only integer values in your "+str(inField)+" field ?\n  "
+            pushFeedback(msg,feedback=feedback)
+
 
         [n,d] = X.shape
         C = int(Y.max())
         SPLIT = inSplit
         
-        os.remove(ROI)
+        try:
+            os.remove(ROI)
+        except:
+            pass
         #os.remove(filename)
         #os.rmdir(temp_folder)
 
@@ -253,13 +280,11 @@ class learnModel:
                         param_algo = extraParam['param_algo']
                         
                 # AS Qgis in Windows doensn't manage multiprocessing, force to use 1 thread for not linux system
-                n_jobs=1    
-                """
                 if os.name == 'posix':
                     n_jobs=-1
                 else:
                     n_jobs=1
-                """
+                
                 
                 if SPLIT=='STAND':
                     label = np.copy(Y)
@@ -394,7 +419,7 @@ class learnModel:
             model = grid.best_estimator_
             model.fit(x,y)
             
-            self.model = model
+            
             
             if isinstance(SPLIT,str):
                 CM = []
@@ -408,9 +433,11 @@ class learnModel:
                    CM.append(confusion_matrix(y_test, X_pred))
                 for i,j in enumerate(CM):
                     if SPLIT=='SLOO':
-                        np.savetxt((saveDir+'matrix/'+str(distance)+'_'+str(inField)+'_'+str(minTrain)+'_'+str(i)+'.csv'),CM[i],delimiter=',',fmt='%.d')
+                        #np.savetxt((saveDir+'matrix/'+str(distance)+'_'+str(inField)+'_'+str(minTrain)+'_'+str(i)+'.csv'),CM[i],delimiter=',',fmt='%.d')
+                        np.savetxt(os.path.join(saveDir,'matrix/'+str(distance)+'_'+str(inField)+'_'+str(minTrain)+'_'+str(i)+'.csv'),CM[i],delimiter=',',fmt='%.d')
                     elif SPLIT=='STAND':
-                        np.savetxt((saveDir+'matrix/stand_'+str(inField)+'_'+str(i)+'.csv'),CM[i],delimiter=',',fmt='%.d')
+                        #np.savetxt((saveDir+'matrix/stand_'+str(inField)+'_'+str(i)+'.csv'),CM[i],delimiter=',',fmt='%.d')
+                        np.savetxt(os.path.join(saveDir,'matrix/stand_'+str(inField)+'_'+str(i)+'.csv'),CM[i],delimiter=',',fmt='%.d')
 
             
         pushFeedback(int(9* total),feedback=feedback)
@@ -431,7 +458,6 @@ class learnModel:
                 
                 if outMatrix is not None:
                     np.savetxt(outMatrix,CONF.confusion_matrix,delimiter=',',fmt='%1.4d')
-                np.savetxt(outMatrix,CONF.confusion_matrix,delimiter=',',fmt='%1.4d')
     
                 if inClassifier !='GMM':
                     for key in param_grid.keys():
@@ -454,7 +480,9 @@ class learnModel:
                     pushFeedback(estim+' : '+str(res[estim]),feedback=feedback)
                 
         # Save Tree model
-        
+        self.model = model
+        self.M= M
+        self.m = m
         if outModel is not None:
             output = open(outModel, 'wb')
             pickle.dump([model,M,m,inClassifier], output)
@@ -519,7 +547,7 @@ class classifyImage(object):
     """
 
 
-    def initPredict(self,inRaster,inModel,outRaster,inMask=None,confidenceMap=None,confidenceMapPerClass=None,NODATA=0,feedback=None):
+    def initPredict(self,inRaster,inModel,outRaster,inMask=None,confidenceMap=None,confidenceMapPerClass=None,NODATA=99,feedback=None):
 
 
         # Load model
@@ -714,6 +742,7 @@ class classifyImage(object):
                     mask_temp=mask.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
                     t = np.where((mask_temp!=0) & (X[:,0]!=NODATA))[0]
                     yp = np.zeros((cols*lines,))
+                    yp[:] = NODATA
                     #K = np.zeros((cols*lines,))
                     if confidenceMapPerClass and classifier != 'GMM':
                         K = np.zeros((cols*lines,nClass))
@@ -739,7 +768,7 @@ class classifyImage(object):
 
                 # Write the data
                 out.WriteArray(yp.reshape(lines,cols),j,i)
-                out.SetNoDataValue(0)
+                out.SetNoDataValue(NODATA)
                 out.FlushCache()
 
                 if confidenceMap :
@@ -811,7 +840,7 @@ def rasterize(inRaster,inShape,inField):
 def pushFeedback(message,feedback=None):
     isNum = isinstance(message,(float,int))
     
-    if feedback:
+    if feedback and feedback is not True:
         if feedback=='gui':
             if not isNum:
                 QgsMessageLog.logMessage(str(message))
@@ -842,13 +871,13 @@ if __name__ == "__main__":
     INPUT_MASK = None
     OUTPUT_RASTER = "/mnt/DATA/demo/test/class.tif"
     
-    """
+    
     temp = learnModel(INPUT_RASTER,INPUT_LAYER,INPUT_COLUMN,OUTPUT_MODEL,SPLIT_PERCENT,0,OUTPUT_MATRIX,SELECTED_ALGORITHM,extraParam=None,feedback=None)
     print('learned')
     temp=classifyImage()
     temp.initPredict(INPUT_RASTER,OUTPUT_MODEL,OUTPUT_RASTER,INPUT_MASK,OUTPUT_CONFIDENCE)
     print('clfied')
-    """
+    
     Test = 'SLOO'
     
     if Test == 'STAND':
