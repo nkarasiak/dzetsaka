@@ -20,23 +20,18 @@
  ***************************************************************************/
 """
 
-#from .
 try:
-    import function_dataraster as dataraster
-    import accuracy_index as ai
-    import gmm_ridge as gmmr
-    try:
-        from qgis.core import QgsMessageLog
-        import progressBar as pB
-    except:
-        pass
+	from . import function_dataraster as dataraster
+	from . import accuracy_index as ai
+	from . import gmm_ridge as gmmr
+	from . import progressBar as pB
 except:
-    from . import function_dataraster as dataraster
-    from . import accuracy_index as ai
-    from . import gmm_ridge as gmmr
-    import progressBar as pB
-    from qgis.core import QgsMessageLog
-    
+	import gmm_ridge as gmmr
+	import accuracy_index as ai
+	import function_dataraster as dataraster
+	
+from qgis.core import QgsMessageLog
+
 import pickle
 
 import os
