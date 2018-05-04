@@ -27,9 +27,12 @@ On **Linux** simply open terminal and type :
 
 **For Qgis 3**: 
 Open OsGeo shell in admin, then :
+
 `py3_env.bat`
+
 `pip install scikit-learn`
-(Thanks to Alexander Bruy for the tip).
+
+Thanks to Alexander Bruy for the tip.
 
 **For Qgis 2**:
 In the OsGeo setup, search for PIP and install it. Then you have few more steps to do. In the explorer, search for OsGeo4W Shell, right click to open it as an administrator. Now use pip in OsGeo Shell like on Linux. Just type :<br/>
