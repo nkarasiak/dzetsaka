@@ -23,12 +23,19 @@ The shapefile must have a column which contains your classification numbers *(1,
 On **Linux** simply open terminal and type : 
 `pip install scikit-learn`
 
-On **Windows**, you have few more steps to do. In the explorer, search for OsGeo4W Shell, right click to open it as an administrator. Now use pip in OsGeo Shell like on Linux. Just type :<br/>
+### On **Windows**
+
+**For Qgis 3**: 
+Open OsGeo shell in admin, then :
+`py3_env.bat`
 `pip install scikit-learn`
 
-If you do not have pip installed, open *osgeo4w-setup-x86_64.exe*, select *Advanced install* and install these libraries :
-- scipy
-- pip
+**For Qgis 2**:
+In the OsGeo setup, search for PIP and install it. Then you have few more steps to do. In the explorer, search for OsGeo4W Shell, right click to open it as an administrator. Now use pip in OsGeo Shell like on Linux. Just type :<br/>
+`pip install scikit-learn`
+
+If you do not have pip installed, open osgeo4w-setup-x86_64.exe, select Advanced install and install *pip*.
+
 
 You can now use **Random Forest**, **SVM**, or **KNN** !
 

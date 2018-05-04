@@ -1,7 +1,7 @@
 """!@brief Manage data (opening/saving raster, get ROI...)"""
 # -*- coding: utf-8 -*-
 
-import scipy as sp
+#import scipy as sp
 import numpy as np
 from osgeo import gdal
 from osgeo import gdal_array
@@ -50,9 +50,9 @@ def open_data(filename):
     
     # Initialize the array
     if d == 1:
-        im = sp.empty((nl,nc),dtype=dt) 
+        im = np.empty((nl,nc),dtype=dt) 
     else:
-        im = sp.empty((nl,nc,d),dtype=dt) 
+        im = np.empty((nl,nc,d),dtype=dt) 
     
     if d == 1:
         im[:,:]=data.GetRasterBand(1).ReadAsArray()
@@ -89,7 +89,7 @@ def open_data_band(filename):
     dt = getDTfromGDAL(gdal_dt)
     
     # Initialize the array
-    im = sp.empty((nl,nc),dtype=dt) 
+    im = np.empty((nl,nc),dtype=dt) 
     return data,im
 
 '''
@@ -231,7 +231,7 @@ def get_samples_from_roi(raster_name,roi_name,stand_name=False,getCoords=False):
     ulx, xres, xskew, uly, yskew, yres  = roi.GetGeoTransform()
     
     if getCoords :
-        coords = sp.array([],dtype=np.uint16).reshape(0,2)
+        coords = np.array([],dtype=np.uint16).reshape(0,2)
         """
     # Old function which computes metric distance...
     if getCoords :
@@ -249,9 +249,9 @@ def get_samples_from_roi(raster_name,roi_name,stand_name=False,getCoords=False):
         
         
     ## Read block data
-    X = sp.array([]).reshape(0,d)
-    Y = sp.array([]).reshape(0,1)
-    STD = sp.array([]).reshape(0,1)
+    X = np.array([]).reshape(0,d)
+    Y = np.array([]).reshape(0,1)
+    STD = np.array([]).reshape(0,1)
     
     for i in range(0,nl,y_block_size):
         if i + y_block_size < nl: # Check for size consistency in Y
@@ -270,12 +270,12 @@ def get_samples_from_roi(raster_name,roi_name,stand_name=False,getCoords=False):
             if stand_name:
                 STAND = stand.GetRasterBand(1).ReadAsArray(j, i, cols, lines)
             
-            t = sp.nonzero(ROI)
+            t = np.nonzero(ROI)
             
             if t[0].size > 0:
-                Y = sp.concatenate((Y,ROI[t].reshape((t[0].shape[0],1)).astype('uint8')))
+                Y = np.concatenate((Y,ROI[t].reshape((t[0].shape[0],1)).astype('uint8')))
                 if stand_name:
-                    STD = sp.concatenate((STD,STAND[t].reshape((t[0].shape[0],1)).astype('uint8')))
+                    STD = np.concatenate((STD,STAND[t].reshape((t[0].shape[0],1)).astype('uint8')))
                 if getCoords :
                     #coords = sp.append(coords,(i,j))
                     #coordsTp = sp.array(([[cols,lines]]))
@@ -283,22 +283,22 @@ def get_samples_from_roi(raster_name,roi_name,stand_name=False,getCoords=False):
                     #print(t[1])
                     #print(i)
                     #sp.array([[t[1],i]])
-                    coordsTp = sp.empty((t[0].shape[0],2))
+                    coordsTp = np.empty((t[0].shape[0],2))
                     coordsTp[:,0] = t[1]
                     coordsTp[:,1] = [i]*t[1].shape[0]
                     """
                     for n,p in enumerate(coordsTp):
                         coordsTp[n] = pixel2coord(p)
                     """
-                    coords = sp.concatenate((coords,coordsTp))
+                    coords = np.concatenate((coords,coordsTp))
 
                 # Load the Variables
-                Xtp = sp.empty((t[0].shape[0],d))
+                Xtp = np.empty((t[0].shape[0],d))
                 for k in range(d):
                     band = raster.GetRasterBand(k+1).ReadAsArray(j, i, cols, lines)
                     Xtp[:,k] = band[t]
                 try:
-                    X = sp.concatenate((X,Xtp))
+                    X = np.concatenate((X,Xtp))
                 except MemoryError:
                     print('Impossible to allocate memory: ROI too big')
                     exit()
@@ -488,7 +488,7 @@ def predict_image(raster_name,classif_name,classifier,mask_name=None):
             # Do the prediction
             if classifier['name'] is 'NPFS':
                 # Load the data
-                X = sp.empty((cols*lines,nv))
+                X = np.empty((cols*lines,nv))
                 for ind,v in enumerate(ids):
                     X[:,ind] = raster.GetRasterBand(int(v+1)).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
                 
@@ -497,13 +497,13 @@ def predict_image(raster_name,classif_name,classifier,mask_name=None):
                     yp = model.predict_gmm(X)[0].astype('uint16')
                 else:
                     mask_temp=mask.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
-                    t = sp.where(mask_temp!=0)[0]
-                    yp=sp.zeros((cols*lines,))
+                    t = np.where(mask_temp!=0)[0]
+                    yp=np.zeros((cols*lines,))
                     yp[t]= model.predict_gmm(X[t,:])[0].astype('uint16')
                     
             elif classifier['name'] is 'GMM':
                 # Load the data
-                X = sp.empty((cols*lines,d))
+                X = np.empty((cols*lines,d))
                 for ind in range(d):
                     X[:,ind] = raster.GetRasterBand(int(ind+1)).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
                 
@@ -512,8 +512,8 @@ def predict_image(raster_name,classif_name,classifier,mask_name=None):
                     yp = model.predict_gmm(X)[0].astype('uint16')
                 else:
                     mask_temp=mask.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
-                    t = sp.where(mask_temp!=0)[0]
-                    yp=sp.zeros((cols*lines,))
+                    t = np.where(mask_temp!=0)[0]
+                    yp=np.zeros((cols*lines,))
                     yp[t]= model.predict_gmm(X[t,:])[0].astype('uint16')
                 
             # Write the data

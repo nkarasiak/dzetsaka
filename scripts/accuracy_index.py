@@ -1,7 +1,7 @@
 '''!@brief Accuracy index by Mathieu Fauvel
 '''
 
-import scipy as sp
+import numpy as np
 
 class CONFUSION_MATRIX:
     def __init__(self):
@@ -16,19 +16,19 @@ class CONFUSION_MATRIX:
         # Initialization
         n = yp.size
         C=int(yr.max())
-        self.confusion_matrix=sp.zeros((C,C))
+        self.confusion_matrix=np.zeros((C,C))
         
         # Compute confusion matrix
         for i in range(n):
             self.confusion_matrix[yp[i].astype(int)-1,yr[i].astype(int)-1] +=1
         
         # Compute overall accuracy
-        self.OA=sp.sum(sp.diag(self.confusion_matrix))/n
+        self.OA=np.sum(np.diag(self.confusion_matrix))/n
         
         # Compute Kappa
-        nl = sp.sum(self.confusion_matrix,axis=1)
-        nc = sp.sum(self.confusion_matrix,axis=0)
-        self.Kappa = ((n**2)*self.OA - sp.sum(nc*nl))/(n**2-sp.sum(nc*nl))
+        nl = np.sum(self.confusion_matrix,axis=1)
+        nc = np.sum(self.confusion_matrix,axis=0)
+        self.Kappa = ((n**2)*self.OA - np.sum(nc*nl))/(n**2-np.sum(nc*nl))
         
         # TBD Variance du Kappa
         
@@ -37,7 +37,7 @@ class CONFUSION_MATRIX:
 class statsFromConfusionMatrix:
     def __init__(self,confusionMatrix):
         self.confusionMatrix = confusionMatrix
-        self.n = sp.sum(self.confusionMatrix)
+        self.n = np.sum(self.confusionMatrix)
         self.OA = self.__get_OA()
         self.kappa = self.__get_kappa()
         self.F1 = self.__get_F1Mean()
@@ -46,19 +46,19 @@ class statsFromConfusionMatrix:
         """
         Compute overall accuracy
         """
-        return sp.sum(sp.diag(self.confusionMatrix))/float(self.n)
+        return np.sum(np.diag(self.confusionMatrix))/float(self.n)
     def __get_kappa(self):
         """
         Compute Kappa
         """
-        nl = sp.sum(self.confusionMatrix,axis=1)
-        nc = sp.sum(self.confusionMatrix,axis=0)
-        OA = sp.sum(sp.diag(self.confusionMatrix))/float(self.n)
-        return ((self.n**2)*OA - sp.sum(nc*nl))/(self.n**2-sp.sum(nc*nl))
+        nl = np.sum(self.confusionMatrix,axis=1)
+        nc = np.sum(self.confusionMatrix,axis=0)
+        OA = np.sum(np.diag(self.confusionMatrix))/float(self.n)
+        return ((self.n**2)*OA - np.sum(nc*nl))/(self.n**2-np.sum(nc*nl))
     def __get_F1Mean(self):
         """
         Compute F1 Mean
         """
-        nl = sp.sum(self.confusionMatrix,axis=1,dtype=float)
-        nc = sp.sum(self.confusionMatrix,axis=0,dtype=float)
-        return 2*sp.mean( sp.divide( sp.diag(self.confusionMatrix), (nl + nc)) )
+        nl = np.sum(self.confusionMatrix,axis=1,dtype=float)
+        nc = np.sum(self.confusionMatrix,axis=0,dtype=float)
+        return 2*np.mean( np.divide( np.diag(self.confusionMatrix), (nl + nc)) )

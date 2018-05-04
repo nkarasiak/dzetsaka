@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
 description=Fast and Easy Classification plugin for Qgis
-version=3.0.3
+version=3.1
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -29,6 +29,10 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+	3.1
+	  * Replace scipy with numpy when possible
+	  * Correct bug in predicting an already trained model
+	  * Specify a way on Windows to install scikit-learn and use SVM/RF/KNN
 	3.0.3
 	  * Add confirmation box if two different projections
 	  * Correct bug when loading model

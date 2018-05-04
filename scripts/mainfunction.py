@@ -98,20 +98,18 @@ class learnModel:
                         except:
                             msg = 'Problem when importing readFieldVector from functions in dzetsaka'
                             pushFeedback(msg,feedback=feedback)
-                            
-            
-            inVectorTest = False
-            if type(SPLIT) == str :
-                if SPLIT.endswith(('.shp','.sqlite')):
-                    inVectorTest = SPLIT
-                    
-            if extraParam:
                 if 'saveDir' in extraParam.keys():
                     saveDir = extraParam['saveDir']
                     if not os.path.exists(saveDir):
                         os.makedirs(saveDir)
                     if not os.path.exists(os.path.join(saveDir,'matrix/')):
                         os.makedirs(os.path.join(saveDir,'matrix/'))
+            
+            inVectorTest = False
+            if type(SPLIT) == str :
+                if SPLIT.endswith(('.shp','.sqlite')):
+                    inVectorTest = SPLIT
+                    
 
             if needXY:
                 ROI = rasterize(inRaster,inVector,inField)

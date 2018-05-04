@@ -92,7 +92,7 @@ class rasterOT(object):
         
         if self.feedback:
             pushFeedback(10,feedback=self.feedback)
-            pushFeedback('Learning Optimal Transport with '+str(self.transportAlgorithm),feedback=self.feedback)
+            pushFeedback('Learning Optimal Transport with '+str(self.transportAlgorithm)+' algorithm.',feedback=self.feedback)
         
         # check if label is 1d
         if len(ys.shape)>1:
@@ -355,7 +355,7 @@ class rasterOT(object):
             """
         if self.feedback:
             pushFeedback('Best grid is '+str(self.bestParam),feedback=self.feedback)
-            pushFeedback('Best score are '+str(self.bestScore),feedback=self.feedback)
+            pushFeedback('Best score is '+str(self.bestScore),feedback=self.feedback)
             
                 
         

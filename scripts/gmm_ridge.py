@@ -5,7 +5,7 @@ from builtins import str
 from builtins import range
 from builtins import object
 import numpy as np
-from scipy import linalg
+from numpy import linalg
 import multiprocessing as mp
 
 ## Temporary predict function

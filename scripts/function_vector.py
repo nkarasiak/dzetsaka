@@ -428,7 +428,7 @@ def convertToDistanceMatrix(coords,sr=False,convertTo4326=False):
     return distMatrix(coords,distanceMetric=True)
 
 class standCV:
-    def __init__(self,Y,stand,maxIter=False,SLOO=True):
+    def __init__(self,Y,stand,maxIter=False,SLOO=True,seed=0):
         """Compute train/validation per stand.
         Y : array-like
             contains class for each ROI.
@@ -443,6 +443,7 @@ class standCV:
         self.uniqueY = np.unique(self.Y)
         self.stand = stand
         self.SLOO = SLOO
+        np.random.seed(seed)
         if type(SLOO) == bool:
             self.split = 0.5
             
