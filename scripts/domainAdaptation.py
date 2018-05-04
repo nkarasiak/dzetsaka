@@ -21,9 +21,12 @@ except:
     from . import function_dataraster as dataraster
     from .mainfunction import pushFeedback
 
-from sklearn.metrics import mean_squared_error
-from itertools import product
-from sklearn.metrics import (f1_score, cohen_kappa_score,accuracy_score)
+try:
+	from sklearn.metrics import mean_squared_error
+	from itertools import product
+	from sklearn.metrics import (f1_score, cohen_kappa_score,accuracy_score)
+except:
+	pass
 
 import gdal
 #import tempfile
