@@ -729,7 +729,7 @@ class dzetsakaGUI ( QDialog ):
                         self.modifyConfig('Classification','classifier',self.settingsdock.selectClassifier.currentText())
 
                 except:
-                    QtGui.QMessageBox.warning(self, 'Library missing', 'Scikit-learn library is missing on your computer.<br><br> You must use Gaussian Mixture Model, or <a href=\'https://github.com/lennepkade/dzetsaka/#installation-of-scikit-learn/\'>consult dzetsaka homepage to learn on to install the missing library</a>.', QtGui.QMessageBox.Ok)
+                    QMessageBox.warning(self, 'Library missing', 'Scikit-learn library is missing on your computer.<br><br> You must use Gaussian Mixture Model, or <a href=\'https://github.com/lennepkade/dzetsaka/#installation-of-scikit-learn\'>consult dzetsaka homepage to learn on to install the missing library</a>.', QMessageBox.Ok)
                     #reset to GMM
                     self.settingsdock.selectClassifier.setCurrentIndex(0)
                     self.modifyConfig('Classification','classifier','Gaussian Mixture Model')
