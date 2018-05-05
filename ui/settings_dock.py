@@ -79,5 +79,5 @@ class Ui_settingsDock(object):
         self.label_4.setText(_translate("settingsDock", "Mask suffix :"))
         self.label_5.setText(_translate("settingsDock", "Providers : "))
         self.selectProviders.setItemText(0, _translate("settingsDock", "Standard"))
-        self.selectProviders.setItemText(1, _translate("settingsDock", "Advanced"))
+        self.selectProviders.setItemText(1, _translate("settingsDock", "Experimental"))
 

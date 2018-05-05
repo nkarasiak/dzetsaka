@@ -21,17 +21,16 @@
 """
 
 try:
-	from . import function_dataraster as dataraster
-	from . import accuracy_index as ai
-	from . import gmm_ridge as gmmr
-	from . import progressBar as pB
+    from qgis.core import QgsMessageLog
+    from . import function_dataraster as dataraster
+    from . import accuracy_index as ai
+    from . import gmm_ridge as gmmr
+    from . import progressBar as pB
 except:
 	import gmm_ridge as gmmr
 	import accuracy_index as ai
 	import function_dataraster as dataraster
 	
-from qgis.core import QgsMessageLog
-
 import pickle
 
 import os
@@ -291,7 +290,7 @@ class learnModel:
                         SLOO=False
                         maxIter=5
                     
-                    rawCV = standCV(label,STDs,maxIter,SLOO)
+                    rawCV = standCV(label,STDs,maxIter,SLOO,seed=inSeed)
                     cvDistance = [] 
                     for tr,vl in rawCV : 
                         #sts.append(stat)

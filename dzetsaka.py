@@ -56,14 +56,15 @@ class dzetsakaGUI ( QDialog ):
         self.iface = iface
 
         # add Processing loadAlgorithms
-        self.provider = dzetsakaProvider()
+        
 
         # init dialog and dzetsaka dock
         QDialog.__init__(self)
-        sender = self.sender()
+        #sender = self.sender()
 
         self.loadConfig()
-
+        
+        self.provider = dzetsakaProvider(self.providerType)
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
 
@@ -194,6 +195,7 @@ class dzetsakaGUI ( QDialog ):
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
+        
         QgsApplication.processingRegistry().addProvider(self.provider)
 
         icon_path = ':/plugins/dzetsaka/img/icon.png'
@@ -394,8 +396,10 @@ class dzetsakaGUI ( QDialog ):
             self.classPrefix = self.Config.get('Classification','prefix')
 
             self.maskSuffix = self.Config.get('Classification','maskSuffix')
-
-
+            
+            self.providers = ['Standard','Experimental']
+            self.providerType = self.Config.get('Providers','provider')
+            
         except :
             QgsMessageLog.logMessage('failed to open config file '+self.configFile)
 
@@ -429,12 +433,20 @@ class dzetsakaGUI ( QDialog ):
              self.settingsdock.maskSuffix.setText(self.maskSuffix)
              self.settingsdock.maskSuffix.textChanged.connect(self.saveSettings)
 
-
+             ##
+             
+             for i, prvd in enumerate(self.providers):
+                 if self.providerType == prvd:
+                     self.settingsdock.selectProviders.setCurrentIndex(i)                 
+                     
+             self.settingsdock.selectProviders.currentIndexChanged[int].connect(self.saveSettings)
+             
              # Reload config for further use
              self.loadConfig()
 
          except:
              QgsMessageLog.logMessage('Failed to load settings...')
+             
 
 
 
@@ -746,6 +758,17 @@ class dzetsakaGUI ( QDialog ):
         if self.sender() == self.settingsdock.maskSuffix:
             if self.maskSuffix != self.settingsdock.maskSuffix.text():
                 self.modifyConfig('Classification','maskSuffix',self.settingsdock.maskSuffix.text())
+        if self.sender() == self.settingsdock.selectProviders:
+            self.providerType = self.settingsdock.selectProviders.currentText()
+            
+            self.modifyConfig('Providers','provider',self.settingsdock.selectProviders.currentText())
+            QgsApplication.processingRegistry().removeProvider(self.provider)
+            
+            from .dzetsaka_provider import dzetsakaProvider
+            self.provider = dzetsakaProvider(self.providerType)
+            QgsApplication.processingRegistry().addProvider(self.provider)
+            
+        
 
 
     def modifyConfig(self,section,option,value):

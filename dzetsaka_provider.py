@@ -34,16 +34,16 @@ import os
 from qgis.core import QgsProcessingProvider
 #from .moduleName_algorithm import classNameAlgorithm
 #from .processing.moduleName_algorithm import classNameAlgorithm
+
+
 from .processing.medianFilter import medianFilterAlgorithm
 from .processing.train import trainAlgorithm
 from .processing.classify import classifyAlgorithm
 from .processing.splitTrainValidation import splitTrain
-from .processing.shannonEntropy import shannonAlgorithm
-from .processing.resampleImageSameDate import resampleImageSameDateAsSource
 from .processing.domainAdaptation import domainAdaptation
 from .processing.learnWithSpatialSampling import trainSLOOAlgorithm
 from .processing.learnWithStandCV import trainSTANDalgorithm
-
+ 
 pluginPath = os.path.dirname(__file__)
 
 """
@@ -52,15 +52,23 @@ sys.setrecursionlimit(10000) # 10000 is an example, try with different values
 """
 
 class dzetsakaProvider(QgsProcessingProvider):
+               
 
-    def __init__(self):
+    def __init__(self,providerType='Standard'):
+        
         QgsProcessingProvider.__init__(self)
-
+            
         # Load algorithms
         self.alglist = [medianFilterAlgorithm(),trainAlgorithm(),classifyAlgorithm(),splitTrain(),\
-                        shannonAlgorithm(),resampleImageSameDateAsSource(),domainAdaptation(),\
-                        trainSLOOAlgorithm(),trainSTANDalgorithm()]#,learnWithSpatialSampling()]#,classifyAlgorithm(),splitTrain()]
-
+                        domainAdaptation(),trainSLOOAlgorithm(),trainSTANDalgorithm()]#,learnWithSpatialSampling()]#,classifyAlgorithm(),splitTrain()]
+        
+        if providerType == 'Experimental':
+        
+            from .processing.shannonEntropy import shannonAlgorithm
+            from .processing.resampleImageSameDate import resampleImageSameDateAsSource
+            self.alglist.append(shannonAlgorithm())
+            self.alglist.append(resampleImageSameDateAsSource())
+            
     def icon(self):
         """
         add icon

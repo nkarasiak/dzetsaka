@@ -81,7 +81,7 @@ class randomInSubset():
         ds = None
 
 class distanceCV:
-    def __init__(self,distanceArray,Y,distanceThresold=1000,minTrain=-1,SLOO=True,maxIter=False,furtherSplit=False,onlyVaryingTrain=False,stats=False,verbose=False):
+    def __init__(self,distanceArray,Y,distanceThresold=1000,minTrain=-1,SLOO=True,maxIter=False,furtherSplit=False,onlyVaryingTrain=False,stats=False,verbose=False,seed=False):
         """Compute train/validation array with Spatial distance analysis.
         
         Object stops when less effective class number is reached (45 loops if your least class contains 45 ROI).
@@ -133,6 +133,9 @@ class distanceCV:
         self.verbose = verbose
         self.furtherSplit = furtherSplit
         self.stats = stats
+        
+        if seed:
+            np.random.seed(seed)
         
     def __iter__(self):
         return self
@@ -428,7 +431,7 @@ def convertToDistanceMatrix(coords,sr=False,convertTo4326=False):
     return distMatrix(coords,distanceMetric=True)
 
 class standCV:
-    def __init__(self,Y,stand,maxIter=False,SLOO=True,seed=0):
+    def __init__(self,Y,stand,maxIter=False,SLOO=True):
         """Compute train/validation per stand.
         Y : array-like
             contains class for each ROI.
@@ -443,7 +446,7 @@ class standCV:
         self.uniqueY = np.unique(self.Y)
         self.stand = stand
         self.SLOO = SLOO
-        np.random.seed(seed)
+        
         if type(SLOO) == bool:
             self.split = 0.5
             
@@ -678,6 +681,8 @@ if __name__ == "__main__":
     rawCV = distanceCV(distanceArray,Y,1000,minTrain=-1,SLOO='SLOO',maxIter=False)
     
     #rawCV = distanceCV(distanceArray,label,distanceThresold=distance,minTrain=minTrain,SLOO=SLOO,maxIter=maxIter,verbose=False,stats=True)
+
+
     for tr,vl in rawCV:
-        print(tr)
+        print(tr.shape)
     #randomInSubset('/tmp/valid.shp','level3','/tmp/processingd62a83be114a482aaa14ca317e640586/f99783a424984860ac9998b5027be604/OUTPUTVALIDATION.shp','/tmp/processingd62a83be114a482aaa14ca317e640586/1822187d819e450fa9ad9995d6757e09/OUTPUTTRAIN.shp',50,True)
