@@ -81,6 +81,11 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
     needMask = np.ones(combineDOY.shape)
     needMask[sourceDOYidx] = 0
 
+    # get target dtype for OTB computation
+    dataTarget = gdal.Open(targetImage)
+    dataTargetBand = dataTarget.GetRasterBand(1)
+    targetDataType = dataraster.convertGdalDataTypeToOTB(dataTargetBand.DataType)
+    
     # create doy vrt using false image
     dataSource = gdal.Open(sourceImage)
     
@@ -89,8 +94,8 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
     #im = dataTarget.GetRasterBand(1).ReadAsArray()
     im = np.zeros([dataSource.RasterYSize,dataSource.RasterXSize])
     
-    dataraster.create_uniquevalue_tiff(tempDir+'/mask1.tif',im,1,GeoTransform,Projection,1)
-    dataraster.create_uniquevalue_tiff(tempDir+'/mask0.tif',im,1,GeoTransform,Projection,0)
+    dataraster.create_uniquevalue_tiff(tempDir+'/mask1.tif',im,1,GeoTransform,Projection,1,dataTargetBand.DataType)
+    dataraster.create_uniquevalue_tiff(tempDir+'/mask0.tif',im,1,GeoTransform,Projection,0,dataTargetBand.DataType)
     
     for i in combineDOY[needMask==1]:
         for spectral in range(nSpectralBands):
@@ -197,7 +202,7 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
         vrtmask = 'gdalbuildvrt -separate '+tempDir+'/temp_mask.vrt'+listToStr(sorted(toGapFillMask))
         os.system(vrtmask)
         
-        bashCommand = ("otbcli_ImageTimeSeriesGapFilling -in {0} -mask {1} -out {2} uint16 -comp 1 -it linear -id {3}").format(tempDir+'/temp.vrt',tempDir+'/temp_mask.vrt',tempDir+'/temp_'+str(spectral+1)+'.tif',tempDir+'/sampleTime.csv')
+        bashCommand = ("otbcli_ImageTimeSeriesGapFilling -in {0} -mask {1} -out {2} {4} -comp 1 -it linear -id {3}").format(tempDir+'/temp.vrt',tempDir+'/temp_mask.vrt',tempDir+'/temp_'+str(spectral+1)+'.tif',tempDir+'/sampleTime.csv',targetDataType)
         
         pushFeedback('Executing gap filling : '+bashCommand,feedback=feedback)
             
@@ -220,7 +225,7 @@ def resampleWithSameDateAsSource(sourceImage,targetImage,sourceDates,targetDates
     
     # if outfolder not exists, create
         
-    conca = 'otbcli_ConcatenateImages -il {} -out {} uint8'.format(listToStr(bandList),resampledImage)
+    conca = 'otbcli_ConcatenateImages -il {} -out {} {}'.format(listToStr(bandList),resampledImage,targetDataType)
 
     pushFeedback(80,feedback=feedback)
     pushFeedback('Executing image concatenation : '+conca,feedback=feedback)

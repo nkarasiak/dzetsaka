@@ -6,6 +6,12 @@ import numpy as np
 from osgeo import gdal
 from osgeo import gdal_array
 
+def convertGdalDataTypeToOTB(gdalDT):
+    #availableCode = uint8/uint16/int16/uint32/int32/float/double
+    code = ['uint8','uint16','int16','uint32','int32','float','double']
+    
+    return code[gdalDT]
+    
 def open_data(filename):
     '''
     The function open and load the image given its name. 
@@ -526,7 +532,7 @@ def predict_image(raster_name,classif_name,classifier,mask_name=None):
     dst_ds = None
 
 
-def create_uniquevalue_tiff(outname,im,d,GeoTransform,Projection,wholeValue=1):
+def create_uniquevalue_tiff(outname,im,d,GeoTransform,Projection,wholeValue=1,gdal_dt=False):
     '''!@brief Write an empty image on the hard drive.
     
     Input: 
@@ -542,7 +548,8 @@ def create_uniquevalue_tiff(outname,im,d,GeoTransform,Projection,wholeValue=1):
 
     driver = gdal.GetDriverByName('GTiff')
     # Get the data type
-    gdal_dt=gdal.GDT_Byte
+    if not gdal_dt:
+        gdal_dt = gdal.GDT_Byte
 
     
     dst_ds = driver.Create(outname,nc,nl, d, gdal_dt)

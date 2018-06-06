@@ -24,10 +24,8 @@ try:
     from qgis.core import QgsMessageLog
     from . import function_dataraster as dataraster
     from . import accuracy_index as ai
-    from . import gmm_ridge as gmmr
     from . import progressBar as pB
 except:
-	import gmm_ridge as gmmr
 	import accuracy_index as ai
 	import function_dataraster as dataraster
 	
@@ -81,6 +79,16 @@ class learnModel:
         if feedback=='gui':
             progress = pB.progressBar('Loading...',6)
         try:
+            if isinstance(inRaster,np.ndarray):
+                needXY = False
+                X=inRaster
+                
+                if isinstance(inVector,np.ndarray):
+                    Y=inVector
+                else:
+                    msg = 'You have to give an array for label when using array for raster'
+                    pushFeedback(msg,feedback=feedback)
+                
             if extraParam:
                 if 'readROIFromVector' in extraParam.keys():
                     if extraParam['readROIFromVector'] is not False:
@@ -145,7 +153,9 @@ class learnModel:
                             pushFeedback('Can\'t read coords array',feedback=feedback)                        
                     else:
                         X,Y,coords = dataraster.get_samples_from_roi(inRaster,ROI,getCoords=True)                
-                else:
+                try:
+                    coords = extraParam['coords']
+                except:
                     X,Y,coords = dataraster.get_samples_from_roi(inRaster,ROI,getCoords=True)                
                 
                 distanceArray = distMatrix(coords)
@@ -155,11 +165,14 @@ class learnModel:
                 if SPLIT=='STAND':
                     
                     from sklearn.metrics import confusion_matrix
-                    if __name__ == '__main__':
-                        from function_vector import standCV #,readFieldVector
-                    else:
+                    try:
                         from .function_vector import standCV #,readFieldVector
-                    from sklearn.metrics import cohen_kappa_score,accuracy_score,f1_score  
+                    except:
+                        from function_vector import standCV #,readFieldVector
+                    try:
+                        from sklearn.metrics import cohen_kappa_score,accuracy_score,f1_score  
+                    except:
+                        pass
                     
                     if 'inStand' in extraParam.keys():
                         inStand = extraParam['inStand']
@@ -247,6 +260,11 @@ class learnModel:
         # Train Classifier
         if inClassifier == 'GMM':
             try:
+                from . import gmm_ridge as gmmr
+            except:
+                import gmm_ridge as gmmr
+
+            try:
                 # tau=10.0**sp.arange(-8,8,0.5)
                 model = gmmr.GMMR()
                 model.learn(x,y)
@@ -284,13 +302,18 @@ class learnModel:
                     if extraParam:
                         if 'SLOO' in extraParam.keys():
                             SLOO = extraParam['SLOO']
+                        else:
+                            SLOO=False
                         if 'maxIter' in extraParam.keys():
                             maxIter = extraParam['maxIter']
+                        else:
+                            maxIter=5
                     else:
                         SLOO=False
                         maxIter=5
                     
                     rawCV = standCV(label,STDs,maxIter,SLOO,seed=inSeed)
+                    print(rawCV)
                     cvDistance = [] 
                     for tr,vl in rawCV : 
                         #sts.append(stat)
@@ -344,6 +367,7 @@ class learnModel:
                     for tr,vl in rawCV : 
                         
                         pushFeedback('Training size is '+str(tr.shape),feedback=feedback)
+                        pushFeedback('Validation size is '+str(vl.shape),feedback=feedback)
                         #sts.append(stat)
                         cvDistance.append((tr,vl))
                     """
@@ -372,8 +396,9 @@ class learnModel:
                     
                     if 'param_algo' in locals():
                         classifier = SVC(probability=True, **param_algo)
+                        print('Found param algo : '+str(param_algo))
                     else:
-                        classifier = SVC(probability=True) 
+                        classifier = SVC(probability=True,kernel="rbf") 
                     n_splits=5
                     
                 elif inClassifier == 'KNN':
@@ -539,7 +564,7 @@ class classifyImage(object):
     """
 
 
-    def initPredict(self,inRaster,inModel,outRaster,inMask=None,confidenceMap=None,confidenceMapPerClass=None,NODATA=99,feedback=None):
+    def initPredict(self,inRaster,inModel,outRaster,inMask=None,confidenceMap=None,confidenceMapPerClass=None,NODATA=0,feedback=None):
 
 
         # Load model
@@ -565,7 +590,7 @@ class classifyImage(object):
             pushFeedback("Cannot create temp file "+rasterTemp,feedback=feedback)
             # Process the data
         #try:
-        predictedImage=self.predict_image(inRaster,outRaster,tree,inMask,confidenceMap,confidenceMapPerClass=None,NODATA=NODATA,SCALE=[M,m],classifier=classifier,feedback=feedback)
+        predictedImage=self.predict_image(inRaster,outRaster,tree,inMask,confidenceMap,confidenceMapPerClass=confidenceMapPerClass,NODATA=NODATA,SCALE=[M,m],classifier=classifier,feedback=feedback)
         #except:
          #   QgsMessageLog.logMessage("Problem while predicting "+inRaster+" in temp"+rasterTemp)
 
@@ -604,7 +629,7 @@ class classifyImage(object):
 
         return xs
 
-    def predict_image(self,inRaster,outRaster,model,inMask=None,confidenceMap=None,confidenceMapPerClass=None,NODATA=-10000,SCALE=None,classifier='GMM',feedback=None):
+    def predict_image(self,inRaster,outRaster,model=None,inMask=None,confidenceMap=None,confidenceMapPerClass=None,NODATA=0,SCALE=None,classifier='GMM',feedback=None):
         """!@brief The function classify the whole raster image, using per block image analysis.
 
         The classifier is given in classifier and options in kwargs
@@ -672,16 +697,15 @@ class classifyImage(object):
         dst_ds.SetProjection(Projection)
         out = dst_ds.GetRasterBand(1)
 
+        nClass = len(model.classes_)
         if confidenceMap :
-            dst_confidenceMap = driver.Create(confidenceMap, nc,nl, 1, gdal.GDT_Float32)
+            dst_confidenceMap = driver.Create(confidenceMap, nc,nl, 1, gdal.GDT_Int16)
             dst_confidenceMap.SetGeoTransform(GeoTransform)
             dst_confidenceMap.SetProjection(Projection)
             out_confidenceMap = dst_confidenceMap.GetRasterBand(1)
         
         if confidenceMapPerClass :          
-            nClass = len(model.classes_)
-            
-            dst_confidenceMapPerClass = driver.Create(confidenceMapPerClass,nc,nl,nClass,gdal.GDT_Byte)
+            dst_confidenceMapPerClass = driver.Create(confidenceMapPerClass,nc,nl,nClass,gdal.GDT_Int16)
             dst_confidenceMapPerClass.SetGeoTransform(GeoTransform)
             dst_confidenceMapPerClass.SetProjection(Projection)
         ## Perform the classification
@@ -720,27 +744,36 @@ class classifyImage(object):
                     X[:,ind] = raster.GetRasterBand(int(ind+1)).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
 
                 # Do the prediction
+                band_temp = raster.GetRasterBand(1)
+                nodata_temp = band_temp.GetNoDataValue()
+
                 if mask is None:
-                    mask_temp=raster.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
-                    t = np.where((mask_temp!=0) & (X[:,0]!=NODATA))[0]
+                    band_temp = raster.GetRasterBand(1)
+                    mask_temp=band_temp.ReadAsArray(j, i, cols, lines).reshape(cols*lines)
+                    temp_nodata = np.where(mask_temp != nodata_temp)[0]
+                    #t = np.where((mask_temp!=0) & (X[:,0]!=NODATA))[0]
+                    t = np.where(X[:,0]!=nodata_temp)[0]
                     yp = np.zeros((cols*lines,))
                     #K = np.zeros((cols*lines,))
-                    if confidenceMapPerClass and classifier != 'GMM':
+                    if confidenceMapPerClass or confidenceMap and classifier != 'GMM':
                         K = np.zeros((cols*lines,nClass))
+                        K[:,:] = -1
                     else:
                         K = np.zeros((cols*lines))
+                        K[:] = -1
 
                 else :
                     mask_temp=mask.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
-                    t = np.where((mask_temp!=0) & (X[:,0]!=NODATA))[0]
+                    t = np.where((mask_temp!=0) & (X[:,0]!=nodata_temp))[0]
                     yp = np.zeros((cols*lines,))
                     yp[:] = NODATA
                     #K = np.zeros((cols*lines,))
-                    if confidenceMapPerClass and classifier != 'GMM':
-                        K = np.zeros((cols*lines,nClass))
+                    if confidenceMapPerClass or confidenceMap and classifier != 'GMM':
+                        K = np.ones((cols*lines,nClass))
+                        K = np.negative(K)
                     else:
                         K = np.zeros((cols*lines))
-
+                        K = np.negative(K)
                     
                 
                 # TODO: Change this part accorindgly ...
@@ -750,10 +783,10 @@ class classifyImage(object):
 
                     elif confidenceMap or confidenceMapPerClass and classifier !='GMM':
                         yp[t] = model.predict(self.scale(X[t,:],M=M,m=m))                        
-                        K[t,:] = model.predict_proba(self.scale(X[t,:],M=M,m=m))
+                        K[t,:] = model.predict_proba(self.scale(X[t,:],M=M,m=m))*100
 
                     else :
-                        yp[t] = model.predict(self.scale(X[t,:],M=M,m=m))
+                        yp[t] = model.predict(self.scale(X[t,:],M=M,m=m))*100
 
                         #QgsMessageLog.logMessage('amax from predict proba is : '+str(sp.amax(model.predict.proba(self.scale(X[t,:],M=M,m=m)),axis=1)))
                         
@@ -763,18 +796,20 @@ class classifyImage(object):
                 out.SetNoDataValue(NODATA)
                 out.FlushCache()
 
-                if confidenceMap :
-                    out_confidenceMap.WriteArray(K.reshape(lines,cols),j,i)
-                    out_confidenceMap.SetNoDataValue(0)
+                if confidenceMap and classifier != 'GMM' :
+                    Kconf = np.amax(K,axis=1)
+                    out_confidenceMap.WriteArray(Kconf.reshape(lines,cols),j,i)
+                    out_confidenceMap.SetNoDataValue(-1)
                     out_confidenceMap.FlushCache()
                 
-                if confidenceMapPerClass:
+                if confidenceMapPerClass and classifier != 'GMM':
                     for band in range(nClass):                        
                         gdalBand = band+1
                         out_confidenceMapPerClass = dst_confidenceMapPerClass.GetRasterBand(gdalBand)
-                        out_confidenceMapPerClass.SetNoDataValue(0)
-                        out_confidenceMapPerClass.WriteArray(np.byte(K[:,band].reshape(lines,cols)*100),j,i)
+                        out_confidenceMapPerClass.SetNoDataValue(-1)
+                        out_confidenceMapPerClass.WriteArray(K[:,band].reshape(lines,cols),j,i)
                         out_confidenceMapPerClass.FlushCache()
+                    
 
                 del X,yp
 

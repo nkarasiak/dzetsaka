@@ -106,7 +106,7 @@ class distanceCV:
         maxIter :
             False : as loop as min effective class
         
-        Returns
+        Returnsdistanc
         -------
         train : array 
             List of Y selected ROI for train
@@ -193,13 +193,13 @@ class distanceCV:
                             
                             trainedTemp = np.array([self.ROI])
                                                      
-                            validateTemp = CTtemp[CTtemp!=trainedTemp][distanceROI[distanceROI>0.1]<=self.distanceThresold]
+                            validateTemp = CTtemp[CTtemp!=trainedTemp][distanceROI[distanceROI>0.1]>=self.distanceThresold]
                             # CTtemp[distanceROI>=self.distanceThresold] # trained > distance to cut 
                         
                         if self.maxIter == self.minEffectiveClass:
-                            validateTemp = np.array([self.ROI])
+                            trainedTemp = np.array([self.ROI])
 
-                            trainedTemp = CTtemp[distanceROI>self.distanceThresold]
+                            validateTemp = CTtemp[distanceROI>self.distanceThresold]
                             #trainedTemp = trainedTemp[trainedTemp!=self.ROI]
                             
                         """
@@ -208,10 +208,10 @@ class distanceCV:
                             trainedTemp = CTtemp[(distanceROI>=self.distanceThresold)] # Train in a buffer
                         """
 #trainedTemp = sp.array([self.ROI]) # train is the current ROI                         
-                        
+                        """
                         if self.SLOO is True and self.maxIter != self.minEffectiveClass:
                             #print('self.SLOO true but no LeRest')
-                            
+                            print('ici')
                             CTtoRemove = np.concatenate((validateTemp,trainedTemp))                        
                     
                             # Remove ROI for further selection ROI (but keep in Y list)                        
@@ -231,6 +231,11 @@ class distanceCV:
 
                             
                             CTtemp = []
+                        """
+                        trained = trainedTemp
+                        validate = validateTemp
+                            
+                        CTtemp = []
                         #print len(validate)
                     initTrain = len(trained)
                     initValid = len(validate)
@@ -381,9 +386,9 @@ class distanceCV:
                     self.T = sp.delete(self.T,sp.where(self.T==i)[0])
                 """
                 if self.stats and self.stats is True :
-                    return train,validation,Cstats
+                    return validation,train,Cstats
                 else:                    
-                    return train,validation
+                    return validation,train
             
         else:
             raise StopIteration()
@@ -431,7 +436,7 @@ def convertToDistanceMatrix(coords,sr=False,convertTo4326=False):
     return distMatrix(coords,distanceMetric=True)
 
 class standCV:
-    def __init__(self,Y,stand,maxIter=False,SLOO=True):
+    def __init__(self,Y,stand,maxIter=False,SLOO=True,seed=False):
         """Compute train/validation per stand.
         Y : array-like
             contains class for each ROI.
@@ -455,7 +460,9 @@ class standCV:
         self.maxIter=maxIter
         self.iterPos = 0
         
-    
+        if seed:
+            np.random.seed(seed)
+            
         if maxIter :
             self.maxIter = maxIter
         else:
@@ -678,11 +685,15 @@ if __name__ == "__main__":
     X,Y,coords = function_dataraster.get_samples_from_roi(inRaster,'/tmp/roi.tif',getCoords=True)
     
     distanceArray = distMatrix(coords)
-    rawCV = distanceCV(distanceArray,Y,1000,minTrain=-1,SLOO='SLOO',maxIter=False)
+    rawCV = distanceCV(distanceArray,Y,32,minTrain=-1,SLOO=True)
+    
+    
     
     #rawCV = distanceCV(distanceArray,label,distanceThresold=distance,minTrain=minTrain,SLOO=SLOO,maxIter=maxIter,verbose=False,stats=True)
 
-
+    
     for tr,vl in rawCV:
         print(tr.shape)
+        print(vl.shape)
+        
     #randomInSubset('/tmp/valid.shp','level3','/tmp/processingd62a83be114a482aaa14ca317e640586/f99783a424984860ac9998b5027be604/OUTPUTVALIDATION.shp','/tmp/processingd62a83be114a482aaa14ca317e640586/1822187d819e450fa9ad9995d6757e09/OUTPUTTRAIN.shp',50,True)

@@ -62,8 +62,8 @@ class rasterOT(object):
         
         if scaler:
             from sklearn.preprocessing import MinMaxScaler
-            self.scaler = MinMaxScaler(feature_range=(0,1))
-            self.scalerTarget = MinMaxScaler(feature_range=(0,1))
+            self.scaler = MinMaxScaler(feature_range=(-1,1))
+            self.scalerTarget = MinMaxScaler(feature_range=(-1,1))
         else:
             self.scaler = scaler
         
@@ -98,8 +98,9 @@ class rasterOT(object):
             pushFeedback('Learning Optimal Transport with '+str(self.transportAlgorithm)+' algorithm.',feedback=self.feedback)
         
         # check if label is 1d
-        if len(ys.shape)>1:
-            ys = ys[:,0]
+        if ys is not None:
+            if len(ys.shape)>1:
+                ys = ys[:,0]
         if yt is not None:
             if len(yt.shape)>1:
                 yt = yt[:,0]
@@ -301,8 +302,10 @@ class rasterOT(object):
         for gridOT in self.generateParamForGridSearch():
             self.transportModel = self.transportFunction(**gridOT)
             self.transportModel.fit(Xs,ys,Xt,yt)
-            XsTransformed = self.transportModel.transform(Xs)
-            XsPredict = self.inverseTransform(XsTransformed)
+            #XsTransformed = self.transportModel.transform(Xs)
+            #XsPredict = self.inverseTransform(XsTransformed)
+            from ot.da import BaseTransport
+            transp_Xt = BaseTransport.inverse_transform(self.transportModel,Xs=Xs,ys=ys,Xt=Xt,yt=yt)
 
             if self.feedback:
                 pushFeedback('Testing params : '+str(gridOT),feedback=self.feedback)
@@ -344,7 +347,7 @@ class rasterOT(object):
                 self.bestParam = gridOT.copy()
             """
             
-            currentScore = mean_squared_error(Xs,XsPredict)
+            currentScore = mean_squared_error(Xs,transp_Xt)
             
             if self.feedback:
                 pushFeedback('RMSE is : '+str(currentScore),feedback=self.feedback)

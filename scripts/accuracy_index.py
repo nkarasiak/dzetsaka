@@ -40,7 +40,8 @@ class statsFromConfusionMatrix:
         self.n = np.sum(self.confusionMatrix)
         self.OA = self.__get_OA()
         self.kappa = self.__get_kappa()
-        self.F1 = self.__get_F1Mean()
+        self.F1mean = self.__get_F1Mean()
+        self.F1 = self.__get_F1()
         
     def __get_OA(self):
         """
@@ -62,3 +63,16 @@ class statsFromConfusionMatrix:
         nl = np.sum(self.confusionMatrix,axis=1,dtype=float)
         nc = np.sum(self.confusionMatrix,axis=0,dtype=float)
         return 2*np.mean( np.divide( np.diag(self.confusionMatrix), (nl + nc)) )
+    def __get_F1(self):
+        """
+        Compute F1 per class
+        """
+        f1 = []
+        for label in range(self.confusionMatrix.shape[0]):
+            TP = self.confusionMatrix[label,label]
+            #TN = np.sum(sp.diag(currentCsv))-currentCsv[label,label]
+            FN = np.sum(self.confusionMatrix[:,label])-self.confusionMatrix[label,label]
+            FP = np.sum(self.confusionMatrix[label,:])-self.confusionMatrix[label,label]
+        
+            f1.append(2*TP / (2*TP+FP+FN))
+        return f1
