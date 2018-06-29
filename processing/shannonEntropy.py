@@ -159,7 +159,7 @@ class shannonAlgorithm(QgsProcessingAlgorithm):
         saveRaster(OUTPUT_RASTER,im2,GeoTransform,Projection)
 
 
-        return {str(OUTPUT_RASTER) : str(OUTPUT_RASTER)}
+        return {self.OUTPUT_RASTER: OUTPUT_RASTER}
 
 
         #return OUTPUT_RASTER

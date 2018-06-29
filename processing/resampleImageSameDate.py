@@ -182,7 +182,7 @@ class resampleImageSameDateAsSource(QgsProcessingAlgorithm):
         # learn model
         if libOk:
             resampleWithSameDateAsSource(SOURCE_RASTER_src,TARGET_RASTER_src,SOURCE_DATES,TARGET_DATES,N_SPECTRAL_BAND,OUTPUT_RASTER,feedback)
-            return {'Resampled image' : str(OUTPUT_RASTER)}
+            return {self.OUTPUT_RASTER: OUTPUT_RASTER}
 
         else:
             return {'Missing library' : 'Error importing {}'.format(libErrors)}

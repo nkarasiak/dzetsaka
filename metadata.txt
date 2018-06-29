@@ -29,6 +29,8 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+	3.3
+	  * Correct error when chaining in Processing Toolbox
 	3.2
 	  * Add Domain Adaptation in Processing Toolbox (thanks to POT library)
 	  * In the settings box, you can choose to have experimental function in the Processing Toolbox

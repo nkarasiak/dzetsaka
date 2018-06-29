@@ -132,7 +132,7 @@ class splitTrain(QgsProcessingAlgorithm):
             
         if libOk:
             function_vector.randomInSubset(INPUT_LAYER.source(),str(INPUT_COLUMN[0]),OUTPUT_VALIDATION,OUTPUT_TRAIN,VALUE,percent)
-            return {'Output train' : str(OUTPUT_TRAIN), 'Output validation' : str(OUTPUT_VALIDATION)}
+            return {self.OUTPUT_TRAIN: OUTPUT_TRAIN, self.OUTPUT_VALIDATION: OUTPUT_VALIDATION}
         else:
             #QMessageBox(None, "Please install scikit-learn library")
             QgsMessageLog.logMessage("Please install scikit-learn library") 

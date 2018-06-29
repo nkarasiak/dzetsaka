@@ -87,7 +87,7 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterRasterDestination(
                 self.OUTPUT_RASTER,
                 self.tr('Output raster'),
-				False
+                optional=False
             )
         )    
         
@@ -107,7 +107,7 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
             mask = INPUT_MASK.source()
         worker.initPredict(INPUT_RASTER.source(),INPUT_MODEL,OUTPUT_RASTER,mask,feedback=feedback)
 
-        return {'Classification' : str(OUTPUT_RASTER)}
+        return {self.OUTPUT_RASTER:OUTPUT_RASTER}
 
         
     def tr(self, string):

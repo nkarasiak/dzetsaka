@@ -245,7 +245,7 @@ class domainAdaptation(QgsProcessingAlgorithm):
         
             DA.predictTransfer(transferModel,SOURCE_RASTER.source(),TRANSPORTED_IMAGE,mask=MASK,NODATA=-10000,feedback=feedback)
             """
-            return {'Transported image' : str(TRANSPORTED_IMAGE)}
+            return {self.TRANSPORTED_IMAGE: TRANSPORTED_IMAGE}
 
         else:
             return {'Error' : msg}

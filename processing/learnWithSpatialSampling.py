@@ -216,7 +216,7 @@ class trainSLOOAlgorithm(QgsProcessingAlgorithm):
         #QgsMessageLog.logMessage(str(eval(PARAMGRID)))
         
         mainfunction.learnModel(INPUT_RASTER.source(),INPUT_LAYER.source(),INPUT_COLUMN[0],OUTPUT_MODEL,'SLOO',0,None,SELECTED_ALGORITHM,feedback=feedback,extraParam=extraParam)
-        return {'Output dir' : str(SAVEDIR), 'Output model' : str(OUTPUT_MODEL)}
+        return {self.SAVEDIR: SAVEDIR, self.OUTPUT_MODEL: OUTPUT_MODEL}
         
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

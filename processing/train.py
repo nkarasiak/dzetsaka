@@ -180,12 +180,13 @@ class trainAlgorithm(QgsProcessingAlgorithm):
             try:
                 import sklearn
             except:
+                raise ImportError('You need to install scikit-learn library')
                 libOk = False
                 
         # learn model
         if libOk:
             mainfunction.learnModel(INPUT_RASTER.source(),INPUT_LAYER.source(),INPUT_COLUMN[0],OUTPUT_MODEL,SPLIT_PERCENT,0,OUTPUT_MATRIX,SELECTED_ALGORITHM,extraParam=extraParam,feedback=feedback)
-            return {'Output matrix' : str(OUTPUT_MATRIX), 'Output model' : str(OUTPUT_MODEL)}
+            return {self.OUTPUT_MATRIX: OUTPUT_MATRIX, self.OUTPUT_MODEL: OUTPUT_MODEL}
 
         else:
             return {'Missing library' : str(OUTPUT_MATRIX)}

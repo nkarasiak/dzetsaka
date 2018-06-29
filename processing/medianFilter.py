@@ -194,7 +194,7 @@ class medianFilterAlgorithm(QgsProcessingAlgorithm):
             tempBand = None
             
             
-        return {str(OUTPUT_RASTER) : str(OUTPUT_RASTER)}
+        return {self.OUTPUT_RASTER: OUTPUT_RASTER}
 
        
         #return OUTPUT_RASTER
