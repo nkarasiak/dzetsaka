@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
 description=Fast and Easy Classification plugin for Qgis
-version=3.2
+version=3.3
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -30,7 +30,7 @@ repository=http://www.github.com/lennepkade/dzetsaka
 # Uncomment the following line and add your changelog:
 changelog=
 	3.3
-	  * Correct error when chaining in Processing Toolbox
+	  * Correct error when chaining with dzetsaka in Processing Toolbox
 	3.2
 	  * Add Domain Adaptation in Processing Toolbox (thanks to POT library)
 	  * In the settings box, you can choose to have experimental function in the Processing Toolbox

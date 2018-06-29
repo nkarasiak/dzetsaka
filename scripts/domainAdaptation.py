@@ -16,12 +16,6 @@ except:
     from mainfunction import pushFeedback
 
 
-try:
-	from sklearn.metrics import mean_squared_error
-	from itertools import product
-	from sklearn.metrics import (f1_score, cohen_kappa_score,accuracy_score)
-except:
-    raise ImportError('Please install itertools and scikit-learn')
 
 import gdal
 #import tempfile
@@ -49,7 +43,13 @@ class rasterOT(object):
             
     """
     def __init__(self,transportAlgorithm="MappingTransport",scaler=False,params=None,feedback=True):
-     
+        try:
+            from sklearn.metrics import mean_squared_error
+            from itertools import product
+            from sklearn.metrics import (f1_score, cohen_kappa_score,accuracy_score)
+        except:
+            raise ImportError('Please install itertools and scikit-learn')
+        
         self.transportAlgorithm = transportAlgorithm
         self.feedback = feedback
         
