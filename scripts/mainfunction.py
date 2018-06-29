@@ -269,6 +269,8 @@ class learnModel:
                 # tau=10.0**sp.arange(-8,8,0.5)
                 model = gmmr.GMMR()
                 model.learn(x,y)
+                
+                pushFeedback('model prop is '+str(model.prop),feedback=feedback)
                 # htau,err = model.cross_validation(x,y,tau)
                 # model.tau = htau
             except:
@@ -477,7 +479,7 @@ class learnModel:
 
             
         pushFeedback(int(9* total),feedback=feedback)
-
+        
         # Assess the quality of the model
         if feedback=='gui':
             progress.prgBar.setValue(90)
@@ -662,7 +664,7 @@ class classifyImage(object):
                 model : model file got from precedent step ('model', str)
                 inMask : mask to
                 confidenceMap :  map of confidence per pixel
-                NODATA : Default set to -10000 (int)
+                NODATA : Default set to 0 (int)
                 SCALE : Default set to None
                 classifier = Default 'GMM'
 
@@ -771,7 +773,9 @@ class classifyImage(object):
                 # Do the prediction
                 band_temp = raster.GetRasterBand(1)
                 nodata_temp = band_temp.GetNoDataValue()
-
+                if nodata_temp is None:
+                    nodata_temp = NODATA
+                
                 if mask is None:
                     band_temp = raster.GetRasterBand(1)
                     mask_temp=band_temp.ReadAsArray(j, i, cols, lines).reshape(cols*lines)
