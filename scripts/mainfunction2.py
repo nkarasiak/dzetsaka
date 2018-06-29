@@ -39,7 +39,7 @@ import numpy as np
 
 from osgeo import (gdal, ogr)
 
-    
+
 class learnModel:
     def __init__(self,inRaster,inVector,inField='Class',outModel=None,inSplit=100,inSeed=0,outMatrix=None,inClassifier='GMM',extraParam=False,feedback=None):
         """!@brief Learn model with a shp file and a raster image.

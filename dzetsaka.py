@@ -615,7 +615,8 @@ class dzetsakaGUI ( QDialog ):
                 QgsMessageLog.logMessage('Begin classification with '+str(inClassifier))
                 temp=mainfunction.classifyImage()
     
-                temp.initPredict(inRaster,model,outRaster,inMask,confidenceMap,NODATA,feedback='gui')
+    
+                temp.initPredict(inRaster,model,outRaster,inMask=inMask,confidenceMap=confidenceMap,confidenceMapPerClass=None,NODATA=NODATA,feedback='gui')
                 QgsMessageLog.logMessage('Classification done.')
                 self.iface.addRasterLayer(outRaster)
     

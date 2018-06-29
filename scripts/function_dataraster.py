@@ -4,7 +4,7 @@
 #import scipy as sp
 import numpy as np
 from osgeo import gdal
-from osgeo import gdal_array
+#from osgeo import gdal_array
 
 def convertGdalDataTypeToOTB(gdalDT):
     #availableCode = uint8/uint16/int16/uint32/int32/float/double

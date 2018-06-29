@@ -6,27 +6,22 @@ Created on Fri Mar 23 11:24:38 2018
 @author: nkarasiak
 """
 
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Mar 15 13:43:14 2018
-
-@author: nkarasiak
-"""
 
 try:
-    import function_dataraster as dataraster
-    from mainfunction import pushFeedback
-except:
+    #if use in Qgis 3
     from . import function_dataraster as dataraster
     from .mainfunction import pushFeedback
+except:
+    import function_dataraster as dataraster
+    from mainfunction import pushFeedback
+
 
 try:
 	from sklearn.metrics import mean_squared_error
 	from itertools import product
 	from sklearn.metrics import (f1_score, cohen_kappa_score,accuracy_score)
 except:
-	pass
+    raise ImportError('Please install itertools and scikit-learn')
 
 import gdal
 #import tempfile

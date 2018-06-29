@@ -21,7 +21,6 @@
 """
 
 try:
-    # when using it from QGIS 3
     from qgis.core import QgsMessageLog
     from . import function_dataraster as dataraster
     from . import accuracy_index as ai
@@ -462,11 +461,10 @@ class learnModel:
                             otherLevelFolder = os.path.join(saveDir,'matrix/level3/')
                             if not os.path.exists(otherLevelFolder):
                                 os.makedirs(otherLevelFolder)
-                            bigCM = np.zeros([14,14],dtype=np.byte)
+                            bigCM = np.zeros([np.unique(otherLevel).shape[0],np.unique(otherLevel).shape[0]],dtype=np.byte)
 
                             arr= CM[i]
                             curLevel = otherLevel[testIndex[i]]
-                            curLevel = np.sort(curLevel,axis=0)
                             for lvl in range(curLevel.shape[0]):
                                 bigCM[curLevel.astype(int)-1,curLevel[lvl].astype(int)-1] = arr[:,lvl].reshape(-1,1)
                             np.savetxt(os.path.join(otherLevelFolder,str(distance)+'_'+str(inField)+'_'+str(minTrain)+'_'+str(i)+'.csv'),bigCM,delimiter=',',fmt='%.d')
@@ -484,7 +482,7 @@ class learnModel:
             
         if inVectorTest or isinstance(SPLIT,int):
             if SPLIT!=100 or inVectorTest:
-                #from sklearn.metrics import cohen_kappa_score,accuracy_score,f1_score
+                from sklearn.metrics import cohen_kappa_score,accuracy_score,f1_score
                 # if  inClassifier == 'GMM':
                 #          = model.predict(xt)[0]
                 # else:
@@ -508,12 +506,11 @@ class learnModel:
                             print(message)
                 
                 
-                """
                 self.kappa = cohen_kappa_score(yp,yt)
                 self.f1 = f1_score(yp,yt,average='micro')
                 self.oa = accuracy_score(yp,yt)
-                """
-                res = {'Overall Accuracy':CONF.OA,'Kappa':CONF.Kappa,'f1':CONF.F1mean}
+                
+                res = {'oa':self.oa,'kappa':self.kappa,'f1':self.f1}
                 
                 for estim in res:
                     pushFeedback(estim+' : '+str(res[estim]),feedback=feedback)
@@ -586,7 +583,7 @@ class classifyImage(object):
     """
 
 
-    def initPredict(self,inRaster,inModel,outRaster,inMask=None,confidenceMap=None,confidenceMapPerClass=None,NODATA=0,feedback=None,n_jobs=1):
+    def initPredict(self,inRaster,inModel,outRaster,inMask=None,confidenceMap=None,confidenceMapPerClass=None,NODATA=0,feedback=None):
 
 
         # Load model
@@ -612,7 +609,7 @@ class classifyImage(object):
             pushFeedback("Cannot create temp file "+rasterTemp,feedback=feedback)
             # Process the data
         #try:
-        predictedImage=self.predict_image(inRaster,outRaster,tree,inMask,confidenceMap,confidenceMapPerClass=confidenceMapPerClass,NODATA=NODATA,SCALE=[M,m],classifier=classifier,feedback=feedback,n_jobs=n_jobs)
+        predictedImage=self.predict_image(inRaster,outRaster,tree,inMask,confidenceMap,confidenceMapPerClass=confidenceMapPerClass,NODATA=NODATA,SCALE=[M,m],classifier=classifier,feedback=feedback)
         #except:
          #   QgsMessageLog.logMessage("Problem while predicting "+inRaster+" in temp"+rasterTemp)
 
@@ -651,7 +648,7 @@ class classifyImage(object):
 
         return xs
 
-    def predict_image(self,inRaster,outRaster,model=None,inMask=None,confidenceMap=None,confidenceMapPerClass=None,NODATA=0,SCALE=None,classifier='GMM',feedback=None,n_jobs=1):
+    def predict_image(self,inRaster,outRaster,model=None,inMask=None,confidenceMap=None,confidenceMapPerClass=None,NODATA=0,SCALE=None,classifier='GMM',feedback=None):
         """!@brief The function classify the whole raster image, using per block image analysis.
 
         The classifier is given in classifier and options in kwargs
@@ -719,8 +716,7 @@ class classifyImage(object):
         dst_ds.SetProjection(Projection)
         out = dst_ds.GetRasterBand(1)
 
-        if classifier != 'GMM':
-            nClass = len(model.classes_)
+        nClass = len(model.classes_)
         if confidenceMap :
             dst_confidenceMap = driver.Create(confidenceMap, nc,nl, 1, gdal.GDT_Int16)
             dst_confidenceMap.SetGeoTransform(GeoTransform)
@@ -731,7 +727,6 @@ class classifyImage(object):
             dst_confidenceMapPerClass = driver.Create(confidenceMapPerClass,nc,nl,nClass,gdal.GDT_Int16)
             dst_confidenceMapPerClass.SetGeoTransform(GeoTransform)
             dst_confidenceMapPerClass.SetProjection(Projection)
-        
         ## Perform the classification
 
         total = nl*y_block_size
@@ -742,14 +737,13 @@ class classifyImage(object):
         if feedback=='gui':
             progress = pB.progressBar('Predicting model...',total/10)
 
-        
+
         for i in range(0,nl,y_block_size):
             if not 'lastBlock' in locals():
                 lastBlock = i
             if int(lastBlock/total*100)!=int(i/total*100):
                 lastBlock = i
                 pushFeedback(int(i/total*100))
-                
                 if feedback=='gui':
                     progress.addStep()
 
@@ -814,7 +808,8 @@ class classifyImage(object):
                         yp[t] = model.predict(self.scale(X[t,:],M=M,m=m))
 
                         #QgsMessageLog.logMessage('amax from predict proba is : '+str(sp.amax(model.predict.proba(self.scale(X[t,:],M=M,m=m)),axis=1)))
-           
+                        
+
                 # Write the data
                 out.WriteArray(yp.reshape(lines,cols),j,i)
                 out.SetNoDataValue(NODATA)
@@ -836,7 +831,7 @@ class classifyImage(object):
                     
 
                 del X,yp
-                
+
         # Clean/Close variables
         if feedback=='gui':
             progress.reset()

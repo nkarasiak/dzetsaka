@@ -81,7 +81,7 @@ class randomInSubset():
         ds = None
 
 class distanceCV:
-    def __init__(self,distanceArray,Y,distanceThresold=1000,minTrain=-1,SLOO=True,maxIter=False,furtherSplit=False,onlyVaryingTrain=False,stats=False,verbose=False,seed=False):
+    def __init__(self,distanceArray,Y,distanceThresold=1000,minTrain=-1,SLOO=True,maxIter=False,furtherSplit=False,onlyVaryingTrain=False,stats=False,verbose=False,seed=False,otherLevel=False):
         """Compute train/validation array with Spatial distance analysis.
         
         Object stops when less effective class number is reached (45 loops if your least class contains 45 ROI).
@@ -129,6 +129,7 @@ class distanceCV:
             self.maxIter = maxIter
         else :
             self.maxIter = self.minEffectiveClass
+        self.otherLevel = otherLevel
         self.SLOO = SLOO #Leave One OUT
         self.verbose = verbose
         self.furtherSplit = furtherSplit
@@ -183,6 +184,7 @@ class distanceCV:
 
                         self.ROI = np.random.permutation(CTtemp)[0] # randomize ROI choice
 
+                        
                         #while uniqueTrain <(self.split*totalC) :
                         #sameClass = sp.where( self.Y[CT] == C )
                         distanceROI = (self.distanceArray[int(self.ROI),:])[CTtemp] # get line of distance for specific ROI
@@ -607,21 +609,25 @@ def saveToShape(array,srs,outShapeFile):
     ds = None
 
 
-def readROIFromVector(vector,roiprefix,level):
+def readROIFromVector(vector,roiprefix,*args):
     """
     **********
     Parameters
     ----------
-    vector : Vector path ('myFolder/class.shp',str).
-    roiprefix : Common suffixof the training shpfile (i.e. 'band_',str).
-    level : Field name containing your class number (i.e. 'class', str).    
+    vector : str
+        Vector path ('myFolder/class.shp',str).
+    roiprefix : str
+        Common suffixof the training shpfile (i.e. 'band_',str).
+    *args : str
+        Field name containing your class number (i.e. 'class', str).    
 
     Output
     ----------
 
     ROIvalues : array
-    ROIlevels : array
+    *args : array
     """
+
     file = ogr.Open(vector)
     lyr = file.GetLayer()
     
@@ -629,20 +635,37 @@ def readROIFromVector(vector,roiprefix,level):
     
     # get all fields and save only roiFields
     ldefn = lyr.GetLayerDefn()
+    
+    listFields = []
+        
     for n in range(ldefn.GetFieldCount()):
         fdefn = ldefn.GetFieldDefn(n)
+        if not fdefn.name is listFields:
+            listFields.append(fdefn.name)
         if fdefn.name.startswith(roiprefix):
             roiFields.append(fdefn.name)
     
-    # fill ROI and level
-    ROIvalues = np.zeros([lyr.GetFeatureCount(),len(roiFields)])
-    ROIlevels = np.zeros([lyr.GetFeatureCount(),1])
-    for i,feature in enumerate(lyr):
-        for j,band in enumerate(roiFields):
-            ROIvalues[i,j] = feature.GetField(band)
-            ROIlevels[i,0] = feature.GetField(level)
     
-    return ROIvalues,ROIlevels
+    if len(roiFields) > 0:
+            # fill ROI and level
+            ROIvalues = np.zeros([lyr.GetFeatureCount(),len(roiFields)])
+            if len(args) > 0 :
+                ROIlevels = np.zeros([lyr.GetFeatureCount(),len(args)])
+            for i,feature in enumerate(lyr):
+                for j,band in enumerate(roiFields):
+                    ROIvalues[i,j] = feature.GetField(band)
+                    if len(args) > 0:
+                        for a in range(len(args)):
+                            ROIlevels[i,a] = feature.GetField(args[a])
+            
+            if len(args)>0:
+                return ROIvalues,ROIlevels
+            else:
+                return ROIvalues
+    else:
+        from mainfunction import pushFeedback
+        pushFeedback('ROI field "{}" do not exists. These fields are available : '.format(roiprefix))
+        pushFeedback(listFields)
     
 if __name__ == "__main__":
     inRaster = '/mnt/DATA/Sentinel-2/SITS/SITS_TCJ.tif'

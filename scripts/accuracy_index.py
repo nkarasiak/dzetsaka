@@ -8,6 +8,7 @@ class CONFUSION_MATRIX:
         self.confusion_matrix=None
         self.OA=None
         self.Kappa = None
+        self.F1mean = None
         
     def compute_confusion_matrix(self,yp,yr):
         ''' 
@@ -29,6 +30,14 @@ class CONFUSION_MATRIX:
         nl = np.sum(self.confusion_matrix,axis=1)
         nc = np.sum(self.confusion_matrix,axis=0)
         self.Kappa = ((n**2)*self.OA - np.sum(nc*nl))/(n**2-np.sum(nc*nl))
+        
+        #
+        try:
+            nl = np.sum(self.confusion_matrix,axis=1,dtype=float)
+            nc = np.sum(self.confusion_matrix,axis=0,dtype=float)
+            self.F1mean = 2*np.mean( np.divide( np.diag(self.confusion_matrix), (nl + nc)) )
+        except:
+            self.F1mean = 0
         
         # TBD Variance du Kappa
         
