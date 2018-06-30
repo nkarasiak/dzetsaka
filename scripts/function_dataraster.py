@@ -3,7 +3,7 @@
 
 #import scipy as sp
 import numpy as np
-from osgeo import gdal
+import gdal
 #from osgeo import gdal_array
 
 def convertGdalDataTypeToOTB(gdalDT):
