@@ -36,7 +36,7 @@ from qgis.core import QgsProcessingProvider
 #from .processing.moduleName_algorithm import classNameAlgorithm
 
 
-from .processing.medianFilter import medianFilterAlgorithm
+
 from .processing.train import trainAlgorithm
 from .processing.classify import classifyAlgorithm
 from .processing.splitTrainValidation import splitTrain
@@ -59,15 +59,17 @@ class dzetsakaProvider(QgsProcessingProvider):
         QgsProcessingProvider.__init__(self)
             
         # Load algorithms
-        self.alglist = [medianFilterAlgorithm(),trainAlgorithm(),classifyAlgorithm(),splitTrain(),\
+        self.alglist = [trainAlgorithm(),classifyAlgorithm(),splitTrain(),\
                         domainAdaptation(),trainSLOOAlgorithm(),trainSTANDalgorithm()]#,learnWithSpatialSampling()]#,classifyAlgorithm(),splitTrain()]
         
         if providerType == 'Experimental':
         
             from .processing.shannonEntropy import shannonAlgorithm
             from .processing.resampleImageSameDate import resampleImageSameDateAsSource
+            from .processing.medianFilter import medianFilterAlgorithm
             self.alglist.append(shannonAlgorithm())
             self.alglist.append(resampleImageSameDateAsSource())
+            self.alglist.append(medianFilterAlgorithm())
             
     def icon(self):
         """

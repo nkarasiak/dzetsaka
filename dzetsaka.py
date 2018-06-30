@@ -28,7 +28,7 @@ from PyQt5.QtWidgets import QAction, QMessageBox,QDialog,QFileDialog
 from qgis.core import QgsMessageLog,QgsProcessingAlgorithm,QgsApplication
 
 # import outside libraries
-import configparser
+#import configparser
 import tempfile
 import os.path
 import gdal,ogr,osr
@@ -40,6 +40,7 @@ from .scripts import function_dataraster as dataraster
 from .scripts import mainfunction
 
 from .dzetsaka_provider import dzetsakaProvider
+
 
 class dzetsakaGUI ( QDialog ):
     """QGIS Plugin Implementation."""
@@ -61,7 +62,7 @@ class dzetsakaGUI ( QDialog ):
         # init dialog and dzetsaka dock
         QDialog.__init__(self)
         #sender = self.sender()
-
+        self.settings = QSettings()
         self.loadConfig()
         
         self.provider = dzetsakaProvider(self.providerType)
@@ -69,11 +70,11 @@ class dzetsakaGUI ( QDialog ):
         self.plugin_dir = os.path.dirname(__file__)
 
         # initialize locale
-        locale = QSettings().value('locale/userLocale')[0:2]
+        locale = self.settings.value('locale/userLocale')[0:2]
         locale_path = os.path.join(
             self.plugin_dir,
             'i18n',
-            'dzetsakaGUI_{}.qm'.format(locale))
+            'dzetsaka_{}.qm'.format(locale))
 
         if os.path.exists(locale_path):
             self.translator = QTranslator()
@@ -84,11 +85,10 @@ class dzetsakaGUI ( QDialog ):
 
         # Declare instance attributes
         self.actions = []
-        self.menu = self.tr(u'&dzetsakaGUI')
+        self.menu = self.tr(u'&dzetsaka')
         # TODO: We are going to let the user set this up in a future iteration
-        self.toolbar = self.iface.addToolBar(u'dzetsakaGUI')
-        self.toolbar.setObjectName(u'dzetsakaGUI')
-
+        self.toolbar = self.iface.addToolBar(u'dzetsaka')
+        self.toolbar.setObjectName(u'dzetsaka')
         self.pluginIsActive = False
         self.dockwidget = None
 
@@ -102,6 +102,7 @@ class dzetsakaGUI ( QDialog ):
         """!@brief Remember last saved dir when saving or loading file"""
         if fileName != '':
             self.lastSaveDir = fileName
+            self.settings.setValue('/dzetsaka/lastSaveDir',self.lastSaveDir)
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -116,7 +117,7 @@ class dzetsakaGUI ( QDialog ):
         :rtype: QString
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate('dzetsakaGUI', message)
+        return QCoreApplication.translate('dzetsaka', message)
 
 
     def add_action(
@@ -201,10 +202,17 @@ class dzetsakaGUI ( QDialog ):
         icon_path = ':/plugins/dzetsaka/img/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr(u'dzetsaka - classification dock'),
+            text=self.tr(u'classification dock'),
             callback=self.run,
             parent=self.iface.mainWindow())
-
+        
+        icon_settings_path = ':/plugins/dzetsaka/img/dzetsaka_settings.png'
+        self.add_action(
+            icon_settings_path,
+            text=self.tr(u'settings'),
+            callback=self.loadSettings,
+            add_to_toolbar=True,
+            parent=self.iface.mainWindow())
     #--------------------------------------------------------------------------
 
     def onClosePlugin(self):
@@ -236,7 +244,7 @@ class dzetsakaGUI ( QDialog ):
 
         for action in self.actions:
             self.iface.removePluginMenu(
-                self.tr(u'&dzetsakaGUI'),
+                self.tr(u'&dzetsaka'),
                 action)
             self.iface.removeToolBarIcon(action)
 
@@ -382,24 +390,50 @@ class dzetsakaGUI ( QDialog ):
         """!@brief Class that loads all saved settings from config.txt"""
 
         try :
-
+            """
             dzetsakaRoot = os.path.dirname(os.path.realpath(__file__))
             self.Config = configparser.ConfigParser()
             self.configFile = os.path.join(dzetsakaRoot,'config.txt')
             self.Config.read(self.configFile)
 
 
-            self.classifiers=['Gaussian Mixture Model','Random Forest','Support Vector Machines','K-Nearest Neighbors']
             self.classifier = self.Config.get('Classification','classifier')
-
+            
+            
             self.classSuffix = self.Config.get('Classification','suffix')
             self.classPrefix = self.Config.get('Classification','prefix')
 
             self.maskSuffix = self.Config.get('Classification','maskSuffix')
             
-            self.providers = ['Standard','Experimental']
             self.providerType = self.Config.get('Providers','provider')
+            """
+            self.classifiers=['Gaussian Mixture Model','Random Forest','Support Vector Machines','K-Nearest Neighbors']
+            self.providers = ['Standard','Experimental']
             
+            self.classifier = self.settings.value('/dzetsaka/classifier','',str)
+            if not self.classifier :
+                self.classifier = self.classifiers[0]
+                self.settings.setValue('/dzetsaka/classifier',self.classifier)
+
+            self.classSuffix = self.settings.value('/dzetsaka/classSuffix','',str)
+            if not self.classSuffix:
+                self.classSuffix = '_class'
+                self.settings.setValue('/dzetsaka/classSuffix',self.classSuffix)
+                    
+            self.classPrefix = self.settings.value('/dzetsaka/classPrefix','',str)
+            if not self.classPrefix:
+                self.classPrefix = ''
+                self.settings.setValue('/dzetsaka/classPrefix',self.classPrefix)
+                
+            self.maskSuffix = self.settings.value('/dzetsaka/maskSuffix','',str)
+            if not self.maskSuffix :
+                self.maskSuffix = '_mask'
+                self.settings.setValue('/dzetsaka/maskSuffix',self.maskSuffix)
+                
+            self.providerType = self.settings.value('/dzetsaka/providerType','',str)
+            if not self.providerType:
+                self.providerType = self.providers[0]
+                self.providerType = self.settings.setValue('/dzetsaka/providerType',self.providerType)
         except :
             QgsMessageLog.logMessage('failed to open config file '+self.configFile)
 
@@ -421,18 +455,20 @@ class dzetsakaGUI ( QDialog ):
 
              self.settingsdock.selectClassifier.currentIndexChanged[int].connect(self.saveSettings)
 
+             self.settings.setValue('/dzetsaka/classifier',self.classifier)
+             
              ## suffix
              self.settingsdock.classSuffix.setText(self.classSuffix)
              self.settingsdock.classSuffix.textChanged.connect(self.saveSettings)
-
+             self.settings.setValue('/dzetsaka/classSuffix',self.classSuffix)
              ## prefix
              self.settingsdock.classPrefix.setText(self.classPrefix)
              self.settingsdock.classPrefix.textChanged.connect(self.saveSettings)
-
+             self.settings.setValue('/dzetsaka/classPrefix',self.classPrefix)
              ## mask suffix
              self.settingsdock.maskSuffix.setText(self.maskSuffix)
              self.settingsdock.maskSuffix.textChanged.connect(self.saveSettings)
-
+             self.settings.setValue('/dzetsaka/maskSuffix',self.maskSuffix)
              ##
              
              for i, prvd in enumerate(self.providers):
@@ -440,7 +476,7 @@ class dzetsakaGUI ( QDialog ):
                      self.settingsdock.selectProviders.setCurrentIndex(i)                 
                      
              self.settingsdock.selectProviders.currentIndexChanged[int].connect(self.saveSettings)
-             
+             self.settings.setValue('/dzetsaka/providerType',self.providerType)
              # Reload config for further use
              self.loadConfig()
 
@@ -566,7 +602,7 @@ class dzetsakaGUI ( QDialog ):
                     inClassifier=classifierShortName[i]
             
             # Check if model, else perform training
-            NODATA = -10000
+            NODATA = -9999
             
             if model != '':
                 model=self.dockwidget.inModel.text()
@@ -737,32 +773,37 @@ class dzetsakaGUI ( QDialog ):
             if self.settingsdock.selectClassifier.currentText() !='Gaussian Mixture Model':
                 # try if Sklearn is installed, or force GMM
                 try:
-                    import sklearn
+                    from sklearn import metrics
                     if self.classifier != self.settingsdock.selectClassifier.currentText():
-                        self.modifyConfig('Classification','classifier',self.settingsdock.selectClassifier.currentText())
-
+                        #self.modifyConfig('Classification','classifier',self.settingsdock.selectClassifier.currentText())
+                        self.settings.setValue('/dzetsaka/classifier',self.settingsdock.selectClassifier.currentText())
                 except:
                     QMessageBox.warning(self, 'Library missing', 'Scikit-learn library is missing on your computer.<br><br> You must use Gaussian Mixture Model, or <a href=\'https://github.com/lennepkade/dzetsaka/#installation-of-scikit-learn\'>consult dzetsaka homepage to learn on to install the missing library</a>.', QMessageBox.Ok)
                     #reset to GMM
                     self.settingsdock.selectClassifier.setCurrentIndex(0)
-                    self.modifyConfig('Classification','classifier','Gaussian Mixture Model')
-
+                    #self.modifyConfig('Classification','classifier','Gaussian Mixture Model')
+                    self.settings.setValue('/dzetsaka/classifier','Gaussian Mixture Model')
             else:
-                self.modifyConfig('Classification','classifier','Gaussian Mixture Model')
-
+                #self.modifyConfig('Classification','classifier','Gaussian Mixture Model')
+                self.settings.setValue('/dzetsaka/classifier','Gaussian Mixture Model')
+                
         if self.sender() == self.settingsdock.classSuffix:
             if self.classSuffix != self.settingsdock.classSuffix.text():
-                self.modifyConfig('Classification','suffix',self.settingsdock.classSuffix.text())
+                #self.modifyConfig('Classification','suffix',self.settingsdock.classSuffix.text())
+                self.settings.setValue('/dzetsaka/classSuffix',self.settingsdock.classSuffix.text())
         if self.sender() == self.settingsdock.classPrefix:
             if self.classPrefix != self.settingsdock.classPrefix.text():
-                self.modifyConfig('Classification','prefix',self.settingsdock.classPrefix.text())
+                #self.modifyConfig('Classification','prefix',self.settingsdock.classPrefix.text())
+                self.settings.setValue('/dzetsaka/classPrefix',self.settingsdock.classPrefix.text())
         if self.sender() == self.settingsdock.maskSuffix:
             if self.maskSuffix != self.settingsdock.maskSuffix.text():
-                self.modifyConfig('Classification','maskSuffix',self.settingsdock.maskSuffix.text())
+                #self.modifyConfig('Classification','maskSuffix',self.settingsdock.maskSuffix.text())
+                self.settings.setValue('/dzetsaka/maskSuffix',self.settingsdock.maskSuffix.text())
         if self.sender() == self.settingsdock.selectProviders:
             self.providerType = self.settingsdock.selectProviders.currentText()
             
-            self.modifyConfig('Providers','provider',self.settingsdock.selectProviders.currentText())
+            #self.modifyConfig('Providers','provider',self.settingsdock.selectProviders.currentText())
+            self.settings.setValue('/dzetsaka/providerType',self.settingsdock.selectProviders.currentText())
             QgsApplication.processingRegistry().removeProvider(self.provider)
             
             from .dzetsaka_provider import dzetsakaProvider

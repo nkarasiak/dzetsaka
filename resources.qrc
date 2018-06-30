@@ -1,6 +1,7 @@
 <RCC>
   <qresource prefix="/plugins/dzetsaka">
     <file>img/icon.png</file>
+    <file>img/dzetsaka_settings.png</file>
     <file>img/confidence.png</file>
     <file>img/parcguyane.jpg</file>
     <file>img/column.svg</file>

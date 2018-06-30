@@ -129,6 +129,7 @@ class learnModel:
             if SPLIT=='SLOO':
      
                 from sklearn.metrics import confusion_matrix
+
                 try:
                     from function_vector import distanceCV,distMatrix
                 except:
@@ -270,7 +271,6 @@ class learnModel:
                 model = gmmr.GMMR()
                 model.learn(x,y)
                 
-                pushFeedback('model prop is '+str(model.prop),feedback=feedback)
                 # htau,err = model.cross_validation(x,y,tau)
                 # model.tau = htau
             except:
@@ -294,7 +294,7 @@ class learnModel:
                         
                 # AS Qgis in Windows doensn't manage multiprocessing, force to use 1 thread for not linux system
                 if os.name == 'posix':
-                    n_jobs=-1
+                    n_jobs=1
                 else:
                     n_jobs=1
                 
@@ -769,12 +769,13 @@ class classifyImage(object):
                 X = np.empty((cols*lines,d))
                 for ind in range(d):
                     X[:,ind] = raster.GetRasterBand(int(ind+1)).ReadAsArray(j, i, cols, lines).reshape(cols*lines)
-
+                
+                
                 # Do the prediction
                 band_temp = raster.GetRasterBand(1)
                 nodata_temp = band_temp.GetNoDataValue()
                 if nodata_temp is None:
-                    nodata_temp = NODATA
+                    nodata_temp = -9999
                 
                 if mask is None:
                     band_temp = raster.GetRasterBand(1)
