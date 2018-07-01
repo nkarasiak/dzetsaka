@@ -68,8 +68,12 @@ class dzetsakaGUI ( QDialog ):
         self.provider = dzetsakaProvider(self.providerType)
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
-
+        
+        if self.firstInstallation is True:
+            self.showWelcomeWidget()
+        
         # initialize locale
+        """
         locale = self.settings.value('locale/userLocale')[0:2]
         locale_path = os.path.join(
             self.plugin_dir,
@@ -82,7 +86,7 @@ class dzetsakaGUI ( QDialog ):
 
             if qVersion() > '4.3.3':
                 QCoreApplication.installTranslator(self.translator)
-
+        """
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&dzetsaka')
@@ -105,6 +109,13 @@ class dzetsakaGUI ( QDialog ):
             self.settings.setValue('/dzetsaka/lastSaveDir',self.lastSaveDir)
 
     # noinspection PyMethodMayBeStatic
+    def showWelcomeWidget(self):
+        self.welcomeWidget = ui.welcomeWidget()
+        self.welcomeWidget.show()
+        
+        self.settings.setValue('/dzetsaka/firstInstallation',False)
+        
+        
     def tr(self, message):
         """Get the translation for a string using Qt translation API.
 
@@ -199,6 +210,14 @@ class dzetsakaGUI ( QDialog ):
         
         QgsApplication.processingRegistry().addProvider(self.provider)
 
+        icon_path = ':/plugins/dzetsaka/img/icon.png'
+        self.add_action(
+            icon_path,
+            text=self.tr(u'Show welcome message'),
+            callback=self.showWelcomeWidget,
+            add_to_toolbar=False,
+            parent=self.iface.mainWindow())
+        
         icon_path = ':/plugins/dzetsaka/img/icon.png'
         self.add_action(
             icon_path,
@@ -434,6 +453,12 @@ class dzetsakaGUI ( QDialog ):
             if not self.providerType:
                 self.providerType = self.providers[0]
                 self.providerType = self.settings.setValue('/dzetsaka/providerType',self.providerType)
+                
+            self.firstInstallation = self.settings.value('/dzetsaka/firstInstallation','',bool)
+            if self.firstInstallation is None:
+                self.firstInstallation = True
+                self.settings.setValue('/dzetsaka/firstInstallation',True)
+            
         except :
             QgsMessageLog.logMessage('failed to open config file '+self.configFile)
 

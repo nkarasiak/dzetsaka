@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
 description=Fast and Easy Classification plugin for Qgis
-version=3.3.1
+version=3.4
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -29,6 +29,8 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+	3.4
+	  * Add welcome message if first installation, with, I hope, good tips for new users
     	3.3.1
 	  * Store settings with QSettings (keep settings when updating plugin now!)
 	  * Correct bug when no nodata value was defined in raster source (default value now : -9999)
