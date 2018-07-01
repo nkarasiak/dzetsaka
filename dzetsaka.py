@@ -213,7 +213,7 @@ class dzetsakaGUI ( QDialog ):
         icon_path = ':/plugins/dzetsaka/img/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr(u'Show welcome message'),
+            text=self.tr(u'welcome message'),
             callback=self.showWelcomeWidget,
             add_to_toolbar=False,
             parent=self.iface.mainWindow())
@@ -454,7 +454,7 @@ class dzetsakaGUI ( QDialog ):
                 self.providerType = self.providers[0]
                 self.providerType = self.settings.setValue('/dzetsaka/providerType',self.providerType)
                 
-            self.firstInstallation = self.settings.value('/dzetsaka/firstInstallation','',bool)
+            self.firstInstallation = self.settings.value('/dzetsaka/firstInstallation','None',bool)
             if self.firstInstallation is None:
                 self.firstInstallation = True
                 self.settings.setValue('/dzetsaka/firstInstallation',True)
