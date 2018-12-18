@@ -41,6 +41,20 @@ from .scripts import mainfunction
 
 from .dzetsaka_provider import dzetsakaProvider
 
+### In order to use RF/SVM/KNN
+try:
+    import pip
+except:
+    execfile(os.path.join(self.plugin_dir, get_pip.py))
+    import pip
+    # just in case the included version is old
+    pip.main(['install','--upgrade','pip'])
+
+try:
+    from sklearn import datasets
+except:
+    pip.main(['install','-U' , 'scikit-learn'])
+
 
 class dzetsakaGUI ( QDialog ):
     """QGIS Plugin Implementation."""
@@ -103,7 +117,7 @@ class dzetsakaGUI ( QDialog ):
         #self.run()
 
     def rememberLastSaveDir(self,fileName):
-        """!@brief Remember last saved dir when saving or loading file"""
+        """!@brief Remember last sd dir when saving or loading file"""
         if fileName != '':
             self.lastSaveDir = fileName
             self.settings.setValue('/dzetsaka/lastSaveDir',self.lastSaveDir)
