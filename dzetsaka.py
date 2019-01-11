@@ -42,18 +42,15 @@ from .scripts import mainfunction
 from .dzetsaka_provider import dzetsakaProvider
 
 ### In order to use RF/SVM/KNN
-try:
-    import pip
-except:
-    execfile(os.path.join(self.plugin_dir, get_pip.py))
-    import pip
-    # just in case the included version is old
-    pip.main(['install','--upgrade','pip'])
-
+### try to install sklearn
 try:
     from sklearn import datasets
 except:
-    pip.main(['install','-U' , 'scikit-learn'])
+    try:
+        import pip
+        pip.main(['install','-U' , 'scikit-learn'])
+    except:
+        pass
 
 
 class dzetsakaGUI ( QDialog ):

@@ -497,7 +497,7 @@ class learnModel:
                 if outMatrix is not None:
                     if not os.path.exists(os.path.dirname(outMatrix)):
                         os.makedirs(os.path.dirname(outMatrix))
-                    np.savetxt(outMatrix,CONF.confusion_matrix,delimiter=',',header='Columns=prediction,Lines=Reference.',fmt='%1.4d')
+                    np.savetxt(outMatrix,CONF.confusion_matrix,delimiter=',',header='Columns=prediction,Lines=reference.',fmt='%1.4d')
     
                 if inClassifier !='GMM':
                     for key in param_grid.keys():
