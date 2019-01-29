@@ -1,4 +1,5 @@
 # dzetsaka : classification tool
+[![DOI](https://zenodo.org/badge/59029116.svg)](https://zenodo.org/badge/latestdoi/59029116)
 
 ![Inselberg in Guiana Amazonian Park](https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/guyane.jpg)
 
@@ -49,6 +50,12 @@ You can now use **Random Forest**, **SVM**, or **KNN** !
 - If you want to keep your spectral ROI model from an image, you can save your model to use it on another image.
 
 Online dev documentation is available throught the [doxygen branch](https://rawgit.com/lennepkade/dzetsaka/doxygen/index.html).
+
+## Like us, use us ? Quote us !
+DOI : [10.5281/zenodo.2552285](https://doi.org/10.5281/zenodo.2552285).
+
+[![DOI](https://zenodo.org/badge/59029116.svg)](https://zenodo.org/badge/latestdoi/59029116)
+
 ### Thanks to...
 I would like to thank the [Guiana Amazonian Park](http://www.parc-amazonien-guyane.fr/) for their trust in my work, and the Master 2 Geomatics [Sigma](http://sigma.univ-toulouse.fr/en/welcome.html) for their excellent lessons in geomatics.
 
