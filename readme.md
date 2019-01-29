@@ -54,7 +54,7 @@ Online dev documentation is available throught the [doxygen branch](https://rawg
 ## Like us, use us ? Quote us !
 DOI : [10.5281/zenodo.2552284](https://doi.org/10.5281/zenodo.2552284).
 
-[![DOI](https://zenodo.org/badge/59029116.svg)](https://zenodo.org/badge/latestdoi/59029116)
+> Nicolas Karasiak. (2019, January 29). dzetsaka: v3.4.3 (Version v3.4.3). Zenodo. http://doi.org/10.5281/zenodo.2552285
 
 ### Thanks to...
 I would like to thank the [Guiana Amazonian Park](http://www.parc-amazonien-guyane.fr/) for their trust in my work, and the Master 2 Geomatics [Sigma](http://sigma.univ-toulouse.fr/en/welcome.html) for their excellent lessons in geomatics.
