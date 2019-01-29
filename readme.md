@@ -52,7 +52,7 @@ You can now use **Random Forest**, **SVM**, or **KNN** !
 Online dev documentation is available throught the [doxygen branch](https://rawgit.com/lennepkade/dzetsaka/doxygen/index.html).
 
 ## Like us, use us ? Quote us !
-DOI : [10.5281/zenodo.2552285](https://doi.org/10.5281/zenodo.2552285).
+DOI : [10.5281/zenodo.2552284](https://doi.org/10.5281/zenodo.2552284).
 
 [![DOI](https://zenodo.org/badge/59029116.svg)](https://zenodo.org/badge/latestdoi/59029116)
 
