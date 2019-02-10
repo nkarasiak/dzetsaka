@@ -51,7 +51,7 @@ You can now use **Random Forest**, **SVM**, or **KNN** !
 
 Online dev documentation is available throught the [doxygen branch](https://rawgit.com/lennepkade/dzetsaka/doxygen/index.html).
 
-## Like us, use us ? Quote us !
+## Like us, use us ? Cite us !
 DOI : [10.5281/zenodo.2552284](https://doi.org/10.5281/zenodo.2552284).
 
 > Nicolas Karasiak. (2019, January 29). dzetsaka: v3.4.3 (Version v3.4.3). Zenodo. http://doi.org/10.5281/zenodo.2552285
