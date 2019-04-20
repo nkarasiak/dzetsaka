@@ -293,11 +293,6 @@ class learnModel:
                         param_algo = extraParam['param_algo']
                         
                 # AS Qgis in Windows doensn't manage multiprocessing, force to use 1 thread for not linux system
-                if os.name == 'posix':
-                    n_jobs=1
-                else:
-                    n_jobs=1
-                
                 
                 if SPLIT=='STAND':
                     label = np.copy(Y)
@@ -437,7 +432,7 @@ class learnModel:
                     
                     pushFeedback('Custom param for Grid Search CV has been found : '+str(param_grid),feedback=feedback)
                     
-            grid = GridSearchCV(classifier,param_grid=param_grid, cv=cv,n_jobs=n_jobs)
+            grid = GridSearchCV(classifier,param_grid=param_grid, cv=cv,n_jobs=1)
             grid.fit(x,y)
             model = grid.best_estimator_
             model.fit(x,y)
@@ -614,7 +609,7 @@ class classifyImage(object):
             pushFeedback("Cannot create temp file "+rasterTemp,feedback=feedback)
             # Process the data
         #try:
-        predictedImage=self.predict_image(inRaster,outRaster,tree,inMask,confidenceMap,confidenceMapPerClass=confidenceMapPerClass,NODATA=NODATA,SCALE=[M,m],classifier=classifier,feedback=feedback,n_jobs=n_jobs)
+        predictedImage=self.predict_image(inRaster,outRaster,tree,inMask,confidenceMap,confidenceMapPerClass=confidenceMapPerClass,NODATA=NODATA,SCALE=[M,m],classifier=classifier,feedback=feedback,n_jobs=1)
         #except:
          #   QgsMessageLog.logMessage("Problem while predicting "+inRaster+" in temp"+rasterTemp)
 
