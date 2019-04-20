@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
 description=Fast and Easy Classification plugin for Qgis
-version=3.4.2
+version=3.4.4
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -29,7 +29,7 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
-	3.4.3
+	3.4.4
 	  * Remove install of sklearn with python pip (causes bugs).
 	  * Force n_jobs=1 (1 cpu) while learning.
 	3.4.2
