@@ -31,6 +31,7 @@ repository=http://www.github.com/lennepkade/dzetsaka
 changelog=
 	3.4.3
 	  * Remove install of sklearn with python pip (causes bugs).
+	  * Force n_jobs=1 (1 cpu) while learning.
 	3.4.2
 	  * Fix bug when trying to install sklearn at launch.
         3.4.1
