@@ -29,6 +29,8 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+	3.4.3
+	  * Remove install of sklearn with python pip (causes bugs).
 	3.4.2
 	  * Fix bug when trying to install sklearn at launch.
         3.4.1

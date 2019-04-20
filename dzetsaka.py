@@ -41,18 +41,6 @@ from .scripts import mainfunction
 
 from .dzetsaka_provider import dzetsakaProvider
 
-### In order to use RF/SVM/KNN
-### try to install sklearn
-try:
-    from sklearn import datasets
-except:
-    try:
-        import pip
-        pip.main(['install','-U' , 'scikit-learn'])
-    except:
-        pass
-
-
 class dzetsakaGUI ( QDialog ):
     """QGIS Plugin Implementation."""
 
