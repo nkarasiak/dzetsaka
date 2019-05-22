@@ -528,12 +528,10 @@ class dzetsakaGUI ( QDialog ):
             self.dockwidget.inRaster.currentLayer().dataProvider().dataSourceUri()
         except:
             message = message + str("\n - You need a raster to make a classification.")
+        
+                
 
         try:
-            # verif srs
-            # get vector
-            inShape = self.dockwidget.inShape.currentLayer()
-            inShape=inShape.dataProvider().dataSourceUri().split('|')[0] # Remove layerid=0 from SHP Path
 
             # get raster
             inRaster=self.dockwidget.inRaster.currentLayer()
@@ -544,14 +542,20 @@ class dzetsakaGUI ( QDialog ):
             inRasterProj = inRasterOp.GetProjection()
             inRasterProj = osr.SpatialReference(inRasterProj)
 
-            # get shp proj
-            inShapeOp = ogr.Open(inShape)
-            inShapeLyr = inShapeOp.GetLayer()
-            inShapeProj = inShapeLyr.GetSpatialRef()
-
-            # chekc IsSame Projection
-            if inShapeProj.IsSameGeogCS(inRasterProj) == 0:
-                 message = message + str("\n - Raster and ROI do not have the same projection.")
+            
+            if self.dockwidget.inModel.text()=='':
+                # verif srs
+                # get vector
+                inShape = self.dockwidget.inShape.currentLayer()
+                inShape=inShape.dataProvider().dataSourceUri().split('|')[0] # Remove layerid=0 from SHP Path
+                # get shp proj
+                inShapeOp = ogr.Open(inShape)
+                inShapeLyr = inShapeOp.GetLayer()
+                inShapeProj = inShapeLyr.GetSpatialRef()
+    
+                # chekc IsSame Projection
+                if inShapeProj.IsSameGeogCS(inRasterProj) == 0:
+                     message = message + str("\n - Raster and ROI do not have the same projection.")
         except:
             QgsMessageLog.logMessage('inShape is : '+inShape)
             QgsMessageLog.logMessage('inRaster is : '+inRaster)
