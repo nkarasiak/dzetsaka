@@ -42,20 +42,28 @@ import os
 
 from ..scripts import mainfunction
 
-pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__),os.pardir))
+pluginPath = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        os.pardir))
+
 
 class trainAlgorithm(QgsProcessingAlgorithm):
     INPUT_RASTER = 'INPUT_RASTER'
     INPUT_LAYER = 'INPUT_LAYER'
     INPUT_COLUMN = 'INPUT_COLUMN'
     TRAIN = "TRAIN"
-    TRAIN_ALGORITHMS = ['Gaussian Mixture Model','Random-Forest','K-Nearest Neighbors','Support Vector Machine']
-    TRAIN_ALGORITHMS_CODE = ['GMM','RF','KNN','SVM']
-    SPLIT_PERCENT= 'SPLIT_PERCENT'
+    TRAIN_ALGORITHMS = [
+        'Gaussian Mixture Model',
+        'Random-Forest',
+        'K-Nearest Neighbors',
+        'Support Vector Machine']
+    TRAIN_ALGORITHMS_CODE = ['GMM', 'RF', 'KNN', 'SVM']
+    SPLIT_PERCENT = 'SPLIT_PERCENT'
     OUTPUT_MODEL = "OUTPUT_MODEL"
     OUTPUT_MATRIX = "OUTPUT_MATRIX"
     PARAMGRID = "PARAMGRID"
-    
+
     def shortHelpString(self):
         return self.tr("Train classifier.\n \n \
                        Parameters for Cross Validation can be fit using a dictionnary.\n \
@@ -69,7 +77,7 @@ class trainAlgorithm(QgsProcessingAlgorithm):
                        <h4>SVM</h4> \
                        e.g. : dict(gamma=2.0**np.arange(-4,4), C=10.0**np.arange(-2,5)) \n \
                        More information : http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html ")
-        
+
     def name(self):
         """
         Returns the algorithm name, used for identifying the algorithm. This
@@ -79,94 +87,96 @@ class trainAlgorithm(QgsProcessingAlgorithm):
         formatting characters.
         """
         return 'Train algorithm'
-    
+
     def icon(self):
 
-        return QIcon(os.path.join(pluginPath,'icon.png'))
-        
-    def initAlgorithm(self,config=None):
+        return QIcon(os.path.join(pluginPath, 'icon.png'))
+
+    def initAlgorithm(self, config=None):
 
         # The name that the user will see in the toolbox
-        
+
         self.addParameter(
-                QgsProcessingParameterRasterLayer(
+            QgsProcessingParameterRasterLayer(
                 self.INPUT_RASTER,
                 self.tr('Input raster')
-            )   
+            )
         )
 
         # ROI
         # VECTOR
         self.addParameter(
-        QgsProcessingParameterVectorLayer(
-            self.INPUT_LAYER,
-            'Input layer',
+            QgsProcessingParameterVectorLayer(
+                self.INPUT_LAYER,
+                'Input layer',
             ))
-        # TABLE / COLUMN 
+        # TABLE / COLUMN
         self.addParameter(
-        QgsProcessingParameterField(
-            self.INPUT_COLUMN,
-            'Field (column must have classification number (e.g. \'1\' forest, \'2\' water...))',
-            parentLayerParameterName = self.INPUT_LAYER,
-            optional=False)) # save model
-        
+            QgsProcessingParameterField(
+                self.INPUT_COLUMN,
+                'Field (column must have classification number (e.g. \'1\' forest, \'2\' water...))',
+                parentLayerParameterName=self.INPUT_LAYER,
+                optional=False))  # save model
+
         # Train algorithm
-        
+
         self.addParameter(
-        QgsProcessingParameterEnum(
-        self.TRAIN,"Select algorithm to train",
-        self.TRAIN_ALGORITHMS, 0))
-        
+            QgsProcessingParameterEnum(
+                self.TRAIN, "Select algorithm to train",
+                self.TRAIN_ALGORITHMS, 0))
+
         # SPLIT %
-        
+
         self.addParameter(
-        QgsProcessingParameterNumber(
-            self.SPLIT_PERCENT,
-            self.tr('Pixels (%) to keep for validation.'),
-            type=QgsProcessingParameterNumber.Integer,
-            minValue=0,maxValue=100,defaultValue=50))
-        
+            QgsProcessingParameterNumber(
+                self.SPLIT_PERCENT,
+                self.tr('Pixels (%) to keep for validation.'),
+                type=QgsProcessingParameterNumber.Integer,
+                minValue=0, maxValue=100, defaultValue=50))
+
         # SAVE AS
         # SAVE MODEL
         self.addParameter(
-        QgsProcessingParameterFileDestination(
-            self.OUTPUT_MODEL,
-            self.tr("Output model (to use for classifying)")))
-            
+            QgsProcessingParameterFileDestination(
+                self.OUTPUT_MODEL,
+                self.tr("Output model (to use for classifying)")))
+
         # SAVE CONFUSION MATRIX
         self.addParameter(
-        QgsProcessingParameterFileDestination(
-            self.OUTPUT_MATRIX,
-            self.tr("Output confusion matrix"),
-            fileFilter='csv'))#,
-            #ext='csv'))
+            QgsProcessingParameterFileDestination(
+                self.OUTPUT_MATRIX,
+                self.tr("Output confusion matrix"),
+                fileFilter='csv'))  # ,
+        # ext='csv'))
         # PARAM GRID
         self.addParameter(QgsProcessingParameterString(
-        self.PARAMGRID,
-        self.tr('Parameters for the hyperparameters of the algorithm'),
-        optional=True))
-        
-    def processAlgorithm(self, parameters,context,feedback):
+            self.PARAMGRID,
+            self.tr('Parameters for the hyperparameters of the algorithm'),
+            optional=True))
 
-        INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
-        
+    def processAlgorithm(self, parameters, context, feedback):
 
-        INPUT_LAYER = self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
-        
-        
-        INPUT_COLUMN = self.parameterAsFields(parameters, self.INPUT_COLUMN, context)
-        SPLIT_PERCENT = self.parameterAsInt(parameters, self.SPLIT_PERCENT, context)
+        INPUT_RASTER = self.parameterAsRasterLayer(
+            parameters, self.INPUT_RASTER, context)
+
+        INPUT_LAYER = self.parameterAsVectorLayer(
+            parameters, self.INPUT_LAYER, context)
+
+        INPUT_COLUMN = self.parameterAsFields(
+            parameters, self.INPUT_COLUMN, context)
+        SPLIT_PERCENT = self.parameterAsInt(
+            parameters, self.SPLIT_PERCENT, context)
         TRAIN = self.parameterAsEnums(parameters, self.TRAIN, context)
         #INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
-        OUTPUT_MODEL = self.parameterAsFileOutput(parameters, self.OUTPUT_MODEL, context)
-        OUTPUT_MATRIX = self.parameterAsFileOutput(parameters, self.OUTPUT_MATRIX, context)
+        OUTPUT_MODEL = self.parameterAsFileOutput(
+            parameters, self.OUTPUT_MODEL, context)
+        OUTPUT_MATRIX = self.parameterAsFileOutput(
+            parameters, self.OUTPUT_MATRIX, context)
 
-
-        # Retrieve algo from code        
+        # Retrieve algo from code
         SELECTED_ALGORITHM = self.TRAIN_ALGORITHMS_CODE[TRAIN[0]]
-        QgsMessageLog.logMessage(str(SELECTED_ALGORITHM))        
-       
-        
+        QgsMessageLog.logMessage(str(SELECTED_ALGORITHM))
+
         libOk = True
         PARAMGRID = self.parameterAsString(parameters, self.PARAMGRID, context)
         if PARAMGRID != '':
@@ -175,36 +185,47 @@ class trainAlgorithm(QgsProcessingAlgorithm):
             extraParam['param_grid'] = eval(PARAMGRID)
         else:
             extraParam = None
-        
-        if SELECTED_ALGORITHM=='RF' or SELECTED_ALGORITHM=='SVM' or SELECTED_ALGORITHM=='KNN':
+
+        if SELECTED_ALGORITHM == 'RF' or SELECTED_ALGORITHM == 'SVM' or SELECTED_ALGORITHM == 'KNN':
             try:
                 import sklearn
-            except:
+            except BaseException:
                 raise ImportError('You need to install scikit-learn library')
                 libOk = False
-                
+
         # learn model
         if libOk:
-            mainfunction.learnModel(INPUT_RASTER.source(),INPUT_LAYER.source(),INPUT_COLUMN[0],OUTPUT_MODEL,SPLIT_PERCENT,0,OUTPUT_MATRIX,SELECTED_ALGORITHM,extraParam=extraParam,feedback=feedback)
-            return {self.OUTPUT_MATRIX: OUTPUT_MATRIX, self.OUTPUT_MODEL: OUTPUT_MODEL}
+            mainfunction.learnModel(
+                INPUT_RASTER.source(),
+                INPUT_LAYER.source(),
+                INPUT_COLUMN[0],
+                OUTPUT_MODEL,
+                SPLIT_PERCENT,
+                0,
+                OUTPUT_MATRIX,
+                SELECTED_ALGORITHM,
+                extraParam=extraParam,
+                feedback=feedback)
+            return {self.OUTPUT_MATRIX: OUTPUT_MATRIX,
+                    self.OUTPUT_MODEL: OUTPUT_MODEL}
 
         else:
-            return {'Missing library' : str(OUTPUT_MATRIX)}
-            #QMessageBox.about(None, "Missing library", "Please install scikit-learn library to use"+str(SELECTED_ALGORITHM))        
+            return {'Missing library': str(OUTPUT_MATRIX)}
+            #QMessageBox.about(None, "Missing library", "Please install scikit-learn library to use"+str(SELECTED_ALGORITHM))
 
-        
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
         return trainAlgorithm()
-    
+
     def displayName(self):
         """
         Returns the translated algorithm name, which should be used for any
         user-visible display of the algorithm name.
         """
         return self.tr(self.name())
+
     def group(self):
         """
         Returns the name of the group this algorithm belongs to. This string

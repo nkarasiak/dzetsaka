@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
 description=Fast and Easy Classification plugin for Qgis
-version=3.4.5
+version=3.4.6
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -29,6 +29,8 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+    3.4.6
+      * Minor fixes and remove SLOO training due to error in code
 	3.4.5
 	  * Fix bug when predicting a raster with a previous model and no vector loaded in Qgis.
 	3.4.4

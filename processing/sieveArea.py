@@ -48,10 +48,10 @@ class sieveAreaAlgorithm(GeoAlgorithm):
     OUTPUT_RASTER = "OUTPUT_RASTER"
     CONNECTIVITY = ['4','8']
     INPUT_CONNECTIVITY = "INPUT_CONNECTIVITY"
-    
+
     def getIcon(self):
         return QIcon(":/plugins/dzetsaka/icon.png")
-        
+
     def defineCharacteristics(self):
 
         # The name that the user will see in the toolbox
@@ -65,7 +65,7 @@ class sieveAreaAlgorithm(GeoAlgorithm):
             self.INPUT_RASTER,
             self.tr('Input raster'),
             False))
-    
+
         # SIEVE SIZE
         self.addParameter(
         ParameterNumber(
@@ -80,65 +80,63 @@ class sieveAreaAlgorithm(GeoAlgorithm):
             "Connectivity",
             self.CONNECTIVITY,
             0))
-       
+
         # OUTPUT RASTER
         self.addOutput(
         OutputRaster(
             self.OUTPUT_RASTER,
             self.tr("Output raster")))
-            
+
 
 
     def processAlgorithm(self, progress):
 
         INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
         OUTPUT_MODEL = self.getOutputValue(self.OUTPUT_RASTER)
-        SIZE_HA = self.getParameterValue(self.SIZE_HA)    
+        SIZE_HA = self.getParameterValue(self.SIZE_HA)
         INPUT_CONNECTIVITY = self.getParameterValue(self.INPUT_CONNECTIVITY)
-        
+
         int(self.CONNECTIVITY[INPUT_CONNECTIVITY])
-        
+
         # convert meter to ha
         SIZE_HA = int((SIZE_HA)*1000)
-        
+
         from osgeo import gdal
-    
-    
+
+
         # begin sieve
-                        
+
         datasrc = gdal.Open(INPUT_RASTER)
         srcband = datasrc.GetRasterBand(1)
-        data,im = dataraster.open_data_band(INPUT_RASTER)        
-        
+        data,im = dataraster.open_data_band(INPUT_RASTER)
+
         drv = gdal.GetDriverByName('GTiff')
         d = datasrc.RasterCount
         dst_ds = drv.Create(OUTPUT_MODEL,datasrc.RasterXSize,datasrc.RasterXSize,d,gdal.GDT_Byte)
-        
+
         dst_ds.SetGeoTransform(datasrc.GetGeoTransform())
         dst_ds.SetProjection(datasrc.GetProjection())
-    
-        
+
+
         def sieve(srcband,dstband,sieveSize):
             gdal.SieveFilter(srcband,None,dstband,SIZE_HA,INPUT_CONNECTIVITY)
-        
+
         pixelSize = datasrc.GetGeoTransform()[1] #get pixel size
         pixelSieve = int(SIZE_HA/(pixelSize*pixelSize)) #get number of pixel to sieve
-        
+
         from qgis.core import QgsMessageLog
         QgsMessageLog.logMessage('pixel to sieve : '+str(pixelSieve))
-        
+
         for i in range(d):
             srcband=datasrc.GetRasterBand(i+1)
             dstband=dst_ds.GetRasterBand(i+1)
-            
+
             sieve(srcband,dstband,pixelSieve)
             srcband = None
             dstband = None
 
         dst_ds = None # close destination band
-        
-        
-        
-        """
 
-        
+
+
+        """

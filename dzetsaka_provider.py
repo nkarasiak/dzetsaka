@@ -36,14 +36,11 @@ from qgis.core import QgsProcessingProvider
 #from .processing.moduleName_algorithm import classNameAlgorithm
 
 
-
 from .processing.train import trainAlgorithm
 from .processing.classify import classifyAlgorithm
 from .processing.splitTrainValidation import splitTrain
-from .processing.domainAdaptation import domainAdaptation
-from .processing.learnWithSpatialSampling import trainSLOOAlgorithm
 from .processing.learnWithStandCV import trainSTANDalgorithm
- 
+
 pluginPath = os.path.dirname(__file__)
 
 """
@@ -51,31 +48,37 @@ import sys
 sys.setrecursionlimit(10000) # 10000 is an example, try with different values
 """
 
-class dzetsakaProvider(QgsProcessingProvider):
-               
 
-    def __init__(self,providerType='Standard'):
-        
+class dzetsakaProvider(QgsProcessingProvider):
+
+    def __init__(self, providerType='Standard'):
+
         QgsProcessingProvider.__init__(self)
-            
+
         # Load algorithms
-        self.alglist = [trainAlgorithm(),classifyAlgorithm(),splitTrain(),\
-                        domainAdaptation(),trainSLOOAlgorithm(),trainSTANDalgorithm()]#,learnWithSpatialSampling()]#,classifyAlgorithm(),splitTrain()]
-        
+        # ,learnWithSpatialSampling()]#,classifyAlgorithm(),splitTrain()]
+        self.alglist = [
+            trainAlgorithm(),
+            classifyAlgorithm(),
+            splitTrain(),
+            trainSTANDalgorithm()]
+
         if providerType == 'Experimental':
-        
+
+#            from .processing.domainAdaptation import domainAdaptation
             from .processing.shannonEntropy import shannonAlgorithm
             from .processing.resampleImageSameDate import resampleImageSameDateAsSource
             from .processing.medianFilter import medianFilterAlgorithm
+#            self.alglist.append(domainAdaptation())
             self.alglist.append(shannonAlgorithm())
             self.alglist.append(resampleImageSameDateAsSource())
             self.alglist.append(medianFilterAlgorithm())
-            
+
     def icon(self):
         """
         add icon
         """
-        iconPath = os.path.join(pluginPath,'icon.png')
+        iconPath = os.path.join(pluginPath, 'icon.png')
 
         return QIcon(os.path.join(iconPath))
 
@@ -92,7 +95,7 @@ class dzetsakaProvider(QgsProcessingProvider):
         """
 
         for alg in self.alglist:
-            self.addAlgorithm( alg )
+            self.addAlgorithm(alg)
 
     def id(self):
         """

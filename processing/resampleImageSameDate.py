@@ -31,7 +31,7 @@ __copyright__ = '(C) 2018 by Nicolas Karasiak'
 __revision__ = '$Format:%H$'
 
 
-#from ... import dzetsaka.scripts.function_dataraster as dataraster
+# from ... import dzetsaka.scripts.function_dataraster as dataraster
 
 #from PyQt4.QtGui import QIcon
 #from PyQt4.QtCore import QSettings
@@ -51,14 +51,18 @@ import os
 #from ..scripts import function_dataraster as dataraster
 from ..scripts.resampleSameDateAsSource import resampleWithSameDateAsSource
 
-pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__),os.pardir))
-### EX
+pluginPath = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        os.pardir))
+# EX
 """
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import ParameterRaster
 from processing.core.parameters import ParameterNumber
 from processing.core.outputs import OutputRaster
 """
+
 
 class resampleImageSameDateAsSource(QgsProcessingAlgorithm):
     """This is an example algorithm that takes a vector layer and
@@ -83,32 +87,32 @@ class resampleImageSameDateAsSource(QgsProcessingAlgorithm):
 
     TARGET_DATES = 'TARGET_DATES'
     SOURCE_DATES = 'SOURCE_DATES'
-    
+
     N_SPECTRAL_BAND = 'N_SPECTRAL_BAND'
-    
+
     def icon(self):
 
-        return QIcon(os.path.join(pluginPath,'icon.png'))
+        return QIcon(os.path.join(pluginPath, 'icon.png'))
 
     def initAlgorithm(self, config=None):
         """Here we define the inputs and output of the algorithm, along
         with some other properties.
         """
-        
+
         # We add the input vector layer. It can have any kind of geometry
         # It is a mandatory (not optional) one, hence the False argument
         self.addParameter(
-                QgsProcessingParameterRasterLayer(
+            QgsProcessingParameterRasterLayer(
                 self.SOURCE_RASTER,
                 self.tr('Source raster')
-            )   
+            )
         )
-                
+
         self.addParameter(
-                QgsProcessingParameterRasterLayer(
+            QgsProcessingParameterRasterLayer(
                 self.TARGET_RASTER,
                 self.tr('Target raster')
-            )   
+            )
         )
 
         # We add a raster as output
@@ -117,31 +121,32 @@ class resampleImageSameDateAsSource(QgsProcessingAlgorithm):
                 self.OUTPUT_RASTER,
                 self.tr('Output raster')
             )
-        )    
-        
+        )
+
         self.addParameter(
-                QgsProcessingParameterFile(
+            QgsProcessingParameterFile(
                 self.SOURCE_DATES,
                 self.tr('Source dates (csv)'),
                 extension='csv'
-            )   
+            )
         )
-        
+
         self.addParameter(
-                QgsProcessingParameterFile(
+            QgsProcessingParameterFile(
                 self.TARGET_DATES,
                 self.tr('Target dates (csv)'),
                 extension='csv'
-            )   
+            )
         )
-        
+
         self.addParameter(
-        QgsProcessingParameterNumber(
-            self.N_SPECTRAL_BAND,
-            self.tr('Number of spectral bands in your SITS (e.g. 4 if B,R,G,IR)'),
-            type=QgsProcessingParameterNumber.Integer,
-            defaultValue=4,
-            minValue=1))
+            QgsProcessingParameterNumber(
+                self.N_SPECTRAL_BAND,
+                self.tr(
+                    'Number of spectral bands in your SITS (e.g. 4 if B,R,G,IR)'),
+                type=QgsProcessingParameterNumber.Integer,
+                defaultValue=4,
+                minValue=1))
 
         # add num
 
@@ -155,57 +160,67 @@ class resampleImageSameDateAsSource(QgsProcessingAlgorithm):
         """
         return 'Resample SITS dates'
 
-    def processAlgorithm(self, parameters,context,feedback):
+    def processAlgorithm(self, parameters, context, feedback):
         """Here is where the processing itself takes place."""
 
-        SOURCE_RASTER = self.parameterAsRasterLayer(parameters, self.SOURCE_RASTER, context)
-        TARGET_RASTER = self.parameterAsRasterLayer(parameters, self.TARGET_RASTER, context)
-        
-        N_SPECTRAL_BAND = self.parameterAsInt(parameters,self.N_SPECTRAL_BAND,context)
-        
-        SOURCE_DATES = self.parameterAsFile(parameters, self.SOURCE_DATES, context)
-        TARGET_DATES = self.parameterAsFile(parameters, self.TARGET_DATES, context)
-        
-        OUTPUT_RASTER = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
+        SOURCE_RASTER = self.parameterAsRasterLayer(
+            parameters, self.SOURCE_RASTER, context)
+        TARGET_RASTER = self.parameterAsRasterLayer(
+            parameters, self.TARGET_RASTER, context)
+
+        N_SPECTRAL_BAND = self.parameterAsInt(
+            parameters, self.N_SPECTRAL_BAND, context)
+
+        SOURCE_DATES = self.parameterAsFile(
+            parameters, self.SOURCE_DATES, context)
+        TARGET_DATES = self.parameterAsFile(
+            parameters, self.TARGET_DATES, context)
+
+        OUTPUT_RASTER = self.parameterAsOutputLayer(
+            parameters, self.OUTPUT_RASTER, context)
 
         SOURCE_RASTER_src = SOURCE_RASTER.source()
         TARGET_RASTER_src = TARGET_RASTER.source()
-                       
+
         libOk = True
         libErrors = []
-        commandBashToTest = ['otbcli_BandMath','gdalbuildvrt']
-        for command in commandBashToTest:    
-            if os.system(command) != 256 :
+        commandBashToTest = ['otbcli_BandMath', 'gdalbuildvrt']
+        for command in commandBashToTest:
+            if os.system(command) != 256:
                 libOk = False
                 libErrors.append(command)
-            
+
         # learn model
         if libOk:
-            resampleWithSameDateAsSource(SOURCE_RASTER_src,TARGET_RASTER_src,SOURCE_DATES,TARGET_DATES,N_SPECTRAL_BAND,OUTPUT_RASTER,feedback)
+            resampleWithSameDateAsSource(
+                SOURCE_RASTER_src,
+                TARGET_RASTER_src,
+                SOURCE_DATES,
+                TARGET_DATES,
+                N_SPECTRAL_BAND,
+                OUTPUT_RASTER,
+                feedback)
             return {self.OUTPUT_RASTER: OUTPUT_RASTER}
 
         else:
-            return {'Missing library' : 'Error importing {}'.format(libErrors)}
-            #QMessageBox.about(None, "Missing library", "Please install scikit-learn library to use"+str(SELECTED_ALGORITHM))        
+            return {'Missing library': 'Error importing {}'.format(libErrors)}
+            #QMessageBox.about(None, "Missing library", "Please install scikit-learn library to use"+str(SELECTED_ALGORITHM))
 
-           
+        # return OUTPUT_RASTER
 
-
-       
-        #return OUTPUT_RASTER
-        
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
         return resampleImageSameDateAsSource()
-    
+
     def displayName(self):
         """
         Returns the translated algorithm name, which should be used for any
         user-visible display of the algorithm name.
         """
         return self.tr(self.name())
+
     def group(self):
         """
         Returns the name of the group this algorithm belongs to. This string

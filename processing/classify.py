@@ -35,14 +35,18 @@ import os
 from ..scripts.mainfunction import classifyImage
 
 
-pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__),os.pardir))
+pluginPath = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        os.pardir))
+
 
 class classifyAlgorithm(QgsProcessingAlgorithm):
     INPUT_RASTER = 'INPUT_RASTER'
     INPUT_MASK = "INPUT_MASK"
     INPUT_MODEL = "INPUT_MODEL"
     OUTPUT_RASTER = "OUTPUT_RASTER"
-    
+
     def name(self):
         """
         Returns the algorithm name, used for identifying the algorithm. This
@@ -52,36 +56,35 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
         formatting characters.
         """
         return 'Predict model (classification map)'
-    
+
     def icon(self):
 
-        return QIcon(os.path.join(pluginPath,'icon.png'))
-        
-    def initAlgorithm(self,config=None):
+        return QIcon(os.path.join(pluginPath, 'icon.png'))
 
-        # inputs       
+    def initAlgorithm(self, config=None):
+
+        # inputs
         self.addParameter(
-                QgsProcessingParameterRasterLayer(
+            QgsProcessingParameterRasterLayer(
                 self.INPUT_RASTER,
                 self.tr('Input raster')
-            )   
+            )
         )
 
-  
         self.addParameter(
-                QgsProcessingParameterRasterLayer(
+            QgsProcessingParameterRasterLayer(
                 self.INPUT_MASK,
                 self.tr('Mask raster'),
-                optional=True)   
+                optional=True)
         )
-        
+
         self.addParameter(
-                QgsProcessingParameterFile(
+            QgsProcessingParameterFile(
                 self.INPUT_MODEL,
                 self.tr('Model learned')
-            )   
+            )
         )
-        
+
         # output
         self.addParameter(
             QgsProcessingParameterRasterDestination(
@@ -89,39 +92,48 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
                 self.tr('Output raster'),
                 optional=False
             )
-        )    
-        
-    def processAlgorithm(self, parameters,context,feedback):
+        )
 
-        INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
-        INPUT_MASK = self.parameterAsRasterLayer(parameters, self.INPUT_MASK, context)         
-        INPUT_MODEL = self.parameterAsFile(parameters, self.INPUT_MODEL, context)
-    
-        OUTPUT_RASTER = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)        
-        # Retrieve algo from code        
+    def processAlgorithm(self, parameters, context, feedback):
+
+        INPUT_RASTER = self.parameterAsRasterLayer(
+            parameters, self.INPUT_RASTER, context)
+        INPUT_MASK = self.parameterAsRasterLayer(
+            parameters, self.INPUT_MASK, context)
+        INPUT_MODEL = self.parameterAsFile(
+            parameters, self.INPUT_MODEL, context)
+
+        OUTPUT_RASTER = self.parameterAsOutputLayer(
+            parameters, self.OUTPUT_RASTER, context)
+        # Retrieve algo from code
         worker = classifyImage()
-        #classify
+        # classify
         if INPUT_MASK is None:
             mask = None
         else:
             mask = INPUT_MASK.source()
-        worker.initPredict(INPUT_RASTER.source(),INPUT_MODEL,OUTPUT_RASTER,mask,feedback=feedback)
+        worker.initPredict(
+            INPUT_RASTER.source(),
+            INPUT_MODEL,
+            OUTPUT_RASTER,
+            mask,
+            feedback=feedback)
 
-        return {self.OUTPUT_RASTER:OUTPUT_RASTER}
+        return {self.OUTPUT_RASTER: OUTPUT_RASTER}
 
-        
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
         return classifyAlgorithm()
-    
+
     def displayName(self):
         """
         Returns the translated algorithm name, which should be used for any
         user-visible display of the algorithm name.
         """
         return self.tr(self.name())
+
     def group(self):
         """
         Returns the name of the group this algorithm belongs to. This string

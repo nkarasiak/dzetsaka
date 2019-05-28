@@ -10,8 +10,11 @@ from . import settings_dock
 from . import welcome
 
 # Load main widget
+
+
 class dzetsakaDockWidget(QtWidgets.QDockWidget, dzetsaka_dock.Ui_DockWidget):
     closingPlugin = pyqtSignal()
+
     def __init__(self, parent=None):
         super(dzetsakaDockWidget, self).__init__(parent)
         self.setupUi(self)
@@ -20,8 +23,10 @@ class dzetsakaDockWidget(QtWidgets.QDockWidget, dzetsaka_dock.Ui_DockWidget):
         self.closingPlugin.emit()
         event.accept()
 
+
 class settings_dock(QtWidgets.QDockWidget, settings_dock.Ui_settingsDock):
     closingPlugin = pyqtSignal()
+
     def __init__(self, parent=None):
         super(settings_dock, self).__init__(parent)
         self.setupUi(self)
@@ -30,8 +35,10 @@ class settings_dock(QtWidgets.QDockWidget, settings_dock.Ui_settingsDock):
         self.closingPlugin.emit()
         event.accept()
 
+
 class welcomeWidget(QtWidgets.QDockWidget, welcome.Ui_DockWidget):
     closingPlugin = pyqtSignal()
+
     def __init__(self, parent=None):
         super(welcomeWidget, self).__init__(parent)
         self.setupUi(self)

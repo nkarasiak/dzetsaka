@@ -11,92 +11,98 @@ import numpy as np
 
 class randomInSubset():
 
-    def __init__(self,inShape,inField,outValidation,outTrain,number=50,percent=True):
+    def __init__(self, inShape, inField, outValidation,
+                 outTrain, number=50, percent=True):
         """
         inShape : str path file (e.g. '/doc/ref.shp')
         inField : string column name (e.g. 'class')
         outValidation : str path of shp output file (e.g. '/tmp/valid.shp')
         outTrain : str path of shp output file (e.g. '/tmp/train.shp')
         """
-        from sklearn.model_selection import  train_test_split
-        
+        from sklearn.model_selection import train_test_split
+
         if percent:
             number = number / 100.0
         else:
             number = int(number)
-            
+
         lyr = ogr.Open(inShape)
         lyr1 = lyr.GetLayer()
-        FIDs= np.zeros(lyr1.GetFeatureCount(),dtype=int)
+        FIDs = np.zeros(lyr1.GetFeatureCount(), dtype=int)
         Features = []
         #unselFeat = []
         #current = 0
-        
-        for i,j in enumerate(lyr1):
+
+        for i, j in enumerate(lyr1):
             #print j.GetField(inField)
             FIDs[i] = j.GetField(inField)
             Features.append(j)
             #current += 1
         srs = lyr1.GetSpatialRef()
         lyr1.ResetReading()
-        
-        ## 
+
+        ##
         if percent:
-            validation,train = train_test_split(Features,test_size=number,train_size=1-number,stratify=FIDs)
+            validation, train = train_test_split(
+                Features, test_size=number, train_size=1 - number, stratify=FIDs)
         else:
-            validation,train = train_test_split(Features,test_size=number,stratify=FIDs)
-        
-        self.saveToShape(validation,srs,outValidation)
-        self.saveToShape(train,srs,outTrain)
-    
-    
-    def saveToShape(self,array,srs,outShapeFile):
+            validation, train = train_test_split(
+                Features, test_size=number, stratify=FIDs)
+
+        self.saveToShape(validation, srs, outValidation)
+        self.saveToShape(train, srs, outTrain)
+
+    def saveToShape(self, array, srs, outShapeFile):
         # Parse a delimited text file of volcano data and create a shapefile
         # use a dictionary reader so we can access by field name
         # set up the shapefile driver
-        outDriver = ogr.GetDriverByName( 'ESRI Shapefile' )
-        
+        outDriver = ogr.GetDriverByName('ESRI Shapefile')
+
         # create the data source
         if os.path.exists(outShapeFile):
             outDriver.DeleteDataSource(outShapeFile)
         # Remove output shapefile if it already exists
-        
-        ds = outDriver.CreateDataSource(outShapeFile) #options = ['SPATIALITE=YES'])
-    
+
+        # options = ['SPATIALITE=YES'])
+        ds = outDriver.CreateDataSource(outShapeFile)
+
         # create the spatial reference, WGS84
-        
-        lyrout = ds.CreateLayer('randomSubset',srs)
-        fields = [array[1].GetFieldDefnRef(i).GetName() for i in range(array[1].GetFieldCount())]
-        
+
+        lyrout = ds.CreateLayer('randomSubset', srs)
+        fields = [
+            array[1].GetFieldDefnRef(i).GetName() for i in range(
+                array[1].GetFieldCount())]
+
         for f in fields:
             field_name = ogr.FieldDefn(f, ogr.OFTString)
             field_name.SetWidth(24)
             lyrout.CreateField(field_name)
-            
-        
+
         for k in array:
             lyrout.CreateFeature(k)
-    
+
         # Save and close the data source
         ds = None
 
+
 class distanceCV:
-    def __init__(self,distanceArray,Y,distanceThresold=1000,minTrain=-1,SLOO=True,maxIter=False,furtherSplit=False,onlyVaryingTrain=False,stats=False,verbose=False,seed=False,otherLevel=False):
+    def __init__(self, distanceArray, Y, distanceThresold=1000, minTrain=-1, SLOO=True, maxIter=False,
+                 furtherSplit=False, onlyVaryingTrain=False, stats=False, verbose=False, seed=False, otherLevel=False):
         """Compute train/validation array with Spatial distance analysis.
-        
+
         Object stops when less effective class number is reached (45 loops if your least class contains 45 ROI).
-        
+
         Parameters
         ----------
         distanceArray : array
             Matrix distance
-        
+
         Y : array-like
             contain classe for each ROI. Same effective as distanceArray.
-            
+
         distanceThresold : int or float
             Distance(same unit of your distanceArray)
-        
+
         minTrain : int or float
             if >1 : keep n ROI beyond distanceThresold
             if float <1 : minimum percent of samples to use for traning. Use 1 for use only distance Thresold.
@@ -105,15 +111,15 @@ class distanceCV:
             SLOO=True: Skcv (if maxIter=False, skcv is SLOO from Kevin Le Rest, or SKCV from Pohjankukka)
         maxIter :
             False : as loop as min effective class
-        
+
         Returnsdistanc
         -------
-        train : array 
+        train : array
             List of Y selected ROI for train
-        
-        validation : array 
+
+        validation : array
             List of Y selected ROI for validation
-            
+
         """
         self.distanceArray = distanceArray
         self.distanceThresold = distanceThresold
@@ -122,121 +128,128 @@ class distanceCV:
         self.iterPos = 0
         self.minTrain = minTrain
         self.onlyVaryingTrain = onlyVaryingTrain
-        if self.onlyVaryingTrain :
+        if self.onlyVaryingTrain:
             self.validation = np.array([]).astype('int')
-        self.minEffectiveClass = min([len(Y[Y==i]) for i in np.unique(Y) ])
-        if maxIter :
+        self.minEffectiveClass = min([len(Y[Y == i]) for i in np.unique(Y)])
+        if maxIter:
             self.maxIter = maxIter
-        else :
+        else:
             self.maxIter = self.minEffectiveClass
         self.otherLevel = otherLevel
-        self.SLOO = SLOO #Leave One OUT
+        self.SLOO = SLOO  # Leave One OUT
         self.verbose = verbose
         self.furtherSplit = furtherSplit
         self.stats = stats
-        
+
         if seed:
             np.random.seed(seed)
-        
+
     def __iter__(self):
         return self
-        
+
     # python 3 compatibility
-    def __next__(self):        
+    def __next__(self):
         return self.next()
-        
+
     def next(self):
-        
+
         #global CTtoRemove,trained,validate,validation,train,CT,distanceROI
-       
+
         if self.iterPos < self.maxIter:
             ROItoRemove = []
-            for iterPosition in range(self.maxIter):      
-                if self.verbose:print((53*'=' + '\n')*4)
-                
+            for iterPosition in range(self.maxIter):
+                if self.verbose:
+                    print((53 * '=' + '\n') * 4)
+
                 validation = np.array([]).astype('int')
                 train = np.array([]).astype('int')
-                
-                #sp.random.shuffle(self.T)
-                
+
+                # sp.random.shuffle(self.T)
+
                 if self.stats:
-                        #Cstats = sp.array([]).reshape(0,9   )
-                        Cstats = []
-                        
+                    #Cstats = sp.array([]).reshape(0,9   )
+                    Cstats = []
+
                 for C in np.unique(self.label):
-                    
-                    CT = np.where(self.T==C)[0] # Y is True, where C is the unique class
-                    
-                    CTtemp = np.copy(CT)   
-                    
+
+                    # Y is True, where C is the unique class
+                    CT = np.where(self.T == C)[0]
+
+                    CTtemp = np.copy(CT)
+
                     if self.verbose:
-                            print('C = '+str(C))
-                            print('len total class : '+str(len(CT)))
-                            fmt = '' if self.minTrain > 1 else '.0%'
-                            
+                        print('C = ' + str(C))
+                        print('len total class : ' + str(len(CT)))
+                        fmt = '' if self.minTrain > 1 else '.0%'
+
                     trained = np.array([]).astype('int')
                     validate = np.array([]).astype('int')
-                    
-              
+
                     while len(CTtemp) > 0:
-                    #totalC = len(self.label[self.label==int(C)])
-                    #uniqueTrain = 0
+                        #totalC = len(self.label[self.label==int(C)])
+                        #uniqueTrain = 0
 
-                        self.ROI = np.random.permutation(CTtemp)[0] # randomize ROI choice
+                        self.ROI = np.random.permutation(
+                            CTtemp)[0]  # randomize ROI choice
 
-                        
-                        #while uniqueTrain <(self.split*totalC) :
+                        # while uniqueTrain <(self.split*totalC) :
                         #sameClass = sp.where( self.Y[CT] == C )
-                        distanceROI = (self.distanceArray[int(self.ROI),:])[CTtemp] # get line of distance for specific ROI
-                        
-                        if self.minTrain == -1 :
-                            #distToCutValid = sp.sort(distanceROI)[:self.maxIter][-1] # get distance where to split train/valid
-                            #distToCutTrain = sp.sort(distanceROI)[-self.maxIter:][0] # get distance where to split train/valid
-                            
+                        distanceROI = (self.distanceArray[int(self.ROI), :])[
+                            CTtemp]  # get line of distance for specific ROI
+
+                        if self.minTrain == -1:
+                            # distToCutValid = sp.sort(distanceROI)[:self.maxIter][-1] # get distance where to split train/valid
+                            # distToCutTrain =
+                            # sp.sort(distanceROI)[-self.maxIter:][0] # get
+                            # distance where to split train/valid
+
                             trainedTemp = np.array([self.ROI])
-                                                     
-                            validateTemp = CTtemp[CTtemp!=trainedTemp][distanceROI[distanceROI>0.1]>=self.distanceThresold]
-                            # CTtemp[distanceROI>=self.distanceThresold] # trained > distance to cut 
-                        
+
+                            validateTemp = CTtemp[CTtemp !=
+                                                  trainedTemp][distanceROI[distanceROI > 0.1] >= self.distanceThresold]
+                            # CTtemp[distanceROI>=self.distanceThresold] #
+                            # trained > distance to cut
+
                         if self.maxIter == self.minEffectiveClass:
                             trainedTemp = np.array([self.ROI])
 
-                            validateTemp = CTtemp[distanceROI>self.distanceThresold]
+                            validateTemp = CTtemp[distanceROI >
+                                                  self.distanceThresold]
                             #trainedTemp = trainedTemp[trainedTemp!=self.ROI]
-                            
+
                         """
-                        elif self.SLOO:                            
-                            validateTemp = sp.array([self.ROI]) # validate ROI                            
+                        elif self.SLOO:
+                            validateTemp = sp.array([self.ROI]) # validate ROI
                             trainedTemp = CTtemp[(distanceROI>=self.distanceThresold)] # Train in a buffer
                         """
-#trainedTemp = sp.array([self.ROI]) # train is the current ROI                         
+# trainedTemp = sp.array([self.ROI]) # train is the current ROI
                         """
                         if self.SLOO is True and self.maxIter != self.minEffectiveClass:
                             #print('self.SLOO true but no LeRest')
                             print('ici')
-                            CTtoRemove = np.concatenate((validateTemp,trainedTemp))                        
-                    
-                            # Remove ROI for further selection ROI (but keep in Y list)                        
+                            CTtoRemove = np.concatenate((validateTemp,trainedTemp))
+
+                            # Remove ROI for further selection ROI (but keep in Y list)
                             for i in np.nditer(CTtoRemove):
                                 CTtemp = np.delete(CTtemp,np.where(CTtemp==i)[0])
-                        
+
                             #if self.verbose : print('len CTtemp is : '+str(len(CTtemp)))
-                                
+
                             trained = np.concatenate((trained,trainedTemp))
                             validate = np.concatenate((validate,validateTemp))
-                            
+
 
                         else:
                             trained = trainedTemp
                             validate = validateTemp
-                            
 
-                            
+
+
                             CTtemp = []
                         """
                         trained = trainedTemp
                         validate = validateTemp
-                            
+
                         CTtemp = []
                         #print len(validate)
                     initTrain = len(trained)
@@ -244,159 +257,219 @@ class distanceCV:
 
                     if self.minTrain > 1:
                         if len(trained) != self.minTrain:
-                            
-                            indToCut = len(CT)-int(self.minTrain) # get number of ROI to keep
-                            distToCut = np.sort(distanceROI)[indToCut] # get distance where to split train/valid
-                            trained = CT[distanceROI>=distToCut] # trained > distance to cut 
-                            
+
+                            # get number of ROI to keep
+                            indToCut = len(CT) - int(self.minTrain)
+                            # get distance where to split train/valid
+                            distToCut = np.sort(distanceROI)[indToCut]
+                            # trained > distance to cut
+                            trained = CT[distanceROI >= distToCut]
+
                             if self.SLOO:  # with SLOO we keep 1 single validation ROI
-                                trained = np.random.permutation(trained)[0:self.minTrain]
+                                trained = np.random.permutation(
+                                    trained)[0:self.minTrain]
                             else:
                                 if self.verbose:
-                                    print('len validate before split ('+ format(self.minTrain,fmt)+') : '+str(len(validate)))
-                                validate = CT[distanceROI<=distToCut]
-                                
+                                    print('len validate before split (' +
+                                          format(self.minTrain, fmt) +
+                                          ') : ' +
+                                          str(len(validate)))
+                                validate = CT[distanceROI <= distToCut]
+
                     elif self.onlyVaryingTrain:
                         if self.verbose:
                             print('only varying train size : First Time init')
-                        if len(validate) > int(self.onlyVaryingTrain*len(CT)) :
-                            nValidateToRemove = int(len(validate) - self.onlyVaryingTrain*len(CT))
-                            indToMove = np.random.permutation(trained)[:nValidateToRemove]
+                        if len(validate) > int(
+                                self.onlyVaryingTrain * len(CT)):
+                            nValidateToRemove = int(
+                                len(validate) - self.onlyVaryingTrain * len(CT))
+                            indToMove = np.random.permutation(
+                                trained)[:nValidateToRemove]
                             for i in indToMove:
-                                validate = np.delete(trained,np.where(trained==i)[0])
-                            trained = np.concatenate((trained,indToMove))
-                            
-                        elif len(validate) < int(self.onlyVaryingTrain*len(CT)):
-                            nValidToAdd = int(self.minTrain*len(CT) - len(trained))
-                            
-                            indToMove = np.random.permutation(validate)[:nValidToAdd]
+                                validate = np.delete(
+                                    trained, np.where(trained == i)[0])
+                            trained = np.concatenate((trained, indToMove))
+
+                        elif len(validate) < int(self.onlyVaryingTrain * len(CT)):
+                            nValidToAdd = int(
+                                self.minTrain * len(CT) - len(trained))
+
+                            indToMove = np.random.permutation(validate)[
+                                :nValidToAdd]
                             for i in indToMove:
-                                trained = np.delete(validate,np.where(validate==i)[0])
-                            validate = np.concatenate((trained,indToMove))
-                        
-                        elif len(trained) > int(self.minTrain*(len(CT))):
-                            nTrainToRemove = int(self.minTrain*len(CT) - len(trained))
-                            
-                            indToMove = np.random.permutation(validate)[:nTrainToRemove]
+                                trained = np.delete(
+                                    validate, np.where(validate == i)[0])
+                            validate = np.concatenate((trained, indToMove))
+
+                        elif len(trained) > int(self.minTrain * (len(CT))):
+                            nTrainToRemove = int(
+                                self.minTrain * len(CT) - len(trained))
+
+                            indToMove = np.random.permutation(
+                                validate)[:nTrainToRemove]
                             for i in indToMove:
-                                trained = np.delete(validate,np.where(validate==i)[0])
-                            validate = np.concatenate((trained,indToMove))
-                            
-                        elif len(trained) < int(self.minTrain*(len(CT))):
-                            nTrainToAdd = int(self.minTrain*len(CT) - len(trained))
-                            
-                            indToMove = np.random.permutation(validate)[:nTrainToAdd]
+                                trained = np.delete(
+                                    validate, np.where(validate == i)[0])
+                            validate = np.concatenate((trained, indToMove))
+
+                        elif len(trained) < int(self.minTrain * (len(CT))):
+                            nTrainToAdd = int(
+                                self.minTrain * len(CT) - len(trained))
+
+                            indToMove = np.random.permutation(validate)[
+                                :nTrainToAdd]
                             for i in indToMove:
-                                validate = np.delete(validate,np.where(validate==i)[0])
-                            trained = np.concatenate((trained,indToMove))
-                        
-                    
-                    elif self.minTrain != -1 and self.minTrain != 0 and not self.onlyVaryingTrain :
+                                validate = np.delete(
+                                    validate, np.where(validate == i)[0])
+                            trained = np.concatenate((trained, indToMove))
+
+                    elif self.minTrain != -1 and self.minTrain != 0 and not self.onlyVaryingTrain:
                         initTrain = len(trained)
                         initValid = len(validate)
-                        if (len(trained) != self.minTrain*len(CT)) or (self.SLOO and len(trained)==0): # if train size if less than split% of whole class (i.e. 30% for exemple)
-                            
+                        # if train size if less than split% of whole class
+                        # (i.e. 30% for exemple)
+                        if (len(trained) != self.minTrain * len(CT)
+                            ) or (self.SLOO and len(trained) == 0):
+
                             if self.verbose:
-                                print('len trained before '+ format(self.minTrain,fmt)+' : '+str(len(trained)))
-                            
+                                print('len trained before ' +
+                                      format(self.minTrain, fmt) +
+                                      ' : ' +
+                                      str(len(trained)))
+
                             #distanceROI = (self.distanceArray[int(self.ROI),:])[CT]
-                            if self.furtherSplit :
-                                if len(trained) > self.minTrain*len(CT):
-                                    nTrainToRemove = int(len(trained) - self.minTrain*len(CT))
-                                    distanceROI = (self.distanceArray[int(np.random.permutation(trained)[0]),:])[trained]
-                                    
-                                    distToMove = np.sort(distanceROI)[nTrainToRemove]
+                            if self.furtherSplit:
+                                if len(trained) > self.minTrain * len(CT):
+                                    nTrainToRemove = int(
+                                        len(trained) - self.minTrain * len(CT))
+                                    distanceROI = (self.distanceArray[int(
+                                        np.random.permutation(trained)[0]), :])[trained]
+
+                                    distToMove = np.sort(distanceROI)[
+                                        nTrainToRemove]
                                     #indToMove = distToMove[distanceROI]
-                                    indToMove = trained[distanceROI>=distToMove] # trained > distance to cut 
+                                    # trained > distance to cut
+                                    indToMove = trained[distanceROI >=
+                                                        distToMove]
                                     for i in indToMove:
-                                        trained = np.delete(trained,np.where(trained==i)[0])
-                                    validate = np.concatenate((validate ,indToMove))
+                                        trained = np.delete(
+                                            trained, np.where(trained == i)[0])
+                                    validate = np.concatenate(
+                                        (validate, indToMove))
                                 else:
 
-                                    nTrainToAdd = int(self.minTrain*len(CT) - len(trained))
+                                    nTrainToAdd = int(
+                                        self.minTrain * len(CT) - len(trained))
 
-                                    distanceROI = (self.distanceArray[int(np.random.permutation(validate)[0]),:])[validate]
-                                    distToMove = np.sort(distanceROI)[-nTrainToAdd]
+                                    distanceROI = (self.distanceArray[int(np.random.permutation(validate)[0]), :])[
+                                        validate]
+                                    distToMove = np.sort(
+                                        distanceROI)[-nTrainToAdd]
                                     #indToMove = distToMove[distanceROI]
-                                    indToMove = validate[distanceROI>=distToMove] # trained > distance to cut 
+                                    # trained > distance to cut
+                                    indToMove = validate[distanceROI >=
+                                                         distToMove]
                                     for i in indToMove:
-                                        validate = np.delete(validate,np.where(validate==i)[0])
-                                    trained = np.concatenate((trained,indToMove))
-                            
+                                        validate = np.delete(
+                                            validate, np.where(validate == i)[0])
+                                    trained = np.concatenate(
+                                        (trained, indToMove))
+
                             else:
-                                if len(trained) > self.minTrain*len(CT) :
-                                    nTrainToRemove = int(len(trained) - self.minTrain*len(CT))
-                                    indToMove = np.random.permutation(trained)[:nTrainToRemove]
+                                if len(trained) > self.minTrain * len(CT):
+                                    nTrainToRemove = int(
+                                        len(trained) - self.minTrain * len(CT))
+                                    indToMove = np.random.permutation(
+                                        trained)[:nTrainToRemove]
                                     for i in indToMove:
-                                        trained = np.delete(trained,np.where(trained==i)[0])
-                                    validate = np.concatenate((validate ,indToMove))
-                                
+                                        trained = np.delete(
+                                            trained, np.where(trained == i)[0])
+                                    validate = np.concatenate(
+                                        (validate, indToMove))
+
                                 else:
-                                    nTrainToAdd = int(self.minTrain*len(CT) - len(trained))
-                                    
-                                    indToMove = np.random.permutation(validate)[:nTrainToAdd]
+                                    nTrainToAdd = int(
+                                        self.minTrain * len(CT) - len(trained))
+
+                                    indToMove = np.random.permutation(validate)[
+                                        :nTrainToAdd]
                                     for i in indToMove:
-                                        validate = np.delete(validate,np.where(validate==i)[0])
-                                    trained = np.concatenate((trained,indToMove))
-                                
-                    if self.stats:                    
-                        
+                                        validate = np.delete(
+                                            validate, np.where(validate == i)[0])
+                                    trained = np.concatenate(
+                                        (trained, indToMove))
+
+                    if self.stats:
+
                         #CTtemp = sp.where(self.label[trained]==C)[0]
-                        CTdistTrain=np.array(self.distanceArray[trained])[:,trained]
+                        CTdistTrain = np.array(self.distanceArray[trained])[
+                            :, trained]
                         if len(CTdistTrain) > 1:
-                            CTdistTrain=np.mean(np.triu(CTdistTrain)[np.triu(CTdistTrain)!=0])
-                        
+                            CTdistTrain = np.mean(
+                                np.triu(CTdistTrain)[
+                                    np.triu(CTdistTrain) != 0])
+
                         #CTtemp = sp.where(self.label[validate]==C)[0]
-                        CTdistValid=np.array(self.distanceArray[validate])[:,validate]
-                        CTdistValid=np.mean(np.triu(CTdistValid)[np.triu(CTdistValid)!=0])
-                        Cstats.append([self.distanceThresold,self.minTrain,C,initValid,initTrain,len(trained)-initTrain,CTdistTrain,CTdistValid])
+                        CTdistValid = np.array(self.distanceArray[validate])[
+                            :, validate]
+                        CTdistValid = np.mean(
+                            np.triu(CTdistValid)[
+                                np.triu(CTdistValid) != 0])
+                        Cstats.append([self.distanceThresold,
+                                       self.minTrain,
+                                       C,
+                                       initValid,
+                                       initTrain,
+                                       len(trained) - initTrain,
+                                       CTdistTrain,
+                                       CTdistValid])
 
-
-                 
                     if self.verbose:
-                        print('len validate : '+str(len(validate)))
-                        print('len trained : '+str(len(trained)))
-                        
-                        
-                    
-                    validation = np.concatenate((validation,validate))                    
-                    train = np.concatenate((train,trained))
-                    #allDist[sp.where(y[allDist]==C)[0]]
+                        print('len validate : ' + str(len(validate)))
+                        print('len trained : ' + str(len(trained)))
+
+                    validation = np.concatenate((validation, validate))
+                    train = np.concatenate((train, trained))
+                    # allDist[sp.where(y[allDist]==C)[0]]
                     #T = sp.searchsorted(T,currentClass)
-                    #for i in sp.nditer(train):
-                    
-                    ROItoRemove.append(validation) # remove current validation ROI
+                    # for i in sp.nditer(train):
+
+                    # remove current validation ROI
+                    ROItoRemove.append(validation)
                     ROItoRemove.append(train)
-                
- 
+
                     #Cstats = sp.vstack((Cstats,(self.distanceThresold,self.minTrain*100,C,initTrain,initValid,len(trained)-initTrain,len(validate)-initValid,meanDistTrain,meanDistValidation)))
-                    
+
                 if self.stats is True:
-                    np.savetxt(self.stats,Cstats,fmt='%d',delimiter=',',header="Distance,Percent Train, Label,Init train,Init valid,Ntrain Add,Mean DisT Train,Mean Dist Valid")
-        
-                    #if not self.SLOO:
-                        #validate = CT[distanceROI<distToCut]
-                    
-                    
-                self.iterPos += 1  
-                
+                    np.savetxt(
+                        self.stats,
+                        Cstats,
+                        fmt='%d',
+                        delimiter=',',
+                        header="Distance,Percent Train, Label,Init train,Init valid,Ntrain Add,Mean DisT Train,Mean Dist Valid")
+
+                    # if not self.SLOO:
+                    #validate = CT[distanceROI<distToCut]
+
+                self.iterPos += 1
+
                 if self.verbose:
-                    print(53*'=')
+                    print(53 * '=')
                 # Remove ROI for further selection ROI (but keep in Y list)
                 """
                 for i in ROItoRemove:
                     self.T = sp.delete(self.T,sp.where(self.T==i)[0])
                 """
-                if self.stats and self.stats is True :
-                    return validation,train,Cstats
-                else:                    
-                    return validation,train
-            
+                if self.stats and self.stats is True:
+                    return validation, train, Cstats
+                else:
+                    return validation, train
+
         else:
             raise StopIteration()
-            
-            
-def distMatrix(inCoords,distanceMetric=False):
+
+
+def distMatrix(inCoords, distanceMetric=False):
     """
     Compute distance matrix between points
     coords : nparray shape[nPoints,2], with first column X, and Y. Proj 4326(WGS84)
@@ -405,40 +478,44 @@ def distMatrix(inCoords,distanceMetric=False):
     if distanceMetric:
         from pyproj import Geod
         geod = Geod(ellps='WGS84')
-    
-        distArray = np.zeros((len(inCoords),len(inCoords)))
-        for n,p in enumerate(np.nditer(inCoords.T.copy(), flags=['external_loop'], order='F')):
+
+        distArray = np.zeros((len(inCoords), len(inCoords)))
+        for n, p in enumerate(np.nditer(inCoords.T.copy(), flags=[
+                              'external_loop'], order='F')):
             for i in range(len(inCoords)):
-                x1,y1 = p
-                x2,y2 = inCoords[i]
-                angle1,angle2,dist = geod.inv(x1,y1,x2,y2)
-            
-                distArray[n,i] = dist
-    
+                x1, y1 = p
+                x2, y2 = inCoords[i]
+                angle1, angle2, dist = geod.inv(x1, y1, x2, y2)
+
+                distArray[n, i] = dist
+
     else:
         from scipy.spatial import distance
-        
-        distArray = distance.cdist(inCoords,inCoords,'euclidean')
+
+        distArray = distance.cdist(inCoords, inCoords, 'euclidean')
 
     return distArray
 
-def convertToDistanceMatrix(coords,sr=False,convertTo4326=False):
-    
-    
+
+def convertToDistanceMatrix(coords, sr=False, convertTo4326=False):
+
     if convertTo4326:
         from pyproj import Proj, transform
         # initProj = Proj(sr.ExportToProj4())
         # convert points coords to 4326
-        # if vector 
+        # if vector
         initProj = Proj(sr.ExportToProj4())
-        destProj = Proj("+proj=longlat +datum=WGS84 +no_defs") # http://epsg.io/4326
-        
-        coords[:,0],coords[:,1] = transform(initProj,destProj,coords[:,0],coords[:,1]) 
-    
-    return distMatrix(coords,distanceMetric=True)
+        # http://epsg.io/4326
+        destProj = Proj("+proj=longlat +datum=WGS84 +no_defs")
+
+        coords[:, 0], coords[:, 1] = transform(
+            initProj, destProj, coords[:, 0], coords[:, 1])
+
+    return distMatrix(coords, distanceMetric=True)
+
 
 class standCV:
-    def __init__(self,Y,stand,maxIter=False,SLOO=True,seed=False):
+    def __init__(self, Y, stand, maxIter=False, SLOO=True, seed=False):
         """Compute train/validation per stand.
         Y : array-like
             contains class for each ROI.
@@ -453,87 +530,93 @@ class standCV:
         self.uniqueY = np.unique(self.Y)
         self.stand = stand
         self.SLOO = SLOO
-        
-        if type(SLOO) == bool:
+
+        if isinstance(SLOO, bool):
             self.split = 0.5
-            
+
         else:
             self.split = self.SLOO
-        self.maxIter=maxIter
+        self.maxIter = maxIter
         self.iterPos = 0
-        
+
         if seed:
             np.random.seed(seed)
-            
-        if maxIter :
+
+        if maxIter:
             self.maxIter = maxIter
         else:
 
             maxIter = []
             for i in np.unique(Y):
-                standNumber = np.unique(np.array(stand)[np.where(np.array(Y)==i)])
+                standNumber = np.unique(
+                    np.array(stand)[
+                        np.where(
+                            np.array(Y) == i)])
                 maxIter.append(standNumber.shape[0])
             self.maxIter = np.amin(maxIter)
-        
-            
+
     def __iter__(self):
         return self
-        
+
     # python 3 compatibility
     def __next__(self):
         return self.next()
-    
+
     def next(self):
-                 
-         if self.iterPos < self.maxIter:
-             StandToRemove = []
-             train = np.array([],dtype=int)
-             validation = np.array([],dtype=int)
-             for i in self.uniqueY:
-                 Ycurrent = np.where(np.array(self.Y)==i)[0]
-                 Ystands = np.array(self.stand)[Ycurrent]
-                 Ystand = np.unique(Ystands)
-                 
-                 selectedStand = np.random.permutation(Ystand)[0]
 
-                 if self.SLOO:
+        if self.iterPos < self.maxIter:
+            StandToRemove = []
+            train = np.array([], dtype=int)
+            validation = np.array([], dtype=int)
+            for i in self.uniqueY:
+                Ycurrent = np.where(np.array(self.Y) == i)[0]
+                Ystands = np.array(self.stand)[Ycurrent]
+                Ystand = np.unique(Ystands)
 
-                     YinSelectedStandt = np.in1d(Ystands,selectedStand)
-                     YinSelectedStand = Ycurrent[YinSelectedStandt]
-                     validation = np.concatenate((validation,np.asarray(YinSelectedStand)))
-                     
-                     # improve code...
-                     #Ycurrent[sp.where(Ystands!=selectedStand)[0]]
+                selectedStand = np.random.permutation(Ystand)[0]
 
-                     YnotInSelectedStandt = np.invert(YinSelectedStandt)
-                     YnotInSelectedStand = Ycurrent[YnotInSelectedStandt]
-                     train = np.concatenate((train,np.asarray(YnotInSelectedStand)))
-                     StandToRemove.append(selectedStand)
-                 else:
-                     
-                     
-                     randomYstand = np.random.permutation(Ystand)
-                     
-                     Ytrain = np.in1d(Ystands,randomYstand[:int(len(Ystand)*self.split)])
-                     Ytrain = Ycurrent[Ytrain]
-                     Yvalidation = np.in1d(Ystands,randomYstand[int(len(Ystand)*self.split):])
-                     Yvalidation = Ycurrent[Yvalidation]
-                     
-                     train = np.concatenate((train,np.asarray(Ytrain)))
-                     validation = np.concatenate((validation,np.asarray(Yvalidation)))
-                     
-                 
-             self.iterPos +=1 
-             train
-             return train,validation
-         else:
-             raise StopIteration()
-             
-def readFieldVector(inShape,inField,inStand=False,getFeatures=False):
+                if self.SLOO:
+
+                    YinSelectedStandt = np.in1d(Ystands, selectedStand)
+                    YinSelectedStand = Ycurrent[YinSelectedStandt]
+                    validation = np.concatenate(
+                        (validation, np.asarray(YinSelectedStand)))
+
+                    # improve code...
+                    # Ycurrent[sp.where(Ystands!=selectedStand)[0]]
+
+                    YnotInSelectedStandt = np.invert(YinSelectedStandt)
+                    YnotInSelectedStand = Ycurrent[YnotInSelectedStandt]
+                    train = np.concatenate(
+                        (train, np.asarray(YnotInSelectedStand)))
+                    StandToRemove.append(selectedStand)
+                else:
+
+                    randomYstand = np.random.permutation(Ystand)
+
+                    Ytrain = np.in1d(Ystands,
+                                     randomYstand[:int(len(Ystand) * self.split)])
+                    Ytrain = Ycurrent[Ytrain]
+                    Yvalidation = np.in1d(
+                        Ystands, randomYstand[int(len(Ystand) * self.split):])
+                    Yvalidation = Ycurrent[Yvalidation]
+
+                    train = np.concatenate((train, np.asarray(Ytrain)))
+                    validation = np.concatenate(
+                        (validation, np.asarray(Yvalidation)))
+
+            self.iterPos += 1
+            train
+            return train, validation
+        else:
+            raise StopIteration()
+
+
+def readFieldVector(inShape, inField, inStand=False, getFeatures=False):
     lyr = ogr.Open(inShape)
     lyr1 = lyr.GetLayer()
-    FIDs= np.zeros(lyr1.GetFeatureCount(),dtype=int)
-    
+    FIDs = np.zeros(lyr1.GetFeatureCount(), dtype=int)
+
     """
     if inStand:
         STDs = sp.copy(FIDs)
@@ -543,8 +626,8 @@ def readFieldVector(inShape,inField,inStand=False,getFeatures=False):
     getFeaturesList = []
     #unselFeat = []
     #current = 0
-    
-    for i,j in enumerate(lyr1):
+
+    for i, j in enumerate(lyr1):
         #print j.GetField(inField)
         if inStand:
             #STDs[i] = j.GetField(inStand)
@@ -556,52 +639,50 @@ def readFieldVector(inShape,inField,inStand=False,getFeatures=False):
         if getFeatures:
             print(i)
             getFeaturesList.append(j)
-            
 
-        
-            
         #current += 1
     srs = lyr1.GetSpatialRef()
     lyr1.ResetReading()
-    
-    
+
     if inStand:
         if getFeatures:
-            return Features,Stands,srs,getFeaturesList
+            return Features, Stands, srs, getFeaturesList
         else:
-             
-            return Features,Stands,srs
-    else :
+
+            return Features, Stands, srs
+    else:
         if getFeatures is True:
-            return Features,srs,getFeaturesList
+            return Features, srs, getFeaturesList
         else:
-            return Features,srs
-        
-def saveToShape(array,srs,outShapeFile):
+            return Features, srs
+
+
+def saveToShape(array, srs, outShapeFile):
     # Parse a delimited text file of volcano data and create a shapefile
     # use a dictionary reader so we can access by field name
     # set up the shapefile driver
     import ogr
-    outDriver = ogr.GetDriverByName( 'ESRI Shapefile' )
-    
+    outDriver = ogr.GetDriverByName('ESRI Shapefile')
+
     # create the data source
     if os.path.exists(outShapeFile):
         outDriver.DeleteDataSource(outShapeFile)
     # Remove output shapefile if it already exists
-    
-    ds = outDriver.CreateDataSource(outShapeFile) #options = ['SPATIALITE=YES'])
+
+    # options = ['SPATIALITE=YES'])
+    ds = outDriver.CreateDataSource(outShapeFile)
 
     # create the spatial reference, WGS84
-    
-    lyrout = ds.CreateLayer('randomSubset',srs,ogr.wkbPoint)
-    fields = [array[1].GetFieldDefnRef(i).GetName() for i in range(array[1].GetFieldCount())]
-    
-    for i,f in enumerate(fields):
+
+    lyrout = ds.CreateLayer('randomSubset', srs, ogr.wkbPoint)
+    fields = [array[1].GetFieldDefnRef(i).GetName()
+              for i in range(array[1].GetFieldCount())]
+
+    for i, f in enumerate(fields):
         field_name = ogr.FieldDefn(f, array[1].GetFieldDefnRef(i).GetType())
         field_name.SetWidth(array[1].GetFieldDefnRef(i).GetWidth())
         lyrout.CreateField(field_name)
-        
-    
+
     for k in array:
         lyrout.CreateFeature(k)
 
@@ -609,7 +690,7 @@ def saveToShape(array,srs,outShapeFile):
     ds = None
 
 
-def readROIFromVector(vector,roiprefix,*args):
+def readROIFromVector(vector, roiprefix, *args):
     """
     **********
     Parameters
@@ -619,7 +700,7 @@ def readROIFromVector(vector,roiprefix,*args):
     roiprefix : str
         Common suffixof the training shpfile (i.e. 'band_',str).
     *args : str
-        Field name containing your class number (i.e. 'class', str).    
+        Field name containing your class number (i.e. 'class', str).
 
     Output
     ----------
@@ -630,61 +711,62 @@ def readROIFromVector(vector,roiprefix,*args):
 
     file = ogr.Open(vector)
     lyr = file.GetLayer()
-    
+
     roiFields = []
-    
+
     # get all fields and save only roiFields
     ldefn = lyr.GetLayerDefn()
-    
+
     listFields = []
-        
+
     for n in range(ldefn.GetFieldCount()):
         fdefn = ldefn.GetFieldDefn(n)
         if not fdefn.name is listFields:
             listFields.append(fdefn.name)
         if fdefn.name.startswith(roiprefix):
             roiFields.append(fdefn.name)
-    
-    
+
     if len(roiFields) > 0:
             # fill ROI and level
-            ROIvalues = np.zeros([lyr.GetFeatureCount(),len(roiFields)])
-            if len(args) > 0 :
-                ROIlevels = np.zeros([lyr.GetFeatureCount(),len(args)])
-            for i,feature in enumerate(lyr):
-                for j,band in enumerate(roiFields):
-                    ROIvalues[i,j] = feature.GetField(band)
-                    if len(args) > 0:
-                        for a in range(len(args)):
-                            ROIlevels[i,a] = feature.GetField(args[a])
-            
-            if len(args)>0:
-                return ROIvalues,ROIlevels
-            else:
-                return ROIvalues
+        ROIvalues = np.zeros([lyr.GetFeatureCount(), len(roiFields)])
+        if len(args) > 0:
+            ROIlevels = np.zeros([lyr.GetFeatureCount(), len(args)])
+        for i, feature in enumerate(lyr):
+            for j, band in enumerate(roiFields):
+                ROIvalues[i, j] = feature.GetField(band)
+                if len(args) > 0:
+                    for a in range(len(args)):
+                        ROIlevels[i, a] = feature.GetField(args[a])
+
+        if len(args) > 0:
+            return ROIvalues, ROIlevels
+        else:
+            return ROIvalues
     else:
         from mainfunction import pushFeedback
-        pushFeedback('ROI field "{}" do not exists. These fields are available : '.format(roiprefix))
+        pushFeedback(
+            'ROI field "{}" do not exists. These fields are available : '.format(roiprefix))
         pushFeedback(listFields)
-    
+
+
 if __name__ == "__main__":
     inRaster = '/mnt/DATA/Sentinel-2/SITS/SITS_TCJ.tif'
     inField = 'level3'
     inVector = '/mnt/DATA/Formosat_2006-2014/v2/ROI/ROI_2154.sqlite'
-    
+
     inRaster = "/mnt/DATA/Test/DA/SITS/SITS_2013.tif"
     inVector = "/mnt/DATA/Test/DA/ROI_2154.sqlite"
     inField = "level1"
-    
-    levels = ['level1','level2','level3']
+
+    levels = ['level1', 'level2', 'level3']
     inStand = 'spjoin_rif'
     """
     FIDs,STDs,srs,fts=readFieldVector(inVector,inField,inStand,getFeatures=True)
     standCV(FIDs,STDs)
-    
+
     for tr,vl in standCV(FIDs,STDs,SLOO=True,maxIter=5):
         print(tr,vl)
-    
+
     trFeat = [fts[i] for i in tr]
     vlFeat= [fts[i] for i in vl]
     saveToShape(trFeat,srs,'/tmp/train_{}.shp'.format(1))
@@ -695,28 +777,26 @@ if __name__ == "__main__":
     inField = 'Class'
     number = 50
     percent = True
-    
+
     outValidation = '/tmp/valid1.shp'
     outTrain ='/tmp/train.shp'
-    
+
     randomInSubset(inShape,inField,outValidation,outTrain,number,percent)
-    
+
     """
-    
-    import function_dataraster 
-    function_dataraster.rasterize(inRaster,inVector,inField,'/tmp/roi.tif')
-    X,Y,coords = function_dataraster.get_samples_from_roi(inRaster,'/tmp/roi.tif',getCoords=True)
-    
+
+    import function_dataraster
+    function_dataraster.rasterize(inRaster, inVector, inField, '/tmp/roi.tif')
+    X, Y, coords = function_dataraster.get_samples_from_roi(
+        inRaster, '/tmp/roi.tif', getCoords=True)
+
     distanceArray = distMatrix(coords)
-    rawCV = distanceCV(distanceArray,Y,32,minTrain=-1,SLOO=True)
-    
-    
-    
+    rawCV = distanceCV(distanceArray, Y, 32, minTrain=-1, SLOO=True)
+
     #rawCV = distanceCV(distanceArray,label,distanceThresold=distance,minTrain=minTrain,SLOO=SLOO,maxIter=maxIter,verbose=False,stats=True)
 
-    
-    for tr,vl in rawCV:
+    for tr, vl in rawCV:
         print(tr.shape)
         print(vl.shape)
-        
-    #randomInSubset('/tmp/valid.shp','level3','/tmp/processingd62a83be114a482aaa14ca317e640586/f99783a424984860ac9998b5027be604/OUTPUTVALIDATION.shp','/tmp/processingd62a83be114a482aaa14ca317e640586/1822187d819e450fa9ad9995d6757e09/OUTPUTTRAIN.shp',50,True)
+
+    # randomInSubset('/tmp/valid.shp','level3','/tmp/processingd62a83be114a482aaa14ca317e640586/f99783a424984860ac9998b5027be604/OUTPUTVALIDATION.shp','/tmp/processingd62a83be114a482aaa14ca317e640586/1822187d819e450fa9ad9995d6757e09/OUTPUTTRAIN.shp',50,True)
