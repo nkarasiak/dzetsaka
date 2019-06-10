@@ -811,7 +811,12 @@ class classifyImage(object):
             os.makedirs(os.path.dirname(outRaster))
 
         driver = gdal.GetDriverByName('GTiff')
-        dst_ds = driver.Create(outRaster, nc, nl, 1, gdal.GDT_Byte)
+        
+        if len(model.classes_)>255:
+            dtype = gdal.GDT_Uint16
+        else:
+            dtype = gdal.GDT_Byte
+        dst_ds = driver.Create(outRaster, nc, nl, 1, dtype)
         dst_ds.SetGeoTransform(GeoTransform)
         dst_ds.SetProjection(Projection)
         out = dst_ds.GetRasterBand(1)

@@ -117,6 +117,7 @@ class GMMR(object):
         self.Q = []
         self.L = []
         self.classnum = []  # to keep right labels
+        self.classes_ = []
         self.tau = 0.0
 
     def learn(self, x, y):
@@ -145,7 +146,7 @@ class GMMR(object):
         self.Q = np.empty((C, d, d))  # Matrix of eigenvectors
         self.L = np.empty((C, d))  # Vector of eigenvalues
         self.classnum = np.empty(C).astype('uint8')
-
+        self.classes_ = self.classnum
         # Learn the parameter of the model for each class
         for c, cR in enumerate(np.unique(y)):
 
