@@ -145,7 +145,7 @@ class GMMR(object):
         self.cov = np.empty((C, d, d))  # Matrix of covariance
         self.Q = np.empty((C, d, d))  # Matrix of eigenvectors
         self.L = np.empty((C, d))  # Vector of eigenvalues
-        self.classnum = np.empty(C).astype('uint8')
+        self.classnum = np.empty(C).astype('uint16')
         self.classes_ = self.classnum
         # Learn the parameter of the model for each class
         for c, cR in enumerate(np.unique(y)):

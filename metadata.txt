@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
 description=Fast and Easy Classification plugin for Qgis
-version=3.4.7
+version=3.4.8
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -29,6 +29,8 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+    3.4.8
+      * Fix errors when number of classes > 44 (problem of datatype in sample extraction).
     3.4.7
       * Support more than 255 classes to predict (if n > 255, raster datatype will be set to uint16)
     3.4.6

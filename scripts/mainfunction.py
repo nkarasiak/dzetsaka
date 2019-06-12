@@ -125,7 +125,7 @@ class learnModel:
                 xt, N, n = self.scale(Xt)
                 #x,y = dataraster.get_samples_from_roi(inRaster,ROI,getCoords=True,convertTo4326=True)
                 y = Y
-
+            
             # Create temporary data set
             if SPLIT == 'SLOO':
 
@@ -162,7 +162,7 @@ class learnModel:
                 except BaseException:
                     X, Y, coords = dataraster.get_samples_from_roi(
                         inRaster, ROI, getCoords=True)
-
+                
                 distanceArray = distMatrix(coords)
                 # np.save(os.path.splitext(distanceFile)[0],distanceArray)
 
@@ -193,17 +193,19 @@ class learnModel:
 
                 elif needXY:
                     X, Y = dataraster.get_samples_from_roi(inRaster, ROI)
+                
 
         except BaseException:
             msg = "Problem with getting samples from ROI \n \
                 Are you sure to have only integer values in your " + str(inField) + " field ?\n  "
             pushFeedback(msg, feedback=feedback)
-
+            
         [n, d] = X.shape
         C = int(Y.max())
         SPLIT = inSplit
 
         try:
+            #pushFeedback(str(ROI),feedback=feedback)
             os.remove(ROI)
         except BaseException:
             pass
@@ -261,7 +263,7 @@ class learnModel:
         pushFeedback(
             'This step could take a lot of time... So be patient, even if the progress bar stucks at 20% :)',
             feedback=feedback)
-
+        
         if feedback == 'gui':
             progress.addStep()  # Add Step to ProgressBar
         # Train Classifier
@@ -275,7 +277,6 @@ class learnModel:
                 # tau=10.0**sp.arange(-8,8,0.5)
                 model = gmmr.GMMR()
                 model.learn(x, y)
-
                 # htau,err = model.cross_validation(x,y,tau)
                 # model.tau = htau
             except BaseException:
@@ -812,10 +813,12 @@ class classifyImage(object):
 
         driver = gdal.GetDriverByName('GTiff')
         
-        if len(model.classes_)>255:
-            dtype = gdal.GDT_Uint16
+        if np.amax(model.classes_)>255:
+            dtype = gdal.GDT_UInt16
         else:
             dtype = gdal.GDT_Byte
+        
+        
         dst_ds = driver.Create(outRaster, nc, nl, 1, dtype)
         dst_ds.SetGeoTransform(GeoTransform)
         dst_ds.SetProjection(Projection)
@@ -992,7 +995,7 @@ def rasterize(inRaster, inShape, inField):
         data.RasterXSize,
         data.RasterYSize,
         1,
-        gdal.GDT_Byte)
+        gdal.GDT_UInt16)
     dst_ds.SetGeoTransform(data.GetGeoTransform())
     dst_ds.SetProjection(data.GetProjection())
     OPTIONS = 'ATTRIBUTE=' + inField

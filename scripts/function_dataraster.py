@@ -264,8 +264,8 @@ def get_samples_from_roi(raster_name, roi_name,
 
     # Read block data
     X = np.array([]).reshape(0, d)
-    Y = np.array([]).reshape(0, 1)
-    STD = np.array([]).reshape(0, 1)
+    Y = np.array([],dtype=np.uint16).reshape(0, 1)
+    STD = np.array([],dtype=np.uint16).reshape(0, 1)
 
     for i in range(0, nl, y_block_size):
         if i + y_block_size < nl:  # Check for size consistency in Y
@@ -289,11 +289,11 @@ def get_samples_from_roi(raster_name, roi_name,
             if t[0].size > 0:
                 Y = np.concatenate(
                     (Y, ROI[t].reshape(
-                        (t[0].shape[0], 1)).astype('uint8')))
+                        (t[0].shape[0], 1))))
                 if stand_name:
                     STD = np.concatenate(
                         (STD, STAND[t].reshape(
-                            (t[0].shape[0], 1)).astype('uint8')))
+                            (t[0].shape[0], 1))))
                 if getCoords:
                     #coords = sp.append(coords,(i,j))
                     #coordsTp = sp.array(([[cols,lines]]))
@@ -609,7 +609,7 @@ def rasterize(data, vectorSrc, field, outFile):
         dataSrc.RasterXSize,
         dataSrc.RasterYSize,
         1,
-        gdal.GDT_Byte)
+        gdal.GDT_UInt16)
     dst_ds.SetGeoTransform(dataSrc.GetGeoTransform())
     dst_ds.SetProjection(dataSrc.GetProjection())
     if field is None:
@@ -660,12 +660,13 @@ def scale(x, M=None, m=None):  # TODO:  DO IN PLACE SCALING
 
 
 if __name__ == "__main__":
-    Raster = "/mnt/DATA/Test/DA/SENTINEL_20170516.tif"
-    ROI = '/tmp/testroi.tif'
-    rasterize(Raster, '/mnt/DATA/Test/DA/ROI_2154.sqlite', 'level2', ROI)
+    Raster = "/mnt/DATA/Test/dzetsaka/map.tif"
+    ROI = '/home/nicolas/Bureau/train_300class.gpkg'
+    rasterize(Raster, ROI, 'Class', '/tmp/roi.tif')
 
-    X, Y, coords = get_samples_from_roi(Raster, ROI, getCoords=True)
-
+#    X, Y, coords = get_samples_from_roi(Raster, '/tmp/roi.tif', getCoords=True)
+    X, Y = get_samples_from_roi(Raster, '/tmp/roi.tif')
+    print(np.amax(Y))
     """
     import accuracy_index as ai
     print(X.shape)
