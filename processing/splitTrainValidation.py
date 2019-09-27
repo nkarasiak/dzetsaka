@@ -138,7 +138,7 @@ class splitTrain(QgsProcessingAlgorithm):
             libOk = False
 
         if libOk:
-            function_vector.randomInSubset(INPUT_LAYER.source(), str(
+            function_vector.randomInSubset(INPUT_LAYER.dataProvider().dataSourceUri().split('|')[0], str(
                 INPUT_COLUMN[0]), OUTPUT_VALIDATION, OUTPUT_TRAIN, VALUE, percent)
             return {self.OUTPUT_TRAIN: OUTPUT_TRAIN,
                     self.OUTPUT_VALIDATION: OUTPUT_VALIDATION}

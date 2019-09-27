@@ -223,7 +223,7 @@ class trainSTANDalgorithm(QgsProcessingAlgorithm):
         # learn model
         mainfunction.learnModel(
             INPUT_RASTER.source(),
-            INPUT_LAYER.source(),
+            INPUT_LAYER.dataProvider().dataSourceUri().split('|')[0],
             INPUT_COLUMN[0],
             OUTPUT_MODEL,
             'STAND',
