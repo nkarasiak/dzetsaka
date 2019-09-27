@@ -22,12 +22,12 @@ The shapefile must have a column which contains your classification numbers *(1,
 
 ## Installation of scikit-learn
 On **Linux** simply open terminal and type : 
-`pip install scikit-learn`
+`python3 -m pip install scikit-learn --user`
 
 ### On Windows
 
 **For Qgis 3**: 
-Open OsGeo shell in admin, then :
+Open OsGeo shell, then :
 
 `py3_env.bat`
 
