@@ -469,8 +469,7 @@ class learnModel:
             grid = GridSearchCV(
                 classifier,
                 param_grid=param_grid,
-                cv=cv,
-                n_jobs=1)
+                cv=cv)
             grid.fit(x, y)
             model = grid.best_estimator_
             model.fit(x, y)
@@ -665,7 +664,7 @@ class classifyImage(object):
     """
 
     def initPredict(self, inRaster, inModel, outRaster, inMask=None, confidenceMap=None,
-                    confidenceMapPerClass=None, NODATA=0, feedback=None, n_jobs=1):
+                    confidenceMapPerClass=None, NODATA=0, feedback=None):
 
         # Load model
 
@@ -708,8 +707,7 @@ class classifyImage(object):
                 M,
                 m],
             classifier=classifier,
-            feedback=feedback,
-            n_jobs=1)
+            feedback=feedback)
         # except:
         #   QgsMessageLog.logMessage("Problem while predicting "+inRaster+" in temp"+rasterTemp)
 
@@ -748,7 +746,7 @@ class classifyImage(object):
         return xs
 
     def predict_image(self, inRaster, outRaster, model=None, inMask=None, confidenceMap=None,
-                      confidenceMapPerClass=None, NODATA=0, SCALE=None, classifier='GMM', feedback=None, n_jobs=1):
+                      confidenceMapPerClass=None, NODATA=0, SCALE=None, classifier='GMM', feedback=None):
         """!@brief The function classify the whole raster image, using per block image analysis.
 
         The classifier is given in classifier and options in kwargs

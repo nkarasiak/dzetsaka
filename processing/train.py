@@ -176,7 +176,8 @@ class trainAlgorithm(QgsProcessingAlgorithm):
         # Retrieve algo from code
         SELECTED_ALGORITHM = self.TRAIN_ALGORITHMS_CODE[TRAIN[0]]
         QgsMessageLog.logMessage(str(SELECTED_ALGORITHM))
-
+        
+        
         libOk = True
         PARAMGRID = self.parameterAsString(parameters, self.PARAMGRID, context)
         if PARAMGRID != '':
@@ -197,7 +198,7 @@ class trainAlgorithm(QgsProcessingAlgorithm):
         if libOk:
             mainfunction.learnModel(
                 INPUT_RASTER.source(),
-                INPUT_LAYER.source(),
+                INPUT_LAYER.dataProvider().dataSourceUri().split('|')[0],
                 INPUT_COLUMN[0],
                 OUTPUT_MODEL,
                 SPLIT_PERCENT,
