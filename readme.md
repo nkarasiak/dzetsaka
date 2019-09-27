@@ -31,7 +31,7 @@ Open OsGeo shell in admin, then :
 
 `py3_env.bat`
 
-`pip install scikit-learn`
+`python3 -m pip install scikit-learn --user`
 
 Thanks to Alexander Bruy for the tip.
 
