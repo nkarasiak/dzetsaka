@@ -913,10 +913,11 @@ class classifyImage(object):
 
                 # TODO: Change this part accorindgly ...
                 if t.size > 0:
+                    
                     if confidenceMap and classifier == 'GMM':
                         yp[t], K[t] = model.predict(self.scale(
                             X[t, :], M=M, m=m), None, confidenceMap)
-
+                        
                     elif confidenceMap or confidenceMapPerClass and classifier != 'GMM':
                         yp[t] = model.predict(self.scale(X[t, :], M=M, m=m))
                         K[t, :] = model.predict_proba(
@@ -924,6 +925,7 @@ class classifyImage(object):
 
                     else:
                         yp[t] = model.predict(self.scale(X[t, :], M=M, m=m))
+                        
 
                         #QgsMessageLog.logMessage('amax from predict proba is : '+str(sp.amax(model.predict.proba(self.scale(X[t,:],M=M,m=m)),axis=1)))
 
@@ -931,6 +933,13 @@ class classifyImage(object):
                 out.WriteArray(yp.reshape(lines, cols), j, i)
                 out.SetNoDataValue(NODATA)
                 out.FlushCache()
+
+                if confidenceMap and classifier == 'GMM':
+                    K*=100
+                    out_confidenceMap.WriteArray(
+                        K.reshape(lines, cols), j, i)
+                    out_confidenceMap.SetNoDataValue(-1)
+                    out_confidenceMap.FlushCache()
 
                 if confidenceMap and classifier != 'GMM':
                     Kconf = np.amax(K, axis=1)

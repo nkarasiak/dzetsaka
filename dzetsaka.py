@@ -88,14 +88,18 @@ class dzetsakaGUI (QDialog):
             if qVersion() > '4.3.3':
                 QCoreApplication.installTranslator(self.translator)
         """
+        
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&dzetsaka')
-        # TODO: We are going to let the user set this up in a future iteration
-        self.toolbar = self.iface.addToolBar(u'dzetsaka')
-        self.toolbar.setObjectName(u'dzetsaka')
+#        # TODO: We are going to let the user set this up in a future iteration
+#        self.toolbar = self.iface.addToolBar(u'dzetsaka')
+#        self.toolbar.setObjectName(u'dzetsaka')
         self.pluginIsActive = False
         self.dockwidget = None
+#        
+
+
 
         # param
         self.lastSaveDir = ''
@@ -191,9 +195,9 @@ class dzetsakaGUI (QDialog):
         if whats_this is not None:
             action.setWhatsThis(whats_this)
 
-        if add_to_toolbar:
-            self.toolbar.addAction(action)
-
+#        if add_to_toolbar:
+#            self.toolbar.addAction(action)
+#
         if add_to_menu:
             self.iface.addPluginToMenu(
                 self.menu,
@@ -202,6 +206,7 @@ class dzetsakaGUI (QDialog):
         self.actions.append(action)
 
         return action
+
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
@@ -230,6 +235,17 @@ class dzetsakaGUI (QDialog):
             callback=self.loadSettings,
             add_to_toolbar=True,
             parent=self.iface.mainWindow())
+        
+        self.dockIcon = QAction(QIcon(':/plugins/dzetsaka/img/icon.png'), 'dzetsaka classification dock', self.iface.mainWindow())
+        self.dockIcon.triggered.connect(self.run)
+        self.iface.addToolBarIcon(self.dockIcon)
+        self.actions.append(self.dockIcon)
+        
+        self.settingsIcon = QAction(QIcon(':/plugins/dzetsaka/img/dzetsaka_settings.png'), 'dzetsaka settings', self.iface.mainWindow())
+        self.settingsIcon.triggered.connect(self.loadSettings)
+        self.iface.addToolBarIcon(self.settingsIcon)
+        self.actions.append(self.settingsIcon)
+        
     # --------------------------------------------------------------------------
 
     def onClosePlugin(self):
@@ -257,16 +273,19 @@ class dzetsakaGUI (QDialog):
 
         # Remove processing algorithms
         QgsApplication.processingRegistry().removeProvider(self.provider)
-
+        
+        
+#        self.iface.removePluginMenu(self.pluginName, self.settingsIcon)
+#        self.iface.removePluginMenu(self.tr(u'&dzetsaka'),self.actions[0])
+        
         for action in self.actions:
+            self.iface.removeToolBarIcon(action)
             self.iface.removePluginMenu(
                 self.tr(u'&dzetsaka'),
                 action)
-            self.iface.removeToolBarIcon(action)
-
-        # remove the toolbar
-        del self.toolbar
-
+#
+#        # remove the toolbar
+#       qg del self.toolbar
     # --------------------------------------------------------------------------
 
     def run(self):
@@ -733,7 +752,7 @@ class dzetsakaGUI (QDialog):
                     confidenceMapPerClass=None,
                     NODATA=NODATA,
                     feedback='gui')
-                QgsMessageLog.logMessage('Classification done.')
+                QgsMessageLog.logMessage('Dzetsaka classification done.')
                 self.iface.addRasterLayer(outRaster)
 
                 if confidenceMap:

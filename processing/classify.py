@@ -46,7 +46,7 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
     INPUT_MASK = "INPUT_MASK"
     INPUT_MODEL = "INPUT_MODEL"
     OUTPUT_RASTER = "OUTPUT_RASTER"
-
+    CONFIDENCE_RASTER = "CONFIDENCE_RASTER"
     def name(self):
         """
         Returns the algorithm name, used for identifying the algorithm. This
@@ -93,6 +93,14 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
                 optional=False
             )
         )
+            
+        self.addParameter(
+            QgsProcessingParameterRasterDestination(
+                self.CONFIDENCE_RASTER,
+                self.tr('Confidence raster'),
+                optional=True
+            )
+        )
 
     def processAlgorithm(self, parameters, context, feedback):
 
@@ -105,6 +113,8 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
 
         OUTPUT_RASTER = self.parameterAsOutputLayer(
             parameters, self.OUTPUT_RASTER, context)
+        CONFIDENCE_RASTER = self.parameterAsOutputLayer(
+            parameters, self.CONFIDENCE_RASTER, context)
         # Retrieve algo from code
         worker = classifyImage()
         # classify
@@ -117,6 +127,7 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
             INPUT_MODEL,
             OUTPUT_RASTER,
             mask,
+            confidenceMap = CONFIDENCE_RASTER,
             feedback=feedback)
 
         return {self.OUTPUT_RASTER: OUTPUT_RASTER}

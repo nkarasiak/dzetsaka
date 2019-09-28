@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
 description=Fast and Easy Classification plugin for Qgis
-version=3.5.1
+version=3.6
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -29,54 +29,11 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
-    3.5.1
-      * Fig bug with split algorithm and Train Algorithm for cv per stand/polygon
-    3.5
-      * Fix bug with gpkg files
-    3.4.8
-      * Fix errors when number of classes > 44 (problem of datatype in sample extraction).
-    3.4.7
-      * Support more than 255 classes to predict (if n > 255, raster datatype will be set to uint16)
-    3.4.6
-      * Minor fixes and remove SLOO training due to error in code
-	3.4.5
-	  * Fix bug when predicting a raster with a previous model and no vector loaded in Qgis.
-	3.4.4
-	  * Remove install of sklearn with python pip (causes bugs).
-	  * Force n_jobs=1 (1 cpu) while learning.
-	3.4.2
-	  * Fix bug when trying to install sklearn at launch.
-        3.4.1
-	  * Automatically install sklearn (if pip is installed)
-	  * Precise in the confusion matrix that lines are references and columns prediction.
-	3.4
-	  * Add welcome message if first installation, with, I hope, good tips for new users
-    	3.3.1
-	  * Store settings with QSettings (keep settings when updating plugin now!)
-	  * Correct bug when no nodata value was defined in raster source (default value now : -9999)
-	3.3
-	  * Correct error when chaining with dzetsaka in Processing Toolbox
-	3.2
-	  * Add Domain Adaptation in Processing Toolbox (thanks to POT library)
-	  * In the settings box, you can choose to have experimental function in the Processing Toolbox
-	  * Minor fixes
-	3.1.1
-	  * Select providers type (Standard or Experimental), to use latests code in the processing toolbox (but no guarantee at all).
-	3.1
-	  * Replace scipy with numpy when possible
-	  * Correct bug in predicting an already trained model
-	  * Specify a way on Windows to install scikit-learn and use SVM/RF/KNN
-	3.0.3
-	  * Add confirmation box if two different projections
-	  * Correct bug when loading model
-	3.0.2
-	  * Add progress bar for GUI
-	3.0.1
-	  * Minor fixes (with icons)
-	3.0.0
-	  * First version of dzetsaka for Qgis 3.
-	  * TODO : Progress bar when using UI.
-	  * TODO : Historical Map algorithms
+    3.6
+      * Add confidence map in processing
+      * Add median filter and shannon entropy
+      * Fix bug with GMM confidence map
+      * Move dzetsaka icons to extension toolbar
 
 # Tags are comma separated with spaces allowed
 tags=classification,semi-automatic,gaussian,mixture,model,random forest,svm,knn,forest,processing

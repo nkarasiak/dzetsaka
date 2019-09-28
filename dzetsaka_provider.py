@@ -67,11 +67,9 @@ class dzetsakaProvider(QgsProcessingProvider):
 
 #            from .processing.domainAdaptation import domainAdaptation
             from .processing.shannonEntropy import shannonAlgorithm
-            from .processing.resampleImageSameDate import resampleImageSameDateAsSource
             from .processing.medianFilter import medianFilterAlgorithm
 #            self.alglist.append(domainAdaptation())
             self.alglist.append(shannonAlgorithm())
-            self.alglist.append(resampleImageSameDateAsSource())
             self.alglist.append(medianFilterAlgorithm())
 
     def icon(self):
