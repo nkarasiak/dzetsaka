@@ -52,9 +52,18 @@ You can now use **Random Forest**, **SVM**, or **KNN** !
 Online dev documentation is available throught the [doxygen branch](https://rawgit.com/lennepkade/dzetsaka/doxygen/index.html).
 
 ## Like us, use us ? Cite us !
-DOI : [10.5281/zenodo.2552284](https://doi.org/10.5281/zenodo.2552284).
 
-> Nicolas Karasiak. (2019, January 29). dzetsaka: v3.4.3 (Version v3.4.3). Zenodo. http://doi.org/10.5281/zenodo.2552285
+If you use dzetsaka in your research and find it useful, please cite Dzetsaka using the following bibtex reference:
+
+```
+@misc{karasiak2016dzetsaka,
+title={Dzetsaka Qgis Classification plugin},
+author={Karasiak, Nicolas},
+url={https://github.com/nkarasiak/dzetsaka},
+year={2016},
+doi={10.5281/zenodo.2552284}
+}
+```
 
 ### Thanks to...
 I would like to thank the [Guiana Amazonian Park](http://www.parc-amazonien-guyane.fr/) for their trust in my work, and the Master 2 Geomatics [Sigma](http://sigma.univ-toulouse.fr/en/welcome.html) for their excellent lessons in geomatics.
