@@ -57,20 +57,7 @@ class dzetsakaProvider(QgsProcessingProvider):
 
         # Load algorithms
         # ,learnWithSpatialSampling()]#,classifyAlgorithm(),splitTrain()]
-        self.alglist = [
-            trainAlgorithm(),
-            classifyAlgorithm(),
-            splitTrain(),
-            trainSTANDalgorithm()]
-
-        if providerType == 'Experimental':
-
-#            from .processing.domainAdaptation import domainAdaptation
-            from .processing.shannonEntropy import shannonAlgorithm
-            from .processing.medianFilter import medianFilterAlgorithm
-#            self.alglist.append(domainAdaptation())
-            self.alglist.append(shannonAlgorithm())
-            self.alglist.append(medianFilterAlgorithm())
+        self.providerType = providerType
 
     def icon(self):
         """
@@ -91,9 +78,19 @@ class dzetsakaProvider(QgsProcessingProvider):
         """
         Loads all algorithms belonging to this provider.
         """
+        self.addAlgorithm(trainAlgorithm())
+        self.addAlgorithm(classifyAlgorithm())
+        self.addAlgorithm(splitTrain())
+        self.addAlgorithm(trainSTANDalgorithm())
 
-        for alg in self.alglist:
-            self.addAlgorithm(alg)
+        if self.providerType == 'Experimental':
+
+#            from .processing.domainAdaptation import domainAdaptation
+            from .processing.shannonEntropy import shannonAlgorithm
+            from .processing.medianFilter import medianFilterAlgorithm
+#            self.alglist.append(domainAdaptation())
+            self.addAlgorithm(shannonAlgorithm())
+            self.addAlgorithm(medianFilterAlgorithm())
 
     def id(self):
         """
