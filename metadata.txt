@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
 description=Fast and Easy Classification plugin for Qgis
-version=3.6.1
+version=3.61
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -29,7 +29,7 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
-    3.6.1
+    3.61
       * fix bug #19 with self.addAlgorithm(alg).
     3.6
       * Add confidence map in processing
