@@ -3,4 +3,5 @@
 *.py~
 *_filtered*
 __pycache__
+*spyproject*
 
