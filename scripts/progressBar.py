@@ -1,7 +1,6 @@
 from PyQt5.QtWidgets import (QProgressBar, QApplication)
 from PyQt5.QtGui import QCursor
 from PyQt5.QtCore import Qt
-from qgis.core import QgsMessageLog
 from qgis.utils import iface
 
 

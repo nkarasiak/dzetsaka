@@ -23,6 +23,7 @@
 try:
     # when using it from QGIS 3
     from qgis.core import QgsMessageLog
+    from PyQt5.QtWidgets import QApplication
     from . import function_dataraster as dataraster
     from . import accuracy_index as ai
     from . import progressBar as pB
@@ -175,7 +176,7 @@ class learnModel:
                     except BaseException:
                         from function_vector import standCV  # ,readFieldVector
                     try:
-                        from sklearn.metrics import cohen_kappa_score, accuracy_score, f1_score
+                        from sklearn.metrics import accuracy_score
                     except BaseException:
                         pass
 
@@ -199,6 +200,7 @@ class learnModel:
             msg = "Problem with getting samples from ROI \n \
                 Are you sure to have only integer values in your " + str(inField) + " field ?\n  "
             pushFeedback(msg, feedback=feedback)
+            pB.reset()
             
         [n, d] = X.shape
         C = int(Y.max())
@@ -446,6 +448,7 @@ class learnModel:
                     "Cannot train with classifier " +
                     inClassifier,
                     feedback=feedback)
+                pB.reset()
 
             if feedback == 'gui':
                 progress.prgBar.setValue(5)  # Add Step to ProgressBar

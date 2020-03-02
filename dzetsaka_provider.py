@@ -85,10 +85,10 @@ class dzetsakaProvider(QgsProcessingProvider):
 
         if self.providerType == 'Experimental':
 
-#            from .processing.domainAdaptation import domainAdaptation
+            from .processing.domainAdaptation import domainAdaptation
             from .processing.shannonEntropy import shannonAlgorithm
             from .processing.medianFilter import medianFilterAlgorithm
-#            self.alglist.append(domainAdaptation())
+            self.addAlgorithm(domainAdaptation())
             self.addAlgorithm(shannonAlgorithm())
             self.addAlgorithm(medianFilterAlgorithm())
 

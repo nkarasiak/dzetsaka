@@ -24,8 +24,9 @@
 # import basics
 from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QAction, QMessageBox, QDialog, QFileDialog
+from PyQt5.QtWidgets import QAction, QMessageBox, QDialog, QFileDialog, QApplication
 from qgis.core import QgsMessageLog, QgsProcessingAlgorithm, QgsApplication
+
 
 # import outside libraries
 #import configparser
@@ -720,11 +721,11 @@ class dzetsakaGUI (QDialog):
 
                 stop = False
             except BaseException:
-                QgsMessageLog.logMessage('inRaster is' + str(inRaster))
-                QgsMessageLog.logMessage('inShape is' + str(inShape))
-                QgsMessageLog.logMessage('inSplit is' + str(inSplit))
-                QgsMessageLog.logMessage('inField is ' + str(inField))
-                QgsMessageLog.logMessage('model is ' + str(model))
+                QgsMessageLog.logMessage('Raster is' + str(inRaster))
+                QgsMessageLog.logMessage('Vector is' + str(inShape))
+                QgsMessageLog.logMessage('Column field is ' + str(inField))
+                QgsMessageLog.logMessage('Split is' + str(inSplit))
+                QgsMessageLog.logMessage('Model is ' + str(model))
 
                 message = (
                     'Something went wrong during the training. Please make sure you respect these conditions : <br> - Are you sure to have only integer values in your ' +
@@ -736,6 +737,8 @@ class dzetsakaGUI (QDialog):
                     message,
                     QMessageBox.Ok)
                 stop = True
+                QApplication.restoreOverrideCursor()
+                
 
             if not stop:
                 # Begin classification
