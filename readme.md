@@ -22,7 +22,7 @@ The shapefile must have a column which contains your classification numbers *(1,
 
 ## Installation of scikit-learn
 On **Linux** simply open terminal and type : 
-`python3 -m pip install scikit-learn --user`
+`python3 -m pip install scikit-learn -U --user`
 
 ### On Windows
 
@@ -31,7 +31,7 @@ Open OsGeo shell, then :
 
 `py3_env.bat`
 
-`python3 -m pip install scikit-learn --user`
+`python3 -m pip install scikit-learn -U --user`
 
 Thanks to Alexander Bruy for the tip.
 
