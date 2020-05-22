@@ -18,10 +18,10 @@ about=
       Plugin for semi-automatic classification with Gaussian Mixture Model, Random Forest*, and SVM* classifiers.
       Very easy and fast to use.
       *You need to install scitkit-learn library to use these algorithms.
-      For more information on this tool check our github :  https://github.com/lennepkade/dzetsaka/
+      For more information on this tool check our github :  https://github.com/nkarasiak/dzetsaka/
 
-tracker=https://github.com/lennepkade/dzetsaka/issues
-repository=http://www.github.com/lennepkade/dzetsaka
+tracker=https://github.com/nkarasiak/dzetsaka/issues
+repository=http://www.github.com/nkarasiak/dzetsaka
 
 # End of mandatory metadata
 
@@ -44,7 +44,7 @@ changelog=
 # Tags are comma separated with spaces allowed
 tags=classification,semi-automatic,gaussian,mixture,model,random forest,svm,knn,forest,processing
 
-homepage=http://www.github.com/lennepkade/dzetsaka
+homepage=http://www.github.com/nkarasiak/dzetsaka
 category=Raster
 icon=icon.png
 
