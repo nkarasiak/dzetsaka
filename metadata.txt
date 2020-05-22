@@ -29,6 +29,8 @@ repository=http://www.github.com/lennepkade/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+    3.63
+      * fix bug in train algorithm (split was % of train not of validation)
     3.62
       * fig bug when loading cursor was not removed after unsucessful learning.
     3.61

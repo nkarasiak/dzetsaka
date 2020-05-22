@@ -39,7 +39,7 @@ from qgis.core import QgsProcessingProvider
 from .processing.train import trainAlgorithm
 from .processing.classify import classifyAlgorithm
 from .processing.splitTrainValidation import splitTrain
-from .processing.learnWithStandCV import trainSTANDalgorithm
+# from .processing.learnWithStandCV import trainSTANDalgorithm
 
 pluginPath = os.path.dirname(__file__)
 
@@ -81,7 +81,7 @@ class dzetsakaProvider(QgsProcessingProvider):
         self.addAlgorithm(trainAlgorithm())
         self.addAlgorithm(classifyAlgorithm())
         self.addAlgorithm(splitTrain())
-        self.addAlgorithm(trainSTANDalgorithm())
+        # self.addAlgorithm(trainSTANDalgorithm())
 
         if self.providerType == 'Experimental':
 

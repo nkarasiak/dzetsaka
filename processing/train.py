@@ -166,6 +166,9 @@ class trainAlgorithm(QgsProcessingAlgorithm):
             parameters, self.INPUT_COLUMN, context)
         SPLIT_PERCENT = self.parameterAsInt(
             parameters, self.SPLIT_PERCENT, context)
+        
+        SPLIT_PERCENT = 100-SPLIT_PERCENT # if 30 means 30% of valid per class, 70% of train
+        
         TRAIN = self.parameterAsEnums(parameters, self.TRAIN, context)
         #INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
         OUTPUT_MODEL = self.parameterAsFileOutput(
