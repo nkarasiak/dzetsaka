@@ -39,7 +39,6 @@ from qgis.core import QgsProcessingProvider
 from .processing.train import trainAlgorithm
 from .processing.classify import classifyAlgorithm
 from .processing.splitTrainValidation import splitTrain
-# from .processing.learnWithStandCV import trainSTANDalgorithm
 
 pluginPath = os.path.dirname(__file__)
 
@@ -84,13 +83,18 @@ class dzetsakaProvider(QgsProcessingProvider):
         # self.addAlgorithm(trainSTANDalgorithm())
 
         if self.providerType == 'Experimental':
+            from .processing.medianFilter import medianFilterAlgorithm
+            from .processing.closingFilter import closingFilterAlgorithm
 
+            self.addAlgorithm(closingFilterAlgorithm())
+            self.addAlgorithm(medianFilterAlgorithm())
+            
             from .processing.domainAdaptation import domainAdaptation
             from .processing.shannonEntropy import shannonAlgorithm
-            from .processing.medianFilter import medianFilterAlgorithm
+            
             self.addAlgorithm(domainAdaptation())
             self.addAlgorithm(shannonAlgorithm())
-            self.addAlgorithm(medianFilterAlgorithm())
+            
 
     def id(self):
         """
