@@ -44,6 +44,15 @@ If you do not have pip installed, open osgeo4w-setup-x86_64.exe, select Advanced
 
 You can now use **Random Forest**, **SVM**, or **KNN** !
 
+### On macOS
+Open [Plugins ‣ Python Console](https://docs.qgis.org/2.18/en/docs/user_manual/plugins/python_console.html), then:
+
+`from pip._internal import main as pip`
+
+`pip(['install', '--user', 'scikit-learn'])`
+
+Restart QGIS.
+
 ## Tips
 
 - If your raster is *spot6scene.tif*, you can create your mask under the name *spot6scene_mask.tif* and the script will detect it automatically.
