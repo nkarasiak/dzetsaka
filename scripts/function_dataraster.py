@@ -3,7 +3,10 @@
 
 #import scipy as sp
 import numpy as np
-import gdal
+try:
+    from osgeo import gdal
+except ImportError:
+    import gdal
 #from osgeo import gdal_array
 
 

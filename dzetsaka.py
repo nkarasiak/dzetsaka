@@ -32,7 +32,10 @@ from qgis.core import QgsMessageLog, QgsProcessingAlgorithm, QgsApplication
 #import configparser
 import tempfile
 import os.path
-import gdal
+try:
+    from osgeo import gdal
+except ImportError:
+    import gdal
 import ogr
 import osr
 

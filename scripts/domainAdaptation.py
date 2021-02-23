@@ -16,7 +16,10 @@ except BaseException:
     from mainfunction import pushFeedback
 
 
-import gdal
+try:
+    from osgeo import gdal
+except ImportError:
+    import gdal
 #import tempfile
 # import ot
 import os

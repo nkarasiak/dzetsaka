@@ -9,7 +9,10 @@ Only work with max 1 year SITS. Use Date Of Year, so cannot resample SITS if mor
 
 """
 import tempfile
-import gdal
+try:
+    from osgeo import gdal
+except ImportError:
+    import gdal
 import os
 import glob
 import numpy as np

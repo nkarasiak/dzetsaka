@@ -47,7 +47,10 @@ from qgis.core import (QgsMessageLog,
                        QgsProcessingParameterRasterDestination,
                        QgsRasterLayer)
 import os
-import gdal
+try:
+    from osgeo import gdal
+except ImportError:
+    import gdal
 from ..scripts import function_dataraster as dataraster
 import numpy as np
 import math
