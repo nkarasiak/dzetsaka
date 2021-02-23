@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
 description=Fast and Easy Classification plugin for Qgis
-version=3.7
+version=3.70
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -29,7 +29,7 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
-    3.7
+    3.70
       * Fix bug with new gdal import from osgeo
     3.64
       * add closing filter in the processing toolbox
