@@ -5,7 +5,10 @@ www.karasiak.net
 """
 import os
 #import random
-from osgeo import ogr
+try:
+    from osgeo import ogr
+except ImportError:
+    import ogr
 import numpy as np
 
 

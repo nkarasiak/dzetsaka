@@ -4,9 +4,9 @@
 #import scipy as sp
 import numpy as np
 try:
-    from osgeo import gdal
+    from osgeo import gdal,ogr
 except ImportError:
-    import gdal
+    import gdal,ogr
 #from osgeo import gdal_array
 
 
@@ -601,7 +601,7 @@ def create_uniquevalue_tiff(
 
 def rasterize(data, vectorSrc, field, outFile):
     dataSrc = gdal.Open(data)
-    import ogr
+    
     shp = ogr.Open(vectorSrc)
 
     lyr = shp.GetLayer()

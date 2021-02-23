@@ -33,11 +33,9 @@ from qgis.core import QgsMessageLog, QgsProcessingAlgorithm, QgsApplication
 import tempfile
 import os.path
 try:
-    from osgeo import gdal
+    from osgeo import gdal,ogr,osr
 except ImportError:
-    import gdal
-import ogr
-import osr
+    import gdal,ogr,osr
 
 # import local libraries
 from . import resources
