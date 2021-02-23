@@ -34,7 +34,7 @@ changelog=
     3.64
       * add closing filter in the processing toolbox
     3.63
-      * fix bug in train algorithm (split was % of train not of validation)
+      * fix bug in train algorithm (split waspercent of train not of validation)
     3.62
       * fig bug when loading cursor was not removed after unsucessful learning.
     3.61
