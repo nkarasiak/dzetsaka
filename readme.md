@@ -25,7 +25,7 @@ On **Linux** simply open terminal and type :
 `python3 -m pip install scikit-learn -U --user`
 
 ### On Windows
-**For QGIS 3.20 and higher** 
+**For QGIS 3.20 and higher:** 
 Open OsGeo shell, then :
 
 `o4w_env`
