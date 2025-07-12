@@ -21,38 +21,34 @@
  ***************************************************************************/
 """
 
-
-__author__ = 'Nicolas Karasiak'
-__date__ = '2018-02-24'
-__copyright__ = '(C) 2018 by Nicolas Karasiak'
+__author__ = "Nicolas Karasiak"
+__date__ = "2018-02-24"
+__copyright__ = "(C) 2018 by Nicolas Karasiak"
 
 # This will get replaced with a git SHA1 when you do a git archive
 
-__revision__ = '$Format:%H$'
+__revision__ = "$Format:%H$"
 
 
 # from ... import dzetsaka.scripts.function_dataraster as dataraster
 
-#from PyQt4.QtGui import QIcon
-#from PyQt4.QtCore import QSettings
+# from PyQt4.QtGui import QIcon
+# from PyQt4.QtCore import QSettings
 
 
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QCoreApplication
 
-from qgis.core import (QgsMessageLog,
-                       QgsProcessingAlgorithm,
-                       QgsProcessingParameterRasterLayer,
-                       QgsProcessingParameterNumber,
-                       QgsProcessingParameterRasterDestination,
-                       QgsRasterLayer)
+from qgis.core import (
+    QgsProcessingAlgorithm,
+    QgsProcessingParameterRasterLayer,
+    QgsProcessingParameterNumber,
+    QgsProcessingParameterRasterDestination,
+)
 import os
 from ..scripts import function_dataraster as dataraster
 
-pluginPath = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__),
-        os.pardir))
+pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 # EX
 """
 from processing.core.GeoAlgorithm import GeoAlgorithm
@@ -79,14 +75,13 @@ class medianFilterAlgorithm(QgsProcessingAlgorithm):
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
 
-    INPUT_RASTER = 'INPUT_RASTER'
-    OUTPUT_RASTER = 'OUTPUT_RASTER'
-    MEDIAN_SIZE = 'MEDIAN_SIZE'
-    MEDIAN_ITER = 'MEDIAN_ITER'
+    INPUT_RASTER = "INPUT_RASTER"
+    OUTPUT_RASTER = "OUTPUT_RASTER"
+    MEDIAN_SIZE = "MEDIAN_SIZE"
+    MEDIAN_ITER = "MEDIAN_ITER"
 
     def icon(self):
-
-        return QIcon(os.path.join(pluginPath, 'icon.png'))
+        return QIcon(os.path.join(pluginPath, "icon.png"))
 
     def initAlgorithm(self, config=None):
         """Here we define the inputs and output of the algorithm, along
@@ -97,16 +92,14 @@ class medianFilterAlgorithm(QgsProcessingAlgorithm):
         # It is a mandatory (not optional) one, hence the False argument
         self.addParameter(
             QgsProcessingParameterRasterLayer(
-                self.INPUT_RASTER,
-                self.tr('Input raster')
+                self.INPUT_RASTER, self.tr("Input raster")
             )
         )
 
         # We add a raster as output
         self.addParameter(
             QgsProcessingParameterRasterDestination(
-                self.OUTPUT_RASTER,
-                self.tr('Output raster')
+                self.OUTPUT_RASTER, self.tr("Output raster")
             )
         )
         # add num
@@ -114,19 +107,23 @@ class medianFilterAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.MEDIAN_ITER,
-                self.tr('Number of iteration for median filter'),
+                self.tr("Number of iteration for median filter"),
                 type=QgsProcessingParameterNumber.Integer,
                 defaultValue=5,
-                minValue=3))
+                minValue=3,
+            )
+        )
 
         # add num
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.MEDIAN_SIZE,
-                self.tr('Window size of median filter'),
+                self.tr("Window size of median filter"),
                 type=QgsProcessingParameterNumber.Integer,
                 defaultValue=5,
-                minValue=3))
+                minValue=3,
+            )
+        )
 
     def name(self):
         """
@@ -136,20 +133,20 @@ class medianFilterAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Median filter'
+        return "Median filter"
 
     def processAlgorithm(self, parameters, context, feedback):
         """Here is where the processing itself takes place."""
 
         INPUT_RASTER = self.parameterAsRasterLayer(
-            parameters, self.INPUT_RASTER, context)
-        #INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
+            parameters, self.INPUT_RASTER, context
+        )
+        # INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
         OUTPUT_RASTER = self.parameterAsOutputLayer(
-            parameters, self.OUTPUT_RASTER, context)
-        MEDIAN_ITER = self.parameterAsInt(
-            parameters, self.MEDIAN_ITER, context)
-        MEDIAN_SIZE = self.parameterAsInt(
-            parameters, self.MEDIAN_SIZE, context)
+            parameters, self.OUTPUT_RASTER, context
+        )
+        MEDIAN_ITER = self.parameterAsInt(parameters, self.MEDIAN_ITER, context)
+        MEDIAN_SIZE = self.parameterAsInt(parameters, self.MEDIAN_SIZE, context)
         """
         MEDIAN_ITER = self.parameterAsInt(parameters, self.MEDIAN_ITER, context)
         MEDIAN_SIZE = self.parameterAsInt(parameters, self.MEDIAN_SIZE, context)
@@ -163,7 +160,7 @@ class medianFilterAlgorithm(QgsProcessingAlgorithm):
         INPUT_RASTER_src = INPUT_RASTER.source()
 
         # feedback.pushInfo(str(OUTPUT_RASTER))
-        #QgsMessageLog.logMessage('output is: '+str(OUTPUT_RASTER))
+        # QgsMessageLog.logMessage('output is: '+str(OUTPUT_RASTER))
 
         from scipy import ndimage
 
@@ -187,10 +184,10 @@ class medianFilterAlgorithm(QgsProcessingAlgorithm):
             tempBand = data.GetRasterBand(i + 1).ReadAsArray()
 
             for j in range(MEDIAN_ITER):
-
                 tempBand = ndimage.filters.median_filter(
-                    tempBand, size=(MEDIAN_SIZE, MEDIAN_SIZE))
-                #tempBand = tempBand
+                    tempBand, size=(MEDIAN_SIZE, MEDIAN_SIZE)
+                )
+                # tempBand = tempBand
                 iterPos += j
                 feedback.setProgress(int(iterPos * total))
 
@@ -205,7 +202,7 @@ class medianFilterAlgorithm(QgsProcessingAlgorithm):
         # return OUTPUT_RASTER
 
     def tr(self, string):
-        return QCoreApplication.translate('Processing', string)
+        return QCoreApplication.translate("Processing", string)
 
     def createInstance(self):
         return medianFilterAlgorithm()
@@ -232,4 +229,4 @@ class medianFilterAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Raster tool'
+        return "Raster tool"

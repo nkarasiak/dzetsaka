@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run lint)",
+      "Bash(flake8:*)",
+      "Bash(ruff check:*)",
+      "Bash(pip install:*)",
+      "Bash(ruff format:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue:*)",
+      "Bash(gh pr:*)"
+    ],
+    "deny": []
+  }
+}

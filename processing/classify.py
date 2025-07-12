@@ -23,30 +23,30 @@
 
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QCoreApplication
-#from PyQt5.QtWidgets import QMessageBox
+# from PyQt5.QtWidgets import QMessageBox
 
-from qgis.core import (QgsProcessingAlgorithm,
-                       QgsProcessingParameterRasterLayer,
-                       QgsProcessingParameterFile,
-                       QgsProcessingParameterRasterDestination)
+from qgis.core import (
+    QgsProcessingAlgorithm,
+    QgsProcessingParameterRasterLayer,
+    QgsProcessingParameterFile,
+    QgsProcessingParameterRasterDestination,
+)
 
 import os
 
 from ..scripts.mainfunction import classifyImage
 
 
-pluginPath = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__),
-        os.pardir))
+pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
 
 class classifyAlgorithm(QgsProcessingAlgorithm):
-    INPUT_RASTER = 'INPUT_RASTER'
+    INPUT_RASTER = "INPUT_RASTER"
     INPUT_MASK = "INPUT_MASK"
     INPUT_MODEL = "INPUT_MODEL"
     OUTPUT_RASTER = "OUTPUT_RASTER"
     CONFIDENCE_RASTER = "CONFIDENCE_RASTER"
+
     def name(self):
         """
         Returns the algorithm name, used for identifying the algorithm. This
@@ -55,66 +55,55 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Predict model (classification map)'
+        return "Predict model (classification map)"
 
     def icon(self):
-
-        return QIcon(os.path.join(pluginPath, 'icon.png'))
+        return QIcon(os.path.join(pluginPath, "icon.png"))
 
     def initAlgorithm(self, config=None):
-
         # inputs
         self.addParameter(
             QgsProcessingParameterRasterLayer(
-                self.INPUT_RASTER,
-                self.tr('Input raster')
+                self.INPUT_RASTER, self.tr("Input raster")
             )
         )
 
         self.addParameter(
             QgsProcessingParameterRasterLayer(
-                self.INPUT_MASK,
-                self.tr('Mask raster'),
-                optional=True)
+                self.INPUT_MASK, self.tr("Mask raster"), optional=True
+            )
         )
 
         self.addParameter(
-            QgsProcessingParameterFile(
-                self.INPUT_MODEL,
-                self.tr('Model learned')
-            )
+            QgsProcessingParameterFile(self.INPUT_MODEL, self.tr("Model learned"))
         )
 
         # output
         self.addParameter(
             QgsProcessingParameterRasterDestination(
-                self.OUTPUT_RASTER,
-                self.tr('Output raster'),
-                optional=False
+                self.OUTPUT_RASTER, self.tr("Output raster"), optional=False
             )
         )
-            
+
         self.addParameter(
             QgsProcessingParameterRasterDestination(
-                self.CONFIDENCE_RASTER,
-                self.tr('Confidence raster'),
-                optional=True
+                self.CONFIDENCE_RASTER, self.tr("Confidence raster"), optional=True
             )
         )
 
     def processAlgorithm(self, parameters, context, feedback):
-
         INPUT_RASTER = self.parameterAsRasterLayer(
-            parameters, self.INPUT_RASTER, context)
-        INPUT_MASK = self.parameterAsRasterLayer(
-            parameters, self.INPUT_MASK, context)
-        INPUT_MODEL = self.parameterAsFile(
-            parameters, self.INPUT_MODEL, context)
+            parameters, self.INPUT_RASTER, context
+        )
+        INPUT_MASK = self.parameterAsRasterLayer(parameters, self.INPUT_MASK, context)
+        INPUT_MODEL = self.parameterAsFile(parameters, self.INPUT_MODEL, context)
 
         OUTPUT_RASTER = self.parameterAsOutputLayer(
-            parameters, self.OUTPUT_RASTER, context)
+            parameters, self.OUTPUT_RASTER, context
+        )
         CONFIDENCE_RASTER = self.parameterAsOutputLayer(
-            parameters, self.CONFIDENCE_RASTER, context)
+            parameters, self.CONFIDENCE_RASTER, context
+        )
         # Retrieve algo from code
         worker = classifyImage()
         # classify
@@ -127,13 +116,14 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
             INPUT_MODEL,
             OUTPUT_RASTER,
             mask,
-            confidenceMap = CONFIDENCE_RASTER,
-            feedback=feedback)
+            confidenceMap=CONFIDENCE_RASTER,
+            feedback=feedback,
+        )
 
         return {self.OUTPUT_RASTER: OUTPUT_RASTER}
 
     def tr(self, string):
-        return QCoreApplication.translate('Processing', string)
+        return QCoreApplication.translate("Processing", string)
 
     def createInstance(self):
         return classifyAlgorithm()
@@ -160,4 +150,4 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Classification tool'
+        return "Classification tool"

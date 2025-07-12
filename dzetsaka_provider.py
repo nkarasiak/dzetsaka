@@ -22,18 +22,18 @@
  ***************************************************************************/
 """
 
-__author__ = 'Nicolas Karasiak'
-__date__ = '2018-02-24'
-__copyright__ = '(C) 2018 by Nicolas Karasiak'
+__author__ = "Nicolas Karasiak"
+__date__ = "2018-02-24"
+__copyright__ = "(C) 2018 by Nicolas Karasiak"
 
 # This will get replaced with a git SHA1 when you do a git archive
 
-__revision__ = '$Format:%H$'
+__revision__ = "$Format:%H$"
 from qgis.PyQt.QtGui import QIcon
 import os
 from qgis.core import QgsProcessingProvider
-#from .moduleName_algorithm import classNameAlgorithm
-#from .processing.moduleName_algorithm import classNameAlgorithm
+# from .moduleName_algorithm import classNameAlgorithm
+# from .processing.moduleName_algorithm import classNameAlgorithm
 
 
 from .processing.train import trainAlgorithm
@@ -49,9 +49,7 @@ sys.setrecursionlimit(10000) # 10000 is an example, try with different values
 
 
 class dzetsakaProvider(QgsProcessingProvider):
-
-    def __init__(self, providerType='Standard'):
-
+    def __init__(self, providerType="Standard"):
         QgsProcessingProvider.__init__(self)
 
         # Load algorithms
@@ -62,7 +60,7 @@ class dzetsakaProvider(QgsProcessingProvider):
         """
         add icon
         """
-        iconPath = os.path.join(pluginPath, 'icon.png')
+        iconPath = os.path.join(pluginPath, "icon.png")
 
         return QIcon(os.path.join(iconPath))
 
@@ -82,19 +80,18 @@ class dzetsakaProvider(QgsProcessingProvider):
         self.addAlgorithm(splitTrain())
         # self.addAlgorithm(trainSTANDalgorithm())
 
-        if self.providerType == 'Experimental':
+        if self.providerType == "Experimental":
             from .processing.medianFilter import medianFilterAlgorithm
             from .processing.closingFilter import closingFilterAlgorithm
 
             self.addAlgorithm(closingFilterAlgorithm())
             self.addAlgorithm(medianFilterAlgorithm())
-            
+
             from .processing.domainAdaptation import domainAdaptation
             from .processing.shannonEntropy import shannonAlgorithm
-            
+
             self.addAlgorithm(domainAdaptation())
             self.addAlgorithm(shannonAlgorithm())
-            
 
     def id(self):
         """
@@ -102,7 +99,7 @@ class dzetsakaProvider(QgsProcessingProvider):
         string should be a unique, short, character only string, eg "qgis" or
         "gdal". This string should not be localised.
         """
-        return 'dzetsaka'
+        return "dzetsaka"
 
     def name(self):
         """
@@ -111,7 +108,7 @@ class dzetsakaProvider(QgsProcessingProvider):
 
         This string should be short (e.g. "Lastools") and localised.
         """
-        return self.tr('dzetsaka')
+        return self.tr("dzetsaka")
 
     def longName(self):
         """

@@ -47,6 +47,12 @@ from .scripts import mainfunction
 
 from .dzetsaka_provider import dzetsakaProvider
 
+# Import resources for icons
+try:
+    from . import resources
+except ImportError:
+    pass
+
 
 class dzetsakaGUI(QDialog):
     """QGIS Plugin Implementation."""
@@ -208,12 +214,24 @@ class dzetsakaGUI(QDialog):
 
         return action
 
+    def get_icon_path(self, icon_name):
+        """Get icon path, trying resource first, then fallback to file path"""
+        resource_path = f":/plugins/dzetsaka/img/{icon_name}"
+        file_path = os.path.join(self.plugin_dir, "img", icon_name)
+        
+        # Try to create QIcon with resource path first
+        icon = QIcon(resource_path)
+        if not icon.isNull():
+            return resource_path
+        # Fallback to file path
+        return file_path
+
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
         QgsApplication.processingRegistry().addProvider(self.provider)
 
-        icon_path = ":/plugins/dzetsaka/img/icon.png"
+        icon_path = self.get_icon_path("icon.png")
         self.add_action(
             icon_path,
             text=self.tr("welcome message"),
@@ -222,7 +240,7 @@ class dzetsakaGUI(QDialog):
             parent=self.iface.mainWindow(),
         )
 
-        icon_path = ":/plugins/dzetsaka/img/icon.png"
+        icon_path = self.get_icon_path("icon.png")
         self.add_action(
             icon_path,
             text=self.tr("classification dock"),
@@ -230,7 +248,7 @@ class dzetsakaGUI(QDialog):
             parent=self.iface.mainWindow(),
         )
 
-        icon_settings_path = ":/plugins/dzetsaka/img/dzetsaka_settings.png"
+        icon_settings_path = self.get_icon_path("dzetsaka_settings.png")
         self.add_action(
             icon_settings_path,
             text=self.tr("settings"),
@@ -240,7 +258,7 @@ class dzetsakaGUI(QDialog):
         )
 
         self.dockIcon = QAction(
-            QIcon(":/plugins/dzetsaka/img/icon.png"),
+            QIcon(self.get_icon_path("icon.png")),
             "dzetsaka classification dock",
             self.iface.mainWindow(),
         )
@@ -249,7 +267,7 @@ class dzetsakaGUI(QDialog):
         self.actions.append(self.dockIcon)
 
         self.settingsIcon = QAction(
-            QIcon(":/plugins/dzetsaka/img/dzetsaka_settings.png"),
+            QIcon(self.get_icon_path("dzetsaka_settings.png")),
             "dzetsaka settings",
             self.iface.mainWindow(),
         )

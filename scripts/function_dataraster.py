@@ -1,24 +1,26 @@
 """!@brief Manage data (opening/saving raster, get ROI...)"""
 # -*- coding: utf-8 -*-
 
-#import scipy as sp
+# import scipy as sp
 import numpy as np
+
 try:
-    from osgeo import gdal,ogr
+    from osgeo import gdal, ogr
 except ImportError:
-    import gdal,ogr
-#from osgeo import gdal_array
+    import gdal
+    import ogr
+# from osgeo import gdal_array
 
 
 def convertGdalDataTypeToOTB(gdalDT):
-    #availableCode = uint8/uint16/int16/uint32/int32/float/double
-    code = ['uint8', 'uint16', 'int16', 'uint32', 'int32', 'float', 'double']
+    # availableCode = uint8/uint16/int16/uint32/int32/float/double
+    code = ["uint8", "uint16", "int16", "uint32", "int32", "float", "double"]
 
     return code[gdalDT]
 
 
 def open_data(filename):
-    '''
+    """
     The function open and load the image given its name.
     The type of the data is checked from the file and the scipy array is initialized accordingly.
     Input:
@@ -27,10 +29,10 @@ def open_data(filename):
         im: the data cube
         GeoTransform: the geotransform information
         Projection: the projection information
-    '''
+    """
     data = gdal.Open(filename, gdal.GA_ReadOnly)
     if data is None:
-        print('Impossible to open ' + filename)
+        print("Impossible to open " + filename)
         # exit()
     nc = data.RasterXSize
     nl = data.RasterYSize
@@ -39,24 +41,29 @@ def open_data(filename):
     # Get the type of the data
     gdal_dt = data.GetRasterBand(1).DataType
     if gdal_dt == gdal.GDT_Byte:
-        dt = 'uint8'
+        dt = "uint8"
     elif gdal_dt == gdal.GDT_Int16:
-        dt = 'int16'
+        dt = "int16"
     elif gdal_dt == gdal.GDT_UInt16:
-        dt = 'uint16'
+        dt = "uint16"
     elif gdal_dt == gdal.GDT_Int32:
-        dt = 'int32'
+        dt = "int32"
     elif gdal_dt == gdal.GDT_UInt32:
-        dt = 'uint32'
+        dt = "uint32"
 
     elif gdal_dt == gdal.GDT_Float32:
-        dt = 'float32'
+        dt = "float32"
     elif gdal_dt == gdal.GDT_Float64:
-        dt = 'float64'
-    elif gdal_dt == gdal.GDT_CInt16 or gdal_dt == gdal.GDT_CInt32 or gdal_dt == gdal.GDT_CFloat32 or gdal_dt == gdal.GDT_CFloat64:
-        dt = 'complex64'
+        dt = "float64"
+    elif (
+        gdal_dt == gdal.GDT_CInt16
+        or gdal_dt == gdal.GDT_CInt32
+        or gdal_dt == gdal.GDT_CFloat32
+        or gdal_dt == gdal.GDT_CFloat64
+    ):
+        dt = "complex64"
     else:
-        print('Data type unkown')
+        print("Data type unkown")
         # exit()
 
     # Initialize the array
@@ -90,11 +97,11 @@ def open_data_band(filename):
     """
     data = gdal.Open(filename, gdal.GA_Update)
     if data is None:
-        print('Impossible to open ' + filename)
+        print("Impossible to open " + filename)
         # exit()
     nc = data.RasterXSize
     nl = data.RasterYSize
-#    d  = data.RasterCount
+    #    d  = data.RasterCount
 
     # Get the type of the data
     gdal_dt = data.GetRasterBand(1).DataType
@@ -105,9 +112,9 @@ def open_data_band(filename):
     return data, im
 
 
-'''
+"""
 Old function that open all the bands
-'''
+"""
 #
 #    for i in range(d):
 #        im[:,:,i]=data.GetRasterBand(i+1).ReadAsArray()
@@ -118,7 +125,7 @@ Old function that open all the bands
 
 
 def write_data(outname, im, GeoTransform, Projection):
-    '''
+    """
     The function write the image on the  hard drive.
     Input:
         outname: the name of the file to be written
@@ -127,7 +134,7 @@ def write_data(outname, im, GeoTransform, Projection):
         Projection: the projection information
     Output:
         Nothing --
-    '''
+    """
     nl = im.shape[0]
     nc = im.shape[1]
     if im.ndim == 2:
@@ -135,7 +142,7 @@ def write_data(outname, im, GeoTransform, Projection):
     else:
         d = im.shape[2]
 
-    driver = gdal.GetDriverByName('GTiff')
+    driver = gdal.GetDriverByName("GTiff")
     dt = im.dtype.name
     # Get the data type
     gdal_dt = getGDALGDT(dt)
@@ -157,7 +164,7 @@ def write_data(outname, im, GeoTransform, Projection):
 
 
 def create_empty_tiff(outname, im, d, GeoTransform, Projection):
-    '''!@brief Write an empty image on the hard drive.
+    """!@brief Write an empty image on the hard drive.
 
     Input:
         outname: the name of the file to be written
@@ -166,11 +173,11 @@ def create_empty_tiff(outname, im, d, GeoTransform, Projection):
         Projection: the projection information
     Output:
         Nothing --
-    '''
+    """
     nl = im.shape[0]
     nc = im.shape[1]
 
-    driver = gdal.GetDriverByName('GTiff')
+    driver = gdal.GetDriverByName("GTiff")
     dt = im.dtype.name
     # Get the data type
     gdal_dt = getGDALGDT(dt)
@@ -181,9 +188,11 @@ def create_empty_tiff(outname, im, d, GeoTransform, Projection):
 
     return dst_ds
 
-    '''
+    """
     Old function that cannot manage to write on each band outside the script
-    '''
+    """
+
+
 #    if d==1:
 #        out = dst_ds.GetRasterBand(1)
 #        out.WriteArray(im)
@@ -196,9 +205,8 @@ def create_empty_tiff(outname, im, d, GeoTransform, Projection):
 #    dst_ds = None
 
 
-def get_samples_from_roi(raster_name, roi_name,
-                         stand_name=False, getCoords=False):
-    '''!@brief Get the set of pixels given the thematic map.
+def get_samples_from_roi(raster_name, roi_name, stand_name=False, getCoords=False):
+    """!@brief Get the set of pixels given the thematic map.
     Get the set of pixels given the thematic map. Both map should be of same size. Data is read per block.
         Input:
             raster_name: the name of the raster file, could be any file that GDAL can open
@@ -208,30 +216,31 @@ def get_samples_from_roi(raster_name, roi_name,
                 line of the matrix is a pixel.
             Y: the label of the pixel
     Written by Mathieu Fauvel.
-    '''
+    """
     # Open Raster
     raster = gdal.Open(raster_name, gdal.GA_ReadOnly)
     if raster is None:
-        print('Impossible to open ' + raster_name)
+        print("Impossible to open " + raster_name)
         # exit()
 
     # Open ROI
     roi = gdal.Open(roi_name, gdal.GA_ReadOnly)
     if roi is None:
-        print('Impossible to open ' + roi_name)
+        print("Impossible to open " + roi_name)
         # exit()
 
     if stand_name:
         # Open Stand
         stand = gdal.Open(stand_name, gdal.GA_ReadOnly)
         if stand is None:
-            print('Impossible to open ' + stand_name)
+            print("Impossible to open " + stand_name)
             # exit()
 
     # Some tests
     if (raster.RasterXSize != roi.RasterXSize) or (
-            raster.RasterYSize != roi.RasterYSize):
-        print('Images should be of the same size')
+        raster.RasterYSize != roi.RasterYSize
+    ):
+        print("Images should be of the same size")
         # exit()
 
     # Get block size
@@ -267,8 +276,8 @@ def get_samples_from_roi(raster_name, roi_name,
 
     # Read block data
     X = np.array([]).reshape(0, d)
-    Y = np.array([],dtype=np.uint16).reshape(0, 1)
-    STD = np.array([],dtype=np.uint16).reshape(0, 1)
+    Y = np.array([], dtype=np.uint16).reshape(0, 1)
+    STD = np.array([], dtype=np.uint16).reshape(0, 1)
 
     for i in range(0, nl, y_block_size):
         if i + y_block_size < nl:  # Check for size consistency in Y
@@ -290,17 +299,13 @@ def get_samples_from_roi(raster_name, roi_name,
             t = np.nonzero(ROI)
 
             if t[0].size > 0:
-                Y = np.concatenate(
-                    (Y, ROI[t].reshape(
-                        (t[0].shape[0], 1))))
+                Y = np.concatenate((Y, ROI[t].reshape((t[0].shape[0], 1))))
                 if stand_name:
-                    STD = np.concatenate(
-                        (STD, STAND[t].reshape(
-                            (t[0].shape[0], 1))))
+                    STD = np.concatenate((STD, STAND[t].reshape((t[0].shape[0], 1))))
                 if getCoords:
-                    #coords = sp.append(coords,(i,j))
-                    #coordsTp = sp.array(([[cols,lines]]))
-                    #coords = sp.concatenate((coords,coordsTp))
+                    # coords = sp.append(coords,(i,j))
+                    # coordsTp = sp.array(([[cols,lines]]))
+                    # coords = sp.concatenate((coords,coordsTp))
                     # print(t[1])
                     # print(i)
                     # sp.array([[t[1],i]])
@@ -316,18 +321,12 @@ def get_samples_from_roi(raster_name, roi_name,
                 # Load the Variables
                 Xtp = np.empty((t[0].shape[0], d))
                 for k in range(d):
-                    band = raster.GetRasterBand(
-                        k +
-                        1).ReadAsArray(
-                        j,
-                        i,
-                        cols,
-                        lines)
+                    band = raster.GetRasterBand(k + 1).ReadAsArray(j, i, cols, lines)
                     Xtp[:, k] = band[t]
                 try:
                     X = np.concatenate((X, Xtp))
                 except MemoryError:
-                    print('Impossible to allocate memory: ROI too big')
+                    print("Impossible to allocate memory: ROI too big")
                     exit()
 
     """
@@ -379,23 +378,28 @@ def getDTfromGDAL(gdal_dt):
     dt : datatype
     """
     if gdal_dt == gdal.GDT_Byte:
-        dt = 'uint8'
+        dt = "uint8"
     elif gdal_dt == gdal.GDT_Int16:
-        dt = 'int16'
+        dt = "int16"
     elif gdal_dt == gdal.GDT_UInt16:
-        dt = 'uint16'
+        dt = "uint16"
     elif gdal_dt == gdal.GDT_Int32:
-        dt = 'int32'
+        dt = "int32"
     elif gdal_dt == gdal.GDT_UInt32:
-        dt = 'uint32'
+        dt = "uint32"
     elif gdal_dt == gdal.GDT_Float32:
-        dt = 'float32'
+        dt = "float32"
     elif gdal_dt == gdal.GDT_Float64:
-        dt = 'float64'
-    elif gdal_dt == gdal.GDT_CInt16 or gdal_dt == gdal.GDT_CInt32 or gdal_dt == gdal.GDT_CFloat32 or gdal_dt == gdal.GDT_CFloat64:
-        dt = 'complex64'
+        dt = "float64"
+    elif (
+        gdal_dt == gdal.GDT_CInt16
+        or gdal_dt == gdal.GDT_CInt32
+        or gdal_dt == gdal.GDT_CFloat32
+        or gdal_dt == gdal.GDT_CFloat64
+    ):
+        dt = "complex64"
     else:
-        print('Data type unkown')
+        print("Data type unkown")
         # exit()
     return dt
 
@@ -413,24 +417,24 @@ def getGDALGDT(dt):
     ----------
     gdal_dt : gdal datatype
     """
-    if dt == 'bool' or dt == 'uint8':
+    if dt == "bool" or dt == "uint8":
         gdal_dt = gdal.GDT_Byte
-    elif dt == 'int8' or dt == 'int16':
+    elif dt == "int8" or dt == "int16":
         gdal_dt = gdal.GDT_Int16
-    elif dt == 'uint16':
+    elif dt == "uint16":
         gdal_dt = gdal.GDT_UInt16
-    elif dt == 'int32':
+    elif dt == "int32":
         gdal_dt = gdal.GDT_Int32
-    elif dt == 'uint32':
+    elif dt == "uint32":
         gdal_dt = gdal.GDT_UInt32
-    elif dt == 'int64' or dt == 'uint64' or dt == 'float16' or dt == 'float32':
+    elif dt == "int64" or dt == "uint64" or dt == "float16" or dt == "float32":
         gdal_dt = gdal.GDT_Float32
-    elif dt == 'float64':
+    elif dt == "float64":
         gdal_dt = gdal.GDT_Float64
-    elif dt == 'complex64':
+    elif dt == "complex64":
         gdal_dt = gdal.GDT_CFloat64
     else:
-        print('Data type non-suported')
+        print("Data type non-suported")
         # exit()
 
     return gdal_dt
@@ -438,17 +442,17 @@ def getGDALGDT(dt):
 
 def predict_image(raster_name, classif_name, classifier, mask_name=None):
     """!@brief Classify the whole raster image, using per block image analysis
-        The classifier is given in classifier and options in kwargs.
+    The classifier is given in classifier and options in kwargs.
 
-        Input:
-            raster_name (str)
-            classif_name (str)
-            classifier (str)
-            mask_name(str)
+    Input:
+        raster_name (str)
+        classif_name (str)
+        classifier (str)
+        mask_name(str)
 
-        Return:
-            Nothing but raster written on disk
-        Written by Mathieu Fauvel.
+    Return:
+        Nothing but raster written on disk
+    Written by Mathieu Fauvel.
     """
     # Parameters
     block_sizes = 512
@@ -456,7 +460,7 @@ def predict_image(raster_name, classif_name, classifier, mask_name=None):
     # Open Raster and get additionnal information
     raster = gdal.Open(raster_name, gdal.GA_ReadOnly)
     if raster is None:
-        print('Impossible to open ' + raster_name)
+        print("Impossible to open " + raster_name)
         # exit()
 
     # If provided, open mask
@@ -465,12 +469,13 @@ def predict_image(raster_name, classif_name, classifier, mask_name=None):
     else:
         mask = gdal.Open(mask_name, gdal.GA_ReadOnly)
         if mask is None:
-            print('Impossible to open ' + mask_name)
+            print("Impossible to open " + mask_name)
             # exit()
         # Check size
         if (raster.RasterXSize != mask.RasterXSize) or (
-                raster.RasterYSize != mask.RasterYSize):
-            print('Image and mask should be of the same size')
+            raster.RasterYSize != mask.RasterYSize
+        ):
+            print("Image and mask should be of the same size")
             # exit()
 
     # Get the size of the image
@@ -487,20 +492,20 @@ def predict_image(raster_name, classif_name, classifier, mask_name=None):
     y_block_size = block_sizes
 
     # Initialize the output
-    driver = gdal.GetDriverByName('GTiff')
+    driver = gdal.GetDriverByName("GTiff")
     dst_ds = driver.Create(classif_name, nc, nl, 1, gdal.GDT_UInt16)
     dst_ds.SetGeoTransform(GeoTransform)
     dst_ds.SetProjection(Projection)
     out = dst_ds.GetRasterBand(1)
 
     # Set the classifiers
-    if classifier['name'] is 'NPFS':
+    if classifier["name"] == "NPFS":
         # With GMM
-        model = classifier['model']
-        ids = classifier['ids']
+        model = classifier["model"]
+        ids = classifier["ids"]
         nv = len(ids)
-    elif classifier['name'] is 'GMM':
-        model = classifier['model']
+    elif classifier["name"] == "GMM":
+        model = classifier["model"]
 
     # Perform the classification
     for i in range(0, nl, y_block_size):
@@ -515,39 +520,51 @@ def predict_image(raster_name, classif_name, classifier, mask_name=None):
                 cols = nc - j
 
             # Do the prediction
-            if classifier['name'] is 'NPFS':
+            if classifier["name"] == "NPFS":
                 # Load the data
                 X = np.empty((cols * lines, nv))
                 for ind, v in enumerate(ids):
-                    X[:, ind] = raster.GetRasterBand(
-                        int(v + 1)).ReadAsArray(j, i, cols, lines).reshape(cols * lines)
+                    X[:, ind] = (
+                        raster.GetRasterBand(int(v + 1))
+                        .ReadAsArray(j, i, cols, lines)
+                        .reshape(cols * lines)
+                    )
 
                 # Do the prediction
                 if mask is None:
-                    yp = model.predict_gmm(X)[0].astype('uint16')
+                    yp = model.predict_gmm(X)[0].astype("uint16")
                 else:
-                    mask_temp = mask.GetRasterBand(1).ReadAsArray(
-                        j, i, cols, lines).reshape(cols * lines)
+                    mask_temp = (
+                        mask.GetRasterBand(1)
+                        .ReadAsArray(j, i, cols, lines)
+                        .reshape(cols * lines)
+                    )
                     t = np.where(mask_temp != 0)[0]
                     yp = np.zeros((cols * lines,))
-                    yp[t] = model.predict_gmm(X[t, :])[0].astype('uint16')
+                    yp[t] = model.predict_gmm(X[t, :])[0].astype("uint16")
 
-            elif classifier['name'] is 'GMM':
+            elif classifier["name"] == "GMM":
                 # Load the data
                 X = np.empty((cols * lines, d))
                 for ind in range(d):
-                    X[:, ind] = raster.GetRasterBand(
-                        int(ind + 1)).ReadAsArray(j, i, cols, lines).reshape(cols * lines)
+                    X[:, ind] = (
+                        raster.GetRasterBand(int(ind + 1))
+                        .ReadAsArray(j, i, cols, lines)
+                        .reshape(cols * lines)
+                    )
 
                 # Do the prediction
                 if mask is None:
-                    yp = model.predict_gmm(X)[0].astype('uint16')
+                    yp = model.predict_gmm(X)[0].astype("uint16")
                 else:
-                    mask_temp = mask.GetRasterBand(1).ReadAsArray(
-                        j, i, cols, lines).reshape(cols * lines)
+                    mask_temp = (
+                        mask.GetRasterBand(1)
+                        .ReadAsArray(j, i, cols, lines)
+                        .reshape(cols * lines)
+                    )
                     t = np.where(mask_temp != 0)[0]
                     yp = np.zeros((cols * lines,))
-                    yp[t] = model.predict_gmm(X[t, :])[0].astype('uint16')
+                    yp[t] = model.predict_gmm(X[t, :])[0].astype("uint16")
 
             # Write the data
             out.WriteArray(yp.reshape(lines, cols), j, i)
@@ -560,8 +577,9 @@ def predict_image(raster_name, classif_name, classifier, mask_name=None):
 
 
 def create_uniquevalue_tiff(
-        outname, im, d, GeoTransform, Projection, wholeValue=1, gdal_dt=False):
-    '''!@brief Write an empty image on the hard drive.
+    outname, im, d, GeoTransform, Projection, wholeValue=1, gdal_dt=False
+):
+    """!@brief Write an empty image on the hard drive.
 
     Input:
         outname: the name of the file to be written
@@ -570,11 +588,11 @@ def create_uniquevalue_tiff(
         Projection: the projection information
     Output:
         Nothing --
-    '''
+    """
     nl = im.shape[0]
     nc = im.shape[1]
 
-    driver = gdal.GetDriverByName('GTiff')
+    driver = gdal.GetDriverByName("GTiff")
     # Get the data type
     if not gdal_dt:
         gdal_dt = gdal.GDT_Byte
@@ -601,24 +619,21 @@ def create_uniquevalue_tiff(
 
 def rasterize(data, vectorSrc, field, outFile):
     dataSrc = gdal.Open(data)
-    
+
     shp = ogr.Open(vectorSrc)
 
     lyr = shp.GetLayer()
 
-    driver = gdal.GetDriverByName('GTiff')
+    driver = gdal.GetDriverByName("GTiff")
     dst_ds = driver.Create(
-        outFile,
-        dataSrc.RasterXSize,
-        dataSrc.RasterYSize,
-        1,
-        gdal.GDT_UInt16)
+        outFile, dataSrc.RasterXSize, dataSrc.RasterYSize, 1, gdal.GDT_UInt16
+    )
     dst_ds.SetGeoTransform(dataSrc.GetGeoTransform())
     dst_ds.SetProjection(dataSrc.GetProjection())
     if field is None:
         gdal.RasterizeLayer(dst_ds, [1], lyr, None)
     else:
-        OPTIONS = ['ATTRIBUTE=' + field]
+        OPTIONS = ["ATTRIBUTE=" + field]
         gdal.RasterizeLayer(dst_ds, [1], lyr, None, options=OPTIONS)
 
     data, dst_ds, shp, lyr = None, None, None, None
@@ -627,18 +642,18 @@ def rasterize(data, vectorSrc, field, outFile):
 
 def scale(x, M=None, m=None):  # TODO:  DO IN PLACE SCALING
     """!@brief Function that standardize the data
-        Input:
-            x: the data
-            M: the Max vector
-            m: the Min vector
-        Output:
-            x: the standardize data
-            M: the Max vector
-            m: the Min vector
+    Input:
+        x: the data
+        M: the Max vector
+        m: the Min vector
+    Output:
+        x: the standardize data
+        M: the Max vector
+        m: the Min vector
     """
     [n, d] = x.shape
     if np.float64 != x.dtype.type:
-        x = x.astype('float')
+        x = x.astype("float")
 
     # Initialization of the output
     xs = np.empty_like(x)
@@ -664,11 +679,11 @@ def scale(x, M=None, m=None):  # TODO:  DO IN PLACE SCALING
 
 if __name__ == "__main__":
     Raster = "/mnt/DATA/Test/dzetsaka/map.tif"
-    ROI = '/home/nicolas/Bureau/train_300class.gpkg'
-    rasterize(Raster, ROI, 'Class', '/tmp/roi.tif')
+    ROI = "/home/nicolas/Bureau/train_300class.gpkg"
+    rasterize(Raster, ROI, "Class", "/tmp/roi.tif")
 
-#    X, Y, coords = get_samples_from_roi(Raster, '/tmp/roi.tif', getCoords=True)
-    X, Y = get_samples_from_roi(Raster, '/tmp/roi.tif')
+    #    X, Y, coords = get_samples_from_roi(Raster, '/tmp/roi.tif', getCoords=True)
+    X, Y = get_samples_from_roi(Raster, "/tmp/roi.tif")
     print(np.amax(Y))
     """
     import accuracy_index as ai

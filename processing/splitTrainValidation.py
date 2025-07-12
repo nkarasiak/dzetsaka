@@ -24,29 +24,30 @@
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QCoreApplication
 
-from qgis.core import (QgsMessageLog,
-                       QgsProcessingAlgorithm,
-                       QgsProcessingParameterVectorLayer,
-                       QgsProcessingParameterField,
-                       QgsProcessingParameterEnum,
-                       QgsProcessingParameterNumber,
-                       QgsProcessingParameterVectorDestination)
+from qgis.core import (
+    QgsMessageLog,
+    QgsProcessingAlgorithm,
+    QgsProcessingParameterVectorLayer,
+    QgsProcessingParameterField,
+    QgsProcessingParameterEnum,
+    QgsProcessingParameterNumber,
+    QgsProcessingParameterVectorDestination,
+)
 
 import os
-#from PyQt5.QtWidgets import QMessageBox
+
+# from PyQt5.QtWidgets import QMessageBox
 from ..scripts import function_vector
-pluginPath = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__),
-        os.pardir))
+
+pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
 
 class splitTrain(QgsProcessingAlgorithm):
-    INPUT_LAYER = 'INPUT_LAYER'
-    INPUT_COLUMN = 'INPUT_COLUMN'
+    INPUT_LAYER = "INPUT_LAYER"
+    INPUT_COLUMN = "INPUT_COLUMN"
     METHOD = "METHOD"
-    METHOD_VALUES = ['Percent', 'Count value']
-    VALUE = 'VALUE'
+    METHOD_VALUES = ["Percent", "Count value"]
+    VALUE = "VALUE"
     OUTPUT_VALIDATION = "OUTPUT_VALIDATION"
     OUTPUT_TRAIN = "OUTPUT_TRAIN"
 
@@ -58,33 +59,38 @@ class splitTrain(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Split train and validation'
+        return "Split train and validation"
 
     def icon(self):
-
-        return QIcon(os.path.join(pluginPath, 'icon.png'))
+        return QIcon(os.path.join(pluginPath, "icon.png"))
 
     def initAlgorithm(self, config=None):
-
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT_LAYER,
-                'Input layer',
-            ))
+                "Input layer",
+            )
+        )
         # TABLE / COLUMN
         self.addParameter(
             QgsProcessingParameterField(
                 self.INPUT_COLUMN,
-                'Field (column must have classification number (e.g. \'1\' forest, \'2\' water...))',
+                "Field (column must have classification number (e.g. '1' forest, '2' water...))",
                 parentLayerParameterName=self.INPUT_LAYER,
-                optional=False))  # save model
+                optional=False,
+            )
+        )  # save model
 
         # Train algorithm
 
         self.addParameter(
             QgsProcessingParameterEnum(
-                self.METHOD, "Select method for splitting dataset",
-                self.METHOD_VALUES, 0))
+                self.METHOD,
+                "Select method for splitting dataset",
+                self.METHOD_VALUES,
+                0,
+            )
+        )
 
         # SPLIT %
 
@@ -92,40 +98,46 @@ class splitTrain(QgsProcessingAlgorithm):
             QgsProcessingParameterNumber(
                 self.VALUE,
                 self.tr(
-                    'Select 50 for 50% if PERCENT method. Else, value represents whole size of test sample.'),
+                    "Select 50 for 50% if PERCENT method. Else, value represents whole size of test sample."
+                ),
                 type=QgsProcessingParameterNumber.Integer,
-                minValue=1, maxValue=99999, defaultValue=50))
+                minValue=1,
+                maxValue=99999,
+                defaultValue=50,
+            )
+        )
 
         # SAVE AS
         # SAVE MODEL
         self.addParameter(
             QgsProcessingParameterVectorDestination(
-                self.OUTPUT_VALIDATION,
-                self.tr("Output validation")))
+                self.OUTPUT_VALIDATION, self.tr("Output validation")
+            )
+        )
 
         self.addParameter(
             QgsProcessingParameterVectorDestination(
-                self.OUTPUT_TRAIN,
-                self.tr("Output train")))
+                self.OUTPUT_TRAIN, self.tr("Output train")
+            )
+        )
 
     def processAlgorithm(self, parameters, context, feedback):
-
-        INPUT_LAYER = self.parameterAsVectorLayer(
-            parameters, self.INPUT_LAYER, context)
-        INPUT_COLUMN = self.parameterAsFields(
-            parameters, self.INPUT_COLUMN, context)
+        INPUT_LAYER = self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
+        INPUT_COLUMN = self.parameterAsFields(parameters, self.INPUT_COLUMN, context)
         METHOD = self.parameterAsEnums(parameters, self.METHOD, context)
 
         OUTPUT_TRAIN = self.parameterAsOutputLayer(
-            parameters, self.OUTPUT_TRAIN, context)
+            parameters, self.OUTPUT_TRAIN, context
+        )
         OUTPUT_VALIDATION = self.parameterAsOutputLayer(
-            parameters, self.OUTPUT_VALIDATION, context)
+            parameters, self.OUTPUT_VALIDATION, context
+        )
 
         VALUE = self.parameterAsInt(parameters, self.VALUE, context)
         # Retrieve algo from code
         selectedMETHOD = self.METHOD_VALUES[METHOD[0]]
 
-        if selectedMETHOD == 'Percent':
+        if selectedMETHOD == "Percent":
             percent = True
         else:
             percent = False
@@ -133,21 +145,29 @@ class splitTrain(QgsProcessingAlgorithm):
         libOk = True
 
         try:
-            import sklearn
+            pass
         except BaseException:
             libOk = False
 
         if libOk:
-            function_vector.randomInSubset(INPUT_LAYER.dataProvider().dataSourceUri().split('|')[0], str(
-                INPUT_COLUMN[0]), OUTPUT_VALIDATION, OUTPUT_TRAIN, VALUE, percent)
-            return {self.OUTPUT_TRAIN: OUTPUT_TRAIN,
-                    self.OUTPUT_VALIDATION: OUTPUT_VALIDATION}
+            function_vector.randomInSubset(
+                INPUT_LAYER.dataProvider().dataSourceUri().split("|")[0],
+                str(INPUT_COLUMN[0]),
+                OUTPUT_VALIDATION,
+                OUTPUT_TRAIN,
+                VALUE,
+                percent,
+            )
+            return {
+                self.OUTPUT_TRAIN: OUTPUT_TRAIN,
+                self.OUTPUT_VALIDATION: OUTPUT_VALIDATION,
+            }
         else:
-            #QMessageBox(None, "Please install scikit-learn library")
+            # QMessageBox(None, "Please install scikit-learn library")
             QgsMessageLog.logMessage("Please install scikit-learn library")
 
     def tr(self, string):
-        return QCoreApplication.translate('Processing', string)
+        return QCoreApplication.translate("Processing", string)
 
     def createInstance(self):
         return splitTrain()
@@ -174,4 +194,4 @@ class splitTrain(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Vector manipulation'
+        return "Vector manipulation"

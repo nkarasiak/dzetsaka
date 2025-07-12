@@ -86,9 +86,11 @@ def create_plugin_package(output_dir='..'):
                     rel_path = os.path.relpath(file_path, '.')
                     
                     if not should_exclude(rel_path):
-                        zipf.write(file_path, rel_path)
+                        # Store files inside dzetsaka folder
+                        zip_path_in_archive = os.path.join('dzetsaka', rel_path)
+                        zipf.write(file_path, zip_path_in_archive)
                         file_count += 1
-                        print(f"  Added: {rel_path}")
+                        print(f"  Added: {zip_path_in_archive}")
             
             print(f"\nPackage created successfully!")
             print(f"Files included: {file_count}")

@@ -21,38 +21,34 @@
  ***************************************************************************/
 """
 
-
-__author__ = 'Nicolas Karasiak'
-__date__ = '2018-02-24'
-__copyright__ = '(C) 2018 by Nicolas Karasiak'
+__author__ = "Nicolas Karasiak"
+__date__ = "2018-02-24"
+__copyright__ = "(C) 2018 by Nicolas Karasiak"
 
 # This will get replaced with a git SHA1 when you do a git archive
 
-__revision__ = '$Format:%H$'
+__revision__ = "$Format:%H$"
 
 
 # from ... import dzetsaka.scripts.function_dataraster as dataraster
 
-#from PyQt4.QtGui import QIcon
-#from PyQt4.QtCore import QSettings
+# from PyQt4.QtGui import QIcon
+# from PyQt4.QtCore import QSettings
 
 
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QCoreApplication
 
-from qgis.core import (QgsMessageLog,
-                       QgsProcessingAlgorithm,
-                       QgsProcessingParameterRasterLayer,
-                       QgsProcessingParameterNumber,
-                       QgsProcessingParameterRasterDestination,
-                       QgsRasterLayer)
+from qgis.core import (
+    QgsProcessingAlgorithm,
+    QgsProcessingParameterRasterLayer,
+    QgsProcessingParameterNumber,
+    QgsProcessingParameterRasterDestination,
+)
 import os
 from ..scripts import function_dataraster as dataraster
 
-pluginPath = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__),
-        os.pardir))
+pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 # EX
 """
 from processing.core.GeoAlgorithm import GeoAlgorithm
@@ -79,13 +75,12 @@ class closingFilterAlgorithm(QgsProcessingAlgorithm):
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
 
-    INPUT_RASTER = 'INPUT_RASTER'
-    OUTPUT_RASTER = 'OUTPUT_RASTER'
-    CLOSING_SIZE = 'CLOSING_SIZE'
+    INPUT_RASTER = "INPUT_RASTER"
+    OUTPUT_RASTER = "OUTPUT_RASTER"
+    CLOSING_SIZE = "CLOSING_SIZE"
 
     def icon(self):
-
-        return QIcon(os.path.join(pluginPath, 'icon.png'))
+        return QIcon(os.path.join(pluginPath, "icon.png"))
 
     def initAlgorithm(self, config=None):
         """Here we define the inputs and output of the algorithm, along
@@ -96,16 +91,14 @@ class closingFilterAlgorithm(QgsProcessingAlgorithm):
         # It is a mandatory (not optional) one, hence the False argument
         self.addParameter(
             QgsProcessingParameterRasterLayer(
-                self.INPUT_RASTER,
-                self.tr('Input raster')
+                self.INPUT_RASTER, self.tr("Input raster")
             )
         )
 
         # We add a raster as output
         self.addParameter(
             QgsProcessingParameterRasterDestination(
-                self.OUTPUT_RASTER,
-                self.tr('Output raster')
+                self.OUTPUT_RASTER, self.tr("Output raster")
             )
         )
         # add num
@@ -113,10 +106,12 @@ class closingFilterAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.CLOSING_SIZE,
-                self.tr('Size of the closing filter'),
+                self.tr("Size of the closing filter"),
                 type=QgsProcessingParameterNumber.Integer,
                 defaultValue=5,
-                minValue=3))
+                minValue=3,
+            )
+        )
 
     def name(self):
         """
@@ -126,19 +121,20 @@ class closingFilterAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Closing filter'
+        return "Closing filter"
 
     def processAlgorithm(self, parameters, context, feedback):
         """Here is where the processing itself takes place."""
 
         INPUT_RASTER = self.parameterAsRasterLayer(
-            parameters, self.INPUT_RASTER, context)
-        #INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
+            parameters, self.INPUT_RASTER, context
+        )
+        # INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
         OUTPUT_RASTER = self.parameterAsOutputLayer(
-            parameters, self.OUTPUT_RASTER, context)
-        CLOSING_SIZE = self.parameterAsInt(
-            parameters, self.CLOSING_SIZE, context)
-        
+            parameters, self.OUTPUT_RASTER, context
+        )
+        CLOSING_SIZE = self.parameterAsInt(parameters, self.CLOSING_SIZE, context)
+
         """
         MEDIAN_ITER = self.parameterAsInt(parameters, self.MEDIAN_ITER, context)
         MEDIAN_SIZE = self.parameterAsInt(parameters, self.MEDIAN_SIZE, context)
@@ -152,7 +148,7 @@ class closingFilterAlgorithm(QgsProcessingAlgorithm):
         INPUT_RASTER_src = INPUT_RASTER.source()
 
         # feedback.pushInfo(str(OUTPUT_RASTER))
-        #QgsMessageLog.logMessage('output is: '+str(OUTPUT_RASTER))
+        # QgsMessageLog.logMessage('output is: '+str(OUTPUT_RASTER))
 
         from scipy.ndimage.morphology import grey_closing
 
@@ -166,8 +162,6 @@ class closingFilterAlgorithm(QgsProcessingAlgorithm):
 
         outFile = dataraster.create_empty_tiff(OUTPUT_RASTER, im, d, geo, proj)
 
-        iterPos = 0
-
         for i in range(d):
             # Read data from the right band
             # pbNow+=1
@@ -175,10 +169,8 @@ class closingFilterAlgorithm(QgsProcessingAlgorithm):
 
             tempBand = data.GetRasterBand(i + 1).ReadAsArray()
 
-       
-            tempBand = grey_closing(
-                tempBand, size=(CLOSING_SIZE, CLOSING_SIZE))
-            #tempBand = tempBand
+            tempBand = grey_closing(tempBand, size=(CLOSING_SIZE, CLOSING_SIZE))
+            # tempBand = tempBand
             feedback.setProgress(int(i * total))
 
             # Save bandand outFile
@@ -192,7 +184,7 @@ class closingFilterAlgorithm(QgsProcessingAlgorithm):
         # return OUTPUT_RASTER
 
     def tr(self, string):
-        return QCoreApplication.translate('Processing', string)
+        return QCoreApplication.translate("Processing", string)
 
     def createInstance(self):
         return closingFilterAlgorithm()
@@ -219,4 +211,4 @@ class closingFilterAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Raster tool'
+        return "Raster tool"

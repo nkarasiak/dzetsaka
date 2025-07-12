@@ -6,13 +6,10 @@ Created on Fri Mar 23 11:24:38 2018
 @author: nkarasiak
 """
 
-
 try:
     # if use in Qgis 3
-    from . import function_dataraster as dataraster
     from .mainfunction import pushFeedback
 except BaseException:
-    import function_dataraster as dataraster
     from mainfunction import pushFeedback
 
 
@@ -20,10 +17,10 @@ try:
     from osgeo import gdal
 except ImportError:
     import gdal
-#import tempfile
+# import tempfile
 # import ot
 import os
-#from sklearn import preprocessing
+# from sklearn import preprocessing
 
 
 import numpy as np
@@ -46,15 +43,17 @@ class rasterOT(object):
 
     """
 
-    def __init__(self, transportAlgorithm="MappingTransport",
-                 scaler=False, params=None, feedback=True):
+    def __init__(
+        self,
+        transportAlgorithm="MappingTransport",
+        scaler=False,
+        params=None,
+        feedback=True,
+    ):
         try:
-            from sklearn.metrics import mean_squared_error
-            from itertools import product
-            from sklearn.metrics import (
-                f1_score, cohen_kappa_score, accuracy_score)
+            pass
         except BaseException:
-            raise ImportError('Please install itertools and scikit-learn')
+            raise ImportError("Please install itertools and scikit-learn")
 
         self.transportAlgorithm = transportAlgorithm
         self.feedback = feedback
@@ -63,6 +62,7 @@ class rasterOT(object):
 
         if scaler:
             from sklearn.preprocessing import MinMaxScaler
+
             self.scaler = MinMaxScaler(feature_range=(-1, 1))
             self.scalerTarget = MinMaxScaler(feature_range=(-1, 1))
         else:
@@ -96,9 +96,12 @@ class rasterOT(object):
 
         if self.feedback:
             pushFeedback(10, feedback=self.feedback)
-            pushFeedback('Learning Optimal Transport with ' +
-                         str(self.transportAlgorithm) +
-                         ' algorithm.', feedback=self.feedback)
+            pushFeedback(
+                "Learning Optimal Transport with "
+                + str(self.transportAlgorithm)
+                + " algorithm.",
+                feedback=self.feedback,
+            )
 
         # check if label is 1d
         if ys is not None:
@@ -116,8 +119,7 @@ class rasterOT(object):
             Xt = self.scalerTarget.transform(Xt)
 
         # import Domain Adaptation specific algorithm function from OT Library
-        self.transportFunction = getattr(
-            __import__("ot").da, self.transportAlgorithm)
+        self.transportFunction = getattr(__import__("ot").da, self.transportAlgorithm)
 
         if self.params is None:
             self.transportModel = self.transportFunction()
@@ -143,8 +145,9 @@ class rasterOT(object):
 
         return self.transportModel
 
-    def predictTransfer(self, imageSource, outRaster, mask=None,
-                        NODATA=-9999, feedback=None, norm=False):
+    def predictTransfer(
+        self, imageSource, outRaster, mask=None, NODATA=-9999, feedback=None, norm=False
+    ):
         """
         Predict model using domain adaptation.
 
@@ -170,8 +173,7 @@ class rasterOT(object):
 
         """
         if self.feedback:
-            pushFeedback('Now transporting ' +
-                         str(os.path.basename(imageSource)))
+            pushFeedback("Now transporting " + str(os.path.basename(imageSource)))
 
         dataSrc = gdal.Open(imageSource)
         # Get the size of the image
@@ -188,10 +190,10 @@ class rasterOT(object):
         block_sizes = band.GetBlockSize()
         x_block_size = block_sizes[0]
         y_block_size = block_sizes[1]
-        #gdal_dt = band.DataType
+        # gdal_dt = band.DataType
 
         # Initialize the output
-        driver = gdal.GetDriverByName('GTiff')
+        driver = gdal.GetDriverByName("GTiff")
 
         dst_ds = driver.Create(outRaster, nc, nl, d, 3)
         dst_ds.SetGeoTransform(GeoTransform)
@@ -220,8 +222,7 @@ class rasterOT(object):
                 lines = y_block_size
             else:
                 lines = nl - i
-            for j in range(
-                    0, nc, x_block_size):  # Check for size consistency in X
+            for j in range(0, nc, x_block_size):  # Check for size consistency in X
                 if j + x_block_size < nc:
                     cols = x_block_size
                 else:
@@ -230,17 +231,26 @@ class rasterOT(object):
                 # Load the data and Do the prediction
                 X = np.empty((cols * lines, d))
                 for ind in range(d):
-                    X[:, ind] = dataSrc.GetRasterBand(
-                        int(ind + 1)).ReadAsArray(j, i, cols, lines).reshape(cols * lines)
+                    X[:, ind] = (
+                        dataSrc.GetRasterBand(int(ind + 1))
+                        .ReadAsArray(j, i, cols, lines)
+                        .reshape(cols * lines)
+                    )
 
                 # Do the prediction
 
                 if mask is None:
-                    mask_temp = dataSrc.GetRasterBand(1).ReadAsArray(
-                        j, i, cols, lines).reshape(cols * lines)
+                    mask_temp = (
+                        dataSrc.GetRasterBand(1)
+                        .ReadAsArray(j, i, cols, lines)
+                        .reshape(cols * lines)
+                    )
                 else:
-                    mask_temp = maskData.GetRasterBand(1).ReadAsArray(
-                        j, i, cols, lines).reshape(cols * lines)
+                    mask_temp = (
+                        maskData.GetRasterBand(1)
+                        .ReadAsArray(j, i, cols, lines)
+                        .reshape(cols * lines)
+                    )
 
                 # check if nodata
                 t = np.where((mask_temp != 0) & (X[:, 0] != NODATA))[0]
@@ -273,7 +283,6 @@ class rasterOT(object):
         # search for gridSearch
         paramGrid = []
         for key in self.params_.keys():
-
             if isinstance(self.params_.get(key), (list, np.ndarray)):
                 paramGrid.append(key)
 
@@ -303,16 +312,16 @@ class rasterOT(object):
         for gridOT in self.generateParamForGridSearch():
             self.transportModel = self.transportFunction(**gridOT)
             self.transportModel.fit(Xs, ys, Xt, yt)
-            #XsTransformed = self.transportModel.transform(Xs)
-            #XsPredict = self.inverseTransform(XsTransformed)
+            # XsTransformed = self.transportModel.transform(Xs)
+            # XsPredict = self.inverseTransform(XsTransformed)
             from ot.da import BaseTransport
+
             transp_Xt = BaseTransport.inverse_transform(
-                self.transportModel, Xs=Xs, ys=ys, Xt=Xt, yt=yt)
+                self.transportModel, Xs=Xs, ys=ys, Xt=Xt, yt=yt
+            )
 
             if self.feedback:
-                pushFeedback(
-                    'Testing params : ' + str(gridOT),
-                    feedback=self.feedback)
+                pushFeedback("Testing params : " + str(gridOT), feedback=self.feedback)
             """
             #score = mean_squared_error(Xs,XsPredict)
 
@@ -354,9 +363,7 @@ class rasterOT(object):
             currentScore = mean_squared_error(Xs, transp_Xt)
 
             if self.feedback:
-                pushFeedback(
-                    'RMSE is : ' + str(currentScore),
-                    feedback=self.feedback)
+                pushFeedback("RMSE is : " + str(currentScore), feedback=self.feedback)
 
             if self.bestScore is None or self.bestScore > currentScore:
                 self.bestScore = currentScore
@@ -366,10 +373,8 @@ class rasterOT(object):
             del self.transportModel,yp
             """
         if self.feedback:
-            pushFeedback('Best grid is ' +
-                         str(self.bestParam), feedback=self.feedback)
-            pushFeedback('Best score is ' +
-                         str(self.bestScore), feedback=self.feedback)
+            pushFeedback("Best grid is " + str(self.bestParam), feedback=self.feedback)
+            pushFeedback("Best score is " + str(self.bestScore), feedback=self.feedback)
 
     """
     def gridSearchCV(self):
@@ -385,14 +390,16 @@ class rasterOT(object):
         -------
         transp_Xt : array-like, shape (n_source_samples, n_features)
             The transport source samples.
-            """
+        """
 
         # perform standard barycentric mapping
-        transp = self.transportModel.coupling_.T / \
-            np.sum(self.transportModel.coupling_, 0)[:, None]
+        transp = (
+            self.transportModel.coupling_.T
+            / np.sum(self.transportModel.coupling_, 0)[:, None]
+        )
 
         # set nans to 0
-        transp[~ np.isfinite(transp)] = 0
+        transp[~np.isfinite(transp)] = 0
 
         # compute transported samples
         transp_Xt = np.dot(transp, self.transportModel.xs_)

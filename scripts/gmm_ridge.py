@@ -1,5 +1,5 @@
-"""!@brief Script by Mathieu Fauvel which performs Gaussian Mixture Model
-"""  # -*- coding: utf-8 -*-
+"""!@brief Script by Mathieu Fauvel which performs Gaussian Mixture Model"""  # -*- coding: utf-8 -*-
+
 from __future__ import print_function
 from builtins import str
 from builtins import range
@@ -21,21 +21,21 @@ def predict(tau, model, xT, yT):
 
 
 class CV(object):
-    '''
+    """
     This class implements the generation of several folds to be used in the cross validation
-    '''
+    """
 
     def __init__(self):
         self.it = []
         self.iT = []
 
     def split_data(self, n, v=5):
-        ''' The function split the data into v folds. Whatever the number of sample per class
+        """The function split the data into v folds. Whatever the number of sample per class
         Input:
             n : the number of samples
             v : the number of folds
         Output: None
-        '''
+        """
         step = n // v  # Compute the number of samples in each fold
         # Set the random generator to the same initial state
         np.random.seed(1)
@@ -43,9 +43,9 @@ class CV(object):
         t = np.random.permutation(n)
 
         indices = []
-        for i in range(v - 1):            # group in v fold
-            indices.append(t[i * step:(i + 1) * step])
-        indices.append(t[(v - 1) * step:n])
+        for i in range(v - 1):  # group in v fold
+            indices.append(t[i * step : (i + 1) * step])
+        indices.append(t[(v - 1) * step : n])
 
         for i in range(v):
             self.iT.append(np.asarray(indices[i]))
@@ -57,15 +57,14 @@ class CV(object):
             self.it.append(temp)
 
     def split_data_class(self, y, v=5):
-        ''' The function split the data into v folds. The samples of each class are split approximatly in v folds
+        """The function split the data into v folds. The samples of each class are split approximatly in v folds
         Input:
             n : the number of samples
             v : the number of folds
         Output: None
-        '''
+        """
         # Get parameters
-        n = y.size
-        C = y.max().astype('int')
+        C = y.max().astype("int")
 
         # Get the step for each class
         tc = []
@@ -80,10 +79,11 @@ class CV(object):
                 if stepc == 0:
                     # fix_print_with_import
                     print(
-                        "Not enough sample to build " +
-                        str(v) +
-                        " folds in class " +
-                        str(i))
+                        "Not enough sample to build "
+                        + str(v)
+                        + " folds in class "
+                        + str(i)
+                    )
                 # Set the random generator to the same initial state
                 np.random.seed(i)
                 # Random sampling of indices of samples for class i
@@ -121,21 +121,20 @@ class GMMR(object):
         self.tau = 0.0
 
     def learn(self, x, y):
-        '''
+        """
         Function that learns the GMM with ridge regularizationb from training samples
         Input:
             x : the training samples
             y :  the labels
         Output:
             the mean, covariance and proportion of each class, as well as the spectral decomposition of the covariance matrix
-        '''
+        """
 
         # Get information from the data
         C = np.unique(y).shape[0]
         # C = int(y.max(0))  # Number of classes
         n = x.shape[0]  # Number of samples
         d = x.shape[1]  # Number of variables
-        eps = np.finfo(np.float64).eps
 
         # Initialization
         # Vector of number of samples for each class
@@ -145,11 +144,10 @@ class GMMR(object):
         self.cov = np.empty((C, d, d))  # Matrix of covariance
         self.Q = np.empty((C, d, d))  # Matrix of eigenvectors
         self.L = np.empty((C, d))  # Vector of eigenvalues
-        self.classnum = np.empty(C).astype('uint16')
+        self.classnum = np.empty(C).astype("uint16")
         self.classes_ = self.classnum
         # Learn the parameter of the model for each class
         for c, cR in enumerate(np.unique(y)):
-
             j = np.where(y == (cR))[0]
 
             self.classnum[c] = cR  # Save the right label
@@ -166,22 +164,22 @@ class GMMR(object):
             self.Q[c, :, :] = Q[:, idx]
 
     def predict(self, xt, tau=None, confidenceMap=None):
-        '''
+        """
         Function that predict the label for sample xt using the learned model
         Inputs:
             xt: the samples to be classified
         Outputs:
             y: the class
             K: the decision value for each class
-        '''
+        """
 
         MAX = np.finfo(np.float64).max
         # Maximum value that is possible to compute with sp.exp
         E_MAX = np.log(MAX)
 
         # Get information from the data
-        nt = xt.shape[0]        # Number of testing samples
-        C = self.ni.shape[0]    # Number of classes
+        nt = xt.shape[0]  # Number of testing samples
+        C = self.ni.shape[0]  # Number of classes
 
         # Initialization
         K = np.empty((nt, C))
@@ -203,20 +201,18 @@ class GMMR(object):
         yp = np.argmin(K, 1)
 
         if confidenceMap is None:
-
             # Assign the label save in classnum to the minimum value of K
             yp = self.classnum[yp]
 
             return yp
 
         else:
-
             K *= -0.5
             K[K > E_MAX], K[K < -E_MAX] = E_MAX, -E_MAX
             np.exp(K, out=K)
             K /= K.sum(axis=1).reshape(nt, 1)
             K = K[np.arange(len(K)), yp]
-            #K = sp.diag(K[:,yp])
+            # K = sp.diag(K[:,yp])
 
             yp = self.classnum[yp]
 
@@ -230,9 +226,9 @@ class GMMR(object):
         return invCov, logdet
 
     def BIC(self, x, y, tau=None):
-        '''
+        """
         Computes the Bayesian Information Criterion of the model
-        '''
+        """
         # Get information from the data
         C, d = self.mean.shape
         n = x.shape[0]
@@ -263,7 +259,7 @@ class GMMR(object):
         return L + P
 
     def cross_validation(self, x, y, tau, v=5):
-        '''
+        """
         Function that computes the cross validation accuracy for the value tau of the regularization
         Input:
             x : the training samples
@@ -272,11 +268,10 @@ class GMMR(object):
             v : the number of fold
         Output:
             err : the estimated error with cross validation for all tau's value
-        '''
+        """
         # Initialization
-        ns = x.shape[0]     # Number of samples
-        np = tau.size       # Number of parameters to test
-        cv = CV()           # Initialization of the indices for the cross validation
+        np = tau.size  # Number of parameters to test
+        cv = CV()  # Initialization of the indices for the cross validation
         cv.split_data_class(y)
         err = np.zeros(np)  # Initialization of the errors
 
@@ -288,8 +283,12 @@ class GMMR(object):
 
         # Initialization of the pool of processes
         pool = mp.Pool()
-        processes = [pool.apply_async(predict, args=(
-            tau, model_cv[i], x[cv.iT[i], :], y[cv.iT[i]])) for i in range(v)]
+        processes = [
+            pool.apply_async(
+                predict, args=(tau, model_cv[i], x[cv.iT[i], :], y[cv.iT[i]])
+            )
+            for i in range(v)
+        ]
         pool.close()
         pool.join()
         for p in processes:
