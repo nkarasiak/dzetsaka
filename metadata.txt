@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
 description=Fast and Easy Classification plugin for Qgis
-version=3.70
+version=4.0.0
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
