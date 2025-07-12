@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+QGIS Plugin Packaging Script for dzetsaka
+Creates a clean ZIP package for publishing to QGIS Plugin Repository
+"""
+
+import zipfile
+import os
+import re
+import fnmatch
+import sys
+from pathlib import Path
+
+# Fix encoding issues on Windows
+if sys.platform.startswith('win'):
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach())
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
+
+def get_version_from_metadata(metadata_file='metadata.txt'):
+    """Extract version from metadata.txt file"""
+    try:
+        with open(metadata_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+            match = re.search(r'version=(.+)', content)
+            if match:
+                return match.group(1).strip()
+    except FileNotFoundError:
+        print(f"Error: {metadata_file} not found")
+        return None
+    return None
+
+def should_exclude(path):
+    """Check if a file or directory should be excluded from the package"""
+    exclude_patterns = [
+        '__pycache__',
+        '*.qrc',
+        '*.ui',
+        'img/*',
+        '*.sh',
+        '*.bat',
+        '*.py~',
+        '*.pyc',
+        '*.pyo',
+        '.git*',
+        '*.zip'
+    ]
+    
+    # Exclude any folder or file starting with a dot
+    if any(part.startswith('.') for part in path.split(os.sep)):
+        return True
+    
+    # Check against exclude patterns
+    for pattern in exclude_patterns:
+        if fnmatch.fnmatch(path, pattern) or pattern.rstrip('/*') in path:
+            return True
+    
+    return False
+
+def create_plugin_package(output_dir='..'):
+    """Create the QGIS plugin package"""
+    # Get version from metadata
+    version = get_version_from_metadata()
+    if not version:
+        print("Error: Could not determine version from metadata.txt")
+        return False
+    
+    # Create output filename
+    zip_filename = f"dzetsaka_{version}.zip"
+    zip_path = os.path.join(output_dir, zip_filename)
+    
+    print(f"Creating package for version: {version}")
+    print(f"Output file: {zip_path}")
+    
+    try:
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            file_count = 0
+            
+            for root, dirs, files in os.walk('.'):
+                # Remove excluded directories from dirs list to prevent recursion
+                dirs[:] = [d for d in dirs if not should_exclude(d)]
+                
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(file_path, '.')
+                    
+                    if not should_exclude(rel_path):
+                        zipf.write(file_path, rel_path)
+                        file_count += 1
+                        print(f"  Added: {rel_path}")
+            
+            print(f"\nPackage created successfully!")
+            print(f"Files included: {file_count}")
+            print(f"Output: {zip_path}")
+            
+        # Show file size
+        file_size = os.path.getsize(zip_path)
+        size_mb = file_size / (1024 * 1024)
+        print(f"Package size: {file_size:,} bytes ({size_mb:.2f} MB)")
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error creating package: {e}")
+        return False
+
+def main():
+    """Main function"""
+    print("QGIS Plugin Packager for dzetsaka")
+    print("=" * 40)
+    
+    # Change to script directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(script_dir)
+    
+    # Create the package
+    success = create_plugin_package()
+    
+    if success:
+        print("\n✅ Package ready for QGIS Plugin Repository upload!")
+    else:
+        print("\n❌ Package creation failed!")
+        return 1
+    
+    return 0
+
+if __name__ == "__main__":
+    exit(main())
