@@ -208,15 +208,35 @@ class learnModel:
                 elif needXY:
                     X, Y = dataraster.get_samples_from_roi(inRaster, ROI)
 
-        except BaseException:
+        except ValueError as e:
+            if "could not convert" in str(e) or "invalid literal" in str(e):
+                msg = (
+                    "Data type error: Unable to convert class values to numbers. \n"
+                    "Please ensure your " + str(inField) + " field contains only integer values (1, 2, 3, etc.)\n"
+                    "Error details: " + str(e)
+                )
+            else:
+                msg = (
+                    "Data validation error: " + str(e) + "\n"
+                    "Please check your training data format and field values."
+                )
+            pushFeedback(msg, feedback=feedback)
+            if feedback == "gui":
+                pB.reset()
+            return None
+        except Exception as e:
             msg = (
-                "Problem with getting samples from ROI \n \
-                Are you sure to have only integer values in your "
-                + str(inField)
-                + " field ?\n  "
+                "Problem with getting samples from ROI: " + str(e) + "\n"
+                "Common causes:\n"
+                "- Shapefile and raster have different projections\n"
+                "- Invalid geometry in shapefile\n" 
+                "- Field '" + str(inField) + "' contains non-numeric values\n"
+                "- Memory issues with large datasets"
             )
             pushFeedback(msg, feedback=feedback)
-            pB.reset()
+            if feedback == "gui":
+                pB.reset()
+            return None
 
         [n, d] = X.shape
         C = int(Y.max())

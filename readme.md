@@ -21,8 +21,25 @@ Then, as this plugin is very simple, you will just need two things for making a 
 The shapefile must have a column which contains your classification numbers *(1,3,4...)*. Otherwise if you use text or anything else it certainly won't work.
 
 ## Installation of scikit-learn
-On **Linux** simply open terminal and type : 
+
+### On Linux
+Simply open terminal and type: 
 `python3 -m pip install scikit-learn -U --user`
+
+### On macOS
+**Method 1 - Using QGIS Python console (Recommended):**
+1. Open QGIS
+2. Go to Plugins → Python Console
+3. Type: `import subprocess; subprocess.check_call(["/Applications/QGIS.app/Contents/MacOS/bin/pip3", "install", "scikit-learn", "--user"])`
+
+**Method 2 - Using Terminal:**
+If you have Python 3 installed globally:
+`python3 -m pip install scikit-learn -U --user`
+
+**Note:** On some macOS systems, you may also need to install joblib separately:
+`python3 -m pip install joblib -U --user`
+
+After installation, restart QGIS to ensure the libraries are properly loaded.
 
 ### On Windows
 **For QGIS 3.20 and higher:** 
@@ -49,6 +66,35 @@ If you do not have pip installed, open osgeo4w-setup-x86_64.exe, select Advanced
 
 
 You can now use **Random Forest**, **SVM**, or **KNN** !
+
+## Machine Learning Algorithm Parameters
+
+### Default Parameters
+When using the classification algorithms, dzetsaka uses the following default parameters:
+
+**Random Forest:**
+- Uses scikit-learn's default parameters (typically 100 trees, unlimited depth)
+- 5-fold cross-validation for parameter tuning
+- Parameter grid search is available for advanced users
+
+**K-Nearest Neighbors (KNN):**
+- Uses scikit-learn's default parameters (typically k=5 neighbors)
+- 3-fold cross-validation for parameter tuning
+- Parameter grid search tests n_neighbors from 1 to 17 (step=4)
+
+**Support Vector Machine (SVM):**
+- Kernel: RBF (Radial Basis Function)
+- Probability estimation: Enabled
+- 3-fold cross-validation for parameter tuning
+- Gamma range: 0.25 to 4.0 (5 values)
+- C range: 0.1 to 100 (4 values)
+
+**Gaussian Mixture Model (GMM):**
+- Uses default GMM parameters
+- No parameter grid search (fastest option)
+
+### Custom Parameters
+Advanced users can provide custom parameters through the processing interface using the parameter grid functionality.
 
 ## Tips
 

@@ -21,32 +21,34 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 # import basics
-from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt
+from PyQt5.QtCore import QSettings, QCoreApplication, Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QMessageBox, QDialog, QFileDialog, QApplication
-from qgis.core import QgsMessageLog, QgsProcessingAlgorithm, QgsApplication
+from qgis.core import QgsMessageLog, QgsApplication
 
 
 # import outside libraries
-#import configparser
+# import configparser
 import tempfile
 import os.path
+
 try:
-    from osgeo import gdal,ogr,osr
+    from osgeo import gdal, ogr, osr
 except ImportError:
-    import gdal,ogr,osr
+    import gdal
+    import ogr
+    import osr
 
 # import local libraries
-from . import resources
 from . import ui
-from .scripts import function_dataraster as dataraster
 from .scripts import mainfunction
 
 from .dzetsaka_provider import dzetsakaProvider
 
 
-class dzetsakaGUI (QDialog):
+class dzetsakaGUI(QDialog):
     """QGIS Plugin Implementation."""
 
     def __init__(self, iface):
@@ -64,7 +66,7 @@ class dzetsakaGUI (QDialog):
 
         # init dialog and dzetsaka dock
         QDialog.__init__(self)
-        #sender = self.sender()
+        # sender = self.sender()
         self.settings = QSettings()
         self.loadConfig()
 
@@ -90,37 +92,35 @@ class dzetsakaGUI (QDialog):
             if qVersion() > '4.3.3':
                 QCoreApplication.installTranslator(self.translator)
         """
-        
+
         # Declare instance attributes
         self.actions = []
-        self.menu = self.tr(u'&dzetsaka')
-#        # TODO: We are going to let the user set this up in a future iteration
-#        self.toolbar = self.iface.addToolBar(u'dzetsaka')
-#        self.toolbar.setObjectName(u'dzetsaka')
+        self.menu = self.tr("&dzetsaka")
+        #        # TODO: We are going to let the user set this up in a future iteration
+        #        self.toolbar = self.iface.addToolBar(u'dzetsaka')
+        #        self.toolbar.setObjectName(u'dzetsaka')
         self.pluginIsActive = False
         self.dockwidget = None
-#        
-
-
+        #
 
         # param
-        self.lastSaveDir = ''
+        self.lastSaveDir = ""
 
         # run dock
         # self.run()
 
     def rememberLastSaveDir(self, fileName):
         """!@brief Remember last sd dir when saving or loading file"""
-        if fileName != '':
+        if fileName != "":
             self.lastSaveDir = fileName
-            self.settings.setValue('/dzetsaka/lastSaveDir', self.lastSaveDir)
+            self.settings.setValue("/dzetsaka/lastSaveDir", self.lastSaveDir)
 
     # noinspection PyMethodMayBeStatic
     def showWelcomeWidget(self):
         self.welcomeWidget = ui.welcomeWidget()
         self.welcomeWidget.show()
 
-        self.settings.setValue('/dzetsaka/firstInstallation', False)
+        self.settings.setValue("/dzetsaka/firstInstallation", False)
 
     def tr(self, message):
         """Get the translation for a string using Qt translation API.
@@ -134,19 +134,20 @@ class dzetsakaGUI (QDialog):
         :rtype: QString
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate('dzetsaka', message)
+        return QCoreApplication.translate("dzetsaka", message)
 
     def add_action(
-            self,
-            icon_path,
-            text,
-            callback,
-            enabled_flag=True,
-            add_to_menu=True,
-            add_to_toolbar=True,
-            status_tip=None,
-            whats_this=None,
-            parent=None):
+        self,
+        icon_path,
+        text,
+        callback,
+        enabled_flag=True,
+        add_to_menu=True,
+        add_to_toolbar=True,
+        status_tip=None,
+        whats_this=None,
+        parent=None,
+    ):
         """Add a toolbar icon to the toolbar.
 
         :param icon_path: Path to the icon for this action. Can be a resource
@@ -197,63 +198,71 @@ class dzetsakaGUI (QDialog):
         if whats_this is not None:
             action.setWhatsThis(whats_this)
 
-#        if add_to_toolbar:
-#            self.toolbar.addAction(action)
-#
+        #        if add_to_toolbar:
+        #            self.toolbar.addAction(action)
+        #
         if add_to_menu:
-            self.iface.addPluginToMenu(
-                self.menu,
-                action)
+            self.iface.addPluginToMenu(self.menu, action)
 
         self.actions.append(action)
 
         return action
-
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
         QgsApplication.processingRegistry().addProvider(self.provider)
 
-        icon_path = ':/plugins/dzetsaka/img/icon.png'
+        icon_path = ":/plugins/dzetsaka/img/icon.png"
         self.add_action(
             icon_path,
-            text=self.tr(u'welcome message'),
+            text=self.tr("welcome message"),
             callback=self.showWelcomeWidget,
             add_to_toolbar=False,
-            parent=self.iface.mainWindow())
+            parent=self.iface.mainWindow(),
+        )
 
-        icon_path = ':/plugins/dzetsaka/img/icon.png'
+        icon_path = ":/plugins/dzetsaka/img/icon.png"
         self.add_action(
             icon_path,
-            text=self.tr(u'classification dock'),
+            text=self.tr("classification dock"),
             callback=self.run,
-            parent=self.iface.mainWindow())
+            parent=self.iface.mainWindow(),
+        )
 
-        icon_settings_path = ':/plugins/dzetsaka/img/dzetsaka_settings.png'
+        icon_settings_path = ":/plugins/dzetsaka/img/dzetsaka_settings.png"
         self.add_action(
             icon_settings_path,
-            text=self.tr(u'settings'),
+            text=self.tr("settings"),
             callback=self.loadSettings,
             add_to_toolbar=True,
-            parent=self.iface.mainWindow())
-        
-        self.dockIcon = QAction(QIcon(':/plugins/dzetsaka/img/icon.png'), 'dzetsaka classification dock', self.iface.mainWindow())
+            parent=self.iface.mainWindow(),
+        )
+
+        self.dockIcon = QAction(
+            QIcon(":/plugins/dzetsaka/img/icon.png"),
+            "dzetsaka classification dock",
+            self.iface.mainWindow(),
+        )
         self.dockIcon.triggered.connect(self.run)
         self.iface.addToolBarIcon(self.dockIcon)
         self.actions.append(self.dockIcon)
-        
-        self.settingsIcon = QAction(QIcon(':/plugins/dzetsaka/img/dzetsaka_settings.png'), 'dzetsaka settings', self.iface.mainWindow())
+
+        self.settingsIcon = QAction(
+            QIcon(":/plugins/dzetsaka/img/dzetsaka_settings.png"),
+            "dzetsaka settings",
+            self.iface.mainWindow(),
+        )
         self.settingsIcon.triggered.connect(self.loadSettings)
         self.iface.addToolBarIcon(self.settingsIcon)
         self.actions.append(self.settingsIcon)
-        
+
     # --------------------------------------------------------------------------
 
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
 
-        #print "** CLOSING dzetsakaGUI"
+        # print "** CLOSING dzetsakaGUI"
         # disconnects
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
 
@@ -275,19 +284,17 @@ class dzetsakaGUI (QDialog):
 
         # Remove processing algorithms
         QgsApplication.processingRegistry().removeProvider(self.provider)
-        
-        
-#        self.iface.removePluginMenu(self.pluginName, self.settingsIcon)
-#        self.iface.removePluginMenu(self.tr(u'&dzetsaka'),self.actions[0])
-        
+
+        #        self.iface.removePluginMenu(self.pluginName, self.settingsIcon)
+        #        self.iface.removePluginMenu(self.tr(u'&dzetsaka'),self.actions[0])
+
         for action in self.actions:
             self.iface.removeToolBarIcon(action)
-            self.iface.removePluginMenu(
-                self.tr(u'&dzetsaka'),
-                action)
-#
-#        # remove the toolbar
-#       qg del self.toolbar
+            self.iface.removePluginMenu(self.tr("&dzetsaka"), action)
+
+    #
+    #        # remove the toolbar
+    #       qg del self.toolbar
     # --------------------------------------------------------------------------
 
     def run(self):
@@ -296,7 +303,7 @@ class dzetsakaGUI (QDialog):
         if not self.pluginIsActive or self.dockwidget is None:
             self.pluginIsActive = True
 
-            #print "** STARTING dzetsakaGUI"
+            # print "** STARTING dzetsakaGUI"
 
             # dockwidget may not exist if:
             #    first run of plugin
@@ -309,17 +316,17 @@ class dzetsakaGUI (QDialog):
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
 
             from qgis.core import QgsProviderRegistry
+
             exceptRaster = QgsProviderRegistry.instance().providerList()
-            exceptRaster.remove('gdal')
+            exceptRaster.remove("gdal")
             self.dockwidget.inRaster.setExcludedProviders(exceptRaster)
 
             exceptVector = QgsProviderRegistry.instance().providerList()
-            exceptVector.remove('ogr')
+            exceptVector.remove("ogr")
             self.dockwidget.inShape.setExcludedProviders(exceptVector)
 
             self.dockwidget.outRaster.clear()
-            self.dockwidget.outRasterButton.clicked.connect(
-                self.select_output_file)
+            self.dockwidget.outRasterButton.clicked.connect(self.select_output_file)
 
             self.dockwidget.outModel.clear()
             self.dockwidget.checkOutModel.clicked.connect(self.checkbox_state)
@@ -334,8 +341,7 @@ class dzetsakaGUI (QDialog):
             self.dockwidget.checkOutMatrix.clicked.connect(self.checkbox_state)
 
             self.dockwidget.outConfidenceMap.clear()
-            self.dockwidget.checkInConfidence.clicked.connect(
-                self.checkbox_state)
+            self.dockwidget.checkInConfidence.clicked.connect(self.checkbox_state)
 
             self.dockwidget.inField.clear()
 
@@ -349,8 +355,11 @@ class dzetsakaGUI (QDialog):
                 # We clear combobox
                 self.dockwidget.inField.clear()
                 # Then we fill it with new selected Layer
-                if self.dockwidget.inField.currentText() == '' and self.dockwidget.inShape.currentLayer(
-                ) and self.dockwidget.inShape.currentLayer() != 'NoneType':
+                if (
+                    self.dockwidget.inField.currentText() == ""
+                    and self.dockwidget.inShape.currentLayer()
+                    and self.dockwidget.inShape.currentLayer() != "NoneType"
+                ):
                     try:
                         activeLayer = self.dockwidget.inShape.currentLayer()
                         provider = activeLayer.dataProvider()
@@ -359,11 +368,11 @@ class dzetsakaGUI (QDialog):
                         self.dockwidget.inField.addItems(listFieldNames)
                     except BaseException:
                         QgsMessageLog.logMessage(
-                            'dzetsaka cannot change active layer. Maybe you opened an OSM/Online background ?')
+                            "dzetsaka cannot change active layer. Maybe you opened an OSM/Online background ?"
+                        )
 
             onChangedLayer()
-            self.dockwidget.inShape.currentIndexChanged[int].connect(
-                onChangedLayer)
+            self.dockwidget.inShape.currentIndexChanged[int].connect(onChangedLayer)
 
             self.dockwidget.settingsButton.clicked.connect(self.loadSettings)
 
@@ -371,13 +380,10 @@ class dzetsakaGUI (QDialog):
             self.dockwidget.performMagic.clicked.connect(self.runMagic)
 
             # self.dockwidget.mGroupBox.toggled.connect(self.resizeDock)
-            self.dockwidget.mGroupBox.collapsedStateChanged.connect(
-                self.resizeDock)
+            self.dockwidget.mGroupBox.collapsedStateChanged.connect(self.resizeDock)
 
     def resizeDock(self):
-
         if self.dockwidget.mGroupBox.isCollapsed():
-
             self.dockwidget.mGroupBox.setFixedHeight(20)
             self.dockwidget.setFixedHeight(350)
 
@@ -390,7 +396,8 @@ class dzetsakaGUI (QDialog):
         sender = self.sender()
 
         fileName, _filter = QFileDialog.getSaveFileName(
-            self.dockwidget, "Select output file", self.lastSaveDir, "TIF (*.tif)")
+            self.dockwidget, "Select output file", self.lastSaveDir, "TIF (*.tif)"
+        )
         self.rememberLastSaveDir(fileName)
 
         if not fileName:
@@ -400,29 +407,28 @@ class dzetsakaGUI (QDialog):
         fileName, fileExtension = os.path.splitext(fileName)
 
         if sender == self.dockwidget.outRasterButton:
-            if fileExtension != '.tif':
-                self.dockwidget.outRaster.setText(fileName + '.tif')
+            if fileExtension != ".tif":
+                self.dockwidget.outRaster.setText(fileName + ".tif")
             else:
                 self.dockwidget.outRaster.setText(fileName + fileExtension)
 
         # check if historical map run
-        if 'self.historicalmap' in locals():
+        if "self.historicalmap" in locals():
             if sender == self.historicalmap.outRasterButton:
-                if fileExtension != '.tif':
-                    self.historicalmap.outRaster.setText(fileName + '.tif')
+                if fileExtension != ".tif":
+                    self.historicalmap.outRaster.setText(fileName + ".tif")
                 else:
-                    self.historicalmap.outRaster.setText(
-                        fileName + fileExtension)
+                    self.historicalmap.outRaster.setText(fileName + fileExtension)
             if sender == self.historicalmap.outShpButton:
-                if fileExtension != '.shp':
-                    self.historicalmap.outShp.setText(fileName + '.shp')
+                if fileExtension != ".shp":
+                    self.historicalmap.outShp.setText(fileName + ".shp")
                 else:
                     self.historicalmap.outShp.setText(fileName + fileExtension)
         # check if filters_dock run
-        if 'self.filters_dock' in locals():
+        if "self.filters_dock" in locals():
             if sender == self.filters_dock.outRasterButton:
-                if fileExtension != '.tif':
-                    self.filters_dock.outRaster.setText(fileName + '.tif')
+                if fileExtension != ".tif":
+                    self.filters_dock.outRaster.setText(fileName + ".tif")
             else:
                 self.filters_dock.outRaster.setText(fileName + fileExtension)
 
@@ -448,54 +454,49 @@ class dzetsakaGUI (QDialog):
             self.providerType = self.Config.get('Providers','provider')
             """
             self.classifiers = [
-                'Gaussian Mixture Model',
-                'Random Forest',
-                'Support Vector Machines',
-                'K-Nearest Neighbors']
-            self.providers = ['Standard', 'Experimental']
+                "Gaussian Mixture Model",
+                "Random Forest",
+                "Support Vector Machines",
+                "K-Nearest Neighbors",
+            ]
+            self.providers = ["Standard", "Experimental"]
 
-            self.classifier = self.settings.value(
-                '/dzetsaka/classifier', '', str)
+            self.classifier = self.settings.value("/dzetsaka/classifier", "", str)
             if not self.classifier:
                 self.classifier = self.classifiers[0]
-                self.settings.setValue('/dzetsaka/classifier', self.classifier)
+                self.settings.setValue("/dzetsaka/classifier", self.classifier)
 
-            self.classSuffix = self.settings.value(
-                '/dzetsaka/classSuffix', '', str)
+            self.classSuffix = self.settings.value("/dzetsaka/classSuffix", "", str)
             if not self.classSuffix:
-                self.classSuffix = '_class'
-                self.settings.setValue(
-                    '/dzetsaka/classSuffix', self.classSuffix)
+                self.classSuffix = "_class"
+                self.settings.setValue("/dzetsaka/classSuffix", self.classSuffix)
 
-            self.classPrefix = self.settings.value(
-                '/dzetsaka/classPrefix', '', str)
+            self.classPrefix = self.settings.value("/dzetsaka/classPrefix", "", str)
             if not self.classPrefix:
-                self.classPrefix = ''
-                self.settings.setValue(
-                    '/dzetsaka/classPrefix', self.classPrefix)
+                self.classPrefix = ""
+                self.settings.setValue("/dzetsaka/classPrefix", self.classPrefix)
 
-            self.maskSuffix = self.settings.value(
-                '/dzetsaka/maskSuffix', '', str)
+            self.maskSuffix = self.settings.value("/dzetsaka/maskSuffix", "", str)
             if not self.maskSuffix:
-                self.maskSuffix = '_mask'
-                self.settings.setValue('/dzetsaka/maskSuffix', self.maskSuffix)
+                self.maskSuffix = "_mask"
+                self.settings.setValue("/dzetsaka/maskSuffix", self.maskSuffix)
 
-            self.providerType = self.settings.value(
-                '/dzetsaka/providerType', '', str)
+            self.providerType = self.settings.value("/dzetsaka/providerType", "", str)
             if not self.providerType:
                 self.providerType = self.providers[0]
                 self.providerType = self.settings.setValue(
-                    '/dzetsaka/providerType', self.providerType)
+                    "/dzetsaka/providerType", self.providerType
+                )
 
             self.firstInstallation = self.settings.value(
-                '/dzetsaka/firstInstallation', 'None', bool)
+                "/dzetsaka/firstInstallation", "None", bool
+            )
             if self.firstInstallation is None:
                 self.firstInstallation = True
-                self.settings.setValue('/dzetsaka/firstInstallation', True)
+                self.settings.setValue("/dzetsaka/firstInstallation", True)
 
         except BaseException:
-            QgsMessageLog.logMessage(
-                'failed to open config file ' + self.configFile)
+            QgsMessageLog.logMessage("failed to open config file " + self.configFile)
 
     def loadSettings(self):
         """!@brief load settings dock"""
@@ -514,24 +515,23 @@ class dzetsakaGUI (QDialog):
                     self.settingsdock.selectClassifier.setCurrentIndex(i)
 
             self.settingsdock.selectClassifier.currentIndexChanged[int].connect(
-                self.saveSettings)
+                self.saveSettings
+            )
 
-            self.settings.setValue('/dzetsaka/classifier', self.classifier)
+            self.settings.setValue("/dzetsaka/classifier", self.classifier)
 
             # suffix
             self.settingsdock.classSuffix.setText(self.classSuffix)
-            self.settingsdock.classSuffix.textChanged.connect(
-                self.saveSettings)
-            self.settings.setValue('/dzetsaka/classSuffix', self.classSuffix)
+            self.settingsdock.classSuffix.textChanged.connect(self.saveSettings)
+            self.settings.setValue("/dzetsaka/classSuffix", self.classSuffix)
             # prefix
             self.settingsdock.classPrefix.setText(self.classPrefix)
-            self.settingsdock.classPrefix.textChanged.connect(
-                self.saveSettings)
-            self.settings.setValue('/dzetsaka/classPrefix', self.classPrefix)
+            self.settingsdock.classPrefix.textChanged.connect(self.saveSettings)
+            self.settings.setValue("/dzetsaka/classPrefix", self.classPrefix)
             # mask suffix
             self.settingsdock.maskSuffix.setText(self.maskSuffix)
             self.settingsdock.maskSuffix.textChanged.connect(self.saveSettings)
-            self.settings.setValue('/dzetsaka/maskSuffix', self.maskSuffix)
+            self.settings.setValue("/dzetsaka/maskSuffix", self.maskSuffix)
             ##
 
             for i, prvd in enumerate(self.providers):
@@ -539,13 +539,14 @@ class dzetsakaGUI (QDialog):
                     self.settingsdock.selectProviders.setCurrentIndex(i)
 
             self.settingsdock.selectProviders.currentIndexChanged[int].connect(
-                self.saveSettings)
-            self.settings.setValue('/dzetsaka/providerType', self.providerType)
+                self.saveSettings
+            )
+            self.settings.setValue("/dzetsaka/providerType", self.providerType)
             # Reload config for further use
             self.loadConfig()
 
         except BaseException:
-            QgsMessageLog.logMessage('Failed to load settings...')
+            QgsMessageLog.logMessage("Failed to load settings...")
 
     def runMagic(self):
         """!@brief Perform training and classification for dzetsaka"""
@@ -554,9 +555,9 @@ class dzetsakaGUI (QDialog):
         VERIFICATION STEP
         """
         # verif before doing the job
-        message = ' '
+        message = " "
 
-        if self.dockwidget.inModel.text() == '':
+        if self.dockwidget.inModel.text() == "":
             try:
                 self.dockwidget.inShape.currentLayer().dataProvider().dataSourceUri()
             except BaseException:
@@ -564,11 +565,9 @@ class dzetsakaGUI (QDialog):
         try:
             self.dockwidget.inRaster.currentLayer().dataProvider().dataSourceUri()
         except BaseException:
-            message = message + \
-                str("\n - You need a raster to make a classification.")
+            message = message + str("\n - You need a raster to make a classification.")
 
         try:
-
             # get raster
             inRaster = self.dockwidget.inRaster.currentLayer()
             inRaster = inRaster.dataProvider().dataSourceUri()
@@ -578,12 +577,13 @@ class dzetsakaGUI (QDialog):
             inRasterProj = inRasterOp.GetProjection()
             inRasterProj = osr.SpatialReference(inRasterProj)
 
-            if self.dockwidget.inModel.text() == '':
+            if self.dockwidget.inModel.text() == "":
                 # verif srs
                 # get vector
                 inShape = self.dockwidget.inShape.currentLayer()
-                inShape = inShape.dataProvider().dataSourceUri().split('|')[
-                    0]  # Remove layerid=0 from SHP Path
+                inShape = (
+                    inShape.dataProvider().dataSourceUri().split("|")[0]
+                )  # Remove layerid=0 from SHP Path
                 # get shp proj
                 inShapeOp = ogr.Open(inShape)
                 inShapeLyr = inShapeOp.GetLayer()
@@ -591,21 +591,24 @@ class dzetsakaGUI (QDialog):
 
                 # chekc IsSame Projection
                 if inShapeProj.IsSameGeogCS(inRasterProj) == 0:
-                    message = message + \
-                        str("\n - Raster and ROI do not have the same projection.")
+                    message = message + str(
+                        "\n - Raster and ROI do not have the same projection."
+                    )
         except BaseException:
-            QgsMessageLog.logMessage('inShape is : ' + inShape)
-            QgsMessageLog.logMessage('inRaster is : ' + inRaster)
+            QgsMessageLog.logMessage("inShape is : " + inShape)
+            QgsMessageLog.logMessage("inRaster is : " + inRaster)
             QgsMessageLog.logMessage(
-                'inShapeProj.IsSameGeogCS(inRasterProj) : ' +
-                inShapeProj.IsSameGeogCS(inRasterProj))
-            message = message + \
-                str('\n - Can\'t compare projection between raster and vector.')
+                "inShapeProj.IsSameGeogCS(inRasterProj) : "
+                + inShapeProj.IsSameGeogCS(inRasterProj)
+            )
+            message = message + str(
+                "\n - Can't compare projection between raster and vector."
+            )
 
         try:
             inMask = self.dockwidget.inMask.text()
 
-            if inMask == '':
+            if inMask == "":
                 inMask = None
             # check if mask with _mask.extension
             autoMask = os.path.splitext(inRaster)
@@ -613,52 +616,57 @@ class dzetsakaGUI (QDialog):
 
             if os.path.exists(autoMask):
                 inMask = autoMask
-                QgsMessageLog.logMessage('Mask found : ' + str(autoMask))
+                QgsMessageLog.logMessage("Mask found : " + str(autoMask))
 
             if inMask is not None:
                 mask = gdal.Open(inMask, gdal.GA_ReadOnly)
-            # Check size
+                # Check size
                 if (inRasterOp.RasterXSize != mask.RasterXSize) or (
-                        inRasterOp.RasterYSize != mask.RasterYSize):
-                    message = message + \
-                        str('\n - Raster image and mask do not have the same size.')
+                    inRasterOp.RasterYSize != mask.RasterYSize
+                ):
+                    message = message + str(
+                        "\n - Raster image and mask do not have the same size."
+                    )
 
         except BaseException:
-            message = message + \
-                str('\n - Can\'t compare mask and raster size.')
+            message = message + str("\n - Can't compare mask and raster size.")
         """ END OF VERIFICATION STEP """
 
-        if message != ' ':
-
-            reply = QMessageBox.question(self.iface.mainWindow(), 'Informations missing or invalid',
-                                         message + '\n Would you like to continue anyway ?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if message != " ":
+            reply = QMessageBox.question(
+                self.iface.mainWindow(),
+                "Informations missing or invalid",
+                message + "\n Would you like to continue anyway ?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
 
             if reply == QMessageBox.Yes:
-                message = ' '
+                message = " "
 
         # all is ok, so do the job !
-        if message == ' ':
+        if message == " ":
             # get config
             self.loadConfig()
             # Get model if given
             model = self.dockwidget.inModel.text()
 
-# ==============================================================================
-#             # if model not given, perform training
-#             inRaster=self.dockwidget.inRaster.currentLayer()
-#             inRaster=inRaster.dataProvider().dataSourceUri()
-# ==============================================================================
+            # ==============================================================================
+            #             # if model not given, perform training
+            #             inRaster=self.dockwidget.inRaster.currentLayer()
+            #             inRaster=inRaster.dataProvider().dataSourceUri()
+            # ==============================================================================
 
             # create temp if not output raster
-            if self.dockwidget.outRaster.text() == '':
+            if self.dockwidget.outRaster.text() == "":
                 tempFolder = tempfile.mkdtemp()
                 outRaster = os.path.join(
                     tempFolder,
-                    self.classPrefix +
-                    os.path.splitext(
-                        os.path.basename(inRaster))[0] +
-                    self.classSuffix +
-                    '.tif')
+                    self.classPrefix
+                    + os.path.splitext(os.path.basename(inRaster))[0]
+                    + self.classSuffix
+                    + ".tif",
+                )
 
             else:
                 outRaster = self.dockwidget.outRaster.text()
@@ -672,7 +680,7 @@ class dzetsakaGUI (QDialog):
 
             # Get Classifier
             # retrieve shortname classifier
-            classifierShortName = ['GMM', 'RF', 'SVM', 'KNN']
+            classifierShortName = ["GMM", "RF", "SVM", "KNN"]
             for i, cls in enumerate(self.classifiers):
                 if self.classifier == cls:
                     inClassifier = classifierShortName[i]
@@ -680,15 +688,15 @@ class dzetsakaGUI (QDialog):
             # Check if model, else perform training
             NODATA = -9999
 
-            if model != '':
+            if model != "":
                 model = self.dockwidget.inModel.text()
-                QgsMessageLog.logMessage('Model is ' + str(model))
+                QgsMessageLog.logMessage("Model is " + str(model))
             else:
-                if self.dockwidget.outModel.text() == '':
-                    model = tempfile.mktemp('.' + str(inClassifier))
+                if self.dockwidget.outModel.text() == "":
+                    model = tempfile.mktemp("." + str(inClassifier))
                 else:
                     model = self.dockwidget.outModel.text()
-                QgsMessageLog.logMessage('No model loaded')
+                QgsMessageLog.logMessage("No model loaded")
 
             inField = self.dockwidget.inField.currentText()
             inSeed = 0
@@ -701,10 +709,10 @@ class dzetsakaGUI (QDialog):
                 outMatrix = None
 
             try:
-
                 if not self.dockwidget.checkInModel.isChecked():
                     QgsMessageLog.logMessage(
-                        'Begin training with ' + inClassifier + ' classifier')
+                        "Begin training with " + inClassifier + " classifier"
+                    )
 
                     temp = mainfunction.learnModel(
                         inRaster,
@@ -716,35 +724,47 @@ class dzetsakaGUI (QDialog):
                         outMatrix=outMatrix,
                         inClassifier=inClassifier,
                         extraParam=None,
-                        feedback='gui')
+                        feedback="gui",
+                    )
 
                     # perform learning
 
                 stop = False
-            except BaseException:
-                QgsMessageLog.logMessage('Raster is' + str(inRaster))
-                QgsMessageLog.logMessage('Vector is' + str(inShape))
-                QgsMessageLog.logMessage('Column field is ' + str(inField))
-                QgsMessageLog.logMessage('Split is' + str(inSplit))
-                QgsMessageLog.logMessage('Model is ' + str(model))
+            except Exception as e:
+                QgsMessageLog.logMessage("Training failed with error: " + str(e))
+                QgsMessageLog.logMessage("Raster: " + str(inRaster))
+                QgsMessageLog.logMessage("Vector: " + str(inShape))
+                QgsMessageLog.logMessage("Column field: " + str(inField))
+                QgsMessageLog.logMessage("Split: " + str(inSplit))
+                QgsMessageLog.logMessage("Model: " + str(model))
 
-                message = (
-                    'Something went wrong during the training. Please make sure you respect these conditions : <br> - Are you sure to have only integer values in your ' +
-                    str(inField) +
-                    ' column ? <br> - Do your shapefile and raster have the same projection ?')
+                # Show specific error message if available, otherwise generic message
+                if str(e).strip():
+                    message = (
+                        "Training failed with the following error:<br><br>"
+                        + str(e).replace('\n', '<br>')
+                        + "<br><br>Please check the log for more details."
+                    )
+                else:
+                    message = (
+                        "Something went wrong during the training. Common issues:<br>"
+                        "• Non-integer values in the '" + str(inField) + "' column<br>"
+                        "• Mismatched projections between shapefile and raster<br>"
+                        "• Invalid geometries in the shapefile<br>"
+                        "• Insufficient training samples<br><br>"
+                        "Please check the log for more details."
+                    )
                 QMessageBox.warning(
-                    self,
-                    'dzetsaka has encountered a problem',
-                    message,
-                    QMessageBox.Ok)
+                    self, "dzetsaka Training Error", message, QMessageBox.Ok
+                )
                 stop = True
                 QApplication.restoreOverrideCursor()
-                
 
             if not stop:
                 # Begin classification
                 QgsMessageLog.logMessage(
-                    'Begin classification with ' + str(inClassifier))
+                    "Begin classification with " + str(inClassifier)
+                )
                 temp = mainfunction.classifyImage()
 
                 temp.initPredict(
@@ -755,8 +775,9 @@ class dzetsakaGUI (QDialog):
                     confidenceMap=confidenceMap,
                     confidenceMapPerClass=None,
                     NODATA=NODATA,
-                    feedback='gui')
-                QgsMessageLog.logMessage('Dzetsaka classification done.')
+                    feedback="gui",
+                )
+                QgsMessageLog.logMessage("Dzetsaka classification done.")
                 self.iface.addRasterLayer(outRaster)
 
                 if confidenceMap:
@@ -768,11 +789,15 @@ class dzetsakaGUI (QDialog):
         sender = self.sender()
 
         # If load model
-        if sender == self.dockwidget.checkInModel and self.dockwidget.checkInModel.isChecked():
+        if (
+            sender == self.dockwidget.checkInModel
+            and self.dockwidget.checkInModel.isChecked()
+        ):
             fileName, _filter = QFileDialog.getOpenFileName(
-                self.dockwidget, "Select your file", self.lastSaveDir)
+                self.dockwidget, "Select your file", self.lastSaveDir
+            )
             self.rememberLastSaveDir(fileName)
-            if fileName != '':
+            if fileName != "":
                 self.dockwidget.inModel.setText(fileName)
                 self.dockwidget.inModel.setEnabled(True)
                 # Disable training, so disable vector choise
@@ -792,11 +817,15 @@ class dzetsakaGUI (QDialog):
             self.dockwidget.inField.setEnabled(True)
 
         # If save model
-        if sender == self.dockwidget.checkOutModel and self.dockwidget.checkOutModel.isChecked():
+        if (
+            sender == self.dockwidget.checkOutModel
+            and self.dockwidget.checkOutModel.isChecked()
+        ):
             fileName, _filter = QFileDialog.getSaveFileName(
-                self.dockwidget, "Select output file", self.lastSaveDir)
+                self.dockwidget, "Select output file", self.lastSaveDir
+            )
             self.rememberLastSaveDir(fileName)
-            if fileName != '':
+            if fileName != "":
                 self.dockwidget.outModel.setText(fileName)
                 self.dockwidget.outModel.setEnabled(True)
 
@@ -809,12 +838,18 @@ class dzetsakaGUI (QDialog):
             self.dockwidget.outModel.setEnabled(False)
 
         # If mask
-        if sender == self.dockwidget.checkInMask and self.dockwidget.checkInMask.isChecked():
+        if (
+            sender == self.dockwidget.checkInMask
+            and self.dockwidget.checkInMask.isChecked()
+        ):
             fileName, _filter = QFileDialog.getOpenFileName(
-                self.dockwidget, "Select your mask raster", self.lastSaveDir, "TIF (*.tif)")
+                self.dockwidget,
+                "Select your mask raster",
+                self.lastSaveDir,
+                "TIF (*.tif)",
+            )
             self.rememberLastSaveDir(fileName)
-            if fileName != '':
-
+            if fileName != "":
                 self.dockwidget.inMask.setText(fileName)
                 self.dockwidget.inMask.setEnabled(True)
             else:
@@ -825,13 +860,17 @@ class dzetsakaGUI (QDialog):
             self.dockwidget.inMask.setEnabled(False)
 
         # If save matrix
-        if sender == self.dockwidget.checkOutMatrix and self.dockwidget.checkOutMatrix.isChecked():
+        if (
+            sender == self.dockwidget.checkOutMatrix
+            and self.dockwidget.checkOutMatrix.isChecked()
+        ):
             fileName, _filter = QFileDialog.getSaveFileName(
-                self.dockwidget, "Save to a *.csv file", self.lastSaveDir, "CSV (*.csv)")
+                self.dockwidget, "Save to a *.csv file", self.lastSaveDir, "CSV (*.csv)"
+            )
             self.rememberLastSaveDir(fileName)
-            if fileName != '':
+            if fileName != "":
                 fileName, fileExtension = os.path.splitext(fileName)
-                fileName = fileName + '.csv'
+                fileName = fileName + ".csv"
                 self.dockwidget.outMatrix.setText(fileName)
                 self.dockwidget.outMatrix.setEnabled(True)
                 self.dockwidget.inSplit.setEnabled(True)
@@ -851,15 +890,22 @@ class dzetsakaGUI (QDialog):
             self.dockwidget.inSplit.setEnabled(False)
             self.dockwidget.inSplit.setValue(100)
 
-      # If save model
+        # If save model
         # retrieve shortname classifier
-        if sender == self.dockwidget.checkInConfidence and self.dockwidget.checkInConfidence.isChecked():
+        if (
+            sender == self.dockwidget.checkInConfidence
+            and self.dockwidget.checkInConfidence.isChecked()
+        ):
             fileName, _filter = QFileDialog.getSaveFileName(
-                self.dockwidget, "Select output file (*.tif)", self.lastSaveDir, "TIF (*.tif)")
+                self.dockwidget,
+                "Select output file (*.tif)",
+                self.lastSaveDir,
+                "TIF (*.tif)",
+            )
             self.rememberLastSaveDir(fileName)
-            if fileName != '':
+            if fileName != "":
                 fileName, fileExtension = os.path.splitext(fileName)
-                fileName = fileName + '.tif'
+                fileName = fileName + ".tif"
                 self.dockwidget.outConfidenceMap.setText(fileName)
                 self.dockwidget.outConfidenceMap.setEnabled(True)
 
@@ -876,65 +922,73 @@ class dzetsakaGUI (QDialog):
         """!@brief save settings if modifications"""
         # Change classifier
         if self.sender() == self.settingsdock.selectClassifier:
-            if self.settingsdock.selectClassifier.currentText() != 'Gaussian Mixture Model':
+            if (
+                self.settingsdock.selectClassifier.currentText()
+                != "Gaussian Mixture Model"
+            ):
                 # try if Sklearn is installed, or force GMM
                 try:
-                    from sklearn import metrics
-                    if self.classifier != self.settingsdock.selectClassifier.currentText():
+                    if (
+                        self.classifier
+                        != self.settingsdock.selectClassifier.currentText()
+                    ):
                         # self.modifyConfig('Classification','classifier',self.settingsdock.selectClassifier.currentText())
                         self.settings.setValue(
-                            '/dzetsaka/classifier',
-                            self.settingsdock.selectClassifier.currentText())
+                            "/dzetsaka/classifier",
+                            self.settingsdock.selectClassifier.currentText(),
+                        )
                 except BaseException:
                     QMessageBox.warning(
                         self,
-                        'Library missing',
-                        'Scikit-learn library is missing on your computer.<br><br> You must use Gaussian Mixture Model, or <a href=\'https://github.com/lennepkade/dzetsaka/#installation-of-scikit-learn\'>consult dzetsaka homepage to learn on to install the missing library</a>.',
-                        QMessageBox.Ok)
+                        "Library missing",
+                        "Scikit-learn library is missing on your computer.<br><br> You must use Gaussian Mixture Model, or <a href='https://github.com/lennepkade/dzetsaka/#installation-of-scikit-learn'>consult dzetsaka homepage to learn on to install the missing library</a>.",
+                        QMessageBox.Ok,
+                    )
                     # reset to GMM
                     self.settingsdock.selectClassifier.setCurrentIndex(0)
-                    #self.modifyConfig('Classification','classifier','Gaussian Mixture Model')
+                    # self.modifyConfig('Classification','classifier','Gaussian Mixture Model')
                     self.settings.setValue(
-                        '/dzetsaka/classifier', 'Gaussian Mixture Model')
+                        "/dzetsaka/classifier", "Gaussian Mixture Model"
+                    )
             else:
-                #self.modifyConfig('Classification','classifier','Gaussian Mixture Model')
-                self.settings.setValue(
-                    '/dzetsaka/classifier',
-                    'Gaussian Mixture Model')
+                # self.modifyConfig('Classification','classifier','Gaussian Mixture Model')
+                self.settings.setValue("/dzetsaka/classifier", "Gaussian Mixture Model")
 
         if self.sender() == self.settingsdock.classSuffix:
             if self.classSuffix != self.settingsdock.classSuffix.text():
                 # self.modifyConfig('Classification','suffix',self.settingsdock.classSuffix.text())
                 self.settings.setValue(
-                    '/dzetsaka/classSuffix',
-                    self.settingsdock.classSuffix.text())
+                    "/dzetsaka/classSuffix", self.settingsdock.classSuffix.text()
+                )
         if self.sender() == self.settingsdock.classPrefix:
             if self.classPrefix != self.settingsdock.classPrefix.text():
                 # self.modifyConfig('Classification','prefix',self.settingsdock.classPrefix.text())
                 self.settings.setValue(
-                    '/dzetsaka/classPrefix',
-                    self.settingsdock.classPrefix.text())
+                    "/dzetsaka/classPrefix", self.settingsdock.classPrefix.text()
+                )
         if self.sender() == self.settingsdock.maskSuffix:
             if self.maskSuffix != self.settingsdock.maskSuffix.text():
                 # self.modifyConfig('Classification','maskSuffix',self.settingsdock.maskSuffix.text())
                 self.settings.setValue(
-                    '/dzetsaka/maskSuffix',
-                    self.settingsdock.maskSuffix.text())
+                    "/dzetsaka/maskSuffix", self.settingsdock.maskSuffix.text()
+                )
         if self.sender() == self.settingsdock.selectProviders:
             self.providerType = self.settingsdock.selectProviders.currentText()
 
             # self.modifyConfig('Providers','provider',self.settingsdock.selectProviders.currentText())
             self.settings.setValue(
-                '/dzetsaka/providerType',
-                self.settingsdock.selectProviders.currentText())
+                "/dzetsaka/providerType",
+                self.settingsdock.selectProviders.currentText(),
+            )
             QgsApplication.processingRegistry().removeProvider(self.provider)
 
             from .dzetsaka_provider import dzetsakaProvider
+
             self.provider = dzetsakaProvider(self.providerType)
             QgsApplication.processingRegistry().addProvider(self.provider)
 
     def modifyConfig(self, section, option, value):
-        configFile = open(self.configFile, 'w')
+        configFile = open(self.configFile, "w")
         self.Config.set(section, option, value)
         self.Config.write(configFile)
         configFile.close()
