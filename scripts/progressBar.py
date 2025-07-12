@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (QProgressBar, QApplication)
+from PyQt5.QtWidgets import QProgressBar, QApplication
 from PyQt5.QtGui import QCursor
 from PyQt5.QtCore import Qt
 from qgis.utils import iface
@@ -14,15 +14,14 @@ class progressBar(object):
         nothing but changing cursor and print progressBar inside Qgis
     """
 
-    def __init__(self, inMsg=' Loading...', inMaxStep=1):
-        """
-        """
+    def __init__(self, inMsg=" Loading...", inMaxStep=1):
+        """ """
         # Save reference to the QGIS interface
         # initialize progressBar
         # QApplication.processEvents() # Help to keep UI alive
         self.iface = iface
 
-        widget = iface.messageBar().createMessage('Please wait  ', inMsg)
+        widget = iface.messageBar().createMessage("Please wait  ", inMsg)
 
         prgBar = QProgressBar()
         self.prgBar = prgBar
@@ -34,8 +33,8 @@ class progressBar(object):
         # if Max 0 and value 0, no progressBar, only cursor loading
         # default is set to 0
         prgBar.setValue(1)
-        # set Maximum for progressBar
-        prgBar.setMaximum(inMaxStep)
+        # set Maximum for progressBar - ensure integer conversion for Python 3.12+ compatibility
+        prgBar.setMaximum(int(inMaxStep))
 
     def addStep(self, step=1):
         """!@brief Add a step to the progressBar
@@ -46,8 +45,7 @@ class progressBar(object):
         self.prgBar.setValue(plusOne)
 
     def reset(self):
-        """!@brief Simply remove progressBar and reset cursor
-        """
+        """!@brief Simply remove progressBar and reset cursor"""
         # Remove progressBar and back to default cursor
         self.iface.messageBar().clearWidgets()
         self.iface.mapCanvas().refresh()
