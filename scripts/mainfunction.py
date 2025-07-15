@@ -936,7 +936,14 @@ class classifyImage(object):
         max_memory_mb = 512  # Maximum memory usage in MB
         pixel_size_bytes = 8 * d  # Assume 8 bytes per pixel per band (double precision)
         max_pixels_per_block = (max_memory_mb * 1024 * 1024) // pixel_size_bytes
-        
+     
+        # Get block size
+        band = raster.GetRasterBand(1)
+        block_sizes = band.GetBlockSize()
+        x_block_size = block_sizes[0]
+        y_block_size = block_sizes[1]
+        del band
+     
         # Ensure block size doesn't exceed memory limits for multi-band images
         if d > 3:
             current_block_pixels = x_block_size * y_block_size
@@ -949,13 +956,6 @@ class classifyImage(object):
         # Get the geoinformation
         GeoTransform = raster.GetGeoTransform()
         Projection = raster.GetProjection()
-
-        # Get block size
-        band = raster.GetRasterBand(1)
-        block_sizes = band.GetBlockSize()
-        x_block_size = block_sizes[0]
-        y_block_size = block_sizes[1]
-        del band
 
         # Initialize the output
         if not os.path.exists(os.path.dirname(outRaster)):
