@@ -3,7 +3,7 @@
 
 ![Inselberg in Guiana Amazonian Park](https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/guyane.jpg)
 
-dzetsaka <img src="https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/icon.png" alt="dzetsaka logo" width="30px"/> is very fast and easy to use but also a **powerful classification plugin for Qgis**. Initially based on Gaussian Mixture Model classifier developped by  [Mathieu Fauvel](http://fauvel.mathieu.free.fr) (now supports Random Forest, KNN and SVM), this plugin is a more generalist tool than [Historical Map](https://github.com/lennepkade/HistoricalMap) which was dedicated to classify forests from old maps.
+dzetsaka <img src="https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/icon.png" alt="dzetsaka logo" width="30px"/> is very fast and easy to use but also a **powerful classification plugin for Qgis**. Initially based on Gaussian Mixture Model classifier developed by [Mathieu Fauvel](http://fauvel.mathieu.free.fr), this plugin now supports **11 machine learning algorithms** including advanced gradient boosting methods like XGBoost and LightGBM. This plugin is a more generalist tool than [Historical Map](https://github.com/lennepkade/HistoricalMap) which was dedicated to classify forests from old maps.
 This plugin has by developped by [Nicolas Karasiak](https://github.com/nkarasiak/dzetsaka).
 
 You can [download samples](https://github.com/lennepkade/dzetsaka/archive/docs.zip) to test the plugin on your own.
@@ -20,7 +20,43 @@ Then, as this plugin is very simple, you will just need two things for making a 
 
 The shapefile must have a column which contains your classification numbers *(1,3,4...)*. Otherwise if you use text or anything else it certainly won't work.
 
-## Installation of scikit-learn
+## 🎯 Supported Algorithms
+
+dzetsaka now supports **11 powerful machine learning algorithms**:
+
+### **Core Algorithms** (built-in)
+- **Gaussian Mixture Model (GMM)** - Fast baseline classifier
+- **Random Forest (RF)** - Robust ensemble method
+- **Support Vector Machine (SVM)** - High-accuracy classifier
+- **K-Nearest Neighbors (KNN)** - Simple distance-based classifier
+
+### **Advanced Algorithms** ⭐ NEW
+- **XGBoost (XGB)** - State-of-the-art gradient boosting
+- **LightGBM (LGB)** - Fast gradient boosting framework
+- **Extra Trees (ET)** - Extremely randomized trees
+- **Gradient Boosting Classifier (GBC)** - Scikit-learn gradient boosting
+- **Logistic Regression (LR)** - Linear probabilistic classifier
+- **Naive Bayes (NB)** - Fast probabilistic classifier
+- **Multi-layer Perceptron (MLP)** - Neural network classifier
+
+### **🚀 Automatic Dependency Installation**
+
+**NEW FEATURE**: dzetsaka can now automatically install missing dependencies!
+
+When you select an algorithm that requires additional packages (XGBoost, LightGBM), dzetsaka will:
+1. **Detect missing dependencies** automatically
+2. **Offer to install them** with one click
+3. **Handle the installation process** in the background
+4. **Provide real-time progress** in the QGIS log
+
+**Supported auto-installation**:
+- ✅ scikit-learn (for RF, SVM, KNN, ET, GBC, LR, NB, MLP)
+- ✅ XGBoost (for XGB classifier)
+- ✅ LightGBM (for LGB classifier)
+
+**No more manual pip commands!** Just select your algorithm and let dzetsaka handle the rest.
+
+## Manual Installation (if needed)
 
 ### On Linux
 Simply open terminal and type: 
@@ -65,33 +101,33 @@ In the OsGeo setup, search for PIP and install it. Then you have few more steps 
 If you do not have pip installed, open osgeo4w-setup-x86_64.exe, select Advanced install and install *pip*.
 
 
-You can now use **Random Forest**, **SVM**, or **KNN** !
+You can now use **all 11 machine learning algorithms** including XGBoost and LightGBM!
 
-## Machine Learning Algorithm Parameters
+## 🔧 Algorithm Parameters & Performance
 
-### Default Parameters
-When using the classification algorithms, dzetsaka uses the following default parameters:
+### **Hyperparameter Optimization**
+dzetsaka automatically optimizes algorithm parameters using **cross-validation grid search**:
 
-**Random Forest:**
-- Uses scikit-learn's default parameters (typically 100 trees, unlimited depth)
-- 5-fold cross-validation for parameter tuning
-- Parameter grid search is available for advanced users
+**Core Algorithms:**
+- **Random Forest (RF)**: 5-fold CV, optimizes n_estimators and max_features
+- **SVM**: 3-fold CV, optimizes gamma (0.25-4.0) and C (0.1-100)
+- **KNN**: 3-fold CV, optimizes n_neighbors (1-17)
+- **GMM**: No tuning (fastest baseline)
 
-**K-Nearest Neighbors (KNN):**
-- Uses scikit-learn's default parameters (typically k=5 neighbors)
-- 3-fold cross-validation for parameter tuning
-- Parameter grid search tests n_neighbors from 1 to 17 (step=4)
+**Advanced Algorithms** ⭐:
+- **XGBoost (XGB)**: 3-fold CV, optimizes n_estimators (50-200), max_depth (3-9), learning_rate (0.01-0.2)
+- **LightGBM (LGB)**: 3-fold CV, optimizes n_estimators (50-200), num_leaves (31-100), learning_rate (0.01-0.2)
+- **Extra Trees (ET)**: 3-fold CV, optimizes n_estimators and max_features
+- **Gradient Boosting (GBC)**: 3-fold CV, optimizes n_estimators and max_depth
+- **Logistic Regression (LR)**: 3-fold CV, optimizes C and penalty
+- **Naive Bayes (NB)**: Uses optimal default parameters
+- **MLP**: 3-fold CV, optimizes hidden_layer_sizes and learning_rate
 
-**Support Vector Machine (SVM):**
-- Kernel: RBF (Radial Basis Function)
-- Probability estimation: Enabled
-- 3-fold cross-validation for parameter tuning
-- Gamma range: 0.25 to 4.0 (5 values)
-- C range: 0.1 to 100 (4 values)
-
-**Gaussian Mixture Model (GMM):**
-- Uses default GMM parameters
-- No parameter grid search (fastest option)
+### **🎯 Label Handling**
+dzetsaka automatically handles **sparse class labels** (e.g., classes 0, 1, 3 - missing class 2):
+- **Core algorithms**: Work natively with sparse labels
+- **XGBoost/LightGBM**: Automatic label encoding/decoding for compatibility
+- **Seamless workflow**: No manual preprocessing required
 
 ### Custom Parameters
 Advanced users can provide custom parameters through the processing interface using the parameter grid functionality.

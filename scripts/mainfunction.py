@@ -92,66 +92,157 @@ def backward_compatible(**parameter_mapping):
     return decorator
 
 
+# Label encoding wrapper for XGBoost and LightGBM
+from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.preprocessing import LabelEncoder
+
+
+class XGBLabelWrapper(BaseEstimator, ClassifierMixin):
+    """Wrapper for XGBoost that handles sparse label encoding/decoding."""
+
+    def __init__(self, **xgb_params):
+        self.xgb_params = xgb_params
+        self.label_encoder = LabelEncoder()
+        self.xgb_classifier = None
+
+    def fit(self, X, y):
+        try:
+            from xgboost import XGBClassifier
+        except ImportError:
+            raise ImportError("XGBoost not found. Install with: pip install xgboost")
+
+        y_encoded = self.label_encoder.fit_transform(y)
+        self.xgb_classifier = XGBClassifier(**self.xgb_params)
+        self.xgb_classifier.fit(X, y_encoded)
+        return self
+
+    def predict(self, X):
+        y_encoded = self.xgb_classifier.predict(X)
+        return self.label_encoder.inverse_transform(y_encoded)
+
+    def predict_proba(self, X):
+        return self.xgb_classifier.predict_proba(X)
+
+    @property
+    def classes_(self):
+        return self.label_encoder.classes_
+
+    def get_params(self, deep=True):
+        # Return XGBoost parameters directly
+        return self.xgb_params.copy() if not deep else self.xgb_params.copy()
+
+    def set_params(self, **params):
+        self.xgb_params.update(params)
+        if self.xgb_classifier is not None:
+            self.xgb_classifier.set_params(**params)
+        return self
+
+
+class LGBLabelWrapper(BaseEstimator, ClassifierMixin):
+    """Wrapper for LightGBM that handles sparse label encoding/decoding."""
+
+    def __init__(self, **lgb_params):
+        self.lgb_params = lgb_params
+        self.label_encoder = LabelEncoder()
+        self.lgb_classifier = None
+
+    def fit(self, X, y):
+        try:
+            from lightgbm import LGBMClassifier
+        except ImportError:
+            raise ImportError("LightGBM not found. Install with: pip install lightgbm")
+
+        y_encoded = self.label_encoder.fit_transform(y)
+        self.lgb_classifier = LGBMClassifier(**self.lgb_params)
+        self.lgb_classifier.fit(X, y_encoded)
+        return self
+
+    def predict(self, X):
+        y_encoded = self.lgb_classifier.predict(X)
+        return self.label_encoder.inverse_transform(y_encoded)
+
+    def predict_proba(self, X):
+        return self.lgb_classifier.predict_proba(X)
+
+    @property
+    def classes_(self):
+        return self.label_encoder.classes_
+
+    def get_params(self, deep=True):
+        # Return LightGBM parameters directly
+        return self.lgb_params.copy() if not deep else self.lgb_params.copy()
+
+    def set_params(self, **params):
+        self.lgb_params.update(params)
+        if self.lgb_classifier is not None:
+            self.lgb_classifier.set_params(**params)
+        return self
+
+
 # Configuration constants
 CLASSIFIER_CONFIGS = {
     "RF": {
         "param_grid": {
-            "n_estimators": 3 ** np.arange(1, 5),
-            "max_features": lambda x_shape: range(1, x_shape, int(x_shape / 3)),
+            "n_estimators": [100],
+            "max_features": lambda x_shape: range(
+                1, max(2, x_shape), max(1, int(x_shape / 3))
+            ),
         },
-        "n_splits": 5,
+        "n_splits": 3,
     },
     "SVM": {
         "param_grid": {"gamma": 2.0 ** np.arange(-2, 3), "C": 10.0 ** np.arange(-1, 3)},
         "n_splits": 3,
     },
-    "KNN": {"param_grid": {"n_neighbors": np.arange(1, 20, 4)}, "n_splits": 3},
+    "KNN": {"param_grid": {"n_neighbors": [1,3,10]}, "n_splits": 3},
     "XGB": {
         "param_grid": {
-            "n_estimators": [50, 100, 200],
-            "max_depth": [3, 6, 9],
-            "learning_rate": [0.01, 0.1, 0.2],
+            "n_estimators": [100],
+            "max_depth": [9],
+            "learning_rate": [0.01],
         },
         "n_splits": 3,
     },
     "LGB": {
         "param_grid": {
-            "n_estimators": [50, 100, 200],
-            "num_leaves": [31, 50, 100],
-            "learning_rate": [0.01, 0.1, 0.2],
+            "n_estimators": [50, 200],
+            "num_leaves": [31, 100],
+            "learning_rate": [0.01, 0.2],
         },
         "n_splits": 3,
     },
     "ET": {
         "param_grid": {
-            "n_estimators": [50, 100, 200],
-            "max_features": lambda x_shape: range(1, x_shape, max(1, int(x_shape / 3))),
+            "n_estimators": [50, 200],
+            "max_features": lambda x_shape: range(
+                1, max(2, x_shape), max(1, int(x_shape / 2))
+            ),
         },
         "n_splits": 3,
     },
     "GBC": {
         "param_grid": {
-            "n_estimators": [50, 100, 200],
-            "max_depth": [3, 5, 7],
-            "learning_rate": [0.01, 0.1, 0.2],
+            "n_estimators": [50, 200],
+            "max_depth": [3, 7],
+            "learning_rate": [0.01, 0.2],
         },
         "n_splits": 3,
     },
     "LR": {
         "param_grid": {
-            "C": 10.0 ** np.arange(-3, 3),
+            "C": 10.0 ** np.arange(-2, 3, 2),  # [-2, 0, 2] -> [0.01, 1, 100]
             "solver": ["liblinear", "lbfgs"],
         },
         "n_splits": 3,
     },
     "NB": {
-        "param_grid": {"var_smoothing": 10.0 ** np.arange(-12, -3)},
+        "param_grid": {"var_smoothing": 10.0 ** np.arange(-9, -3, 3)},  # [-9, -6, -3]
         "n_splits": 3,
     },
     "MLP": {
         "param_grid": {
-            "hidden_layer_sizes": [(50,), (100,), (50, 50), (100, 50)],
-            "alpha": [0.0001, 0.001, 0.01],
+            "hidden_layer_sizes": [(50,), (100, 50)],  # Keep simple and complex
+            "alpha": [0.0001, 0.01],  # Keep low and high regularization
             "learning_rate_init": [0.001, 0.01],
         },
         "n_splits": 3,
@@ -320,9 +411,9 @@ class learnModel:
         elif feedback is not None and hasattr(feedback, "setProgress"):
             feedback.setProgress(int(2 * total))
 
-        pushFeedback("Learning process...", feedback=feedback)
+        pushFeedback("Starting model training process...", feedback=feedback)
         pushFeedback(
-            "This step could take a lot of time... So be patient, even if the progress bar stucks at 20% :)",
+            "Training phase in progress. This may take several minutes depending on your data size and classifier settings. The progress bar may appear to pause during hyperparameter optimization - this is normal.",
             feedback=feedback,
         )
 
@@ -493,9 +584,21 @@ class learnModel:
                     param_grid = config["param_grid"].copy()
                     # Handle lambda function for max_features
                     if callable(param_grid.get("max_features")):
-                        param_grid["max_features"] = param_grid["max_features"](
-                            x.shape[1]
-                        )
+                        try:
+                            max_features_range = param_grid["max_features"](x.shape[1])
+                            # Convert to list to avoid range object issues
+                            param_grid["max_features"] = list(max_features_range)
+                            pushFeedback(
+                                f"RF max_features range: {param_grid['max_features']}",
+                                feedback=feedback,
+                            )
+                        except Exception as e:
+                            pushFeedback(
+                                f"Error generating max_features range for RF: {e}",
+                                feedback=feedback,
+                            )
+                            # Fallback to safe values
+                            param_grid["max_features"] = [1, min(x.shape[1], 3)]
 
                     if "param_algo" in locals():
                         classifier = RandomForestClassifier(
@@ -547,13 +650,13 @@ class learnModel:
                     config = CLASSIFIER_CONFIGS["XGB"]
                     param_grid = config["param_grid"]
                     if "param_algo" in locals():
-                        classifier = XGBClassifier(
+                        classifier = XGBLabelWrapper(
                             random_state=random_seed,
                             eval_metric="logloss",
                             **param_algo,
                         )
                     else:
-                        classifier = XGBClassifier(
+                        classifier = XGBLabelWrapper(
                             random_state=random_seed, eval_metric="logloss"
                         )
                     n_splits = config["n_splits"]
@@ -571,11 +674,11 @@ class learnModel:
                     config = CLASSIFIER_CONFIGS["LGB"]
                     param_grid = config["param_grid"]
                     if "param_algo" in locals():
-                        classifier = LGBMClassifier(
+                        classifier = LGBLabelWrapper(
                             random_state=random_seed, verbose=-1, **param_algo
                         )
                     else:
-                        classifier = LGBMClassifier(
+                        classifier = LGBLabelWrapper(
                             random_state=random_seed, verbose=-1
                         )
                     n_splits = config["n_splits"]
@@ -587,9 +690,21 @@ class learnModel:
                     param_grid = config["param_grid"].copy()
                     # Handle lambda function for max_features
                     if callable(param_grid.get("max_features")):
-                        param_grid["max_features"] = param_grid["max_features"](
-                            x.shape[1]
-                        )
+                        try:
+                            max_features_range = param_grid["max_features"](x.shape[1])
+                            # Convert to list to avoid range object issues
+                            param_grid["max_features"] = list(max_features_range)
+                            pushFeedback(
+                                f"ET max_features range: {param_grid['max_features']}",
+                                feedback=feedback,
+                            )
+                        except Exception as e:
+                            pushFeedback(
+                                f"Error generating max_features range for ET: {e}",
+                                feedback=feedback,
+                            )
+                            # Fallback to safe values
+                            param_grid["max_features"] = [1, min(x.shape[1], 3)]
 
                     if "param_algo" in locals():
                         classifier = ExtraTreesClassifier(
@@ -912,8 +1027,15 @@ class learnModel:
         self.M = M
         self.m = m
         if model_path is not None:
+            # Debug: log what we're saving
+            pushFeedback(
+                f"Saving model with classifier: {classifier} (type: {type(classifier)})",
+                feedback=feedback,
+            )
             output = open(model_path, "wb")
-            pickle.dump([model, M, m, classifier], output)
+            pickle.dump(
+                [model, M, m, str(classifier)], output
+            )  # Ensure classifier is saved as string
             output.close()
 
         pushFeedback(int(10 * total), feedback=feedback)
@@ -1191,10 +1313,47 @@ class classifyImage:
         # Load model
         try:
             tree, M, m, classifier = self._load_model(model_path, feedback)
-        except Exception as e:
+        except FileNotFoundError as e:
             pushFeedback(
-                f"Error while loading the model {model_path}: {e}", feedback=feedback
+                f"Model file not found: {model_path}\n"
+                f"Please check that the file exists and the path is correct.\n"
+                f"Error details: {e}",
+                feedback=feedback,
             )
+            return None
+        except (pickle.UnpicklingError, pickle.PickleError) as e:
+            pushFeedback(
+                f"Model file is corrupted or incompatible: {model_path}\n"
+                f"The model file may have been created with a different version of dzetsaka or Python.\n"
+                f"Try retraining your model or use a different model file.\n"
+                f"Error details: {e}",
+                feedback=feedback,
+            )
+            return None
+        except ValueError as e:
+            pushFeedback(
+                f"Invalid model file format: {model_path}\n"
+                f"The model file structure is not recognized by dzetsaka.\n"
+                f"Error details: {e}",
+                feedback=feedback,
+            )
+            return None
+        except Exception as e:
+            error_details = f"Unexpected error while loading model {model_path}\n"
+            error_details += f"Error type: {type(e).__name__}\n"
+            error_details += f"Error details: {e}\n"
+            error_details += "Please check the QGIS log for more details and consider reporting this issue."
+
+            pushFeedback(error_details, feedback=feedback)
+
+            # Show GitHub issue popup for unexpected errors
+            if feedback == "gui":
+                self._show_github_issue_popup(
+                    "Model Loading Error",
+                    f"Error type: {type(e).__name__}",
+                    str(e),
+                    f"Model path: {model_path}",
+                )
             return None
 
         # Create temporary directory for processing
@@ -1264,13 +1423,21 @@ class classifyImage:
 
             tree, M, m, classifier = model_data
 
+            # Debug: log what we loaded
+            pushFeedback(
+                f"Loaded model data: tree={type(tree)}, M={type(M)}, m={type(m)}, classifier='{classifier}' (type: {type(classifier)})",
+                feedback=feedback,
+            )
+
             # Basic validation of components
             if tree is None:
                 raise ValueError("Model is None")
             if not isinstance(M, np.ndarray) or not isinstance(m, np.ndarray):
                 raise ValueError("Scaling parameters M and m must be numpy arrays")
             if not isinstance(classifier, str):
-                raise ValueError("Classifier must be a string")
+                raise ValueError(
+                    f"Classifier must be a string, got {type(classifier)}: {classifier}"
+                )
 
             return tree, M, m, classifier
 
@@ -1654,6 +1821,136 @@ class classifyImage:
         except Exception as e:
             pushFeedback(f"Error loading block data: {e}", feedback=feedback)
             return None
+
+    def _show_github_issue_popup(self, error_title, error_type, error_message, context):
+        """Show a popup with GitHub issue template for copy/paste."""
+        try:
+            from PyQt5.QtWidgets import (
+                QDialog,
+                QVBoxLayout,
+                QTextEdit,
+                QPushButton,
+                QLabel,
+                QHBoxLayout,
+            )
+            from PyQt5.QtGui import QFont
+            import platform
+            from qgis.core import QgsApplication
+
+            # Get system information
+            qgis_version = QgsApplication.applicationVersion()
+            python_version = platform.python_version()
+            os_info = f"{platform.system()} {platform.release()}"
+
+            # Create GitHub issue template
+            github_template = f"""## Bug Report: {error_title}
+
+**Error Type:** {error_type}
+
+**Error Message:**
+```
+{error_message}
+```
+
+**Context:**
+{context}
+
+**Environment:**
+- QGIS Version: {qgis_version}
+- Python Version: {python_version}
+- Operating System: {os_info}
+- dzetsaka Version: 4.1.2
+
+**Steps to Reproduce:**
+1. [Please describe the steps that led to this error]
+2. 
+3. 
+
+**Expected Behavior:**
+[What you expected to happen]
+
+**Additional Information:**
+[Any additional context, screenshots, or logs that might help]
+
+**Log Output:**
+```
+[Please paste relevant log output from QGIS Message Log]
+```
+"""
+
+            # Create dialog
+            dialog = QDialog()
+            dialog.setWindowTitle("GitHub Issue Template - dzetsaka")
+            dialog.setModal(True)
+            dialog.resize(700, 600)
+
+            layout = QVBoxLayout()
+
+            # Title
+            title_label = QLabel("Copy this template to report the issue on GitHub:")
+            title_font = QFont()
+            title_font.setBold(True)
+            title_label.setFont(title_font)
+            layout.addWidget(title_label)
+
+            # Text area with template
+            text_edit = QTextEdit()
+            text_edit.setPlainText(github_template)
+            text_edit.selectAll()  # Pre-select all text for easy copying
+            layout.addWidget(text_edit)
+
+            # Buttons
+            button_layout = QHBoxLayout()
+
+            copy_button = QPushButton("Copy to Clipboard")
+            copy_button.clicked.connect(
+                lambda: self._copy_to_clipboard(github_template)
+            )
+
+            github_button = QPushButton("Open GitHub Issues")
+            github_button.clicked.connect(lambda: self._open_github_issues())
+
+            close_button = QPushButton("Close")
+            close_button.clicked.connect(dialog.close)
+
+            button_layout.addWidget(copy_button)
+            button_layout.addWidget(github_button)
+            button_layout.addStretch()
+            button_layout.addWidget(close_button)
+
+            layout.addLayout(button_layout)
+            dialog.setLayout(layout)
+
+            dialog.exec_()
+
+        except Exception as e:
+            # Fallback if popup fails
+            pushFeedback(f"Could not show GitHub issue popup: {e}", feedback="gui")
+
+    def _copy_to_clipboard(self, text):
+        """Copy text to clipboard."""
+        try:
+            from PyQt5.QtWidgets import QApplication
+
+            clipboard = QApplication.clipboard()
+            clipboard.setText(text)
+
+            from PyQt5.QtWidgets import QMessageBox
+
+            QMessageBox.information(
+                None, "Copied", "GitHub issue template copied to clipboard!"
+            )
+        except Exception as e:
+            pushFeedback(f"Could not copy to clipboard: {e}", feedback="gui")
+
+    def _open_github_issues(self):
+        """Open dzetsaka GitHub issues page."""
+        try:
+            import webbrowser
+
+            webbrowser.open("https://github.com/nkarasiak/dzetsaka/issues")
+        except Exception as e:
+            pushFeedback(f"Could not open GitHub: {e}", feedback="gui")
 
 
 class confusionMatrix:

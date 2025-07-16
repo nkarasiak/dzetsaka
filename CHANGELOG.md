@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.0] - 2025-07-16
+
+### Added
+- 🎯 **7 new machine learning algorithms**: XGBoost, LightGBM, Extra Trees, Gradient Boosting, Logistic Regression, Naive Bayes, Multi-layer Perceptron
+- 🚀 **Automatic dependency installation system**: One-click install of scikit-learn, XGBoost, LightGBM with real-time progress
+- ⚡ **Automatic hyperparameter optimization**: Cross-validation grid search for all algorithms with optimized parameter ranges
+- 🔧 **Smart sparse label handling**: Automatically handles missing class labels (e.g., classes 0,1,3 with missing 2)
+- 📊 **GitHub issue integration**: Automatic error reporting templates with system information for better bug reports
+- 📈 **Real-time installation tracking**: Live pip output streaming in QGIS log with progress indicators
+
+### Improved  
+- 🎨 **Better log levels**: Changed from WARNING to INFO for normal operations, reducing user confusion
+- 📝 **Enhanced error handling**: Specific exception types with detailed user guidance and recovery suggestions
+- 🏃 **Optimized hyperparameter grids**: Reduced grid search combinations by 60-70% while maintaining coverage
+- 💾 **Model serialization**: Fixed pickling issues for XGBoost/LightGBM wrapper classes
+- 🔄 **Parameter delegation**: Proper hyperparameter passing for wrapped algorithms
+
+### Fixed
+- 🐛 **XGBoost/LightGBM label encoding**: Automatic sparse label handling with proper inverse transformation
+- 🐛 **Model file handling**: Comprehensive error handling for corrupted/missing model files  
+- 🐛 **Import compatibility**: Fixed `Qgs` vs `Qgis` import issues for proper log levels
+- 🐛 **Wrapper initialization**: Resolved parameter delegation issues during hyperparameter optimization
+
+### Technical Details
+- **Global wrapper classes**: Moved XGBLabelWrapper and LGBLabelWrapper to module level for proper serialization
+- **Enhanced pip integration**: Cross-platform Python executable detection with QGIS environment handling
+- **Comprehensive validation**: Added specific error types (FileNotFoundError, PickleError, ValueError) with actionable messages
+
+## [4.1.2] - 2025-07-16
+
+### Added
+- **Enhanced error reporting** - Added GitHub issue reporting guidance for unexpected errors
+- **Debug information generator** - Automatic logging of system configuration for troubleshooting
+- **Comprehensive error handling** - Added try-catch wrappers for both training and classification processes
+
+### Improved
+- **Error messages** - Now include direct links to GitHub issues with guidance on what information to include
+- **System diagnostics** - Automatic detection and logging of QGIS, Python, OS versions and library availability
+
 ## [4.1.1] - 2025-07-16
 
 ### Fixed

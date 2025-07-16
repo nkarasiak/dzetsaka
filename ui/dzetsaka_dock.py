@@ -23,8 +23,7 @@ class Ui_DockWidget(object):
         self.label_8 = QtWidgets.QLabel(self.dockWidgetContents)
         self.label_8.setMinimumSize(QtCore.QSize(250, 0))
         self.label_8.setText("")
-        self.label_8.setPixmap(
-            QtGui.QPixmap(":/plugins/dzetsaka/img/parcguyane.jpg"))
+        self.label_8.setPixmap(QtGui.QPixmap(":/plugins/dzetsaka/img/parcguyane.jpg"))
         self.label_8.setObjectName("label_8")
         self.gridLayout_2.addWidget(self.label_8, 0, 0, 1, 1)
         self.gridLayout = QtWidgets.QGridLayout()
@@ -33,8 +32,7 @@ class Ui_DockWidget(object):
         self.label_2.setMinimumSize(QtCore.QSize(15, 15))
         self.label_2.setMaximumSize(QtCore.QSize(15, 15))
         self.label_2.setText("")
-        self.label_2.setPixmap(
-            QtGui.QPixmap(":/plugins/dzetsaka/img/raster.svg"))
+        self.label_2.setPixmap(QtGui.QPixmap(":/plugins/dzetsaka/img/raster.svg"))
         self.label_2.setScaledContents(True)
         self.label_2.setObjectName("label_2")
         self.gridLayout.addWidget(self.label_2, 0, 0, 1, 1)
@@ -47,8 +45,7 @@ class Ui_DockWidget(object):
         self.label_3 = QtWidgets.QLabel(self.dockWidgetContents)
         self.label_3.setMaximumSize(QtCore.QSize(15, 15))
         self.label_3.setText("")
-        self.label_3.setPixmap(
-            QtGui.QPixmap(":/plugins/dzetsaka/img/vector.svg"))
+        self.label_3.setPixmap(QtGui.QPixmap(":/plugins/dzetsaka/img/vector.svg"))
         self.label_3.setScaledContents(True)
         self.label_3.setObjectName("label_3")
         self.gridLayout.addWidget(self.label_3, 1, 0, 1, 1)
@@ -70,8 +67,7 @@ class Ui_DockWidget(object):
         self.label_4 = QtWidgets.QLabel(self.dockWidgetContents)
         self.label_4.setMaximumSize(QtCore.QSize(15, 15))
         self.label_4.setText("")
-        self.label_4.setPixmap(
-            QtGui.QPixmap(":/plugins/dzetsaka/img/column.svg"))
+        self.label_4.setPixmap(QtGui.QPixmap(":/plugins/dzetsaka/img/column.svg"))
         self.label_4.setScaledContents(True)
         self.label_4.setObjectName("label_4")
         self.gridLayout.addWidget(self.label_4, 2, 0, 1, 1)
@@ -83,12 +79,11 @@ class Ui_DockWidget(object):
         self.inModel = QtWidgets.QLineEdit(self.dockWidgetContents)
         self.inModel.setEnabled(False)
         sizePolicy = QtWidgets.QSizePolicy(
-            QtWidgets.QSizePolicy.Maximum,
-            QtWidgets.QSizePolicy.Fixed)
+            QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(
-            self.inModel.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(self.inModel.sizePolicy().hasHeightForWidth())
         self.inModel.setSizePolicy(sizePolicy)
         self.inModel.setMinimumSize(QtCore.QSize(110, 0))
         self.inModel.setMaximumSize(QtCore.QSize(160, 16777215))
@@ -106,21 +101,24 @@ class Ui_DockWidget(object):
             15,
             17,
             QtWidgets.QSizePolicy.MinimumExpanding,
-            QtWidgets.QSizePolicy.Minimum)
+            QtWidgets.QSizePolicy.Minimum,
+        )
         self.gridLayout_5.addItem(spacerItem, 1, 0, 1, 1)
         self.performMagic = QtWidgets.QToolButton(self.dockWidgetContents)
         self.performMagic.setMinimumSize(QtCore.QSize(175, 0))
         self.performMagic.setObjectName("performMagic")
         self.gridLayout_5.addWidget(self.performMagic, 1, 1, 1, 1)
         spacerItem1 = QtWidgets.QSpacerItem(
-            15, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+            15, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )
         self.gridLayout_5.addItem(spacerItem1, 1, 2, 1, 1)
         self.settingsButton = QtWidgets.QToolButton(self.dockWidgetContents)
         icon = QtGui.QIcon()
         icon.addPixmap(
             QtGui.QPixmap(":/plugins/dzetsaka/img/settings.png"),
             QtGui.QIcon.Normal,
-            QtGui.QIcon.On)
+            QtGui.QIcon.On,
+        )
         self.settingsButton.setIcon(icon)
         self.settingsButton.setObjectName("settingsButton")
         self.gridLayout_5.addWidget(self.settingsButton, 1, 3, 1, 1)
@@ -130,7 +128,8 @@ class Ui_DockWidget(object):
         self.gridLayout.addLayout(self.gridLayout_5, 3, 1, 1, 3)
         self.gridLayout_2.addLayout(self.gridLayout, 1, 0, 1, 1)
         spacerItem2 = QtWidgets.QSpacerItem(
-            100, 1, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+            100, 1, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
+        )
         self.gridLayout_2.addItem(spacerItem2, 3, 0, 1, 1)
         self.mGroupBox = QgsCollapsibleGroupBox(self.dockWidgetContents)
         self.mGroupBox.setEnabled(True)
@@ -147,8 +146,7 @@ class Ui_DockWidget(object):
         self.label_7 = QtWidgets.QLabel(self.mGroupBox)
         self.label_7.setMaximumSize(QtCore.QSize(20, 20))
         self.label_7.setText("")
-        self.label_7.setPixmap(
-            QtGui.QPixmap(":/plugins/dzetsaka/img/mask.svg"))
+        self.label_7.setPixmap(QtGui.QPixmap(":/plugins/dzetsaka/img/mask.svg"))
         self.label_7.setScaledContents(True)
         self.label_7.setObjectName("label_7")
         self.gridLayout_3.addWidget(self.label_7, 0, 0, 1, 1)
@@ -165,8 +163,7 @@ class Ui_DockWidget(object):
         self.label_5 = QtWidgets.QLabel(self.mGroupBox)
         self.label_5.setMaximumSize(QtCore.QSize(20, 20))
         self.label_5.setText("")
-        self.label_5.setPixmap(
-            QtGui.QPixmap(":/plugins/dzetsaka/img/confidence.png"))
+        self.label_5.setPixmap(QtGui.QPixmap(":/plugins/dzetsaka/img/confidence.png"))
         self.label_5.setScaledContents(True)
         self.label_5.setObjectName("label_5")
         self.gridLayout_3.addWidget(self.label_5, 1, 0, 1, 1)
@@ -183,8 +180,7 @@ class Ui_DockWidget(object):
         self.label_6 = QtWidgets.QLabel(self.mGroupBox)
         self.label_6.setMaximumSize(QtCore.QSize(20, 20))
         self.label_6.setText("")
-        self.label_6.setPixmap(
-            QtGui.QPixmap(":/plugins/dzetsaka/img/model.svg"))
+        self.label_6.setPixmap(QtGui.QPixmap(":/plugins/dzetsaka/img/model.svg"))
         self.label_6.setScaledContents(True)
         self.label_6.setObjectName("label_6")
         self.gridLayout_3.addWidget(self.label_6, 2, 0, 1, 1)
@@ -200,8 +196,7 @@ class Ui_DockWidget(object):
         self.label_11 = QtWidgets.QLabel(self.mGroupBox)
         self.label_11.setMaximumSize(QtCore.QSize(20, 20))
         self.label_11.setText("")
-        self.label_11.setPixmap(
-            QtGui.QPixmap(":/plugins/dzetsaka/img/table.png"))
+        self.label_11.setPixmap(QtGui.QPixmap(":/plugins/dzetsaka/img/table.png"))
         self.label_11.setScaledContents(True)
         self.label_11.setObjectName("label_11")
         self.gridLayout_3.addWidget(self.label_11, 3, 0, 1, 1)
@@ -222,10 +217,12 @@ class Ui_DockWidget(object):
         self.inSplit.setObjectName("inSplit")
         self.gridLayout_3.addWidget(self.inSplit, 4, 4, 1, 1)
         spacerItem3 = QtWidgets.QSpacerItem(
-            36, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+            36, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum
+        )
         self.gridLayout_3.addItem(spacerItem3, 4, 5, 1, 1)
         spacerItem4 = QtWidgets.QSpacerItem(
-            15, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+            15, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum
+        )
         self.gridLayout_3.addItem(spacerItem4, 4, 0, 1, 1)
         self.label_9 = QtWidgets.QLabel(self.mGroupBox)
         self.label_9.setObjectName("label_9")
@@ -259,74 +256,87 @@ class Ui_DockWidget(object):
     def retranslateUi(self, DockWidget):
         _translate = QtCore.QCoreApplication.translate
         DockWidget.setWindowTitle(
-            _translate(
-                "DockWidget",
-                "dzetsaka : classification tool"))
+            _translate("DockWidget", "dzetsaka : classification tool")
+        )
         self.label_2.setToolTip(
             _translate(
                 "DockWidget",
-                "<html><head/><body><p>The image to classify</p></body></html>"))
+                "<html><head/><body><p>The image to classify</p></body></html>",
+            )
+        )
         self.label_3.setToolTip(
-            _translate(
-                "DockWidget",
-                "<html><head/><body><p>Your ROI</p></body></html>"))
+            _translate("DockWidget", "<html><head/><body><p>Your ROI</p></body></html>")
+        )
         self.label.setText(_translate("DockWidget", "or"))
         self.checkInModel.setText(_translate("DockWidget", "Load model"))
         self.label_4.setToolTip(
             _translate(
                 "DockWidget",
-                "<html><head/><body><p>Column name where class number is stored</p></body></html>"))
+                "<html><head/><body><p>Column name where class number is stored</p></body></html>",
+            )
+        )
         self.inModel.setPlaceholderText(_translate("DockWidget", "Model"))
         self.outRaster.setPlaceholderText(
-            _translate(
-                "DockWidget",
-                "Classification. Leave empty for temporary file"))
+            _translate("DockWidget", "Classification. Leave empty for temporary file")
+        )
         self.performMagic.setText(
-            _translate(
-                "DockWidget",
-                "Perform the classification"))
+            _translate("DockWidget", "Perform the classification")
+        )
         self.settingsButton.setText(_translate("DockWidget", "..."))
         self.outRasterButton.setText(_translate("DockWidget", "..."))
         self.mGroupBox.setTitle(_translate("DockWidget", "Optional"))
         self.label_7.setToolTip(
             _translate(
                 "DockWidget",
-                "<html><head/><body><p>Mask where 0 are the pixels to ignore and 1 to classify</p></body></html>"))
+                "<html><head/><body><p>Mask where 0 are the pixels to ignore and 1 to classify</p></body></html>",
+            )
+        )
         self.checkInMask.setText(_translate("DockWidget", "Mask "))
         self.inMask.setPlaceholderText(
-            _translate(
-                "DockWidget",
-                "Automatic find filename_mask.ext"))
+            _translate("DockWidget", "Automatic find filename_mask.ext")
+        )
         self.label_5.setToolTip(
             _translate(
                 "DockWidget",
-                "<html><head/><body><p>Mask where 0 are the pixels to ignore and 1 to classify</p></body></html>"))
+                "<html><head/><body><p>Mask where 0 are the pixels to ignore and 1 to classify</p></body></html>",
+            )
+        )
         self.checkInConfidence.setToolTip(
             _translate(
                 "DockWidget",
-                "Create a confidence map for each classified pixel. 1 is total confidence, 0 is null."))
-        self.checkInConfidence.setText(
-            _translate("DockWidget", "Confidence map"))
+                "Create a confidence map for each classified pixel. 1 is total confidence, 0 is null.",
+            )
+        )
+        self.checkInConfidence.setText(_translate("DockWidget", "Confidence map"))
         self.outConfidenceMap.setPlaceholderText(
-            _translate("DockWidget", "Map of confidence"))
+            _translate("DockWidget", "Map of confidence")
+        )
         self.label_6.setToolTip(
             _translate(
                 "DockWidget",
-                "<html><head/><body><p>If you want to save the model for a further use and with another image</p></body></html>"))
+                "<html><head/><body><p>If you want to save the model for a further use and with another image</p></body></html>",
+            )
+        )
         self.checkOutModel.setText(_translate("DockWidget", "Save model"))
-        self.outModel.setPlaceholderText(_translate(
-            "DockWidget", "To use with another image"))
+        self.outModel.setPlaceholderText(
+            _translate("DockWidget", "To use with another image")
+        )
         self.label_11.setToolTip(
             _translate(
                 "DockWidget",
-                "<html><head/><body><p>If you want to save the model for a further use and with another image</p></body></html>"))
+                "<html><head/><body><p>If you want to save the model for a further use and with another image</p></body></html>",
+            )
+        )
         self.checkOutMatrix.setText(_translate("DockWidget", "Save matrix"))
         self.outMatrix.setPlaceholderText(
-            _translate("DockWidget", "Save confusion matrix"))
+            _translate("DockWidget", "Save confusion matrix")
+        )
         self.inSplit.setSuffix(_translate("DockWidget", "%"))
         self.label_9.setText(_translate("DockWidget", "Split"))
         self.label_10.setToolTip(
             _translate(
                 "DockWidget",
-                "<html><head/><body><p>In percent, number of polygons used for classification and number used for stats (confusion matrix, overall accuracy and Kappa)</p></body></html>"))
+                "<html><head/><body><p>In percent, number of polygons used for classification and number used for stats (confusion matrix, overall accuracy and Kappa)</p></body></html>",
+            )
+        )
         self.label_10.setText(_translate("DockWidget", "(?)"))

@@ -51,12 +51,47 @@
       </item>
       <item>
        <property name="text">
-        <string>Support Vector Machines</string>
+        <string>Support Vector Machine</string>
        </property>
       </item>
       <item>
        <property name="text">
         <string>K-Nearest Neighbors</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>XGBoost</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>LightGBM</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Extra Trees</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Gradient Boosting Classifier</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Logistic Regression</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Gaussian Naive Bayes</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Multi-layer Perceptron</string>
        </property>
       </item>
      </widget>

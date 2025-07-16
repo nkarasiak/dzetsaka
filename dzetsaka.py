@@ -45,7 +45,6 @@ except ImportError:
 from . import ui
 from . import classifier_config
 from .scripts import mainfunction
-from .scripts.sklearn_validator import validate_classifier_selection, check_sklearn_availability, get_sklearn_error_message
 
 from .dzetsaka_provider import dzetsakaProvider
 
@@ -220,7 +219,7 @@ class dzetsakaGUI(QDialog):
         """Get icon path, trying resource first, then fallback to file path"""
         resource_path = f":/plugins/dzetsaka/img/{icon_name}"
         file_path = os.path.join(self.plugin_dir, "img", icon_name)
-        
+
         # Try to create QIcon with resource path first
         icon = QIcon(resource_path)
         if not icon.isNull():
@@ -696,20 +695,27 @@ class dzetsakaGUI(QDialog):
             # Get Classifier
             # retrieve shortname classifier
             inClassifier = classifier_config.get_classifier_code(self.classifier)
-            QgsMessageLog.logMessage(f"Current classifier: '{self.classifier}' -> '{inClassifier}'")
+            from qgis.core import Qgis
+            QgsMessageLog.logMessage(
+                f"Selected classifier: {self.classifier} (code: {inClassifier})",
+                level=Qgis.Info
+            )
+
+            # Ensure inClassifier is definitely a string
+            inClassifier = str(inClassifier)
 
             # Check if model, else perform training
             NODATA = -9999
 
             if model != "":
                 model = self.dockwidget.inModel.text()
-                QgsMessageLog.logMessage("Model is " + str(model))
+                QgsMessageLog.logMessage(f"Using existing model: {model}", level=Qgis.Info)
             else:
                 if self.dockwidget.outModel.text() == "":
                     model = tempfile.mktemp("." + str(inClassifier))
                 else:
                     model = self.dockwidget.outModel.text()
-                QgsMessageLog.logMessage("No model loaded")
+                QgsMessageLog.logMessage("Training new model (no existing model loaded)", level=Qgis.Info)
 
             inField = self.dockwidget.inField.currentText()
             inSeed = 0
@@ -724,7 +730,8 @@ class dzetsakaGUI(QDialog):
             try:
                 if not self.dockwidget.checkInModel.isChecked():
                     QgsMessageLog.logMessage(
-                        "Begin training with " + inClassifier + " classifier"
+                        f"Starting training phase with {inClassifier} classifier",
+                        level=Qgis.Info
                     )
 
                     temp = mainfunction.learnModel(
@@ -751,12 +758,20 @@ class dzetsakaGUI(QDialog):
                 QgsMessageLog.logMessage("Split: " + str(inSplit))
                 QgsMessageLog.logMessage("Model: " + str(model))
 
+                # Log configuration for GitHub issue reporting
+                config_info = self._get_debug_info()
+                QgsMessageLog.logMessage("Configuration for issue reporting:")
+                QgsMessageLog.logMessage(config_info)
+
                 # Show specific error message if available, otherwise generic message
                 if str(e).strip():
                     message = (
                         "Training failed with the following error:<br><br>"
-                        + str(e).replace('\n', '<br>')
-                        + "<br><br>Please check the log for more details."
+                        + str(e).replace("\n", "<br>")
+                        + "<br><br>Please check the log for more details.<br><br>"
+                        + "<b>If this issue persists:</b><br>"
+                        + "Please report it at <a href='https://github.com/nkarasiak/dzetsaka/issues'>github.com/nkarasiak/dzetsaka/issues</a><br>"
+                        + "Include your classifier settings, QGIS version, and error details."
                     )
                 else:
                     message = (
@@ -765,7 +780,10 @@ class dzetsakaGUI(QDialog):
                         "• Mismatched projections between shapefile and raster<br>"
                         "• Invalid geometries in the shapefile<br>"
                         "• Insufficient training samples<br><br>"
-                        "Please check the log for more details."
+                        "Please check the log for more details.<br><br>"
+                        + "<b>If this issue persists:</b><br>"
+                        + "Please report it at <a href='https://github.com/nkarasiak/dzetsaka/issues'>github.com/nkarasiak/dzetsaka/issues</a><br>"
+                        + "Include your classifier settings, QGIS version, and error details."
                     )
                 QMessageBox.warning(
                     self, "dzetsaka Training Error", message, QMessageBox.Ok
@@ -776,25 +794,50 @@ class dzetsakaGUI(QDialog):
             if not stop:
                 # Begin classification
                 QgsMessageLog.logMessage(
-                    "Begin classification with " + str(inClassifier)
+                    f"Starting classification with {inClassifier} classifier",
+                    level=Qgis.Info
                 )
-                temp = mainfunction.classifyImage()
+                try:
+                    temp = mainfunction.classifyImage()
 
-                temp.initPredict(
-                    raster_path=inRaster,
-                    model_path=model,
-                    output_path=outRaster,
-                    mask_path=inMask,
-                    confidenceMap=confidenceMap,
-                    confidenceMapPerClass=None,
-                    NODATA=NODATA,
-                    feedback="gui",
-                )
-                QgsMessageLog.logMessage("Dzetsaka classification done.")
-                self.iface.addRasterLayer(outRaster)
+                    temp.initPredict(
+                        raster_path=inRaster,
+                        model_path=model,
+                        output_path=outRaster,
+                        mask_path=inMask,
+                        confidenceMap=confidenceMap,
+                        confidenceMapPerClass=None,
+                        NODATA=NODATA,
+                        feedback="gui",
+                    )
+                    QgsMessageLog.logMessage("Classification completed successfully", level=Qgis.Info)
+                    self.iface.addRasterLayer(outRaster)
 
-                if confidenceMap:
-                    self.iface.addRasterLayer(confidenceMap)
+                    if confidenceMap:
+                        self.iface.addRasterLayer(confidenceMap)
+
+                except Exception as e:
+                    QgsMessageLog.logMessage(
+                        "Classification failed with error: " + str(e)
+                    )
+
+                    # Log configuration for GitHub issue reporting
+                    config_info = self._get_debug_info()
+                    QgsMessageLog.logMessage("Configuration for issue reporting:")
+                    QgsMessageLog.logMessage(config_info)
+
+                    # Show error message with GitHub reporting guidance
+                    message = (
+                        "Classification failed with the following error:<br><br>"
+                        + str(e).replace("\n", "<br>")
+                        + "<br><br>Please check the log for more details.<br><br>"
+                        + "<b>If this issue persists:</b><br>"
+                        + "Please report it at <a href='https://github.com/nkarasiak/dzetsaka/issues'>github.com/nkarasiak/dzetsaka/issues</a><br>"
+                        + "Include your classifier settings, QGIS version, and error details from the log."
+                    )
+                    QMessageBox.warning(
+                        self, "dzetsaka Classification Error", message, QMessageBox.Ok
+                    )
 
     def checkbox_state(self):
         """!@brief Manage checkbox in main dock"""
@@ -937,55 +980,100 @@ class dzetsakaGUI(QDialog):
         if self.sender() == self.settingsdock.selectClassifier:
             selected_classifier = self.settingsdock.selectClassifier.currentText()
             classifier_code = classifier_config.get_classifier_code(selected_classifier)
-            
+
             # Check dependencies
             missing_deps = []
             error_message = ""
-            
+
             if classifier_config.requires_sklearn(classifier_code):
                 # Test sklearn availability directly
                 sklearn_available = False
                 try:
-                    import sklearn
+                    import sklearn  # noqa: F401
+
                     sklearn_available = True
-                    QgsMessageLog.logMessage(f"Sklearn detected for {selected_classifier}: version {sklearn.__version__}")
+                    QgsMessageLog.logMessage(
+                        f"Sklearn detected for {selected_classifier}: version {sklearn.__version__}"
+                    )
                 except ImportError as e:
-                    QgsMessageLog.logMessage(f"Sklearn import failed for {selected_classifier}: {e}")
-                
+                    QgsMessageLog.logMessage(
+                        f"Sklearn import failed for {selected_classifier}: {e}"
+                    )
+
                 if not sklearn_available:
                     missing_deps.append("scikit-learn")
                     error_message += "Scikit-learn library is missing.<br>"
-                    error_message += "Install with: <code>pip install scikit-learn</code><br><br>"
-            
+                    error_message += (
+                        "Install with: <code>pip install scikit-learn</code><br><br>"
+                    )
+
             if classifier_config.requires_xgboost(classifier_code):
                 try:
-                    import xgboost
+                    import xgboost  # noqa: F401
                 except ImportError:
                     missing_deps.append("XGBoost")
                     error_message += "XGBoost library is missing.<br>"
-                    error_message += "Install with: <code>pip install xgboost</code><br><br>"
-            
+                    error_message += (
+                        "Install with: <code>pip install xgboost</code><br><br>"
+                    )
+
             if classifier_config.requires_lightgbm(classifier_code):
                 try:
-                    import lightgbm
+                    import lightgbm  # noqa: F401
                 except ImportError:
                     missing_deps.append("LightGBM")
                     error_message += "LightGBM library is missing.<br>"
-                    error_message += "Install with: <code>pip install lightgbm</code><br><br>"
-            
+                    error_message += (
+                        "Install with: <code>pip install lightgbm</code><br><br>"
+                    )
+
             if missing_deps:
-                # Show error and reset to GMM
-                QMessageBox.warning(
+                # Offer experimental auto-installation
+                reply = QMessageBox.question(
                     self,
                     f"Missing Dependencies for {selected_classifier}",
-                    f"{error_message}You must install the required libraries or use Gaussian Mixture Model.<br><br>"
-                    f"<a href='https://github.com/lennepkade/dzetsaka/#installation'>Consult dzetsaka documentation for installation help</a>.",
-                    QMessageBox.Ok,
+                    f"{error_message}<br>"
+                    f"<b>🧪 Experimental Feature:</b><br>"
+                    f"Would you like dzetsaka to try installing the missing dependencies automatically?<br><br>"
+                    f"<b>Note:</b> This is experimental and may not work in all QGIS environments.<br>"
+                    f"Click 'Yes' to try auto-install, 'No' to install manually, or 'Cancel' to use GMM.<br><br>"
+                    f"<a href='https://github.com/lennepkade/dzetsaka/#installation'>Manual installation guide</a>",
+                    QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+                    QMessageBox.No,
                 )
-                # Reset to GMM
-                self.settingsdock.selectClassifier.setCurrentIndex(0)
-                self.settings.setValue("/dzetsaka/classifier", "Gaussian Mixture Model")
-                self.classifier = "Gaussian Mixture Model"
+
+                if reply == QMessageBox.Yes:
+                    # Try experimental auto-installation
+                    if self._try_install_dependencies(missing_deps):
+                        # Success! Update classifier
+                        self.settings.setValue(
+                            "/dzetsaka/classifier", selected_classifier
+                        )
+                        self.classifier = selected_classifier
+                        QMessageBox.information(
+                            self,
+                            "Installation Successful",
+                            f"Dependencies installed successfully!<br><br>"
+                            f"<b>Note:</b> If {selected_classifier} doesn't work immediately, "
+                            f"please restart QGIS to ensure the new libraries are properly loaded.<br><br>"
+                            f"You can now try using {selected_classifier}.",
+                            QMessageBox.Ok,
+                        )
+                    else:
+                        # Failed, reset to GMM
+                        self.settingsdock.selectClassifier.setCurrentIndex(0)
+                        self.settings.setValue(
+                            "/dzetsaka/classifier", "Gaussian Mixture Model"
+                        )
+                        self.classifier = "Gaussian Mixture Model"
+                elif reply == QMessageBox.Cancel:
+                    # Reset to GMM
+                    self.settingsdock.selectClassifier.setCurrentIndex(0)
+                    self.settings.setValue(
+                        "/dzetsaka/classifier", "Gaussian Mixture Model"
+                    )
+                    self.classifier = "Gaussian Mixture Model"
+                # If No, keep current selection but don't save (user will handle manually)
             else:
                 # Dependencies satisfied, update classifier
                 if self.classifier != selected_classifier:
@@ -1024,6 +1112,261 @@ class dzetsakaGUI(QDialog):
 
             self.provider = dzetsakaProvider(self.providerType)
             QgsApplication.processingRegistry().addProvider(self.provider)
+
+    def _get_debug_info(self):
+        """Generate debug information for GitHub issue reporting."""
+        try:
+            import platform
+
+            # Get QGIS version
+            qgis_version = QgsApplication.applicationVersion()
+
+            # Get Python version
+            python_version = platform.python_version()
+
+            # Get OS info
+            os_info = f"{platform.system()} {platform.release()}"
+
+            # Get classifier and settings
+            classifier_code = classifier_config.get_classifier_code(self.classifier)
+
+            # Check library availability
+            sklearn_available = "No"
+            try:
+                import sklearn  # noqa: F401
+
+                sklearn_available = f"Yes ({sklearn.__version__})"
+            except ImportError:
+                pass
+
+            xgboost_available = "No"
+            try:
+                import xgboost  # noqa: F401
+
+                xgboost_available = f"Yes ({xgboost.__version__})"
+            except ImportError:
+                pass
+
+            lightgbm_available = "No"
+            try:
+                import lightgbm  # noqa: F401
+
+                lightgbm_available = f"Yes ({lightgbm.__version__})"
+            except ImportError:
+                pass
+
+            debug_info = f"""
+=== DZETSAKA DEBUG INFO ===
+Plugin Version: 4.1.2
+QGIS Version: {qgis_version}
+Python Version: {python_version}
+Operating System: {os_info}
+
+Current Classifier: {self.classifier} ({classifier_code})
+Available Libraries:
+- Scikit-learn: {sklearn_available}
+- XGBoost: {xgboost_available}
+- LightGBM: {lightgbm_available}
+
+Settings:
+- Class Suffix: {getattr(self, "classSuffix", "N/A")}
+- Class Prefix: {getattr(self, "classPrefix", "N/A")}
+- Mask Suffix: {getattr(self, "maskSuffix", "N/A")}
+- Provider Type: {getattr(self, "providerType", "N/A")}
+=== END DEBUG INFO ===
+"""
+            return debug_info.strip()
+        except Exception as e:
+            return f"Error generating debug info: {str(e)}"
+
+    def _try_install_dependencies(self, missing_deps):
+        """
+        Experimental feature to auto-install missing dependencies.
+
+        Parameters
+        ----------
+        missing_deps : list
+            List of missing dependency names
+
+        Returns
+        -------
+        bool
+            True if installation succeeded, False otherwise
+        """
+
+        # Package installation with proper Python executable detection
+        def install_package(package):
+            try:
+                import subprocess
+                import sys
+                import os
+                
+                # Find the correct Python executable (workaround for QGIS sys.executable issue)
+                def find_python():
+                    if sys.platform != "win32":
+                        return sys.executable
+                    
+                    # On Windows, sys.executable points to QGIS, not Python
+                    # Search sys.path for python executables
+                    for path in sys.path:
+                        assumed_path = os.path.join(path, "python.exe")
+                        if os.path.isfile(assumed_path):
+                            QgsMessageLog.logMessage(f"Found Python executable: {assumed_path}")
+                            return assumed_path
+                    
+                    # Fallback: try 'python' command directly
+                    return 'python'
+                
+                python_exe = find_python()
+                QgsMessageLog.logMessage(f"Installing {package} using Python executable: {python_exe}")
+                
+                # Use Popen for real-time output with non-interactive flags
+                process = subprocess.Popen(
+                    [python_exe, "-m", "pip", "install", package, "--no-input", "--quiet"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    universal_newlines=True
+                )
+                
+                # Stream output in real-time
+                while True:
+                    output = process.stdout.readline()
+                    if output == '' and process.poll() is not None:
+                        break
+                    if output:
+                        QgsMessageLog.logMessage(f"pip: {output.strip()}")
+                
+                return_code = process.poll()
+                if return_code == 0:
+                    QgsMessageLog.logMessage(f"Successfully installed {package}")
+                    return True
+                else:
+                    QgsMessageLog.logMessage(f"Pip install failed with return code: {return_code}")
+                    return False
+                
+            except subprocess.CalledProcessError as e:
+                QgsMessageLog.logMessage(f"Failed to install {package}: {e}")
+                return False
+            except Exception as e:
+                QgsMessageLog.logMessage(f"Installation error for {package}: {e}")
+                return False
+
+        # Mapping of dependency names to pip packages
+        pip_packages = {
+            "scikit-learn": "scikit-learn",
+            "XGBoost": "xgboost",
+            "LightGBM": "lightgbm",
+        }
+
+        try:
+            # Show progress dialog
+            # from PyQt5.QtCore import QEventLoop, QTimer
+            from PyQt5.QtWidgets import QProgressDialog
+
+            progress = QProgressDialog(
+                "Installing dependencies...", "Cancel", 0, len(missing_deps), self
+            )
+            progress.setWindowModality(2)  # ApplicationModal
+            progress.show()
+
+            success_count = 0
+
+            for i, dep in enumerate(missing_deps):
+                if progress.wasCanceled():
+                    QMessageBox.warning(
+                        self,
+                        "Installation Cancelled",
+                        "Dependency installation was cancelled.",
+                        QMessageBox.Ok,
+                    )
+                    return False
+
+                progress.setLabelText(f"Installing {dep}...")
+                progress.setValue(i)
+
+                # Get the pip package name
+                package_name = pip_packages.get(dep, dep.lower())
+
+                try:
+                    # Try direct pip installation first (preferred method)
+                    QgsMessageLog.logMessage(
+                        f"Attempting to install {package_name} using direct pip..."
+                    )
+
+                    if install_package(package_name):
+                        QgsMessageLog.logMessage(
+                            f"Successfully installed {package_name}"
+                        )
+                        success_count += 1
+
+                        # Try to import to verify installation (after clearing import cache)
+                        import importlib
+
+                        try:
+                            if dep == "scikit-learn":
+                                importlib.invalidate_caches()
+                                sklearn = importlib.import_module("sklearn")
+                                QgsMessageLog.logMessage(
+                                    f"Verified sklearn import: {sklearn.__version__}"
+                                )
+                            elif dep == "XGBoost":
+                                importlib.invalidate_caches()
+                                xgboost = importlib.import_module("xgboost")
+                                QgsMessageLog.logMessage(
+                                    f"Verified xgboost import: {xgboost.__version__}"
+                                )
+                            elif dep == "LightGBM":
+                                importlib.invalidate_caches()
+                                lightgbm = importlib.import_module("lightgbm")
+                                QgsMessageLog.logMessage(
+                                    f"Verified lightgbm import: {lightgbm.__version__}"
+                                )
+                        except ImportError as import_error:
+                            QgsMessageLog.logMessage(
+                                f"Package {package_name} installed but not immediately available: {import_error}"
+                            )
+                            QgsMessageLog.logMessage(
+                                "You may need to restart QGIS to use this library."
+                            )
+                            # Still count as success since pip succeeded
+
+                    else:
+                        QgsMessageLog.logMessage(
+                            f"Direct pip installation failed for {package_name}"
+                        )
+
+                except Exception as e:
+                    QgsMessageLog.logMessage(
+                        f"Error installing {package_name}: {str(e)}"
+                    )
+
+            progress.setValue(len(missing_deps))
+            progress.close()
+
+            if success_count == len(missing_deps):
+                return True
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Installation Incomplete",
+                    f"Only {success_count} of {len(missing_deps)} dependencies were installed successfully.<br>"
+                    f"Please check the QGIS log for details and consider manual installation.",
+                    QMessageBox.Ok,
+                )
+                return False
+
+        except Exception as e:
+            QgsMessageLog.logMessage(f"Error during dependency installation: {str(e)}")
+            QMessageBox.critical(
+                self,
+                "Installation Error",
+                f"An error occurred during installation:<br><br>{str(e)}<br><br>"
+                f"Please install dependencies manually using:<br>"
+                f"pip install scikit-learn xgboost lightgbm",
+                QMessageBox.Ok,
+            )
+            return False
 
     def modifyConfig(self, section, option, value):
         configFile = open(self.configFile, "w")

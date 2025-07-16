@@ -9,16 +9,23 @@
 [general]
 name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
-description=Fast and Easy Classification plugin for Qgis
-version=4.1.1
+description=Fast and Easy Classification plugin for Qgis with 11 ML algorithms + Auto-Install
+version=4.2.0
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
 about=
-      Plugin for semi-automatic classification with Gaussian Mixture Model, Random Forest*, and SVM* classifiers.
-      Very easy and fast to use.
-      *You need to install scitkit-learn library to use these algorithms.
-      For more information on this tool check our github :  https://github.com/nkarasiak/dzetsaka/
+      🎯 Powerful classification plugin supporting 11 machine learning algorithms:
+      
+      CORE: GMM, Random Forest, SVM, KNN
+      ADVANCED: XGBoost, LightGBM, Extra Trees, Gradient Boosting, Logistic Regression, Naive Bayes, MLP
+      
+      🚀 NEW: Automatic dependency installation! No more manual pip commands - dzetsaka auto-installs scikit-learn, XGBoost, and LightGBM with one click.
+      
+      ⚡ Enhanced features: Hyperparameter optimization, sparse label handling, improved error handling, and GitHub issue integration.
+      
+      Very easy, fast, and powerful to use.
+      For more information: https://github.com/nkarasiak/dzetsaka/
 
 tracker=https://github.com/nkarasiak/dzetsaka/issues
 repository=http://www.github.com/nkarasiak/dzetsaka
@@ -29,6 +36,17 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+    4.2.0
+      * 🎯 NEW: 7 additional machine learning algorithms - XGBoost, LightGBM, Extra Trees, Gradient Boosting, Logistic Regression, Naive Bayes, MLP
+      * 🚀 NEW: Automatic dependency installation system - one-click install of scikit-learn, XGBoost, LightGBM
+      * ⚡ NEW: Automatic hyperparameter optimization with cross-validation grid search for all algorithms
+      * 🔧 NEW: Smart sparse label handling - automatically handles missing class labels (e.g., 0,1,3)
+      * 📊 NEW: GitHub issue integration - automatic error reporting templates with system info
+      * 🎨 IMPROVED: Better log levels (INFO vs WARNING) and more informative progress messages
+      * 🐛 FIX: Resolved parameter delegation issues for XGBoost/LightGBM wrappers
+      * 🐛 FIX: Fixed model serialization/pickling for new wrapper classes
+      * 📈 ENHANCED: Real-time pip installation progress with detailed logging
+      * 📝 ENHANCED: Comprehensive error handling with specific exception types and user guidance
     4.1.0
       * Major code refactoring and optimization of scripts/mainfunction.py
       * Remove Hungarian notation prefixes (in/out) from parameter names with full backward compatibility
@@ -58,7 +76,7 @@ changelog=
       * Move dzetsaka icons to extension toolbar
 
 # Tags are comma separated with spaces allowed
-tags=classification,semi-automatic,gaussian,mixture,model,random forest,svm,knn,forest,processing
+tags=classification,machine learning,xgboost,lightgbm,random forest,svm,knn,neural network,auto-install,processing
 
 homepage=http://www.github.com/nkarasiak/dzetsaka
 category=Raster
