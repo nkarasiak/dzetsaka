@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
 description=Fast and Easy Classification plugin for Qgis
-version=4.0.0
+version=4.1.1
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -29,6 +29,18 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+    4.1.0
+      * Major code refactoring and optimization of scripts/mainfunction.py
+      * Remove Hungarian notation prefixes (in/out) from parameter names with full backward compatibility
+      * Significant memory optimizations for large multi-band image processing
+      * Enhanced error handling with specific exception types and detailed error messages
+      * Added comprehensive type hints and improved documentation
+      * Broke down 1279-line method into focused, maintainable helper methods
+      * Added configuration constants for better maintainability
+      * Created parameter migration guide for smooth transition
+      * All old parameter names remain functional with deprecation warnings
+    4.0.0
+      * Major version with comprehensive improvements
     3.70
       * Fix bug with new gdal import from osgeo
     3.64

@@ -43,7 +43,9 @@ except ImportError:
 
 # import local libraries
 from . import ui
+from . import classifier_config
 from .scripts import mainfunction
+from .scripts.sklearn_validator import validate_classifier_selection, check_sklearn_availability, get_sklearn_error_message
 
 from .dzetsaka_provider import dzetsakaProvider
 
@@ -471,12 +473,7 @@ class dzetsakaGUI(QDialog):
 
             self.providerType = self.Config.get('Providers','provider')
             """
-            self.classifiers = [
-                "Gaussian Mixture Model",
-                "Random Forest",
-                "Support Vector Machines",
-                "K-Nearest Neighbors",
-            ]
+            self.classifiers = classifier_config.CLASSIFIER_NAMES
             self.providers = ["Standard", "Experimental"]
 
             self.classifier = self.settings.value("/dzetsaka/classifier", "", str)
@@ -698,10 +695,8 @@ class dzetsakaGUI(QDialog):
 
             # Get Classifier
             # retrieve shortname classifier
-            classifierShortName = ["GMM", "RF", "SVM", "KNN"]
-            for i, cls in enumerate(self.classifiers):
-                if self.classifier == cls:
-                    inClassifier = classifierShortName[i]
+            inClassifier = classifier_config.get_classifier_code(self.classifier)
+            QgsMessageLog.logMessage(f"Current classifier: '{self.classifier}' -> '{inClassifier}'")
 
             # Check if model, else perform training
             NODATA = -9999
@@ -733,14 +728,14 @@ class dzetsakaGUI(QDialog):
                     )
 
                     temp = mainfunction.learnModel(
-                        inRaster,
-                        inShape,
-                        inField,
-                        model,
-                        inSplit,
-                        inSeed=inSeed,
-                        outMatrix=outMatrix,
-                        inClassifier=inClassifier,
+                        raster_path=inRaster,
+                        vector_path=inShape,
+                        class_field=inField,
+                        model_path=model,
+                        split_config=inSplit,
+                        random_seed=inSeed,
+                        matrix_path=outMatrix,
+                        classifier=inClassifier,
                         extraParam=None,
                         feedback="gui",
                     )
@@ -786,10 +781,10 @@ class dzetsakaGUI(QDialog):
                 temp = mainfunction.classifyImage()
 
                 temp.initPredict(
-                    inRaster,
-                    model,
-                    outRaster,
-                    inMask=inMask,
+                    raster_path=inRaster,
+                    model_path=model,
+                    output_path=outRaster,
+                    mask_path=inMask,
                     confidenceMap=confidenceMap,
                     confidenceMapPerClass=None,
                     NODATA=NODATA,
@@ -940,37 +935,62 @@ class dzetsakaGUI(QDialog):
         """!@brief save settings if modifications"""
         # Change classifier
         if self.sender() == self.settingsdock.selectClassifier:
-            if (
-                self.settingsdock.selectClassifier.currentText()
-                != "Gaussian Mixture Model"
-            ):
-                # try if Sklearn is installed, or force GMM
+            selected_classifier = self.settingsdock.selectClassifier.currentText()
+            classifier_code = classifier_config.get_classifier_code(selected_classifier)
+            
+            # Check dependencies
+            missing_deps = []
+            error_message = ""
+            
+            if classifier_config.requires_sklearn(classifier_code):
+                # Test sklearn availability directly
+                sklearn_available = False
                 try:
-                    if (
-                        self.classifier
-                        != self.settingsdock.selectClassifier.currentText()
-                    ):
-                        # self.modifyConfig('Classification','classifier',self.settingsdock.selectClassifier.currentText())
-                        self.settings.setValue(
-                            "/dzetsaka/classifier",
-                            self.settingsdock.selectClassifier.currentText(),
-                        )
-                except BaseException:
-                    QMessageBox.warning(
-                        self,
-                        "Library missing",
-                        "Scikit-learn library is missing on your computer.<br><br> You must use Gaussian Mixture Model, or <a href='https://github.com/lennepkade/dzetsaka/#installation-of-scikit-learn'>consult dzetsaka homepage to learn on to install the missing library</a>.",
-                        QMessageBox.Ok,
-                    )
-                    # reset to GMM
-                    self.settingsdock.selectClassifier.setCurrentIndex(0)
-                    # self.modifyConfig('Classification','classifier','Gaussian Mixture Model')
-                    self.settings.setValue(
-                        "/dzetsaka/classifier", "Gaussian Mixture Model"
-                    )
-            else:
-                # self.modifyConfig('Classification','classifier','Gaussian Mixture Model')
+                    import sklearn
+                    sklearn_available = True
+                    QgsMessageLog.logMessage(f"Sklearn detected for {selected_classifier}: version {sklearn.__version__}")
+                except ImportError as e:
+                    QgsMessageLog.logMessage(f"Sklearn import failed for {selected_classifier}: {e}")
+                
+                if not sklearn_available:
+                    missing_deps.append("scikit-learn")
+                    error_message += "Scikit-learn library is missing.<br>"
+                    error_message += "Install with: <code>pip install scikit-learn</code><br><br>"
+            
+            if classifier_config.requires_xgboost(classifier_code):
+                try:
+                    import xgboost
+                except ImportError:
+                    missing_deps.append("XGBoost")
+                    error_message += "XGBoost library is missing.<br>"
+                    error_message += "Install with: <code>pip install xgboost</code><br><br>"
+            
+            if classifier_config.requires_lightgbm(classifier_code):
+                try:
+                    import lightgbm
+                except ImportError:
+                    missing_deps.append("LightGBM")
+                    error_message += "LightGBM library is missing.<br>"
+                    error_message += "Install with: <code>pip install lightgbm</code><br><br>"
+            
+            if missing_deps:
+                # Show error and reset to GMM
+                QMessageBox.warning(
+                    self,
+                    f"Missing Dependencies for {selected_classifier}",
+                    f"{error_message}You must install the required libraries or use Gaussian Mixture Model.<br><br>"
+                    f"<a href='https://github.com/lennepkade/dzetsaka/#installation'>Consult dzetsaka documentation for installation help</a>.",
+                    QMessageBox.Ok,
+                )
+                # Reset to GMM
+                self.settingsdock.selectClassifier.setCurrentIndex(0)
                 self.settings.setValue("/dzetsaka/classifier", "Gaussian Mixture Model")
+                self.classifier = "Gaussian Mixture Model"
+            else:
+                # Dependencies satisfied, update classifier
+                if self.classifier != selected_classifier:
+                    self.settings.setValue("/dzetsaka/classifier", selected_classifier)
+                    self.classifier = selected_classifier
 
         if self.sender() == self.settingsdock.classSuffix:
             if self.classSuffix != self.settingsdock.classSuffix.text():

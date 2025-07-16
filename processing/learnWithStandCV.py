@@ -40,6 +40,7 @@ from qgis.core import (
 
 import os
 
+from .. import classifier_config
 from ..scripts import mainfunction
 
 pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
@@ -50,12 +51,8 @@ class trainSTANDalgorithm(QgsProcessingAlgorithm):
     INPUT_LAYER = "INPUT_LAYER"
     INPUT_COLUMN = "INPUT_COLUMN"
     TRAIN = "TRAIN"
-    TRAIN_ALGORITHMS = [
-        "Random-Forest",
-        "K-Nearest Neighbors",
-        "Support Vector Machine",
-    ]
-    TRAIN_ALGORITHMS_CODE = ["RF", "KNN", "SVM"]
+    TRAIN_ALGORITHMS = classifier_config.UI_DISPLAY_NAMES
+    TRAIN_ALGORITHMS_CODE = classifier_config.CLASSIFIER_CODES
     SLOO = "SLOO"
     STAND_COLUMN = "STAND_COLUMN"
     MAXITER = "MAXITER"
