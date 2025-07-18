@@ -18,7 +18,7 @@ class DzetsakaSettings:
     
     def _init_default_values(self):
         """Initialize default values for all settings"""
-        self.classifier = ""
+        self.classifier = "GMM"  # Default to GMM
         self.class_suffix = ""
         self.class_prefix = ""
         self.mask_suffix = ""
@@ -28,8 +28,15 @@ class DzetsakaSettings:
     
     def load_settings(self):
         """Load all settings from QSettings"""
-        self.classifier = self.settings.value("/dzetsaka/classifier", "", str)
+        self.classifier = self.settings.value("/dzetsaka/classifier", "GMM", str)
         if self.classifier == "":
+            self.classifier = "GMM"
+            self.settings.setValue("/dzetsaka/classifier", self.classifier)
+        
+        # Convert any old full names to codes for backward compatibility
+        from .. import classifier_config
+        if self.classifier in classifier_config.NAME_TO_CODE:
+            self.classifier = classifier_config.NAME_TO_CODE[self.classifier]
             self.settings.setValue("/dzetsaka/classifier", self.classifier)
         
         self.class_suffix = self.settings.value("/dzetsaka/classSuffix", "", str)

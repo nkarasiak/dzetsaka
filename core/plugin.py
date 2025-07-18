@@ -38,8 +38,7 @@ from ..scripts import mainfunction
 from .settings_manager import DzetsakaSettings
 from .ui_controller import DzetsakaUIController
 from .file_manager import DzetsakaFileManager
-from ..ml.learner import ModelLearner
-from ..ml.classifier import ImageClassifier
+# ML components will be imported when needed
 
 
 class DzetsakaPlugin:
@@ -205,8 +204,10 @@ class DzetsakaPlugin:
     def _on_classifier_changed(self, index):
         """Handle classifier selection change"""
         if self.ui_controller.settings_dock:
-            selected_classifier = self.ui_controller.settings_dock.selectClassifier.currentText()
-            self.settings_manager.save_classifier(selected_classifier)
+            selected_name = self.ui_controller.settings_dock.selectClassifier.currentText()
+            # Convert name back to code
+            selected_code = classifier_config.NAME_TO_CODE.get(selected_name, selected_name)
+            self.settings_manager.save_classifier(selected_code)
     
     def _on_class_suffix_changed(self):
         """Handle class suffix change"""
@@ -238,45 +239,20 @@ class DzetsakaPlugin:
             # Get input parameters from UI
             params = self._get_classification_parameters()
             
-            # Debug: Show parameters
-            QMessageBox.information(
-                self.iface.mainWindow(),
-                "Debug - Parameters",
-                f"Raster: {params.get('raster_path', 'None')}\nVector: {params.get('vector_path', 'None')}\nOutput: {params.get('classification_output', 'None')}"
-            )
             
             if not self._validate_classification_parameters(params):
-                QMessageBox.warning(
-                    self.iface.mainWindow(),
-                    "Debug - Validation",
-                    "Parameter validation failed!"
-                )
                 return
             
             # Determine workflow type (training, classification, or both)
-            if params['model_output']:
+            needs_training = params['model_output'] or (params['classification_output'] and not params['model_input'])
+            
+            if needs_training:
                 # Training workflow
-                QMessageBox.information(
-                    self.iface.mainWindow(),
-                    "Debug",
-                    "Running training workflow..."
-                )
                 self._run_training(params)
             
             if params['classification_output']:
                 # Classification workflow  
-                QMessageBox.information(
-                    self.iface.mainWindow(),
-                    "Debug",
-                    "Running classification workflow..."
-                )
                 self._run_classification_workflow(params)
-            
-            QMessageBox.information(
-                self.iface.mainWindow(),
-                "Debug",
-                "Classification workflow completed!"
-            )
                 
         except Exception as e:
             QMessageBox.critical(
@@ -312,16 +288,43 @@ class DzetsakaPlugin:
                 return path if path else None
             return None
         
+        # Get classification output path or create temp file
+        classification_output = get_file_path(dw.outRaster)
+        if not classification_output:
+            # Create temp file like original code
+            import tempfile
+            temp_folder = tempfile.mkdtemp()
+            raster_path = get_layer_path(dw.inRaster)
+            if raster_path:
+                raster_basename = os.path.splitext(os.path.basename(raster_path))[0]
+                classification_output = os.path.join(
+                    temp_folder,
+                    f"{self.settings_manager.class_prefix}{raster_basename}{self.settings_manager.class_suffix}.tif"
+                )
+        
+        # Get model paths
+        model_input = get_file_path(dw.inModel) if dw.checkInModel.isChecked() else None
+        model_output = get_file_path(dw.outModel) if dw.checkOutModel.isChecked() else None
+        
+        # Create temp model file if no model specified and we need classification
+        if not model_input and not model_output and classification_output:
+            import tempfile
+            model_output = tempfile.mktemp("." + str(self.settings_manager.classifier))
+        
+        # Get split value - use 100 if matrix output is not checked, otherwise use the spinner value
+        split_value = dw.inSplit.value() if dw.checkOutMatrix.isChecked() else 100
+        
         return {
             'raster_path': get_layer_path(dw.inRaster),
             'vector_path': get_layer_path(dw.inShape, is_vector=True),
             'class_field': dw.inField.currentText(),
-            'model_input': get_file_path(dw.inModel) if dw.checkInModel.isChecked() else None,
-            'model_output': get_file_path(dw.outModel) if dw.checkOutModel.isChecked() else None,
-            'classification_output': get_file_path(dw.outRaster),
+            'model_input': model_input,
+            'model_output': model_output,
+            'classification_output': classification_output,
             'mask_path': get_layer_path(dw.inMask) if dw.checkInMask.isChecked() else None,
             'confidence_map': get_file_path(dw.outConfidenceMap) if dw.checkInConfidence.isChecked() else None,
             'matrix_output': get_file_path(dw.outMatrix) if dw.checkOutMatrix.isChecked() else None,
+            'split_config': split_value,
             'classifier': self.settings_manager.classifier
         }
     
@@ -343,11 +346,21 @@ class DzetsakaPlugin:
             )
             return False
         
-        if params['classification_output'] and not (params['model_input'] or params['model_output']):
+        # Check if we need a model for classification
+        if params['classification_output'] and not (params['model_input'] or params['model_output']) and not params['vector_path']:
             QMessageBox.warning(
                 self.ui_controller.dockwidget,
                 "Missing Model",
-                "Please provide a model (input existing or output new) for classification."
+                "Please provide a model (input existing or output new) or training data for classification."
+            )
+            return False
+        
+        # If no classification output and no model output, we need at least vector data for training
+        if not params['classification_output'] and not params['model_output'] and not params['vector_path']:
+            QMessageBox.warning(
+                self.ui_controller.dockwidget,
+                "Missing Input",
+                "Please select training data (vector) or specify an output."
             )
             return False
         
@@ -355,41 +368,66 @@ class DzetsakaPlugin:
     
     def _run_training(self, params):
         """Run model training workflow"""
-        learner = ModelLearner(
-            raster_path=params['raster_path'],
-            vector_path=params['vector_path'],
-            class_field=params['class_field'],
-            model_path=params['model_output'],
-            matrix_path=params['matrix_output'],
-            classifier=params['classifier']
-        )
+        from ..scripts.mainfunction import learnModel
         
-        success = learner.train_model()
-        
-        if success:
+        try:
+            learner = learnModel(
+                raster_path=params['raster_path'],
+                vector_path=params['vector_path'],
+                class_field=params['class_field'],
+                model_path=params['model_output'],
+                matrix_path=params['matrix_output'],
+                split_config=params['split_config'],
+                classifier=params['classifier'],
+                feedback="gui"
+            )
+            
             QMessageBox.information(
                 self.ui_controller.dockwidget,
                 "Training Complete",
-                f"Model training completed successfully!\nModel saved to: {params['model_output']}"
+                f"Model training completed successfully!\nModel saved to: {params['model_output'] or 'temporary location'}"
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self.ui_controller.dockwidget,
+                "Training Error",
+                f"Model training failed: {str(e)}"
             )
     
     def _run_classification_workflow(self, params):
         """Run image classification workflow"""
+        from ..scripts.mainfunction import classifyImage
+        
         model_path = params['model_input'] or params['model_output']
         
-        classifier = ImageClassifier(
-            raster_path=params['raster_path'],
-            model_path=model_path,
-            output_path=params['classification_output'],
-            mask_path=params['mask_path'],
-            confidence_map=params['confidence_map']
-        )
-        
-        success = classifier.classify()
-        
-        if success:
+        try:
+            classifier = classifyImage()
+            classifier.initPredict(
+                raster_path=params['raster_path'],
+                model_path=model_path,
+                output_path=params['classification_output'],
+                mask_path=params['mask_path'],
+                confidenceMap=params['confidence_map'],
+                confidenceMapPerClass=None,
+                NODATA=0,
+                feedback="gui"
+            )
+            
+            # Add the result to QGIS map
+            self.iface.addRasterLayer(params['classification_output'])
+            
+            # Also add confidence map if created
+            if params['confidence_map']:
+                self.iface.addRasterLayer(params['confidence_map'])
+            
             QMessageBox.information(
                 self.ui_controller.dockwidget,
                 "Classification Complete", 
                 f"Image classification completed successfully!\nOutput saved to: {params['classification_output']}"
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self.ui_controller.dockwidget,
+                "Classification Error",
+                f"Image classification failed: {str(e)}"
             )

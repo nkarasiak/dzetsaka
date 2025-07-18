@@ -142,7 +142,7 @@ class ModelLearner:
             raise ValueError("raster_path is required")
         if self.vector_path is None:
             raise ValueError("vector_path is required")
-        if self.classifier not in classifier_config.CLASSIFIERS:
+        if self.classifier not in classifier_config.CLASSIFIER_CODES:
             raise ValueError(f"Unknown classifier: {self.classifier}")
     
     def _load_training_data(self):
@@ -190,39 +190,45 @@ class ModelLearner:
     
     def _get_classifier(self):
         """Get classifier instance based on configuration"""
-        classifier_info = classifier_config.CLASSIFIERS[self.classifier]
+        # Get classifier name for sklearn classifiers
+        classifier_name = classifier_config.CODE_TO_NAME.get(self.classifier, self.classifier)
         
         if self.classifier == "GMM":
             # Built-in GMM implementation
             from ..scripts.function_dataraster import learnGMM
             return learnGMM(**self.extraParam)
+        elif self.classifier == "RF":
+            from sklearn.ensemble import RandomForestClassifier
+            return RandomForestClassifier(**self.extraParam)
+        elif self.classifier == "SVM":
+            from sklearn.svm import SVC
+            return SVC(**self.extraParam)
+        elif self.classifier == "KNN":
+            from sklearn.neighbors import KNeighborsClassifier
+            return KNeighborsClassifier(**self.extraParam)
+        elif self.classifier == "XGB":
+            from xgboost import XGBClassifier
+            return XGBLabelWrapper(XGBClassifier(**self.extraParam))
+        elif self.classifier == "LGB":
+            from lightgbm import LGBMClassifier
+            return LGBLabelWrapper(LGBMClassifier(**self.extraParam))
+        elif self.classifier == "ET":
+            from sklearn.ensemble import ExtraTreesClassifier
+            return ExtraTreesClassifier(**self.extraParam)
+        elif self.classifier == "GBC":
+            from sklearn.ensemble import GradientBoostingClassifier
+            return GradientBoostingClassifier(**self.extraParam)
+        elif self.classifier == "LR":
+            from sklearn.linear_model import LogisticRegression
+            return LogisticRegression(**self.extraParam)
+        elif self.classifier == "NB":
+            from sklearn.naive_bayes import GaussianNB
+            return GaussianNB(**self.extraParam)
+        elif self.classifier == "MLP":
+            from sklearn.neural_network import MLPClassifier
+            return MLPClassifier(**self.extraParam)
         else:
-            # Sklearn-based classifiers
-            module_name = classifier_info['module']
-            class_name = classifier_info['class']
-            
-            # Import the module
-            if module_name.startswith('sklearn'):
-                import sklearn
-                module = sklearn
-                for attr in module_name.split('.')[1:]:
-                    module = getattr(module, attr)
-            else:
-                # Handle external libraries like XGBoost, LightGBM
-                import importlib
-                module = importlib.import_module(module_name)
-            
-            # Get the class
-            classifier_class = getattr(module, class_name)
-            
-            # Apply wrapper for label encoding if needed
-            if self.classifier in ['XGB', 'LGB']:
-                if self.classifier == 'XGB':
-                    return XGBLabelWrapper(classifier_class(**self.extraParam))
-                else:
-                    return LGBLabelWrapper(classifier_class(**self.extraParam))
-            
-            return classifier_class(**self.extraParam)
+            raise ValueError(f"Unknown classifier: {self.classifier}")
     
     def _fit_model(self, classifier, X_train, y_train):
         """Fit the model to training data"""

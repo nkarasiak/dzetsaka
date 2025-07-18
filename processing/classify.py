@@ -34,7 +34,7 @@ from qgis.core import (
 
 import os
 
-from ..ml.classifier import ImageClassifier
+from ..scripts.mainfunction import classifyImage
 
 
 pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
@@ -110,15 +110,17 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
         else:
             mask = INPUT_MASK.source()
         
-        classifier = ImageClassifier(
+        classifier = classifyImage()
+        classifier.initPredict(
             raster_path=INPUT_RASTER.source(),
             model_path=INPUT_MODEL,
             output_path=OUTPUT_RASTER,
             mask_path=mask,
-            confidence_map=CONFIDENCE_RASTER,
+            confidenceMap=CONFIDENCE_RASTER,
+            confidenceMapPerClass=None,
+            NODATA=0,
             feedback=feedback,
         )
-        classifier.classify()
 
         return {self.OUTPUT_RASTER: OUTPUT_RASTER}
 

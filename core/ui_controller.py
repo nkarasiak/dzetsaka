@@ -6,17 +6,18 @@ Manages all UI interactions and widget setup.
 Extracted from the monolithic dzetsaka.py for better separation of concerns.
 """
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QObject
 from PyQt5.QtWidgets import QFileDialog
 from qgis.core import QgsMessageLog, QgsProviderRegistry
 
 from .. import ui
 
 
-class DzetsakaUIController:
+class DzetsakaUIController(QObject):
     """Manages all UI-related functionality for dzetsaka plugin"""
     
     def __init__(self, iface, settings_manager):
+        super().__init__()
         self.iface = iface
         self.settings_manager = settings_manager
         self.dockwidget = None
@@ -154,9 +155,127 @@ class DzetsakaUIController:
     
     def checkbox_state_changed(self):
         """Handle checkbox state changes for optional parameters"""
-        # This method would handle enabling/disabling related widgets
-        # based on checkbox states
-        pass
+        from PyQt5.QtWidgets import QFileDialog, QApplication
+        
+        sender = self.sender()
+        
+        # If load model
+        if (
+            sender == self.dockwidget.checkInModel
+            and self.dockwidget.checkInModel.isChecked()
+        ):
+            fileName, _filter = QFileDialog.getOpenFileName(
+                self.dockwidget, "Select your file", self.settings_manager.last_save_dir
+            )
+            self.settings_manager.remember_last_save_dir(fileName)
+            if fileName != "":
+                self.dockwidget.inModel.setText(fileName)
+                self.dockwidget.inModel.setEnabled(True)
+                # Disable training, so disable vector choice
+                self.dockwidget.inShape.setEnabled(False)
+                self.dockwidget.inField.setEnabled(False)
+            else:
+                self.dockwidget.checkInModel.setChecked(False)
+                self.dockwidget.inModel.setEnabled(False)
+                self.dockwidget.inShape.setEnabled(True)
+                self.dockwidget.inField.setEnabled(True)
+
+        elif sender == self.dockwidget.checkInModel:
+            self.dockwidget.inModel.clear()
+            self.dockwidget.inModel.setEnabled(False)
+            self.dockwidget.inShape.setEnabled(True)
+            self.dockwidget.inField.setEnabled(True)
+
+        # If save model
+        if (
+            sender == self.dockwidget.checkOutModel
+            and self.dockwidget.checkOutModel.isChecked()
+        ):
+            fileName, _filter = QFileDialog.getSaveFileName(
+                self.dockwidget, "Select output file", self.settings_manager.last_save_dir
+            )
+            self.settings_manager.remember_last_save_dir(fileName)
+            if fileName != "":
+                self.dockwidget.outModel.setText(fileName)
+                self.dockwidget.outModel.setEnabled(True)
+            else:
+                self.dockwidget.checkOutModel.setChecked(False)
+                self.dockwidget.outModel.setEnabled(False)
+
+        elif sender == self.dockwidget.checkOutModel:
+            self.dockwidget.outModel.clear()
+            self.dockwidget.outModel.setEnabled(False)
+
+        # If mask
+        if (
+            sender == self.dockwidget.checkInMask
+            and self.dockwidget.checkInMask.isChecked()
+        ):
+            fileName, _filter = QFileDialog.getOpenFileName(
+                self.dockwidget,
+                "Select your mask raster",
+                self.settings_manager.last_save_dir,
+                "TIF (*.tif)",
+            )
+            self.settings_manager.remember_last_save_dir(fileName)
+            if fileName != "":
+                self.dockwidget.inMask.setText(fileName)
+                self.dockwidget.inMask.setEnabled(True)
+            else:
+                self.dockwidget.checkInMask.setChecked(False)
+                self.dockwidget.inMask.setEnabled(False)
+
+        elif sender == self.dockwidget.checkInMask:
+            self.dockwidget.inMask.clear()
+            self.dockwidget.inMask.setEnabled(False)
+
+        # If save matrix
+        if (
+            sender == self.dockwidget.checkOutMatrix
+            and self.dockwidget.checkOutMatrix.isChecked()
+        ):
+            fileName, _filter = QFileDialog.getSaveFileName(
+                self.dockwidget, "Select output file", self.settings_manager.last_save_dir
+            )
+            self.settings_manager.remember_last_save_dir(fileName)
+            if fileName != "":
+                import os
+                fileName_base, fileExtension = os.path.splitext(fileName)
+                fileName = fileName_base + ".csv"
+                self.dockwidget.outMatrix.setText(fileName)
+                self.dockwidget.outMatrix.setEnabled(True)
+                # Enable split control and set to 50%
+                self.dockwidget.inSplit.setEnabled(True)
+                self.dockwidget.inSplit.setValue(50)
+            else:
+                self.dockwidget.checkOutMatrix.setChecked(False)
+                self.dockwidget.outMatrix.setEnabled(False)
+                self.dockwidget.inSplit.setEnabled(False)
+
+        elif sender == self.dockwidget.checkOutMatrix:
+            self.dockwidget.outMatrix.clear()
+            self.dockwidget.outMatrix.setEnabled(False)
+            self.dockwidget.inSplit.setEnabled(False)
+
+        # If confidence map
+        if (
+            sender == self.dockwidget.checkInConfidence
+            and self.dockwidget.checkInConfidence.isChecked()
+        ):
+            fileName, _filter = QFileDialog.getSaveFileName(
+                self.dockwidget, "Select output file", self.settings_manager.last_save_dir
+            )
+            self.settings_manager.remember_last_save_dir(fileName)
+            if fileName != "":
+                self.dockwidget.outConfidenceMap.setText(fileName)
+                self.dockwidget.outConfidenceMap.setEnabled(True)
+            else:
+                self.dockwidget.checkInConfidence.setChecked(False)
+                self.dockwidget.outConfidenceMap.setEnabled(False)
+
+        elif sender == self.dockwidget.checkInConfidence:
+            self.dockwidget.outConfidenceMap.clear()
+            self.dockwidget.outConfidenceMap.setEnabled(False)
     
     def show_welcome_widget(self):
         """Show welcome widget for first-time users"""
@@ -171,7 +290,7 @@ class DzetsakaUIController:
         
         # Setup classifier selection
         for i, (code, classifier_name) in enumerate(available_classifiers):
-            if classifier_name == self.settings_manager.classifier:
+            if code == self.settings_manager.classifier:
                 self.settings_dock.selectClassifier.setCurrentIndex(i)
         
         # Setup text fields with current values

@@ -54,10 +54,18 @@ class dzetsakaGUI:
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
+        # Register processing provider
+        from qgis.core import QgsApplication
+        QgsApplication.processingRegistry().addProvider(self.provider)
+        
         self.plugin.initGui()
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
+        # Remove processing provider
+        from qgis.core import QgsApplication
+        QgsApplication.processingRegistry().removeProvider(self.provider)
+        
         self.plugin.unload()
 
     # Backward compatibility methods that delegate to the modular plugin

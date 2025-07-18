@@ -42,7 +42,7 @@ from qgis.core import (
 import os
 
 from .. import classifier_config
-from ..ml.learner import ModelLearner
+from ..scripts.mainfunction import learnModel
 
 pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
@@ -212,7 +212,7 @@ class trainAlgorithm(QgsProcessingAlgorithm):
 
         # learn model
         if libOk:
-            learner = ModelLearner(
+            learner = learnModel(
                 raster_path=INPUT_RASTER.source(),
                 vector_path=INPUT_LAYER.dataProvider().dataSourceUri().split("|")[0],
                 class_field=INPUT_COLUMN[0],
@@ -224,7 +224,6 @@ class trainAlgorithm(QgsProcessingAlgorithm):
                 extraParam=extraParam,
                 feedback=feedback,
             )
-            learner.train_model()
             return {self.OUTPUT_MATRIX: OUTPUT_MATRIX, self.OUTPUT_MODEL: OUTPUT_MODEL}
 
         else:
