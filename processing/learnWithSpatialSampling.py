@@ -40,7 +40,7 @@ from qgis.core import (
 import os
 
 from .. import classifier_config
-from ..scripts import mainfunction
+from ..ml.learner import ModelLearner
 
 pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
@@ -236,18 +236,19 @@ class trainSLOOAlgorithm(QgsProcessingAlgorithm):
 
         # QgsMessageLog.logMessage(str(eval(PARAMGRID)))
 
-        mainfunction.learnModel(
-            INPUT_RASTER.source(),
-            INPUT_LAYER.source(),
-            INPUT_COLUMN[0],
-            OUTPUT_MODEL,
-            "SLOO",
-            0,
-            None,
-            SELECTED_ALGORITHM,
+        learner = ModelLearner(
+            raster_path=INPUT_RASTER.source(),
+            vector_path=INPUT_LAYER.source(),
+            class_field=INPUT_COLUMN[0],
+            model_path=OUTPUT_MODEL,
+            split_config="SLOO",
+            random_seed=0,
+            matrix_path=None,
+            classifier=SELECTED_ALGORITHM,
             feedback=feedback,
             extraParam=extraParam,
         )
+        learner.train_model()
         return {self.SAVEDIR: SAVEDIR, self.OUTPUT_MODEL: OUTPUT_MODEL}
 
     def tr(self, string):

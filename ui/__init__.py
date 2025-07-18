@@ -1,13 +1,19 @@
-
 import os
 
 from PyQt5 import QtGui, QtWidgets, uic
 from PyQt5.QtCore import pyqtSignal
 
+# Import resources for icons
+try:
+    from .. import resources
+except ImportError:
+    pass
+
 from . import dzetsaka_dock
 from . import settings_dock
 
 from . import welcome
+from .anniversary_widget import AnniversaryDialog, AnniversaryManager
 
 # Load main widget
 

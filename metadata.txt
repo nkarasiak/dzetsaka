@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
 description=Fast and Easy Classification plugin for Qgis with 11 ML algorithms + Auto-Install
-version=4.2.0
+version=4.2.2
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -36,6 +36,16 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+    4.2.2
+      * 🏗️ MAJOR REFACTOR: Modular architecture implementation - split monolithic 1,397-line dzetsaka.py into clean modules
+      * 📦 NEW: core/ module with separated concerns - plugin.py, settings_manager.py, ui_controller.py, file_manager.py
+      * 🧠 NEW: ml/ module with dedicated learner.py and classifier.py for machine learning operations
+      * 🎯 IMPROVED: Single Responsibility Principle - each class now has one clear purpose
+      * 🔗 IMPROVED: Reduced coupling between UI, business logic, settings, and ML components
+      * 🧪 IMPROVED: Testable design - each component can be tested independently
+      * 🔄 MAINTAINED: Full backward compatibility - all existing functionality preserved
+      * 📉 REDUCED: Main plugin file complexity from 1,397 to ~100 lines
+      * 🔧 UPDATED: Processing algorithms to use new modular ML components
     4.2.0
       * 🎯 NEW: 7 additional machine learning algorithms - XGBoost, LightGBM, Extra Trees, Gradient Boosting, Logistic Regression, Naive Bayes, MLP
       * 🚀 NEW: Automatic dependency installation system - one-click install of scikit-learn, XGBoost, LightGBM

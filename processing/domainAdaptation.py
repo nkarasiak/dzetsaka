@@ -36,7 +36,12 @@ from qgis.core import (
 )
 
 import os
-from ..scripts import domainAdaptation as DA
+try:
+    from ..scripts import domainAdaptation as DA
+    HAS_DOMAIN_ADAPTATION = True
+except ImportError as e:
+    HAS_DOMAIN_ADAPTATION = False
+    DA_IMPORT_ERROR = str(e)
 
 from ..scripts import function_dataraster as dataraster
 
@@ -175,6 +180,9 @@ class domainAdaptation(QgsProcessingAlgorithm):
         )
 
     def processAlgorithm(self, parameters, context, feedback):
+        if not HAS_DOMAIN_ADAPTATION:
+            raise Exception(f"Domain adaptation functionality is not available. Missing dependencies: {DA_IMPORT_ERROR}")
+        
         SOURCE_RASTER = self.parameterAsRasterLayer(
             parameters, self.SOURCE_RASTER, context
         )

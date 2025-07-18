@@ -87,10 +87,14 @@ class dzetsakaProvider(QgsProcessingProvider):
             self.addAlgorithm(closingFilterAlgorithm())
             self.addAlgorithm(medianFilterAlgorithm())
 
-            from .processing.domainAdaptation import domainAdaptation
+            try:
+                from .processing.domainAdaptation import domainAdaptation
+                self.addAlgorithm(domainAdaptation())
+            except ImportError:
+                # Skip domain adaptation if sklearn is not available
+                pass
+            
             from .processing.shannonEntropy import shannonAlgorithm
-
-            self.addAlgorithm(domainAdaptation())
             self.addAlgorithm(shannonAlgorithm())
 
     def id(self):

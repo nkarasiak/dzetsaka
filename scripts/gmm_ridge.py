@@ -49,10 +49,10 @@ class CV(object):
 
         for i in range(v):
             self.iT.append(np.asarray(indices[i]))
-            l = list(range(v))
-            l.remove(i)
+            indices_list = list(range(v))
+            indices_list.remove(i)
             temp = np.empty(0, dtype=np.int64)
-            for j in l:
+            for j in indices_list:
                 temp = np.concatenate((temp, np.asarray(indices[j])))
             self.it.append(temp)
 
@@ -97,11 +97,11 @@ class CV(object):
                 tempiT.extend(np.asarray(tc[start:end]))  # Testing
                 k = list(range(v))
                 k.remove(j)
-                for l in k:
-                    if l < (v - 1):
-                        start, end = l * stepc, (l + 1) * stepc
+                for idx in k:
+                    if idx < (v - 1):
+                        start, end = idx * stepc, (idx + 1) * stepc
                     else:
-                        start, end = l * stepc, nc
+                        start, end = idx * stepc, nc
                     tempit.extend(np.asarray(tc[start:end]))  # Training
 
             self.it.append(tempit)

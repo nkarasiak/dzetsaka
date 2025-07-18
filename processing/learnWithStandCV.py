@@ -41,7 +41,7 @@ from qgis.core import (
 import os
 
 from .. import classifier_config
-from ..scripts import mainfunction
+from ..ml.learner import ModelLearner
 
 pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
@@ -231,18 +231,19 @@ class trainSTANDalgorithm(QgsProcessingAlgorithm):
         # eval(PARAM_GRID
 
         # learn model
-        mainfunction.learnModel(
-            INPUT_RASTER.source(),
-            INPUT_LAYER.dataProvider().dataSourceUri().split("|")[0],
-            INPUT_COLUMN[0],
-            OUTPUT_MODEL,
-            "STAND",
-            0,
-            None,
-            SELECTED_ALGORITHM,
+        learner = ModelLearner(
+            raster_path=INPUT_RASTER.source(),
+            vector_path=INPUT_LAYER.dataProvider().dataSourceUri().split("|")[0],
+            class_field=INPUT_COLUMN[0],
+            model_path=OUTPUT_MODEL,
+            split_config="STAND",
+            random_seed=0,
+            matrix_path=None,
+            classifier=SELECTED_ALGORITHM,
             feedback=feedback,
             extraParam=extraParam,
         )
+        learner.train_model()
         return {self.SAVEDIR: SAVEDIR, self.OUTPUT_MODEL: OUTPUT_MODEL}
 
     def tr(self, string):

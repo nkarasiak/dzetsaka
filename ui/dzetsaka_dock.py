@@ -9,6 +9,12 @@
 from qgis.gui import QgsCollapsibleGroupBox, QgsMapLayerComboBox
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+# Import resources for icons
+try:
+    from .. import resources
+except ImportError:
+    pass
+
 
 class Ui_DockWidget(object):
     def setupUi(self, DockWidget):

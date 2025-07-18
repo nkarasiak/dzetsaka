@@ -24,6 +24,14 @@ import os
 
 
 import numpy as np
+from itertools import product
+
+try:
+    from sklearn.metrics import mean_squared_error
+
+    HAS_SKLEARN = True
+except ImportError:
+    HAS_SKLEARN = False
 
 
 class rasterOT(object):
@@ -61,6 +69,8 @@ class rasterOT(object):
         self.params_ = params
 
         if scaler:
+            if not HAS_SKLEARN:
+                raise ImportError("sklearn is required for scaling functionality")
             from sklearn.preprocessing import MinMaxScaler
 
             self.scaler = MinMaxScaler(feature_range=(-1, 1))
@@ -325,6 +335,8 @@ class rasterOT(object):
             """
             #score = mean_squared_error(Xs,XsPredict)
 
+            if not HAS_SKLEARN:
+                raise ImportError("sklearn is required for cross-validation functionality")
             from sklearn.svm import SVC
             from sklearn.model_selection import StratifiedKFold
             from sklearn.model_selection import GridSearchCV
@@ -337,6 +349,8 @@ class rasterOT(object):
 
             # need to rescale for hyperparameter of svm
             if self.scaler is False:
+                if not HAS_SKLEARN:
+                    raise ImportError("sklearn is required for scaling functionality")
                 from sklearn.preprocessing import MinMaxScaler
                 scaler = MinMaxScaler(feature_range=(-1,1))
                 scaler.fit(Xs,ys)
@@ -360,6 +374,10 @@ class rasterOT(object):
                 self.bestParam = gridOT.copy()
             """
 
+            if not HAS_SKLEARN:
+                raise ImportError(
+                    "sklearn is required for mean squared error calculation"
+                )
             currentScore = mean_squared_error(Xs, transp_Xt)
 
             if self.feedback:
