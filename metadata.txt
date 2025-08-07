@@ -36,6 +36,8 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+    4.2.1
+      * Fix sklearn dependency
     4.2.0
       * 🎯 NEW: 7 additional machine learning algorithms - XGBoost, LightGBM, Extra Trees, Gradient Boosting, Logistic Regression, Naive Bayes, MLP
       * 🚀 NEW: Automatic dependency installation system - one-click install of scikit-learn, XGBoost, LightGBM
