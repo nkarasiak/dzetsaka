@@ -39,11 +39,12 @@ from osgeo import gdal, ogr
 from .. import classifier_config
 
 # Import sklearn modules for confusion matrix
+HAS_SKLEARN = True
 try:
     from sklearn.metrics import confusion_matrix
 except ImportError:
     confusion_matrix = None
-
+    HAS_SKLEARN = False
 
 # Backward compatibility decorator
 def backward_compatible(**parameter_mapping):
@@ -92,91 +93,93 @@ def backward_compatible(**parameter_mapping):
     return decorator
 
 
-# Label encoding wrapper for XGBoost and LightGBM
-from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.preprocessing import LabelEncoder
+if HAS_SKLEARN:
+
+    # Label encoding wrapper for XGBoost and LightGBM
+    from sklearn.base import BaseEstimator, ClassifierMixin
+    from sklearn.preprocessing import LabelEncoder
 
 
-class XGBLabelWrapper(BaseEstimator, ClassifierMixin):
-    """Wrapper for XGBoost that handles sparse label encoding/decoding."""
+    class XGBLabelWrapper(BaseEstimator, ClassifierMixin):
+        """Wrapper for XGBoost that handles sparse label encoding/decoding."""
 
-    def __init__(self, **xgb_params):
-        self.xgb_params = xgb_params
-        self.label_encoder = LabelEncoder()
-        self.xgb_classifier = None
+        def __init__(self, **xgb_params):
+            self.xgb_params = xgb_params
+            self.label_encoder = LabelEncoder()
+            self.xgb_classifier = None
 
-    def fit(self, X, y):
-        try:
-            from xgboost import XGBClassifier
-        except ImportError:
-            raise ImportError("XGBoost not found. Install with: pip install xgboost")
+        def fit(self, X, y):
+            try:
+                from xgboost import XGBClassifier
+            except ImportError:
+                raise ImportError("XGBoost not found. Install with: pip install xgboost")
 
-        y_encoded = self.label_encoder.fit_transform(y)
-        self.xgb_classifier = XGBClassifier(**self.xgb_params)
-        self.xgb_classifier.fit(X, y_encoded)
-        return self
+            y_encoded = self.label_encoder.fit_transform(y)
+            self.xgb_classifier = XGBClassifier(**self.xgb_params)
+            self.xgb_classifier.fit(X, y_encoded)
+            return self
 
-    def predict(self, X):
-        y_encoded = self.xgb_classifier.predict(X)
-        return self.label_encoder.inverse_transform(y_encoded)
+        def predict(self, X):
+            y_encoded = self.xgb_classifier.predict(X)
+            return self.label_encoder.inverse_transform(y_encoded)
 
-    def predict_proba(self, X):
-        return self.xgb_classifier.predict_proba(X)
+        def predict_proba(self, X):
+            return self.xgb_classifier.predict_proba(X)
 
-    @property
-    def classes_(self):
-        return self.label_encoder.classes_
+        @property
+        def classes_(self):
+            return self.label_encoder.classes_
 
-    def get_params(self, deep=True):
-        # Return XGBoost parameters directly
-        return self.xgb_params.copy() if not deep else self.xgb_params.copy()
+        def get_params(self, deep=True):
+            # Return XGBoost parameters directly
+            return self.xgb_params.copy() if not deep else self.xgb_params.copy()
 
-    def set_params(self, **params):
-        self.xgb_params.update(params)
-        if self.xgb_classifier is not None:
-            self.xgb_classifier.set_params(**params)
-        return self
+        def set_params(self, **params):
+            self.xgb_params.update(params)
+            if self.xgb_classifier is not None:
+                self.xgb_classifier.set_params(**params)
+            return self
 
 
-class LGBLabelWrapper(BaseEstimator, ClassifierMixin):
-    """Wrapper for LightGBM that handles sparse label encoding/decoding."""
+    class LGBLabelWrapper(BaseEstimator, ClassifierMixin):
+        """Wrapper for LightGBM that handles sparse label encoding/decoding."""
 
-    def __init__(self, **lgb_params):
-        self.lgb_params = lgb_params
-        self.label_encoder = LabelEncoder()
-        self.lgb_classifier = None
+        def __init__(self, **lgb_params):
+            self.lgb_params = lgb_params
+            self.label_encoder = LabelEncoder()
+            self.lgb_classifier = None
 
-    def fit(self, X, y):
-        try:
-            from lightgbm import LGBMClassifier
-        except ImportError:
-            raise ImportError("LightGBM not found. Install with: pip install lightgbm")
+        def fit(self, X, y):
+            try:
+                from lightgbm import LGBMClassifier
+            except ImportError:
+                raise ImportError("LightGBM not found. Install with: pip install lightgbm")
 
-        y_encoded = self.label_encoder.fit_transform(y)
-        self.lgb_classifier = LGBMClassifier(**self.lgb_params)
-        self.lgb_classifier.fit(X, y_encoded)
-        return self
+            y_encoded = self.label_encoder.fit_transform(y)
+            self.lgb_classifier = LGBMClassifier(**self.lgb_params)
+            self.lgb_classifier.fit(X, y_encoded)
+            return self
 
-    def predict(self, X):
-        y_encoded = self.lgb_classifier.predict(X)
-        return self.label_encoder.inverse_transform(y_encoded)
+        def predict(self, X):
+            y_encoded = self.lgb_classifier.predict(X)
+            return self.label_encoder.inverse_transform(y_encoded)
 
-    def predict_proba(self, X):
-        return self.lgb_classifier.predict_proba(X)
+        def predict_proba(self, X):
+            return self.lgb_classifier.predict_proba(X)
 
-    @property
-    def classes_(self):
-        return self.label_encoder.classes_
+        @property
+        def classes_(self):
+            return self.label_encoder.classes_
 
-    def get_params(self, deep=True):
-        # Return LightGBM parameters directly
-        return self.lgb_params.copy() if not deep else self.lgb_params.copy()
+        def get_params(self, deep=True):
+            # Return LightGBM parameters directly
+            return self.lgb_params.copy() if not deep else self.lgb_params.copy()
 
-    def set_params(self, **params):
-        self.lgb_params.update(params)
-        if self.lgb_classifier is not None:
-            self.lgb_classifier.set_params(**params)
-        return self
+        def set_params(self, **params):
+            self.lgb_params.update(params)
+            if self.lgb_classifier is not None:
+                self.lgb_classifier.set_params(**params)
+            return self
 
 
 # Configuration constants
