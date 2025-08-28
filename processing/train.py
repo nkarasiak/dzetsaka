@@ -1,53 +1,40 @@
-# -*- coding: utf-8 -*-
+"""Training Algorithm for dzetsaka.
 
-"""
-/***************************************************************************
- className
-                                 A QGIS plugin
- description
-                              -------------------
-        begin                : 2016-12-03
-        copyright            : (C) 2016 by Nico
-        email                : nico@nico
- ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+This module provides the main training algorithm for machine learning model
+training within the dzetsaka QGIS plugin framework.
 """
 
-from builtins import str
+import os
 
-from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QCoreApplication
-# from PyQt5.QtWidgets import QMessageBox
 
+# from PyQt5.QtWidgets import QMessageBox
 from qgis.core import (
     QgsMessageLog,
     QgsProcessingAlgorithm,
-    QgsProcessingParameterRasterLayer,
-    QgsProcessingParameterVectorLayer,
-    QgsProcessingParameterField,
     QgsProcessingParameterEnum,
-    QgsProcessingParameterNumber,
-    QgsProcessingParameterString,
+    QgsProcessingParameterField,
     QgsProcessingParameterFileDestination,
+    QgsProcessingParameterNumber,
+    QgsProcessingParameterRasterLayer,
+    QgsProcessingParameterString,
+    QgsProcessingParameterVectorLayer,
 )
-
-import os
+from qgis.PyQt.QtGui import QIcon
 
 from .. import classifier_config
 from ..scripts import mainfunction
 
-pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
 
-class trainAlgorithm(QgsProcessingAlgorithm):
+class TrainAlgorithm(QgsProcessingAlgorithm):
+    """Main training algorithm for machine learning model training.
+
+    Provides training functionality for various classification algorithms
+    including hyperparameter optimization and model validation.
+    """
+
     INPUT_RASTER = "INPUT_RASTER"
     INPUT_LAYER = "INPUT_LAYER"
     INPUT_COLUMN = "INPUT_COLUMN"
@@ -60,6 +47,7 @@ class trainAlgorithm(QgsProcessingAlgorithm):
     PARAMGRID = "PARAMGRID"
 
     def shortHelpString(self):
+        """Return the short help string for this algorithm."""
         return self.tr(
             "Train classifier.\n \n \
                        Parameters for Cross Validation can be fit using a dictionnary.\n \
@@ -76,9 +64,9 @@ class trainAlgorithm(QgsProcessingAlgorithm):
         )
 
     def name(self):
-        """
-        Returns the algorithm name, used for identifying the algorithm. This
-        string should be fixed for the algorithm, and must not be localised.
+        """Returns the algorithm name, used for identifying the algorithm.
+
+        This string should be fixed for the algorithm, and must not be localised.
         The name should be unique within each provider. Names should contain
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
@@ -86,16 +74,14 @@ class trainAlgorithm(QgsProcessingAlgorithm):
         return "Train algorithm"
 
     def icon(self):
-        return QIcon(os.path.join(pluginPath, "icon.png"))
+        """Return the algorithm icon."""
+        return QIcon(os.path.join(plugin_path, "icon.png"))
 
     def initAlgorithm(self, config=None):
+        """Initialize the algorithm parameters."""
         # The name that the user will see in the toolbox
 
-        self.addParameter(
-            QgsProcessingParameterRasterLayer(
-                self.INPUT_RASTER, self.tr("Input raster")
-            )
-        )
+        self.addParameter(QgsProcessingParameterRasterLayer(self.INPUT_RASTER, self.tr("Input raster")))
 
         # ROI
         # VECTOR
@@ -117,11 +103,7 @@ class trainAlgorithm(QgsProcessingAlgorithm):
 
         # Train algorithm
 
-        self.addParameter(
-            QgsProcessingParameterEnum(
-                self.TRAIN, "Select algorithm to train", self.TRAIN_ALGORITHMS, 0
-            )
-        )
+        self.addParameter(QgsProcessingParameterEnum(self.TRAIN, "Select algorithm to train", self.TRAIN_ALGORITHMS, 0))
 
         # SPLIT %
 
@@ -139,9 +121,7 @@ class trainAlgorithm(QgsProcessingAlgorithm):
         # SAVE AS
         # SAVE MODEL
         self.addParameter(
-            QgsProcessingParameterFileDestination(
-                self.OUTPUT_MODEL, self.tr("Output model (to use for classifying)")
-            )
+            QgsProcessingParameterFileDestination(self.OUTPUT_MODEL, self.tr("Output model (to use for classifying)"))
         )
 
         # SAVE CONFUSION MATRIX
@@ -161,27 +141,20 @@ class trainAlgorithm(QgsProcessingAlgorithm):
         )
 
     def processAlgorithm(self, parameters, context, feedback):
-        INPUT_RASTER = self.parameterAsRasterLayer(
-            parameters, self.INPUT_RASTER, context
-        )
+        """Process the algorithm with given parameters."""
+        INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
 
         INPUT_LAYER = self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
 
         INPUT_COLUMN = self.parameterAsFields(parameters, self.INPUT_COLUMN, context)
         SPLIT_PERCENT = self.parameterAsInt(parameters, self.SPLIT_PERCENT, context)
 
-        SPLIT_PERCENT = (
-            100 - SPLIT_PERCENT
-        )  # if 30 means 30% of valid per class, 70% of train
+        SPLIT_PERCENT = 100 - SPLIT_PERCENT  # if 30 means 30% of valid per class, 70% of train
 
         TRAIN = self.parameterAsEnums(parameters, self.TRAIN, context)
         # INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
-        OUTPUT_MODEL = self.parameterAsFileOutput(
-            parameters, self.OUTPUT_MODEL, context
-        )
-        OUTPUT_MATRIX = self.parameterAsFileOutput(
-            parameters, self.OUTPUT_MATRIX, context
-        )
+        OUTPUT_MODEL = self.parameterAsFileOutput(parameters, self.OUTPUT_MODEL, context)
+        OUTPUT_MATRIX = self.parameterAsFileOutput(parameters, self.OUTPUT_MATRIX, context)
 
         # Retrieve algo from code
         SELECTED_ALGORITHM = self.TRAIN_ALGORITHMS_CODE[TRAIN[0]]
@@ -195,19 +168,15 @@ class trainAlgorithm(QgsProcessingAlgorithm):
         else:
             extraParam = None
 
-        if (
-            SELECTED_ALGORITHM == "RF"
-            or SELECTED_ALGORITHM == "SVM"
-            or SELECTED_ALGORITHM == "KNN"
-        ):
-            try:
-                import sklearn
-                import joblib  # Test for joblib dependency
-            except ImportError as e:
-                if "joblib" in str(e):
-                    raise ImportError("Missing dependency: joblib. Please install joblib package (e.g., pip install joblib or your system's package manager)")
-                else:
-                    raise ImportError("You need to install scikit-learn library and its dependencies")
+        if SELECTED_ALGORITHM == "RF" or SELECTED_ALGORITHM == "SVM" or SELECTED_ALGORITHM == "KNN":
+            import importlib.util
+
+            if importlib.util.find_spec("joblib") is None:
+                raise ImportError(
+                    "Missing dependency: joblib. Please install joblib package (e.g., pip install joblib or your system's package manager)"
+                )
+            if importlib.util.find_spec("sklearn") is None:
+                raise ImportError("You need to install scikit-learn library and its dependencies")
                 libOk = False
 
         # learn model
@@ -231,29 +200,31 @@ class trainAlgorithm(QgsProcessingAlgorithm):
             # QMessageBox.about(None, "Missing library", "Please install scikit-learn library to use"+str(SELECTED_ALGORITHM))
 
     def tr(self, string):
+        """Translate string using Qt's translation system."""
         return QCoreApplication.translate("Processing", string)
 
     def createInstance(self):
-        return trainAlgorithm()
+        """Create a new instance of this algorithm."""
+        return TrainAlgorithm()
 
     def displayName(self):
-        """
-        Returns the translated algorithm name, which should be used for any
-        user-visible display of the algorithm name.
+        """Returns the translated algorithm name, which should be used for any user-visible display.
+
+        The algorithm name.
         """
         return self.tr(self.name())
 
     def group(self):
-        """
-        Returns the name of the group this algorithm belongs to. This string
-        should be localised.
+        """Returns the name of the group this algorithm belongs to.
+
+        This string should be localised.
         """
         return self.tr(self.groupId())
 
     def groupId(self):
-        """
-        Returns the unique ID of the group this algorithm belongs to. This
-        string should be fixed for the algorithm, and must not be localised.
+        """Returns the unique ID of the group this algorithm belongs to.
+
+        This string should be fixed for the algorithm, and must not be localised.
         The group id should be unique within each provider. Group id should
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.

@@ -1,4 +1,3 @@
-
 import os
 
 from PyQt5 import QtGui, QtWidgets, uic

@@ -1,46 +1,34 @@
-# -*- coding: utf-8 -*-
+"""Dzetsaka Classification Algorithm for QGIS Processing.
 
+This module provides the classification algorithm for the QGIS Processing framework,
+allowing users to classify raster images using trained machine learning models.
 """
-/***************************************************************************
- className
-                                 A QGIS plugin
- description
-                              -------------------
-        begin                : 2016-12-03
-        copyright            : (C) 2016 by Nico
-        email                : nico@nico
- ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
-"""
-
-from qgis.PyQt.QtGui import QIcon
-from PyQt5.QtCore import QCoreApplication
-# from PyQt5.QtWidgets import QMessageBox
-
-from qgis.core import (
-    QgsProcessingAlgorithm,
-    QgsProcessingParameterRasterLayer,
-    QgsProcessingParameterFile,
-    QgsProcessingParameterRasterDestination,
-)
 
 import os
 
-from ..scripts.mainfunction import classifyImage
+from PyQt5.QtCore import QCoreApplication
+
+# from PyQt5.QtWidgets import QMessageBox
+from qgis.core import (
+    QgsProcessingAlgorithm,
+    QgsProcessingParameterFile,
+    QgsProcessingParameterRasterDestination,
+    QgsProcessingParameterRasterLayer,
+)
+from qgis.PyQt.QtGui import QIcon
+
+from ..scripts.mainfunction import ClassifyImage
+
+plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
 
-pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+class ClassifyAlgorithm(QgsProcessingAlgorithm):
+    """Processing algorithm for raster image classification.
 
+    This algorithm applies trained machine learning models to classify raster images
+    using any of the supported algorithms (GMM, RF, SVM, KNN, XGB, LGB, etc.).
+    """
 
-class classifyAlgorithm(QgsProcessingAlgorithm):
     INPUT_RASTER = "INPUT_RASTER"
     INPUT_MASK = "INPUT_MASK"
     INPUT_MODEL = "INPUT_MODEL"
@@ -48,9 +36,9 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
     CONFIDENCE_RASTER = "CONFIDENCE_RASTER"
 
     def name(self):
-        """
-        Returns the algorithm name, used for identifying the algorithm. This
-        string should be fixed for the algorithm, and must not be localised.
+        """Return the algorithm name used for identifying the algorithm.
+
+        This string should be fixed for the algorithm, and must not be localised.
         The name should be unique within each provider. Names should contain
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
@@ -58,59 +46,39 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
         return "Predict model (classification map)"
 
     def icon(self):
-        return QIcon(os.path.join(pluginPath, "icon.png"))
+        """Return the algorithm icon."""
+        return QIcon(os.path.join(plugin_path, "icon.png"))
 
     def initAlgorithm(self, config=None):
+        """Initialize the algorithm parameters."""
         # inputs
-        self.addParameter(
-            QgsProcessingParameterRasterLayer(
-                self.INPUT_RASTER, self.tr("Input raster")
-            )
-        )
+        self.addParameter(QgsProcessingParameterRasterLayer(self.INPUT_RASTER, self.tr("Input raster")))
 
-        self.addParameter(
-            QgsProcessingParameterRasterLayer(
-                self.INPUT_MASK, self.tr("Mask raster"), optional=True
-            )
-        )
+        self.addParameter(QgsProcessingParameterRasterLayer(self.INPUT_MASK, self.tr("Mask raster"), optional=True))
 
-        self.addParameter(
-            QgsProcessingParameterFile(self.INPUT_MODEL, self.tr("Model learned"))
-        )
+        self.addParameter(QgsProcessingParameterFile(self.INPUT_MODEL, self.tr("Model learned")))
 
         # output
         self.addParameter(
-            QgsProcessingParameterRasterDestination(
-                self.OUTPUT_RASTER, self.tr("Output raster"), optional=False
-            )
+            QgsProcessingParameterRasterDestination(self.OUTPUT_RASTER, self.tr("Output raster"), optional=False)
         )
 
         self.addParameter(
-            QgsProcessingParameterRasterDestination(
-                self.CONFIDENCE_RASTER, self.tr("Confidence raster"), optional=True
-            )
+            QgsProcessingParameterRasterDestination(self.CONFIDENCE_RASTER, self.tr("Confidence raster"), optional=True)
         )
 
     def processAlgorithm(self, parameters, context, feedback):
-        INPUT_RASTER = self.parameterAsRasterLayer(
-            parameters, self.INPUT_RASTER, context
-        )
+        """Process the classification algorithm."""
+        INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         INPUT_MASK = self.parameterAsRasterLayer(parameters, self.INPUT_MASK, context)
         INPUT_MODEL = self.parameterAsFile(parameters, self.INPUT_MODEL, context)
 
-        OUTPUT_RASTER = self.parameterAsOutputLayer(
-            parameters, self.OUTPUT_RASTER, context
-        )
-        CONFIDENCE_RASTER = self.parameterAsOutputLayer(
-            parameters, self.CONFIDENCE_RASTER, context
-        )
+        OUTPUT_RASTER = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
+        CONFIDENCE_RASTER = self.parameterAsOutputLayer(parameters, self.CONFIDENCE_RASTER, context)
         # Retrieve algo from code
-        worker = classifyImage()
+        worker = ClassifyImage()
         # classify
-        if INPUT_MASK is None:
-            mask = None
-        else:
-            mask = INPUT_MASK.source()
+        mask = None if INPUT_MASK is None else INPUT_MASK.source()
         worker.initPredict(
             INPUT_RASTER.source(),
             INPUT_MODEL,
@@ -123,29 +91,31 @@ class classifyAlgorithm(QgsProcessingAlgorithm):
         return {self.OUTPUT_RASTER: OUTPUT_RASTER}
 
     def tr(self, string):
+        """Translate string using Qt translation API."""
         return QCoreApplication.translate("Processing", string)
 
     def createInstance(self):
-        return classifyAlgorithm()
+        """Create a new instance of this algorithm."""
+        return ClassifyAlgorithm()
 
     def displayName(self):
-        """
-        Returns the translated algorithm name, which should be used for any
-        user-visible display of the algorithm name.
+        """Return the translated algorithm name.
+
+        Should be used for any user-visible display of the algorithm name.
         """
         return self.tr(self.name())
 
     def group(self):
-        """
-        Returns the name of the group this algorithm belongs to. This string
-        should be localised.
+        """Return the name of the group this algorithm belongs to.
+
+        This string should be localised.
         """
         return self.tr(self.groupId())
 
     def groupId(self):
-        """
-        Returns the unique ID of the group this algorithm belongs to. This
-        string should be fixed for the algorithm, and must not be localised.
+        """Return the unique ID of the group this algorithm belongs to.
+
+        This string should be fixed for the algorithm, and must not be localised.
         The group id should be unique within each provider. Group id should
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.

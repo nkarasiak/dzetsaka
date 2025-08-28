@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Mar 23 11:24:38 2018
+"""Created on Fri Mar 23 11:24:38 2018.
 
 @author: nkarasiak
 """
@@ -20,15 +18,15 @@ except ImportError:
 # import tempfile
 # import ot
 import os
+from itertools import product
+
 # from sklearn import preprocessing
-
-
 import numpy as np
+from sklearn.metrics import mean_squared_error
 
 
-class rasterOT(object):
-    """
-    Initialize Python Optimal Transport for raster processing.
+class RasterOT:
+    """Initialize Python Optimal Transport for raster processing.
 
     Parameters
     ----------
@@ -53,7 +51,7 @@ class rasterOT(object):
         try:
             pass
         except BaseException:
-            raise ImportError("Please install itertools and scikit-learn")
+            raise ImportError("Please install itertools and scikit-learn") from None
 
         self.transportAlgorithm = transportAlgorithm
         self.feedback = feedback
@@ -69,8 +67,7 @@ class rasterOT(object):
             self.scaler = scaler
 
     def learnTransfer(self, Xs, ys, Xt, yt=None):
-        """
-        Learn domain adaptation model.
+        """Learn domain adaptation model.
 
         Parameters
         ----------
@@ -97,19 +94,15 @@ class rasterOT(object):
         if self.feedback:
             pushFeedback(10, feedback=self.feedback)
             pushFeedback(
-                "Learning Optimal Transport with "
-                + str(self.transportAlgorithm)
-                + " algorithm.",
+                "Learning Optimal Transport with " + str(self.transportAlgorithm) + " algorithm.",
                 feedback=self.feedback,
             )
 
         # check if label is 1d
-        if ys is not None:
-            if len(ys.shape) > 1:
-                ys = ys[:, 0]
-        if yt is not None:
-            if len(yt.shape) > 1:
-                yt = yt[:, 0]
+        if ys is not None and len(ys.shape) > 1:
+            ys = ys[:, 0]
+        if yt is not None and len(yt.shape) > 1:
+            yt = yt[:, 0]
 
         # rescale Data
         if self.scaler:
@@ -145,11 +138,8 @@ class rasterOT(object):
 
         return self.transportModel
 
-    def predictTransfer(
-        self, imageSource, outRaster, mask=None, NODATA=-9999, feedback=None, norm=False
-    ):
-        """
-        Predict model using domain adaptation.
+    def predictTransfer(self, imageSource, outRaster, mask=None, NODATA=-9999, feedback=None, norm=False):
+        """Predict model using domain adaptation.
 
         Parameters
         ----------
@@ -165,6 +155,8 @@ class rasterOT(object):
             Default -9999
         feedback : object, optional
             For Qgis Processing. Default is None.
+        norm : bool, optional
+            Whether to normalize the data. Default is False.
 
         Returns
         -------
@@ -218,39 +210,21 @@ class rasterOT(object):
                 except BaseException:
                     pass
 
-            if i + y_block_size < nl:  # Check for size consistency in Y
-                lines = y_block_size
-            else:
-                lines = nl - i
+            lines = y_block_size if i + y_block_size < nl else nl - i  # Check for size consistency in Y
             for j in range(0, nc, x_block_size):  # Check for size consistency in X
-                if j + x_block_size < nc:
-                    cols = x_block_size
-                else:
-                    cols = nc - j
+                cols = x_block_size if j + x_block_size < nc else nc - j
 
                 # Load the data and Do the prediction
                 X = np.empty((cols * lines, d))
                 for ind in range(d):
-                    X[:, ind] = (
-                        dataSrc.GetRasterBand(int(ind + 1))
-                        .ReadAsArray(j, i, cols, lines)
-                        .reshape(cols * lines)
-                    )
+                    X[:, ind] = dataSrc.GetRasterBand(int(ind + 1)).ReadAsArray(j, i, cols, lines).reshape(cols * lines)
 
                 # Do the prediction
 
                 if mask is None:
-                    mask_temp = (
-                        dataSrc.GetRasterBand(1)
-                        .ReadAsArray(j, i, cols, lines)
-                        .reshape(cols * lines)
-                    )
+                    mask_temp = dataSrc.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols * lines)
                 else:
-                    mask_temp = (
-                        maskData.GetRasterBand(1)
-                        .ReadAsArray(j, i, cols, lines)
-                        .reshape(cols * lines)
-                    )
+                    mask_temp = maskData.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols * lines)
 
                 # check if nodata
                 t = np.where((mask_temp != 0) & (X[:, 0] != NODATA))[0]
@@ -280,9 +254,10 @@ class rasterOT(object):
         return outRaster
 
     def isGridSearch(self):
+        """Check if grid search parameters are configured."""
         # search for gridSearch
         paramGrid = []
-        for key in self.params_.keys():
+        for key in self.params_:
             if isinstance(self.params_.get(key), (list, np.ndarray)):
                 paramGrid.append(key)
 
@@ -292,12 +267,10 @@ class rasterOT(object):
             self.paramGrid = paramGrid
             self.params = self.params_.copy()
 
-        if self.paramGrid:
-            return True
-        else:
-            return False
+        return bool(self.paramGrid)
 
     def generateParamForGridSearch(self):
+        """Generate parameter combinations for grid search."""
         hyperParam = {key: self.params_[key] for key in self.paramGrid}
         items = sorted(hyperParam.items())
         keys, values = zip(*items)
@@ -308,6 +281,7 @@ class rasterOT(object):
             yield self.params
 
     def findBestParameters(self, Xs, ys, Xt, yt):
+        """Find the best parameters using grid search."""
         self.bestScore = None
         for gridOT in self.generateParamForGridSearch():
             self.transportModel = self.transportFunction(**gridOT)
@@ -316,9 +290,7 @@ class rasterOT(object):
             # XsPredict = self.inverseTransform(XsTransformed)
             from ot.da import BaseTransport
 
-            transp_Xt = BaseTransport.inverse_transform(
-                self.transportModel, Xs=Xs, ys=ys, Xt=Xt, yt=yt
-            )
+            transp_Xt = BaseTransport.inverse_transform(self.transportModel, Xs=Xs, ys=ys, Xt=Xt, yt=yt)
 
             if self.feedback:
                 pushFeedback("Testing params : " + str(gridOT), feedback=self.feedback)
@@ -381,22 +353,21 @@ class rasterOT(object):
     """
 
     def inverseTransform(self, Xt):
-        """Transports target samples Xt onto target samples Xs
-        Parameters
+        """Transports target samples Xt onto target samples Xs.
+
+        Parameters.
         ----------
         Xt : array-like, shape (n_source_samples, n_features)
             The training input samples.
+
         Returns
         -------
         transp_Xt : array-like, shape (n_source_samples, n_features)
             The transport source samples.
-        """
 
+        """
         # perform standard barycentric mapping
-        transp = (
-            self.transportModel.coupling_.T
-            / np.sum(self.transportModel.coupling_, 0)[:, None]
-        )
+        transp = self.transportModel.coupling_.T / np.sum(self.transportModel.coupling_, 0)[:, None]
 
         # set nans to 0
         transp[~np.isfinite(transp)] = 0

@@ -1,4 +1,4 @@
-"""!@brief Manage data (opening/saving raster, get ROI...)"""
+"""!@brief Manage data (opening/saving raster, get ROI...)."""
 # -*- coding: utf-8 -*-
 
 # import scipy as sp
@@ -13,6 +13,7 @@ except ImportError:
 
 
 def convertGdalDataTypeToOTB(gdalDT):
+    """Convert GDAL data type to OTB code."""
     # availableCode = uint8/uint16/int16/uint32/int32/float/double
     code = ["uint8", "uint16", "int16", "uint32", "int32", "float", "double"]
 
@@ -20,15 +21,15 @@ def convertGdalDataTypeToOTB(gdalDT):
 
 
 def open_data(filename):
-    """
-    The function open and load the image given its name.
+    """Open and load the image given its name.
+
     The type of the data is checked from the file and the scipy array is initialized accordingly.
     Input:
         filename: the name of the file
     Output:
         im: the data cube
         GeoTransform: the geotransform information
-        Projection: the projection information
+        Projection: the projection information.
     """
     data = gdal.Open(filename, gdal.GA_ReadOnly)
     if data is None:
@@ -67,10 +68,7 @@ def open_data(filename):
         # exit()
 
     # Initialize the array
-    if d == 1:
-        im = np.empty((nl, nc), dtype=dt)
-    else:
-        im = np.empty((nl, nc, d), dtype=dt)
+    im = np.empty((nl, nc), dtype=dt) if d == 1 else np.empty((nl, nc, d), dtype=dt)
 
     if d == 1:
         im[:, :] = data.GetRasterBand(1).ReadAsArray()
@@ -85,15 +83,15 @@ def open_data(filename):
 
 
 def open_data_band(filename):
-    """!@brief The function open and load the image given its name.
+    """Open and load the image given its name.
+
     The function open and load the image given its name.
     The type of the data is checked from the file and the scipy array is initialized accordingly.
         Input:
             filename: the name of the file
         Output:
             data : the opened data with gdal.Open() method
-            im : empty table with right dimension (array)
-
+            im : empty table with right dimension (array).
     """
     data = gdal.Open(filename, gdal.GA_Update)
     if data is None:
@@ -125,22 +123,19 @@ Old function that open all the bands
 
 
 def write_data(outname, im, GeoTransform, Projection):
-    """
-    The function write the image on the  hard drive.
+    """Write the image to the hard drive.
+
     Input:
         outname: the name of the file to be written
         im: the image cube
         GeoTransform: the geotransform information
         Projection: the projection information
     Output:
-        Nothing --
+        Nothing --.
     """
     nl = im.shape[0]
     nc = im.shape[1]
-    if im.ndim == 2:
-        d = 1
-    else:
-        d = im.shape[2]
+    d = 1 if im.ndim == 2 else im.shape[2]
 
     driver = gdal.GetDriverByName("GTiff")
     dt = im.dtype.name
@@ -206,7 +201,8 @@ def create_empty_tiff(outname, im, d, GeoTransform, Projection):
 
 
 def get_samples_from_roi(raster_name, roi_name, stand_name=False, getCoords=False):
-    """!@brief Get the set of pixels given the thematic map.
+    """Get the set of pixels given the thematic map.
+
     Get the set of pixels given the thematic map. Both map should be of same size. Data is read per block.
         Input:
             raster_name: the name of the raster file, could be any file that GDAL can open
@@ -237,9 +233,7 @@ def get_samples_from_roi(raster_name, roi_name, stand_name=False, getCoords=Fals
             # exit()
 
     # Some tests
-    if (raster.RasterXSize != roi.RasterXSize) or (
-        raster.RasterYSize != roi.RasterYSize
-    ):
+    if (raster.RasterXSize != roi.RasterXSize) or (raster.RasterYSize != roi.RasterYSize):
         print("Images should be of the same size")
         # exit()
 
@@ -280,15 +274,9 @@ def get_samples_from_roi(raster_name, roi_name, stand_name=False, getCoords=Fals
     STD = np.array([], dtype=np.uint16).reshape(0, 1)
 
     for i in range(0, nl, y_block_size):
-        if i + y_block_size < nl:  # Check for size consistency in Y
-            lines = y_block_size
-        else:
-            lines = nl - i
+        lines = y_block_size if i + y_block_size < nl else nl - i  # Check for size consistency in Y
         for j in range(0, nc, x_block_size):  # Check for size consistency in X
-            if j + x_block_size < nc:
-                cols = x_block_size
-            else:
-                cols = nc - j
+            cols = x_block_size if j + x_block_size < nc else nc - j
 
             # Load the reference data
 
@@ -365,8 +353,7 @@ def get_samples_from_roi(raster_name, roi_name, stand_name=False, getCoords=Fals
 
 
 def getDTfromGDAL(gdal_dt):
-    """
-    Returns datatype (numpy/scipy) from gdal_dt.
+    """Returns datatype (numpy/scipy) from gdal_dt.
 
     Parameters
     ----------
@@ -376,6 +363,7 @@ def getDTfromGDAL(gdal_dt):
     Return
     ----------
     dt : datatype
+
     """
     if gdal_dt == gdal.GDT_Byte:
         dt = "uint8"
@@ -405,17 +393,20 @@ def getDTfromGDAL(gdal_dt):
 
 
 def getGDALGDT(dt):
-    """
+    """Convert numpy datatype to GDAL datatype.
+
     Need arr.dtype.name in entry.
     Returns gdal_dt from dt (numpy/scipy).
 
     Parameters
     ----------
     dt : datatype
+        Numpy datatype to convert to GDAL datatype.
 
     Return
     ----------
     gdal_dt : gdal datatype
+
     """
     if dt == "bool" or dt == "uint8":
         gdal_dt = gdal.GDT_Byte
@@ -441,7 +432,8 @@ def getGDALGDT(dt):
 
 
 def predict_image(raster_name, classif_name, classifier, mask_name=None):
-    """!@brief Classify the whole raster image, using per block image analysis
+    """Classify the whole raster image using per block analysis.
+
     The classifier is given in classifier and options in kwargs.
 
     Input:
@@ -453,6 +445,7 @@ def predict_image(raster_name, classif_name, classifier, mask_name=None):
     Return:
         Nothing but raster written on disk
     Written by Mathieu Fauvel.
+
     """
     # Parameters
     block_sizes = 512
@@ -472,9 +465,7 @@ def predict_image(raster_name, classif_name, classifier, mask_name=None):
             print("Impossible to open " + mask_name)
             # exit()
         # Check size
-        if (raster.RasterXSize != mask.RasterXSize) or (
-            raster.RasterYSize != mask.RasterYSize
-        ):
+        if (raster.RasterXSize != mask.RasterXSize) or (raster.RasterYSize != mask.RasterYSize):
             print("Image and mask should be of the same size")
             # exit()
 
@@ -509,36 +500,22 @@ def predict_image(raster_name, classif_name, classifier, mask_name=None):
 
     # Perform the classification
     for i in range(0, nl, y_block_size):
-        if i + y_block_size < nl:  # Check for size consistency in Y
-            lines = y_block_size
-        else:
-            lines = nl - i
+        lines = y_block_size if i + y_block_size < nl else nl - i  # Check for size consistency in Y
         for j in range(0, nc, x_block_size):  # Check for size consistency in X
-            if j + x_block_size < nc:
-                cols = x_block_size
-            else:
-                cols = nc - j
+            cols = x_block_size if j + x_block_size < nc else nc - j
 
             # Do the prediction
             if classifier["name"] == "NPFS":
                 # Load the data
                 X = np.empty((cols * lines, nv))
                 for ind, v in enumerate(ids):
-                    X[:, ind] = (
-                        raster.GetRasterBand(int(v + 1))
-                        .ReadAsArray(j, i, cols, lines)
-                        .reshape(cols * lines)
-                    )
+                    X[:, ind] = raster.GetRasterBand(int(v + 1)).ReadAsArray(j, i, cols, lines).reshape(cols * lines)
 
                 # Do the prediction
                 if mask is None:
                     yp = model.predict_gmm(X)[0].astype("uint16")
                 else:
-                    mask_temp = (
-                        mask.GetRasterBand(1)
-                        .ReadAsArray(j, i, cols, lines)
-                        .reshape(cols * lines)
-                    )
+                    mask_temp = mask.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols * lines)
                     t = np.where(mask_temp != 0)[0]
                     yp = np.zeros((cols * lines,))
                     yp[t] = model.predict_gmm(X[t, :])[0].astype("uint16")
@@ -547,21 +524,13 @@ def predict_image(raster_name, classif_name, classifier, mask_name=None):
                 # Load the data
                 X = np.empty((cols * lines, d))
                 for ind in range(d):
-                    X[:, ind] = (
-                        raster.GetRasterBand(int(ind + 1))
-                        .ReadAsArray(j, i, cols, lines)
-                        .reshape(cols * lines)
-                    )
+                    X[:, ind] = raster.GetRasterBand(int(ind + 1)).ReadAsArray(j, i, cols, lines).reshape(cols * lines)
 
                 # Do the prediction
                 if mask is None:
                     yp = model.predict_gmm(X)[0].astype("uint16")
                 else:
-                    mask_temp = (
-                        mask.GetRasterBand(1)
-                        .ReadAsArray(j, i, cols, lines)
-                        .reshape(cols * lines)
-                    )
+                    mask_temp = mask.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols * lines)
                     t = np.where(mask_temp != 0)[0]
                     yp = np.zeros((cols * lines,))
                     yp[t] = model.predict_gmm(X[t, :])[0].astype("uint16")
@@ -576,9 +545,7 @@ def predict_image(raster_name, classif_name, classifier, mask_name=None):
     dst_ds = None
 
 
-def create_uniquevalue_tiff(
-    outname, im, d, GeoTransform, Projection, wholeValue=1, gdal_dt=False
-):
+def create_uniquevalue_tiff(outname, im, d, GeoTransform, Projection, wholeValue=1, gdal_dt=False):
     """!@brief Write an empty image on the hard drive.
 
     Input:
@@ -618,6 +585,7 @@ def create_uniquevalue_tiff(
 
 
 def rasterize(data, vectorSrc, field, outFile):
+    """Rasterize vector data using reference raster geometry."""
     dataSrc = gdal.Open(data)
 
     shp = ogr.Open(vectorSrc)
@@ -625,9 +593,7 @@ def rasterize(data, vectorSrc, field, outFile):
     lyr = shp.GetLayer()
 
     driver = gdal.GetDriverByName("GTiff")
-    dst_ds = driver.Create(
-        outFile, dataSrc.RasterXSize, dataSrc.RasterYSize, 1, gdal.GDT_UInt16
-    )
+    dst_ds = driver.Create(outFile, dataSrc.RasterXSize, dataSrc.RasterYSize, 1, gdal.GDT_UInt16)
     dst_ds.SetGeoTransform(dataSrc.GetGeoTransform())
     dst_ds.SetProjection(dataSrc.GetProjection())
     if field is None:
@@ -641,7 +607,8 @@ def rasterize(data, vectorSrc, field, outFile):
 
 
 def scale(x, M=None, m=None):  # TODO:  DO IN PLACE SCALING
-    """!@brief Function that standardize the data
+    """Standardize the data.
+
     Input:
         x: the data
         M: the Max vector
@@ -649,7 +616,7 @@ def scale(x, M=None, m=None):  # TODO:  DO IN PLACE SCALING
     Output:
         x: the standardize data
         M: the Max vector
-        m: the Min vector
+        m: the Min vector.
     """
     [n, d] = x.shape
     if np.float64 != x.dtype.type:
@@ -689,6 +656,6 @@ if __name__ == "__main__":
     import accuracy_index as ai
     print(X.shape)
     print(Y.shape)
-    worker=ai.CONFUSION_MATRIX()
+    worker=ai.ConfusionMatrix()
     worker.compute_confusion_matrix(X,Y)
     """

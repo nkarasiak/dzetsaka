@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""
-Sklearn validation utilities for dzetsaka
-Provides robust checking for scikit-learn availability and specific algorithm requirements
+"""Sklearn validation utilities for dzetsaka.
+
+Provides robust checking for scikit-learn availability and specific algorithm requirements.
 """
 
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
+
 from .. import classifier_config
 
 
@@ -50,8 +51,7 @@ class SklearnValidator:
         return self._sklearn_version
 
     def validate_algorithm(self, algorithm: str) -> Tuple[bool, str]:
-        """
-        Validate if an algorithm is available and can be used.
+        """Validate if an algorithm is available and can be used.
 
         Parameters
         ----------
@@ -62,6 +62,7 @@ class SklearnValidator:
         -------
         tuple
             (is_valid, error_message)
+
         """
         algorithm = algorithm.upper()
 
@@ -186,8 +187,7 @@ _validator = SklearnValidator()
 
 
 def validate_classifier_selection(classifier: str) -> Tuple[bool, str]:
-    """
-    Validate a classifier selection from the UI.
+    """Validate a classifier selection from the UI.
 
     Parameters
     ----------
@@ -198,6 +198,7 @@ def validate_classifier_selection(classifier: str) -> Tuple[bool, str]:
     -------
     tuple
         (is_valid, error_message)
+
     """
     # Map UI names to algorithm codes
     ui_name_mapping = {
@@ -219,13 +220,13 @@ def validate_classifier_selection(classifier: str) -> Tuple[bool, str]:
 
 
 def check_sklearn_availability() -> Dict[str, any]:
-    """
-    Check sklearn availability and return comprehensive status.
+    """Check sklearn availability and return comprehensive status.
 
     Returns
     -------
     dict
         Status information including availability, version, and algorithms
+
     """
     return {
         "sklearn_available": _validator.is_sklearn_available(),
@@ -237,8 +238,7 @@ def check_sklearn_availability() -> Dict[str, any]:
 
 
 def get_sklearn_error_message(classifier: str) -> str:
-    """
-    Get a user-friendly error message for sklearn issues.
+    """Get a user-friendly error message for sklearn issues.
 
     Parameters
     ----------
@@ -249,6 +249,7 @@ def get_sklearn_error_message(classifier: str) -> str:
     -------
     str
         Formatted error message with installation instructions
+
     """
     is_valid, error = validate_classifier_selection(classifier)
 

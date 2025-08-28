@@ -1,0 +1,345 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dzetsaka"
+version = "4.2.0"
+description = "A powerful and fast classification plugin for QGIS supporting 11 machine learning algorithms"
+readme = "readme.md"
+license = {text = "GPL-2.0-or-later"}
+authors = [
+    {name = "Nicolas Karasiak", email = "karasiak.nicolas@gmail.com"},
+]
+maintainers = [
+    {name = "Nicolas Karasiak", email = "karasiak.nicolas@gmail.com"},
+]
+keywords = [
+    "qgis",
+    "classification", 
+    "machine-learning",
+    "remote-sensing",
+    "gis",
+    "image-classification",
+    "xgboost",
+    "lightgbm",
+    "random-forest",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9", 
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.19.0",
+    "gdal>=3.0.0",
+    "PyQt5>=5.12.0",
+]
+
+[project.optional-dependencies]
+# Core machine learning algorithms (scikit-learn based)
+sklearn = [
+    "scikit-learn>=1.0.0",
+    "joblib>=1.0.0",
+]
+
+# Advanced gradient boosting algorithms
+advanced = [
+    "xgboost>=1.5.0",
+    "lightgbm>=3.2.0",
+]
+
+# Full feature set (all algorithms)
+full = [
+    "scikit-learn>=1.0.0",
+    "joblib>=1.0.0", 
+    "xgboost>=1.5.0",
+    "lightgbm>=3.2.0",
+]
+
+# Development dependencies
+dev = [
+    "ruff>=0.1.0",
+    "black>=23.0.0",
+    "mypy>=1.5.0",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pre-commit>=3.0.0",
+    "sphinx>=5.0.0",
+    "sphinx-rtd-theme>=1.2.0",
+]
+
+# Testing dependencies
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+
+# Documentation dependencies  
+docs = [
+    "sphinx>=5.0.0",
+    "sphinx-rtd-theme>=1.2.0",
+    "myst-parser>=2.0.0",
+    "sphinx-autodoc-typehints>=1.20.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/nkarasiak/dzetsaka"
+Repository = "https://github.com/nkarasiak/dzetsaka.git"
+Documentation = "https://dzetsaka.readthedocs.io"
+"Bug Tracker" = "https://github.com/nkarasiak/dzetsaka/issues"
+Changelog = "https://github.com/nkarasiak/dzetsaka/blob/master/CHANGELOG.md"
+DOI = "https://doi.org/10.5281/zenodo.2552284"
+
+# Ruff configuration for linting and formatting
+[tool.ruff]
+# Exclude a variety of commonly ignored directories
+exclude = [
+    ".bzr",
+    ".direnv", 
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist", 
+    "node_modules",
+    "venv",
+    "resources.py",  # Generated Qt resource file
+    "ui/*.py",       # Generated UI files
+]
+
+# Same as Black
+line-length = 120
+indent-width = 4
+
+# Assume Python 3.8+
+target-version = "py38"
+
+[tool.ruff.lint]
+# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default
+# Plus additional useful rules
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings  
+    "F",      # Pyflakes
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "SIM",    # flake8-simplify
+    "I",      # isort
+    "N",      # pep8-naming
+    "D",      # pydocstyle
+    "C4",     # flake8-comprehensions
+    "PIE",    # flake8-pie
+    "T20",    # flake8-print
+    "RUF",    # Ruff-specific rules
+]
+
+ignore = [
+    "E501",   # Line too long, handled by formatter
+    "E203",   # Whitespace before ':', conflicts with Black
+    "D100",   # Missing docstring in public module
+    "D104",   # Missing docstring in public package
+    "D107",   # Missing docstring in __init__
+    "D203",   # 1 blank line required before class docstring
+    "D213",   # Multi-line docstring summary should start at the second line
+    "D401",   # First line should be in imperative mood (too restrictive)
+    "N802",   # Function name should be lowercase (QGIS conventions)
+    "N803",   # Argument name should be lowercase (QGIS conventions) 
+    "N806",   # Variable name should be lowercase (QGIS conventions)
+    "T201",   # print found (used for debugging and fallback feedback)
+]
+
+# Allow fix for all enabled rules (when `--fix`) is provided
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests can use magic values, assertions, and print statements
+"test_*.py" = ["PLR2004", "S101", "T201"]
+"**/test_*.py" = ["PLR2004", "S101", "T201"] 
+"tests/*.py" = ["PLR2004", "S101", "T201"]
+
+# Scripts can use print statements
+"scripts/*.py" = ["T201"]
+
+# Allow print in main execution blocks
+"__main__.py" = ["T201"]
+"**/mainfunction.py" = ["T201"]
+
+# Qt UI files are generated, ignore styling issues
+"ui/*.py" = ["ALL"]
+"**/ui/*.py" = ["ALL"]
+
+# Resource files are generated
+"resources.py" = ["ALL"]
+"**/resources.py" = ["ALL"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["dzetsaka"]
+known-third-party = ["qgis", "osgeo", "PyQt5", "numpy", "sklearn", "xgboost", "lightgbm"]
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs
+indent-style = "space"
+
+# Like Black, respect magic trailing commas
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending
+line-ending = "auto"
+
+# Enable auto-formatting of code examples in docstrings
+docstring-code-format = true
+
+# Black configuration (as fallback/alternative formatter)
+[tool.black]
+line-length = 120
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+extend-exclude = '''
+# A regex preceded with ^/ will apply only to files and directories
+# in the root of the project.
+(
+  /(
+      \.eggs
+    | \.git
+    | \.hg  
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+    | ui
+    | resources\.py
+  )/
+)
+'''
+
+# MyPy configuration for type checking
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+# Ignore missing imports for packages that may not be available
+[[tool.mypy.overrides]]
+module = [
+    "qgis.*",
+    "osgeo.*", 
+    "PyQt5.*",
+    "sklearn.*",
+    "xgboost.*",
+    "lightgbm.*"
+]
+ignore_missing_imports = true
+
+# Pytest configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--cov=dzetsaka",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--strict-markers",
+    "--strict-config",
+    "-ra"
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests", 
+    "qgis: marks tests that require QGIS",
+    "sklearn: marks tests that require scikit-learn",
+    "xgboost: marks tests that require XGBoost",
+    "lightgbm: marks tests that require LightGBM",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["dzetsaka"]
+omit = [
+    "*/tests/*",
+    "*/ui/*", 
+    "*/resources.py",
+    "*/__pycache__/*",
+    "*/.*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError", 
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+# Setuptools configuration for building
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["dzetsaka*"]
+exclude = ["tests*", "docs*"]
+
+[tool.setuptools.package-data]
+dzetsaka = [
+    "*.ui", 
+    "*.qrc",
+    "*.png",
+    "*.svg", 
+    "*.jpg",
+    "img/*",
+    "metadata.txt",
+    "README.md",
+    "LICENSE"
+]

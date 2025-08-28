@@ -1,49 +1,39 @@
-# -*- coding: utf-8 -*-
+"""Domain Adaptation Algorithm for dzetsaka.
 
+This module provides domain adaptation functionality for transferring trained
+models across different domains in remote sensing applications.
 """
-/***************************************************************************
- className
-                                 A QGIS plugin
- description
-                              -------------------
-        begin                : 2016-12-03
-        copyright            : (C) 2016 by Nico
-        email                : nico@nico
- ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
-"""
-
-from qgis.PyQt.QtGui import QIcon
-from PyQt5.QtCore import QCoreApplication
-# from PyQt5.QtWidgets import QMessageBox
-
-from qgis.core import (
-    QgsProcessingAlgorithm,
-    QgsProcessingParameterRasterLayer,
-    QgsProcessingParameterVectorLayer,
-    QgsProcessingParameterField,
-    QgsProcessingParameterEnum,
-    QgsProcessingParameterString,
-    QgsProcessingParameterRasterDestination,
-)
 
 import os
-from ..scripts import domainAdaptation as DA
+from typing import ClassVar
 
+from PyQt5.QtCore import QCoreApplication
+
+# from PyQt5.QtWidgets import QMessageBox
+from qgis.core import (
+    QgsProcessingAlgorithm,
+    QgsProcessingParameterEnum,
+    QgsProcessingParameterField,
+    QgsProcessingParameterRasterDestination,
+    QgsProcessingParameterRasterLayer,
+    QgsProcessingParameterString,
+    QgsProcessingParameterVectorLayer,
+)
+from qgis.PyQt.QtGui import QIcon
+
+from ..scripts import domain_adaptation as da
 from ..scripts import function_dataraster as dataraster
 
-pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
 
-class domainAdaptation(QgsProcessingAlgorithm):
+class DomainAdaptation(QgsProcessingAlgorithm):
+    """Domain adaptation algorithm for cross-domain model transfer.
+
+    Enables transfer learning between different geographical domains or
+    sensor types in remote sensing classification tasks.
+    """
+
     SOURCE_RASTER = "SOURCE_RASTER"
     SOURCE_LAYER = "SOURCE_LAYER"
     SOURCE_COLUMN = "SOURCE_COLUMN"
@@ -56,14 +46,14 @@ class domainAdaptation(QgsProcessingAlgorithm):
     PARAMS = "PARAMS"
 
     TRAIN = "TRAIN"
-    TRAIN_ALGORITHMS = [
+    TRAIN_ALGORITHMS: ClassVar = [
         "Mapping Transport",
         "Earth Mover's Distance",
         "Sinkhorn Algorithm",
         "Sinkhorn algorithm + l1 class regularization",
         "Sinkhorn algorithm + l1l2 class regularization",
     ]
-    TRAIN_ALGORITHMS_CODE = [
+    TRAIN_ALGORITHMS_CODE: ClassVar = [
         "MappingTransport",
         "EMDTransport",
         "SinkhornTransport",
@@ -74,9 +64,9 @@ class domainAdaptation(QgsProcessingAlgorithm):
     TRANSPORTED_IMAGE = "TRANSPORTED_IMAGE"
 
     def name(self):
-        """
-        Returns the algorithm name, used for identifying the algorithm. This
-        string should be fixed for the algorithm, and must not be localised.
+        """Return the algorithm name used for identifying the algorithm.
+
+        This string should be fixed for the algorithm, and must not be localised.
         The name should be unique within each provider. Names should contain
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
@@ -84,6 +74,7 @@ class domainAdaptation(QgsProcessingAlgorithm):
         return "Domain Adaptation"
 
     def shortHelpString(self):
+        """Return the short help string for the algorithm."""
         return self.tr(
             'Domain Adaptation for raster images using Python Optimal Transport library. <br>\
                        Help can be found on Python Optimal Transport documentation : http://pot.readthedocs.io/en/stable/all.html#module-ot.da <br>\
@@ -92,25 +83,20 @@ class domainAdaptation(QgsProcessingAlgorithm):
         )
 
     def helpUrl(self):
+        """Return the help URL for the algorithm."""
         return "http://pot.readthedocs.io/en/stable/all.html#module-ot.da"
 
     def icon(self):
-        return QIcon(os.path.join(pluginPath, "icon.png"))
+        """Return the algorithm icon."""
+        return QIcon(os.path.join(plugin_path, "icon.png"))
 
     def initAlgorithm(self, config=None):
+        """Initialize the algorithm parameters."""
         # The name that the user will see in the toolbox
         # Raster
-        self.addParameter(
-            QgsProcessingParameterRasterLayer(
-                self.SOURCE_RASTER, self.tr("Source raster")
-            )
-        )
+        self.addParameter(QgsProcessingParameterRasterLayer(self.SOURCE_RASTER, self.tr("Source raster")))
 
-        self.addParameter(
-            QgsProcessingParameterRasterLayer(
-                self.TARGET_RASTER, self.tr("Target raster")
-            )
-        )
+        self.addParameter(QgsProcessingParameterRasterLayer(self.TARGET_RASTER, self.tr("Target raster")))
 
         # ROI SOURCE
         self.addParameter(
@@ -132,11 +118,7 @@ class domainAdaptation(QgsProcessingAlgorithm):
 
         # ROI TARGET (Optional)
 
-        self.addParameter(
-            QgsProcessingParameterVectorLayer(
-                self.TARGET_LAYER, "Target layer", optional=False
-            )
-        )
+        self.addParameter(QgsProcessingParameterVectorLayer(self.TARGET_LAYER, "Target layer", optional=False))
         # TABLE / COLUMN
         self.addParameter(
             QgsProcessingParameterField(
@@ -149,22 +131,14 @@ class domainAdaptation(QgsProcessingAlgorithm):
 
         # Mask
         self.addParameter(
-            QgsProcessingParameterRasterLayer(
-                self.MASK, self.tr("Mask image (0 to mask)"), optional=True
-            )
+            QgsProcessingParameterRasterLayer(self.MASK, self.tr("Mask image (0 to mask)"), optional=True)
         )
 
         self.addParameter(
-            QgsProcessingParameterEnum(
-                self.TRAIN, "Select algorithm to transport", self.TRAIN_ALGORITHMS, 0
-            )
+            QgsProcessingParameterEnum(self.TRAIN, "Select algorithm to transport", self.TRAIN_ALGORITHMS, 0)
         )
 
-        self.addParameter(
-            QgsProcessingParameterRasterDestination(
-                self.TRANSPORTED_IMAGE, self.tr("Transported image")
-            )
-        )
+        self.addParameter(QgsProcessingParameterRasterDestination(self.TRANSPORTED_IMAGE, self.tr("Transported image")))
 
         self.addParameter(
             QgsProcessingParameterString(
@@ -175,25 +149,16 @@ class domainAdaptation(QgsProcessingAlgorithm):
         )
 
     def processAlgorithm(self, parameters, context, feedback):
-        SOURCE_RASTER = self.parameterAsRasterLayer(
-            parameters, self.SOURCE_RASTER, context
-        )
-        SOURCE_LAYER = self.parameterAsVectorLayer(
-            parameters, self.SOURCE_LAYER, context
-        )
+        """Process the domain adaptation algorithm."""
+        SOURCE_RASTER = self.parameterAsRasterLayer(parameters, self.SOURCE_RASTER, context)
+        SOURCE_LAYER = self.parameterAsVectorLayer(parameters, self.SOURCE_LAYER, context)
         SOURCE_COLUMN = self.parameterAsFields(parameters, self.SOURCE_COLUMN, context)
 
-        TARGET_RASTER = self.parameterAsRasterLayer(
-            parameters, self.TARGET_RASTER, context
-        )
-        TARGET_LAYER = self.parameterAsVectorLayer(
-            parameters, self.TARGET_LAYER, context
-        )
+        TARGET_RASTER = self.parameterAsRasterLayer(parameters, self.TARGET_RASTER, context)
+        TARGET_LAYER = self.parameterAsVectorLayer(parameters, self.TARGET_LAYER, context)
         TARGET_COLUMN = self.parameterAsFields(parameters, self.TARGET_COLUMN, context)
 
-        TRANSPORTED_IMAGE = self.parameterAsOutputLayer(
-            parameters, self.TRANSPORTED_IMAGE, context
-        )
+        TRANSPORTED_IMAGE = self.parameterAsOutputLayer(parameters, self.TRANSPORTED_IMAGE, context)
 
         TRAIN = self.parameterAsEnums(parameters, self.TRAIN, context)
         # INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
@@ -231,22 +196,15 @@ class domainAdaptation(QgsProcessingAlgorithm):
 
             # feedback.setProgressText('Params are : in dict '+str(dict(PARAMS)))
 
-            dataraster.rasterize(
-                SOURCE_RASTER.source(), SOURCE_LAYER.source(), SOURCE_COLUMN[0], tempROI
-            )
+            dataraster.rasterize(SOURCE_RASTER.source(), SOURCE_LAYER.source(), SOURCE_COLUMN[0], tempROI)
 
             feedback.setProgress(2)
             Xs, ys = dataraster.get_samples_from_roi(SOURCE_RASTER.source(), tempROI)
 
-            if TARGET_COLUMN == []:
-                TARGET_COLUMN = None
-            else:
-                TARGET_COLUMN = TARGET_COLUMN[0]
+            TARGET_COLUMN = None if TARGET_COLUMN == [] else TARGET_COLUMN[0]
 
             feedback.setProgress(5)
-            dataraster.rasterize(
-                TARGET_RASTER.source(), TARGET_LAYER.source(), TARGET_COLUMN, tempROI
-            )
+            dataraster.rasterize(TARGET_RASTER.source(), TARGET_LAYER.source(), TARGET_COLUMN, tempROI)
 
             feedback.setProgress(8)
 
@@ -255,21 +213,19 @@ class domainAdaptation(QgsProcessingAlgorithm):
             os.remove(tempROI)
 
             ###
-            transferModel = DA.rasterOT(
+            transferModel = da.RasterOT(
                 params=PARAMSdict,
                 transportAlgorithm=SELECTED_ALGORITHM,
                 feedback=feedback,
             )
             transferModel.learnTransfer(Xs, ys, Xt, None)
 
-            transferModel.predictTransfer(
-                SOURCE_RASTER.source(), TRANSPORTED_IMAGE, mask=MASK, NODATA=-10000
-            )
+            transferModel.predictTransfer(SOURCE_RASTER.source(), TRANSPORTED_IMAGE, mask=MASK, NOdaTA=-10000)
 
             """
-            transferModel = DA.learnTransfer(Xs,ys,Xt,yt,SELECTED_ALGORITHM,params=PARAMSdict,feedback=feedback)
+            transferModel = da.learnTransfer(Xs,ys,Xt,yt,SELECTED_ALGORITHM,params=PARAMSdict,feedback=feedback)
 
-            DA.predictTransfer(transferModel,SOURCE_RASTER.source(),TRANSPORTED_IMAGE,mask=MASK,NODATA=-10000,feedback=feedback)
+            da.predictTransfer(transferModel,SOURCE_RASTER.source(),TRANSPORTED_IMAGE,mask=MASK,NOdaTA=-10000,feedback=feedback)
             """
             return {self.TRANSPORTED_IMAGE: TRANSPORTED_IMAGE}
 
@@ -277,29 +233,31 @@ class domainAdaptation(QgsProcessingAlgorithm):
             return {"Error": msg}
 
     def tr(self, string):
+        """Translate string using Qt translation API."""
         return QCoreApplication.translate("Processing", string)
 
     def createInstance(self):
-        return domainAdaptation()
+        """Create a new instance of this algorithm."""
+        return DomainAdaptation()
 
     def displayName(self):
-        """
-        Returns the translated algorithm name, which should be used for any
-        user-visible display of the algorithm name.
+        """Return the translated algorithm name.
+
+        Should be used for any user-visible display of the algorithm name.
         """
         return self.tr(self.name())
 
     def group(self):
-        """
-        Returns the name of the group this algorithm belongs to. This string
-        should be localised.
+        """Return the name of the group this algorithm belongs to.
+
+        This string should be localised.
         """
         return self.tr(self.groupId())
 
     def groupId(self):
-        """
-        Returns the unique ID of the group this algorithm belongs to. This
-        string should be fixed for the algorithm, and must not be localised.
+        """Return the unique ID of the group this algorithm belongs to.
+
+        This string should be fixed for the algorithm, and must not be localised.
         The group id should be unique within each provider. Group id should
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.

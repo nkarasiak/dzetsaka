@@ -1,24 +1,7 @@
-# -*- coding: utf-8 -*-
+"""Shannon Entropy Algorithm for dzetsaka.
 
-"""
-/***************************************************************************
- className
-                                 A QGIS plugin
- description
-                              -------------------
-        begin                : 2016-12-03
-        copyright            : (C) 2016 by Nico
-        email                : nico@nico
- ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+This module provides Shannon entropy calculation for measuring information
+content and uncertainty in raster image classification.
 """
 
 __author__ = "Nicolas Karasiak"
@@ -36,24 +19,25 @@ __revision__ = "$Format:%H$"
 # from PyQt4.QtCore import QSettings
 
 
-from qgis.PyQt.QtGui import QIcon
-from PyQt5.QtCore import QCoreApplication
+import os
 
+from PyQt5.QtCore import QCoreApplication
 from qgis.core import (
     QgsProcessingAlgorithm,
-    QgsProcessingParameterRasterLayer,
     QgsProcessingParameterRasterDestination,
+    QgsProcessingParameterRasterLayer,
 )
-import os
+from qgis.PyQt.QtGui import QIcon
 
 try:
     from osgeo import gdal
 except ImportError:
     import gdal
-import numpy as np
 import math
 
-pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+import numpy as np
+
+plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 # EX
 """
 from processing.core.GeoAlgorithm import GeoAlgorithm
@@ -63,13 +47,11 @@ from processing.core.outputs import OutputRaster
 """
 
 
-class shannonAlgorithm(QgsProcessingAlgorithm):
-    """This is an example algorithm that takes a vector layer and
-    creates a new one just with just those features of the input
-    layer that are selected.
+class ShannonAlgorithm(QgsProcessingAlgorithm):
+    """Shannon entropy calculation algorithm for information content analysis.
 
-    It is meant to be used as an example of how to create your own
-    algorithms and explain methods and variables used to do it. An
+    Calculates Shannon entropy to measure the information content and
+    uncertainty in classification probability maps or spectral data.
     algorithm like this will be available in all elements, and there
     is not need for additional work.
 
@@ -84,33 +66,26 @@ class shannonAlgorithm(QgsProcessingAlgorithm):
     OUTPUT_RASTER = "OUTPUT_RASTER"
 
     def icon(self):
-        return QIcon(os.path.join(pluginPath, "icon.png"))
+        """Return the algorithm icon."""
+        return QIcon(os.path.join(plugin_path, "icon.png"))
 
     def initAlgorithm(self, config=None):
-        """Here we define the inputs and output of the algorithm, along
-        with some other properties.
-        """
+        """Here we define the inputs and output of the algorithm.
 
+        Along with some other properties.
+        """
         # We add the input vector layer. It can have any kind of geometry
         # It is a mandatory (not optional) one, hence the False argument
-        self.addParameter(
-            QgsProcessingParameterRasterLayer(
-                self.INPUT_RASTER, self.tr("Input raster")
-            )
-        )
+        self.addParameter(QgsProcessingParameterRasterLayer(self.INPUT_RASTER, self.tr("Input raster")))
 
         # We add a raster as output
-        self.addParameter(
-            QgsProcessingParameterRasterDestination(
-                self.OUTPUT_RASTER, self.tr("Output raster")
-            )
-        )
+        self.addParameter(QgsProcessingParameterRasterDestination(self.OUTPUT_RASTER, self.tr("Output raster")))
         # add num
 
     def name(self):
-        """
-        Returns the algorithm name, used for identifying the algorithm. This
-        string should be fixed for the algorithm, and must not be localised.
+        """Returns the algorithm name, used for identifying the algorithm.
+
+        This string should be fixed for the algorithm, and must not be localised.
         The name should be unique within each provider. Names should contain
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
@@ -119,14 +94,9 @@ class shannonAlgorithm(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         """Here is where the processing itself takes place."""
-
-        INPUT_RASTER = self.parameterAsRasterLayer(
-            parameters, self.INPUT_RASTER, context
-        )
+        INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         # INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
-        OUTPUT_RASTER = self.parameterAsOutputLayer(
-            parameters, self.OUTPUT_RASTER, context
-        )
+        OUTPUT_RASTER = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
 
         """
         MEDIAN_ITER = self.parameterAsInt(parameters, self.MEDIAN_ITER, context)
@@ -162,29 +132,31 @@ class shannonAlgorithm(QgsProcessingAlgorithm):
         # return OUTPUT_RASTER
 
     def tr(self, string):
+        """Translate string using Qt's translation system."""
         return QCoreApplication.translate("Processing", string)
 
     def createInstance(self):
-        return shannonAlgorithm()
+        """Create a new instance of this algorithm."""
+        return ShannonAlgorithm()
 
     def displayName(self):
-        """
-        Returns the translated algorithm name, which should be used for any
-        user-visible display of the algorithm name.
+        """Returns the translated algorithm name, which should be used for any user-visible display.
+
+        The algorithm name.
         """
         return self.tr(self.name())
 
     def group(self):
-        """
-        Returns the name of the group this algorithm belongs to. This string
-        should be localised.
+        """Returns the name of the group this algorithm belongs to.
+
+        This string should be localised.
         """
         return self.tr(self.groupId())
 
     def groupId(self):
-        """
-        Returns the unique ID of the group this algorithm belongs to. This
-        string should be fixed for the algorithm, and must not be localised.
+        """Returns the unique ID of the group this algorithm belongs to.
+
+        This string should be fixed for the algorithm, and must not be localised.
         The group id should be unique within each provider. Group id should
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
@@ -193,8 +165,8 @@ class shannonAlgorithm(QgsProcessingAlgorithm):
 
 
 def calcul_shannon(image):
-    """
-    The function will set all the first three bands, corresponding to the fractions, to sum unity.
+    """Set all the first three bands, corresponding to the fractions, to sum unity.
+
     INPUT image : Image tableau scipy à 13bandes
     OUTPUT resultat : Image tableau scipy à 6 bandes avec
         bande 1: première valeur maximale max1
@@ -202,7 +174,7 @@ def calcul_shannon(image):
         bande 3: troisième valeur maximale max3
         bande 4: catégorie (espèce) correspondante à la valeur max1
         bande 5: catégorie (espèce) correspondante à la valeur max2
-        bande 6: catégorie (espèce) correspondante à la valeur max3
+        bande 6: catégorie (espèce) correspondante à la valeur max3.
     """
     # on recupère les dimensions de notre image : (4036, 4531, 13)
     shape = np.shape(image)
@@ -214,14 +186,14 @@ def calcul_shannon(image):
     resultat = np.zeros(outputShape)
 
     # boucle pour retrouver chaque pixel:
-    for i in range(0, dimX):
-        for j in range(0, dimY):
+    for i in range(dimX):
+        for j in range(dimY):
             # on est dans un pixel de coordonnees (i,j), array taille 13:
             # image[i,j,:]
 
             shannon = float(0)
 
-            for k in range(0, nbBandes):  # de 0 à 13
+            for k in range(nbBandes):  # de 0 à 13
                 if image[i, j, k] != 0:  # on stocke max_i
                     shannon = shannon + image[i, j, k] * math.log(image[i, j, k], 2)
 
@@ -231,11 +203,11 @@ def calcul_shannon(image):
 
 
 def openRaster(filepath):
-    """
-    The function is an adaptation of the rasterTool.py provided
+    """Open the raster file - adaptation of rasterTool.py.
+
     It opens the raster located in the given input
     INPUT filepath : adress of the .tiff file à traiter
-    OUTPUT im : Image tableau scipy contenant les 13 bandes de l'image
+    OUTPUT im : Image tableau scipy contenant les 13 bandes de l'image.
     """
     # Open the file:
     data = gdal.Open(filepath)
@@ -257,10 +229,11 @@ def openRaster(filepath):
 
 
 def saveRaster(nomSortie, image, GeoTransform, Projection):
-    """
-    The function saves the resultant image in the hard disk. Adaptation de write_data sous rasterTool.py
+    """Save the resultant image to disk.
+
+    Adaptation de write_data sous rasterTool.py
     INPUT   image : tableau recalculé à 6 bandes.
-            GeoTransform,Projection : informations from original image
+            GeoTransform,Projection : informations from original image.
     """
     nl, nc, d = np.shape(image)
     # ou image.shape; ?

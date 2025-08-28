@@ -1,24 +1,7 @@
-# -*- coding: utf-8 -*-
+"""Closing Filter Algorithm for dzetsaka.
 
-"""
-/***************************************************************************
- className
-                                 A QGIS plugin
- description
-                              -------------------
-        begin                : 2016-12-03
-        copyright            : (C) 2016 by Nico
-        email                : nico@nico
- ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+This module provides morphological closing filter operations for raster processing
+within the dzetsaka QGIS plugin framework.
 """
 
 __author__ = "Nicolas Karasiak"
@@ -36,19 +19,20 @@ __revision__ = "$Format:%H$"
 # from PyQt4.QtCore import QSettings
 
 
-from qgis.PyQt.QtGui import QIcon
-from PyQt5.QtCore import QCoreApplication
+import os
 
+from PyQt5.QtCore import QCoreApplication
 from qgis.core import (
     QgsProcessingAlgorithm,
-    QgsProcessingParameterRasterLayer,
     QgsProcessingParameterNumber,
     QgsProcessingParameterRasterDestination,
+    QgsProcessingParameterRasterLayer,
 )
-import os
+from qgis.PyQt.QtGui import QIcon
+
 from ..scripts import function_dataraster as dataraster
 
-pluginPath = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 # EX
 """
 from processing.core.GeoAlgorithm import GeoAlgorithm
@@ -58,17 +42,12 @@ from processing.core.outputs import OutputRaster
 """
 
 
-class closingFilterAlgorithm(QgsProcessingAlgorithm):
-    """This is an example algorithm that takes a vector layer and
-    creates a new one just with just those features of the input
-    layer that are selected.
+class ClosingFilterAlgorithm(QgsProcessingAlgorithm):
+    """Morphological closing filter algorithm for raster processing.
 
-    It is meant to be used as an example of how to create your own
-    algorithms and explain methods and variables used to do it. An
-    algorithm like this will be available in all elements, and there
-    is not need for additional work.
-
-    All Processing algorithms should extend the GeoAlgorithm class.
+    Applies morphological closing operations to raster images, which consists
+    of a dilation followed by an erosion. This is useful for filling small
+    holes and gaps in classified images.
     """
 
     # Constants used to refer to parameters and outputs. They will be
@@ -80,27 +59,20 @@ class closingFilterAlgorithm(QgsProcessingAlgorithm):
     CLOSING_SIZE = "CLOSING_SIZE"
 
     def icon(self):
-        return QIcon(os.path.join(pluginPath, "icon.png"))
+        """Return the algorithm icon."""
+        return QIcon(os.path.join(plugin_path, "icon.png"))
 
     def initAlgorithm(self, config=None):
-        """Here we define the inputs and output of the algorithm, along
-        with some other properties.
-        """
+        """Define the inputs and output of the algorithm.
 
+        Along with some other properties.
+        """
         # We add the input vector layer. It can have any kind of geometry
         # It is a mandatory (not optional) one, hence the False argument
-        self.addParameter(
-            QgsProcessingParameterRasterLayer(
-                self.INPUT_RASTER, self.tr("Input raster")
-            )
-        )
+        self.addParameter(QgsProcessingParameterRasterLayer(self.INPUT_RASTER, self.tr("Input raster")))
 
         # We add a raster as output
-        self.addParameter(
-            QgsProcessingParameterRasterDestination(
-                self.OUTPUT_RASTER, self.tr("Output raster")
-            )
-        )
+        self.addParameter(QgsProcessingParameterRasterDestination(self.OUTPUT_RASTER, self.tr("Output raster")))
         # add num
 
         self.addParameter(
@@ -114,9 +86,9 @@ class closingFilterAlgorithm(QgsProcessingAlgorithm):
         )
 
     def name(self):
-        """
-        Returns the algorithm name, used for identifying the algorithm. This
-        string should be fixed for the algorithm, and must not be localised.
+        """Return the algorithm name used for identifying the algorithm.
+
+        This string should be fixed for the algorithm, and must not be localised.
         The name should be unique within each provider. Names should contain
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
@@ -125,14 +97,9 @@ class closingFilterAlgorithm(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         """Here is where the processing itself takes place."""
-
-        INPUT_RASTER = self.parameterAsRasterLayer(
-            parameters, self.INPUT_RASTER, context
-        )
+        INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         # INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
-        OUTPUT_RASTER = self.parameterAsOutputLayer(
-            parameters, self.OUTPUT_RASTER, context
-        )
+        OUTPUT_RASTER = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
         CLOSING_SIZE = self.parameterAsInt(parameters, self.CLOSING_SIZE, context)
 
         """
@@ -184,29 +151,31 @@ class closingFilterAlgorithm(QgsProcessingAlgorithm):
         # return OUTPUT_RASTER
 
     def tr(self, string):
+        """Translate string using Qt translation API."""
         return QCoreApplication.translate("Processing", string)
 
     def createInstance(self):
-        return closingFilterAlgorithm()
+        """Create a new instance of this algorithm."""
+        return ClosingFilterAlgorithm()
 
     def displayName(self):
-        """
-        Returns the translated algorithm name, which should be used for any
-        user-visible display of the algorithm name.
+        """Return the translated algorithm name.
+
+        Should be used for any user-visible display of the algorithm name.
         """
         return self.tr(self.name())
 
     def group(self):
-        """
-        Returns the name of the group this algorithm belongs to. This string
-        should be localised.
+        """Return the name of the group this algorithm belongs to.
+
+        This string should be localised.
         """
         return self.tr(self.groupId())
 
     def groupId(self):
-        """
-        Returns the unique ID of the group this algorithm belongs to. This
-        string should be fixed for the algorithm, and must not be localised.
+        """Return the unique ID of the group this algorithm belongs to.
+
+        This string should be fixed for the algorithm, and must not be localised.
         The group id should be unique within each provider. Group id should
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.

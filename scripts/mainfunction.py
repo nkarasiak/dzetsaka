@@ -1,41 +1,67 @@
-"""!@brief Interface between qgisForm and function_historical_map.py
-./***************************************************************************
- HistoricalMap
-                                 A QGIS plugin
- Mapping old landcover (specially forest) from historical  maps
-                              -------------------
-        begin                : 2016-01-26
-        git sha              : $Format:%H$
-        copyright            : (C) 2016 by Karasiak & Lomellini
-        email                : karasiak.nicolas@gmail.com
- ***************************************************************************/
+"""Core machine learning functions for dzetsaka classification.
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+This module contains the main implementation of machine learning algorithms,
+model training, image classification, and accuracy assessment for dzetsaka.
+It provides a comprehensive interface between the QGIS GUI and the underlying
+classification algorithms.
+
+Key Components:
+--------------
+- learnModel: Train classification models with various algorithms
+- classifyImage: Classify entire raster images using trained models
+- confusionMatrix: Compute accuracy statistics from classifications
+- Backward compatibility decorators for parameter name changes
+- Advanced cross-validation methods (SLOO, STAND)
+- Label encoding wrappers for XGBoost and LightGBM
+
+Supported Algorithms:
+--------------------
+- GMM: Gaussian Mixture Model (built-in)
+- RF: Random Forest (sklearn)
+- SVM: Support Vector Machine (sklearn)
+- KNN: K-Nearest Neighbors (sklearn)
+- XGB: XGBoost (requires xgboost package)
+- LGB: LightGBM (requires lightgbm package)
+- ET: Extra Trees (sklearn)
+- GBC: Gradient Boosting Classifier (sklearn)
+- LR: Logistic Regression (sklearn)
+- NB: Gaussian Naive Bayes (sklearn)
+- MLP: Multi-layer Perceptron (sklearn)
+
+Author:
+-------
+Nicolas Karasiak <karasiak.nicolas@gmail.com>
+Based on original work by Mathieu Fauvel
+
+License:
+--------
+GNU General Public License v2.0 or later
+
 """
 
 try:
     # when using it from QGIS 3
     from qgis.core import QgsMessageLog
-    from . import function_dataraster as dataraster
+
     from . import accuracy_index as ai
-    from . import progressBar as pB
+    from . import function_dataraster as dataraster
+    from . import progress_bar
 except BaseException:
     import accuracy_index as ai
     import function_dataraster as dataraster
+    import progress_bar
 
-import pickle
+import contextlib
 import os
+import pickle
 import tempfile
-from typing import Optional, Union, Tuple, Dict, Any, List
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 from osgeo import gdal, ogr
+from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.preprocessing import LabelEncoder
+
 from .. import classifier_config
 
 # Import sklearn modules for confusion matrix
@@ -47,14 +73,14 @@ except ImportError:
 
 # Backward compatibility decorator
 def backward_compatible(**parameter_mapping):
-    """
-    Decorator to handle backward compatibility for function parameters.
+    """Decorator to handle backward compatibility for function parameters.
 
     Parameters
     ----------
     **parameter_mapping : dict
         Mapping from old parameter names to new parameter names
         Example: backward_compatible(inRaster='raster_path', inVector='vector_path')
+
     """
 
     def decorator(func):
@@ -93,8 +119,6 @@ def backward_compatible(**parameter_mapping):
 
 
 # Label encoding wrapper for XGBoost and LightGBM
-from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.preprocessing import LabelEncoder
 
 
 class XGBLabelWrapper(BaseEstimator, ClassifierMixin):
@@ -106,10 +130,11 @@ class XGBLabelWrapper(BaseEstimator, ClassifierMixin):
         self.xgb_classifier = None
 
     def fit(self, X, y):
+        """Fit the XGBoost classifier with label encoding."""
         try:
             from xgboost import XGBClassifier
         except ImportError:
-            raise ImportError("XGBoost not found. Install with: pip install xgboost")
+            raise ImportError("XGBoost not found. Install with: pip install xgboost") from None
 
         y_encoded = self.label_encoder.fit_transform(y)
         self.xgb_classifier = XGBClassifier(**self.xgb_params)
@@ -117,21 +142,26 @@ class XGBLabelWrapper(BaseEstimator, ClassifierMixin):
         return self
 
     def predict(self, X):
+        """Predict labels using the fitted classifier."""
         y_encoded = self.xgb_classifier.predict(X)
         return self.label_encoder.inverse_transform(y_encoded)
 
     def predict_proba(self, X):
+        """Predict class probabilities using the fitted classifier."""
         return self.xgb_classifier.predict_proba(X)
 
     @property
     def classes_(self):
+        """Get class labels."""
         return self.label_encoder.classes_
 
     def get_params(self, deep=True):
+        """Get parameters for this estimator."""
         # Return XGBoost parameters directly
-        return self.xgb_params.copy() if not deep else self.xgb_params.copy()
+        return self.xgb_params.copy()
 
     def set_params(self, **params):
+        """Set parameters for this estimator."""
         self.xgb_params.update(params)
         if self.xgb_classifier is not None:
             self.xgb_classifier.set_params(**params)
@@ -147,10 +177,11 @@ class LGBLabelWrapper(BaseEstimator, ClassifierMixin):
         self.lgb_classifier = None
 
     def fit(self, X, y):
+        """Fit the LightGBM classifier with label encoding."""
         try:
             from lightgbm import LGBMClassifier
         except ImportError:
-            raise ImportError("LightGBM not found. Install with: pip install lightgbm")
+            raise ImportError("LightGBM not found. Install with: pip install lightgbm") from None
 
         y_encoded = self.label_encoder.fit_transform(y)
         self.lgb_classifier = LGBMClassifier(**self.lgb_params)
@@ -158,21 +189,26 @@ class LGBLabelWrapper(BaseEstimator, ClassifierMixin):
         return self
 
     def predict(self, X):
+        """Predict class labels for samples."""
         y_encoded = self.lgb_classifier.predict(X)
         return self.label_encoder.inverse_transform(y_encoded)
 
     def predict_proba(self, X):
+        """Predict class probabilities for samples."""
         return self.lgb_classifier.predict_proba(X)
 
     @property
     def classes_(self):
+        """Get class labels."""
         return self.label_encoder.classes_
 
     def get_params(self, deep=True):
+        """Get parameters for this estimator."""
         # Return LightGBM parameters directly
-        return self.lgb_params.copy() if not deep else self.lgb_params.copy()
+        return self.lgb_params.copy()
 
     def set_params(self, **params):
+        """Set parameters for this estimator."""
         self.lgb_params.update(params)
         if self.lgb_classifier is not None:
             self.lgb_classifier.set_params(**params)
@@ -184,9 +220,7 @@ CLASSIFIER_CONFIGS = {
     "RF": {
         "param_grid": {
             "n_estimators": [100],
-            "max_features": lambda x_shape: range(
-                1, max(2, x_shape), max(1, int(x_shape / 3))
-            ),
+            "max_features": lambda x_shape: range(1, max(2, x_shape), max(1, int(x_shape / 3))),
         },
         "n_splits": 3,
     },
@@ -194,7 +228,7 @@ CLASSIFIER_CONFIGS = {
         "param_grid": {"gamma": 2.0 ** np.arange(-2, 3), "C": 10.0 ** np.arange(-1, 3)},
         "n_splits": 3,
     },
-    "KNN": {"param_grid": {"n_neighbors": [1,3,10]}, "n_splits": 3},
+    "KNN": {"param_grid": {"n_neighbors": [1, 3, 10]}, "n_splits": 3},
     "XGB": {
         "param_grid": {
             "n_estimators": [100],
@@ -214,9 +248,7 @@ CLASSIFIER_CONFIGS = {
     "ET": {
         "param_grid": {
             "n_estimators": [50, 200],
-            "max_features": lambda x_shape: range(
-                1, max(2, x_shape), max(1, int(x_shape / 2))
-            ),
+            "max_features": lambda x_shape: range(1, max(2, x_shape), max(1, int(x_shape / 2))),
         },
         "n_splits": 3,
     },
@@ -253,7 +285,9 @@ MAX_MEMORY_MB = 512
 MIN_CROSS_VALIDATION_SPLITS = 2
 
 
-class learnModel:
+class LearnModel:
+    """Machine learning model training class for dzetsaka classification."""
+
     @backward_compatible(
         inRaster="raster_path",
         inVector="vector_path",
@@ -322,6 +356,7 @@ class learnModel:
         -----
         Backward compatibility is maintained through the @backward_compatible decorator.
         Old parameter names (inRaster, inVector, etc.) are automatically mapped to new names.
+
         """
         # Validate required parameters
         if raster_path is None:
@@ -339,15 +374,13 @@ class learnModel:
 
         # Load and prepare data
         try:
-            X, Y, coords, distanceArray, STDs, vector_test_path = (
-                self._load_and_prepare_data(
-                    raster_path,
-                    vector_path,
-                    class_field,
-                    split_config,
-                    extraParam,
-                    feedback,
-                )
+            X, Y, coords, distanceArray, STDs, vector_test_path = self._load_and_prepare_data(
+                raster_path,
+                vector_path,
+                class_field,
+                split_config,
+                extraParam,
+                feedback,
             )
 
         except Exception as e:
@@ -359,7 +392,6 @@ class learnModel:
         SPLIT = split_config
 
         # Cleanup handled in _load_and_prepare_data method
-        pass
         # os.remove(filename)
         # os.rmdir(temp_folder)
 
@@ -375,7 +407,7 @@ class learnModel:
         # the remaining for testing
 
         try:
-            if isinstance(SPLIT, int) or isinstance(SPLIT, float):
+            if isinstance(SPLIT, (int, float)):
                 if SPLIT < 100:
                     # Random selection of the sample
                     x = np.array([]).reshape(0, d)
@@ -441,8 +473,7 @@ class learnModel:
 
             # model_selection = True
             try:
-                from sklearn.model_selection import StratifiedKFold
-                from sklearn.model_selection import GridSearchCV
+                from sklearn.model_selection import GridSearchCV, StratifiedKFold
 
                 joblib = __import__("joblib")  # Test for joblib dependency
             except ImportError as e:
@@ -460,9 +491,8 @@ class learnModel:
                     return None
 
             try:
-                if extraParam:
-                    if "param_algo" in extraParam.keys():
-                        param_algo = extraParam["param_algo"]
+                if extraParam and "param_algo" in extraParam:
+                    param_algo = extraParam["param_algo"]
 
                 # AS Qgis in Windows doensn't manage multiprocessing, force to
                 # use 1 thread for not linux system
@@ -471,24 +501,18 @@ class learnModel:
                     label = np.copy(Y)
 
                     if extraParam:
-                        if "SLOO" in extraParam.keys():
-                            SLOO = extraParam["SLOO"]
-                        else:
-                            SLOO = False
-                        if "maxIter" in extraParam.keys():
-                            maxIter = extraParam["maxIter"]
-                        else:
-                            maxIter = 5
+                        SLOO = extraParam.get("SLOO", False)
+                        maxIter = extraParam.get("maxIter", 5)
                     else:
                         SLOO = False
                         maxIter = 5
 
                     try:
-                        from .function_vector import standCV
+                        from .function_vector import StandCV
                     except ImportError:
-                        from function_vector import standCV
+                        from function_vector import StandCV
 
-                    rawCV = standCV(label, STDs, maxIter, SLOO, seed=random_seed)
+                    rawCV = StandCV(label, STDs, maxIter, SLOO, seed=random_seed)
                     print(rawCV)
                     cvDistance = []
                     for tr, vl in rawCV:
@@ -500,37 +524,23 @@ class learnModel:
 
                     label = np.copy(Y)
                     if extraParam:
-                        if "distance" in extraParam.keys():
+                        if "distance" in extraParam:
                             distance = extraParam["distance"]
                         else:
-                            pushFeedback(
-                                "You need distance in extraParam", feedback=feedback
-                            )
+                            pushFeedback("You need distance in extraParam", feedback=feedback)
 
-                        if "minTrain" in extraParam.keys():
-                            minTrain = float(extraParam["minTrain"])
-                        else:
-                            minTrain = -1
+                        minTrain = float(extraParam["minTrain"]) if "minTrain" in extraParam else -1
 
-                        if "SLOO" in extraParam.keys():
-                            SLOO = extraParam["SLOO"]
-                        else:
-                            SLOO = True
+                        SLOO = extraParam.get("SLOO", True)
 
-                        if "maxIter" in extraParam.keys():
-                            maxIter = extraParam["maxIter"]
-                        else:
-                            maxIter = False
+                        maxIter = extraParam.get("maxIter", False)
 
-                        if "otherLevel" in extraParam.keys():
-                            otherLevel = extraParam["otherLevel"]
-                        else:
-                            otherLevel = False
+                        otherLevel = extraParam.get("otherLevel", False)
                     # sts = []
                     cvDistance = []
 
                     """
-                    rawCV = distanceCV(distanceArray,label,distanceThresold=distance,minTrain=minTrain,SLOO=SLOO,maxIter=maxIter,verbose=False,stats=False)
+                    rawCV = DistanceCV(distanceArray,label,distanceThresold=distance,minTrain=minTrain,SLOO=SLOO,maxIter=maxIter,verbose=False,stats=False)
 
                     """
                     # feedback.setProgressText('distance is '+str(extraParam['distance']))
@@ -545,11 +555,11 @@ class learnModel:
 
                     # Import distanceCV dynamically when needed
                     try:
-                        from function_vector import distanceCV
+                        from function_vector import DistanceCV
                     except ImportError:
-                        from .function_vector import distanceCV
+                        from .function_vector import DistanceCV
 
-                    rawCV = distanceCV(
+                    rawCV = DistanceCV(
                         distanceArray,
                         label,
                         distanceThresold=distance,
@@ -562,12 +572,8 @@ class learnModel:
                     pushFeedback("Computing SLOO Cross Validation", feedback=feedback)
 
                     for tr, vl in rawCV:
-                        pushFeedback(
-                            "Training size is " + str(tr.shape), feedback=feedback
-                        )
-                        pushFeedback(
-                            "Validation size is " + str(vl.shape), feedback=feedback
-                        )
+                        pushFeedback("Training size is " + str(tr.shape), feedback=feedback)
+                        pushFeedback("Validation size is " + str(vl.shape), feedback=feedback)
                         # sts.append(stat)
                         cvDistance.append((tr, vl))
                     """
@@ -601,9 +607,7 @@ class learnModel:
                             param_grid["max_features"] = [1, min(x.shape[1], 3)]
 
                     if "param_algo" in locals():
-                        classifier = RandomForestClassifier(
-                            random_state=random_seed, **param_algo
-                        )
+                        classifier = RandomForestClassifier(random_state=random_seed, **param_algo)
                     else:
                         classifier = RandomForestClassifier(random_state=random_seed)
                     n_splits = config["n_splits"]
@@ -615,14 +619,10 @@ class learnModel:
                     param_grid = config["param_grid"]
 
                     if "param_algo" in locals():
-                        classifier = SVC(
-                            probability=True, random_state=random_seed, **param_algo
-                        )
+                        classifier = SVC(probability=True, random_state=random_seed, **param_algo)
                         print("Found param algo : " + str(param_algo))
                     else:
-                        classifier = SVC(
-                            probability=True, kernel="rbf", random_state=random_seed
-                        )
+                        classifier = SVC(probability=True, kernel="rbf", random_state=random_seed)
                     n_splits = config["n_splits"]
 
                 elif classifier == "KNN":
@@ -638,9 +638,9 @@ class learnModel:
                     n_splits = config["n_splits"]
 
                 elif classifier == "XGB":
-                    try:
-                        from xgboost import XGBClassifier
-                    except ImportError:
+                    import importlib.util
+
+                    if importlib.util.find_spec("xgboost") is None:
                         pushFeedback(
                             "XGBoost not found. Install with: pip install xgboost",
                             feedback=feedback,
@@ -656,15 +656,13 @@ class learnModel:
                             **param_algo,
                         )
                     else:
-                        classifier = XGBLabelWrapper(
-                            random_state=random_seed, eval_metric="logloss"
-                        )
+                        classifier = XGBLabelWrapper(random_state=random_seed, eval_metric="logloss")
                     n_splits = config["n_splits"]
 
                 elif classifier == "LGB":
-                    try:
-                        from lightgbm import LGBMClassifier
-                    except ImportError:
+                    import importlib.util
+
+                    if importlib.util.find_spec("lightgbm") is None:
                         pushFeedback(
                             "LightGBM not found. Install with: pip install lightgbm",
                             feedback=feedback,
@@ -674,13 +672,9 @@ class learnModel:
                     config = CLASSIFIER_CONFIGS["LGB"]
                     param_grid = config["param_grid"]
                     if "param_algo" in locals():
-                        classifier = LGBLabelWrapper(
-                            random_state=random_seed, verbose=-1, **param_algo
-                        )
+                        classifier = LGBLabelWrapper(random_state=random_seed, verbose=-1, **param_algo)
                     else:
-                        classifier = LGBLabelWrapper(
-                            random_state=random_seed, verbose=-1
-                        )
+                        classifier = LGBLabelWrapper(random_state=random_seed, verbose=-1)
                     n_splits = config["n_splits"]
 
                 elif classifier == "ET":
@@ -707,9 +701,7 @@ class learnModel:
                             param_grid["max_features"] = [1, min(x.shape[1], 3)]
 
                     if "param_algo" in locals():
-                        classifier = ExtraTreesClassifier(
-                            random_state=random_seed, **param_algo
-                        )
+                        classifier = ExtraTreesClassifier(random_state=random_seed, **param_algo)
                     else:
                         classifier = ExtraTreesClassifier(random_state=random_seed)
                     n_splits = config["n_splits"]
@@ -720,13 +712,9 @@ class learnModel:
                     config = CLASSIFIER_CONFIGS["GBC"]
                     param_grid = config["param_grid"]
                     if "param_algo" in locals():
-                        classifier = GradientBoostingClassifier(
-                            random_state=random_seed, **param_algo
-                        )
+                        classifier = GradientBoostingClassifier(random_state=random_seed, **param_algo)
                     else:
-                        classifier = GradientBoostingClassifier(
-                            random_state=random_seed
-                        )
+                        classifier = GradientBoostingClassifier(random_state=random_seed)
                     n_splits = config["n_splits"]
 
                 elif classifier == "LR":
@@ -735,13 +723,9 @@ class learnModel:
                     config = CLASSIFIER_CONFIGS["LR"]
                     param_grid = config["param_grid"]
                     if "param_algo" in locals():
-                        classifier = LogisticRegression(
-                            random_state=random_seed, max_iter=1000, **param_algo
-                        )
+                        classifier = LogisticRegression(random_state=random_seed, max_iter=1000, **param_algo)
                     else:
-                        classifier = LogisticRegression(
-                            random_state=random_seed, max_iter=1000
-                        )
+                        classifier = LogisticRegression(random_state=random_seed, max_iter=1000)
                     n_splits = config["n_splits"]
 
                 elif classifier == "NB":
@@ -749,10 +733,7 @@ class learnModel:
 
                     config = CLASSIFIER_CONFIGS["NB"]
                     param_grid = config["param_grid"]
-                    if "param_algo" in locals():
-                        classifier = GaussianNB(**param_algo)
-                    else:
-                        classifier = GaussianNB()
+                    classifier = GaussianNB(**param_algo) if "param_algo" in locals() else GaussianNB()
                     n_splits = config["n_splits"]
 
                 elif classifier == "MLP":
@@ -761,13 +742,9 @@ class learnModel:
                     config = CLASSIFIER_CONFIGS["MLP"]
                     param_grid = config["param_grid"]
                     if "param_algo" in locals():
-                        classifier = MLPClassifier(
-                            random_state=random_seed, max_iter=500, **param_algo
-                        )
+                        classifier = MLPClassifier(random_state=random_seed, max_iter=500, **param_algo)
                     else:
-                        classifier = MLPClassifier(
-                            random_state=random_seed, max_iter=500
-                        )
+                        classifier = MLPClassifier(random_state=random_seed, max_iter=500)
                     n_splits = config["n_splits"]
 
             except ImportError as e:
@@ -776,7 +753,7 @@ class learnModel:
                     feedback=feedback,
                 )
                 if feedback == "gui":
-                    pB.reset()
+                    progress_bar.reset()
                 return None
             except Exception as e:
                 pushFeedback(
@@ -784,7 +761,7 @@ class learnModel:
                     feedback=feedback,
                 )
                 if feedback == "gui":
-                    pB.reset()
+                    progress_bar.reset()
                 return None
 
             if feedback == "gui":
@@ -830,20 +807,15 @@ class learnModel:
                 )
 
             # Initialize cross-validation after validation and potential n_splits adjustment
-            if isinstance(SPLIT, int):
-                cv = StratifiedKFold(n_splits=n_splits)  # .split(x,y)
-            else:
-                cv = cvDistance
+            cv = StratifiedKFold(n_splits=n_splits) if isinstance(SPLIT, int) else cvDistance  # .split(x,y)
 
-            if extraParam:
-                if "param_grid" in extraParam.keys():
-                    param_grid = extraParam["param_grid"]
+            if extraParam and "param_grid" in extraParam:
+                param_grid = extraParam["param_grid"]
 
-                    pushFeedback(
-                        "Custom param for Grid Search CV has been found : "
-                        + str(param_grid),
-                        feedback=feedback,
-                    )
+                pushFeedback(
+                    "Custom param for Grid Search CV has been found : " + str(param_grid),
+                    feedback=feedback,
+                )
 
             # Provide feedback about potentially long training time for SVM
             if classifier == "SVM":
@@ -856,9 +828,7 @@ class learnModel:
                 grid = GridSearchCV(classifier, param_grid=param_grid, cv=cv)
                 grid.fit(x, y)
 
-                pushFeedback(
-                    "GridSearchCV completed, fitting final model...", feedback=feedback
-                )
+                pushFeedback("GridSearchCV completed, fitting final model...", feedback=feedback)
                 model = grid.best_estimator_
                 model.fit(x, y)
             except MemoryError:
@@ -898,7 +868,7 @@ class learnModel:
                     X_pred = model.predict(X_test)
                     CM.append(confusion_matrix(y_test, X_pred))
                     testIndex.append(test_index)
-                for i, j in enumerate(CM):
+                for i, _j in enumerate(CM):
                     if SPLIT == "SLOO":
                         # np.savetxt((saveDir+'matrix/'+str(distance)+'_'+str(inField)+'_'+str(minTrain)+'_'+str(i)+'.csv'),CM[i],delimiter=',',fmt='%.d')
                         np.savetxt(
@@ -954,11 +924,7 @@ class learnModel:
                         np.savetxt(
                             os.path.join(
                                 saveDir,
-                                "matrix/stand_"
-                                + str(class_field)
-                                + "_"
-                                + str(i)
-                                + ".csv",
+                                "matrix/stand_" + str(class_field) + "_" + str(i) + ".csv",
                             ),
                             CM[i],
                             delimiter=",",
@@ -971,50 +937,49 @@ class learnModel:
         if feedback == "gui":
             progress.prgBar.setValue(90)
 
-        if vector_test_path or isinstance(SPLIT, int):
-            if SPLIT != 100 or vector_test_path:
-                # from sklearn.metrics import cohen_kappa_score,accuracy_score,f1_score
-                # if  inClassifier == 'GMM':
-                #          = model.predict(xt)[0]
-                # else:
-                yp = model.predict(xt)
-                CONF = ai.CONFUSION_MATRIX()
-                CONF.compute_confusion_matrix(yp, yt)
+        if (vector_test_path or isinstance(SPLIT, int)) and (SPLIT != 100 or vector_test_path):
+            # from sklearn.metrics import cohen_kappa_score,accuracy_score,f1_score
+            # if  inClassifier == 'GMM':
+            #          = model.predict(xt)[0]
+            # else:
+            yp = model.predict(xt)
+            CONF = ai.ConfusionMatrix()
+            CONF.compute_confusion_matrix(yp, yt)
 
-                if matrix_path is not None:
-                    if not os.path.exists(os.path.dirname(matrix_path)):
-                        os.makedirs(os.path.dirname(matrix_path))
-                    np.savetxt(
-                        matrix_path,
-                        CONF.confusion_matrix,
-                        delimiter=",",
-                        header="Columns=prediction,Lines=reference.",
-                        fmt="%1.4d",
-                    )
+            if matrix_path is not None:
+                if not os.path.exists(os.path.dirname(matrix_path)):
+                    os.makedirs(os.path.dirname(matrix_path))
+                np.savetxt(
+                    matrix_path,
+                    CONF.confusion_matrix,
+                    delimiter=",",
+                    header="Columns=prediction,Lines=reference.",
+                    fmt="%1.4d",
+                )
 
-                if classifier != "GMM":
-                    for key in param_grid.keys():
-                        message = "best " + key + " : " + str(grid.best_params_[key])
-                        if feedback == "gui":
-                            QgsMessageLog.logMessage(message)
-                        elif feedback:
-                            feedback.setProgressText(message)
-                        else:
-                            print(message)
+            if classifier != "GMM":
+                for key in param_grid:
+                    message = "best " + key + " : " + str(grid.best_params_[key])
+                    if feedback == "gui":
+                        QgsMessageLog.logMessage(message)
+                    elif feedback:
+                        feedback.setProgressText(message)
+                    else:
+                        print(message)
 
-                """
+            """
                 self.kappa = cohen_kappa_score(yp,yt)
                 self.f1 = f1_score(yp,yt,average='micro')
                 self.oa = accuracy_score(yp,yt)
                 """
-                res = {
-                    "Overall Accuracy": CONF.OA,
-                    "Kappa": CONF.Kappa,
-                    "f1": CONF.F1mean,
-                }
+            res = {
+                "Overall Accuracy": CONF.OA,
+                "Kappa": CONF.Kappa,
+                "f1": CONF.F1mean,
+            }
 
-                for estim in res:
-                    pushFeedback(estim + " : " + str(res[estim]), feedback=feedback)
+            for estim in res:
+                pushFeedback(estim + " : " + str(res[estim]), feedback=feedback)
 
         # Update progress after model training completion
         if feedback == "gui":
@@ -1032,11 +997,8 @@ class learnModel:
                 f"Saving model with classifier: {classifier} (type: {type(classifier)})",
                 feedback=feedback,
             )
-            output = open(model_path, "wb")
-            pickle.dump(
-                [model, M, m, str(classifier)], output
-            )  # Ensure classifier is saved as string
-            output.close()
+            with open(model_path, "wb") as output:
+                pickle.dump([model, M, m, str(classifier)], output)  # Ensure classifier is saved as string
 
         pushFeedback(int(10 * total), feedback=feedback)
         if feedback == "gui":
@@ -1058,7 +1020,7 @@ class learnModel:
             m: the Min vector
         """
         [n, d] = x.shape
-        if not np.float64 == x.dtype.type:
+        if np.float64 != x.dtype.type:
             x = x.astype("float")
 
         # Initialization of the output
@@ -1085,13 +1047,9 @@ class learnModel:
         """Validate input parameters."""
         valid_classifiers = classifier_config.CLASSIFIER_CODES
         if classifier not in valid_classifiers:
-            raise ValueError(
-                f"Invalid classifier: {classifier}. Must be one of {valid_classifiers}"
-            )
+            raise ValueError(f"Invalid classifier: {classifier}. Must be one of {valid_classifiers}")
 
-        if isinstance(raster_path, np.ndarray) and not isinstance(
-            vector_path, np.ndarray
-        ):
+        if isinstance(raster_path, np.ndarray) and not isinstance(vector_path, np.ndarray):
             msg = "You have to give an array for labels when using array for raster"
             pushFeedback(msg, feedback=feedback)
             raise ValueError(msg)
@@ -1099,7 +1057,7 @@ class learnModel:
     def _setup_progress_feedback(self, feedback):
         """Setup progress feedback based on feedback type."""
         if feedback == "gui":
-            return pB.progressBar("Loading...", 6)
+            return progress_bar.progressBar("Loading...", 6)
         elif feedback is not None and hasattr(feedback, "setProgress"):
             feedback.setProgressText("Loading...")
             feedback.setProgress(0)
@@ -1149,16 +1107,12 @@ class learnModel:
                 self._setup_save_directory(extraParam["saveDir"])
 
             # Check for test vector
-            if isinstance(split_config, str) and split_config.endswith(
-                (".shp", ".sqlite")
-            ):
+            if isinstance(split_config, str) and split_config.endswith((".shp", ".sqlite")):
                 vector_test_path = split_config
 
             # Handle special ROI reading
             if extraParam.get("readROIFromVector", False):
-                X, Y = self._read_roi_from_vector(
-                    vector_path, extraParam, class_field, feedback
-                )
+                X, Y = self._read_roi_from_vector(vector_path, extraParam, class_field, feedback)
                 needXY = False
                 coords = extraParam.get("coords")
 
@@ -1167,9 +1121,7 @@ class learnModel:
                 ROI = rasterize(raster_path, vector_path, class_field)
 
                 if split_config == "SLOO":
-                    X, Y, coords, distanceArray = self._prepare_sloo_data(
-                        raster_path, ROI, extraParam, feedback
-                    )
+                    X, Y, coords, distanceArray = self._prepare_sloo_data(raster_path, ROI, extraParam, feedback)
                 elif split_config == "STAND":
                     X, Y, STDs = self._prepare_stand_data(
                         raster_path, vector_path, ROI, class_field, extraParam, feedback
@@ -1199,9 +1151,7 @@ class learnModel:
         try:
             from function_vector import readROIFromVector
 
-            return readROIFromVector(
-                vector_path, extraParam["readROIFromVector"], class_field
-            )
+            return readROIFromVector(vector_path, extraParam["readROIFromVector"], class_field)
         except ImportError:
             msg = "Problem when importing readFieldVector from functions in dzetsaka"
             pushFeedback(msg, feedback=feedback)
@@ -1221,30 +1171,21 @@ class learnModel:
                 raise ValueError("Coordinates not found in extraParam")
             X, Y = None, None  # Will be set elsewhere
         else:
-            X, Y, coords = dataraster.get_samples_from_roi(
-                raster_path, ROI, getCoords=True
-            )
+            X, Y, coords = dataraster.get_samples_from_roi(raster_path, ROI, getCoords=True)
 
         distanceArray = distMatrix(coords)
         return X, Y, coords, distanceArray
 
-    def _prepare_stand_data(
-        self, raster_path, vector_path, ROI, class_field, extraParam, feedback
-    ):
+    def _prepare_stand_data(self, raster_path, vector_path, ROI, class_field, extraParam, feedback):
         """Prepare data for stand-based cross-validation."""
-
         inStand = extraParam.get("inStand", "stand")
         STAND = rasterize(raster_path, vector_path, inStand)
         X, Y, STDs = dataraster.get_samples_from_roi(raster_path, ROI, STAND)
         return X, Y, STDs
 
-    def _handle_data_loading_error(
-        self, error: Exception, class_field: str, feedback, progress
-    ) -> None:
+    def _handle_data_loading_error(self, error: Exception, class_field: str, feedback, progress) -> None:
         """Handle data loading errors with appropriate error messages."""
-        if isinstance(error, ValueError) and (
-            "could not convert" in str(error) or "invalid literal" in str(error)
-        ):
+        if isinstance(error, ValueError) and ("could not convert" in str(error) or "invalid literal" in str(error)):
             msg = (
                 f"Data type error: Unable to convert class values to numbers.\n"
                 f"Please ensure your {class_field} field contains only integer values (1, 2, 3, etc.)\n"
@@ -1265,8 +1206,8 @@ class learnModel:
             progress.reset()
 
 
-class classifyImage:
-    """!@brief Classify image with learn clasifier and learned model
+class ClassifyImage:
+    """!@brief Classify image with learn clasifier and learned model.
 
     Create a raster file, fill hole from your give class (inClassForest), convert to a vector,
     remove parcel size which are under a certain size (defined in inMinSize) and save it to shp.
@@ -1294,15 +1235,16 @@ class classifyImage:
     )
     def initPredict(
         self,
-        raster_path: str = None,
-        model_path: str = None,
-        output_path: str = None,
+        raster_path: Optional[str] = None,
+        model_path: Optional[str] = None,
+        output_path: Optional[str] = None,
         mask_path: Optional[str] = None,
         confidenceMap: Optional[str] = None,
         confidenceMapPerClass: Optional[str] = None,
         NODATA: int = 0,
         feedback=None,
     ) -> Optional[str]:
+        """Initialize prediction with raster and model paths."""
         if not raster_path:
             raise ValueError("raster_path (or inRaster) is required")
         if not model_path:
@@ -1386,9 +1328,7 @@ class classifyImage:
 
         return predictedImage
 
-    def _load_model(
-        self, model_path: str, feedback
-    ) -> Tuple[Any, np.ndarray, np.ndarray, str]:
+    def _load_model(self, model_path: str, feedback) -> Tuple[Any, np.ndarray, np.ndarray, str]:
         """Load pickled model with proper error handling.
 
         Parameters
@@ -1409,6 +1349,7 @@ class classifyImage:
             If model file doesn't exist
         pickle.UnpicklingError
             If model file is corrupted
+
         """
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model file not found: {model_path}")
@@ -1435,16 +1376,14 @@ class classifyImage:
             if not isinstance(M, np.ndarray) or not isinstance(m, np.ndarray):
                 raise ValueError("Scaling parameters M and m must be numpy arrays")
             if not isinstance(classifier, str):
-                raise ValueError(
-                    f"Classifier must be a string, got {type(classifier)}: {classifier}"
-                )
+                raise ValueError(f"Classifier must be a string, got {type(classifier)}: {classifier}")
 
             return tree, M, m, classifier
 
         except pickle.UnpicklingError as e:
-            raise pickle.UnpicklingError(f"Corrupted model file: {e}")
+            raise pickle.UnpicklingError(f"Corrupted model file: {e}") from e
         except Exception as e:
-            raise Exception(f"Failed to load model: {e}")
+            raise Exception(f"Failed to load model: {e}") from e
 
     def scale(
         self,
@@ -1452,7 +1391,7 @@ class classifyImage:
         M: Optional[np.ndarray] = None,
         m: Optional[np.ndarray] = None,
     ) -> np.ndarray:
-        """!@brief Function that standardize the data
+        """!@brief Function that standardize the data.
 
         Input:
             x: the data
@@ -1525,6 +1464,7 @@ class classifyImage:
         -------
         str
             Path to output raster
+
         """
         # Open Raster and get additional information
         raster = gdal.Open(raster_path, gdal.GA_ReadOnly)
@@ -1538,9 +1478,7 @@ class classifyImage:
             if mask is None:
                 raise RuntimeError(f"Cannot open mask: {mask_path}")
             # Check size
-            if (raster.RasterXSize != mask.RasterXSize) or (
-                raster.RasterYSize != mask.RasterYSize
-            ):
+            if (raster.RasterXSize != mask.RasterXSize) or (raster.RasterYSize != mask.RasterYSize):
                 # fix_print_with_import
                 print("Image and mask should be of the same size")
                 exit()
@@ -1560,9 +1498,7 @@ class classifyImage:
             )
 
         # Optimize block size for memory efficiency
-        x_block_size, y_block_size = self._calculate_optimal_block_size(
-            raster, d, feedback
-        )
+        x_block_size, y_block_size = self._calculate_optimal_block_size(raster, d, feedback)
 
         # Get the geoinformation
         GeoTransform = raster.GetGeoTransform()
@@ -1574,10 +1510,7 @@ class classifyImage:
 
         driver = gdal.GetDriverByName("GTiff")
 
-        if np.amax(model.classes_) > 255:
-            dtype = gdal.GDT_UInt16
-        else:
-            dtype = gdal.GDT_Byte
+        dtype = gdal.GDT_UInt16 if np.amax(model.classes_) > 255 else gdal.GDT_Byte
 
         dst_ds = driver.Create(output_path, nc, nl, 1, dtype)
         dst_ds.SetGeoTransform(GeoTransform)
@@ -1593,9 +1526,7 @@ class classifyImage:
             out_confidenceMap = dst_confidenceMap.GetRasterBand(1)
 
         if confidenceMapPerClass:
-            dst_confidenceMapPerClass = driver.Create(
-                confidenceMapPerClass, nc, nl, nClass, gdal.GDT_Int16
-            )
+            dst_confidenceMapPerClass = driver.Create(confidenceMapPerClass, nc, nl, nClass, gdal.GDT_Int16)
             dst_confidenceMapPerClass.SetGeoTransform(GeoTransform)
             dst_confidenceMapPerClass.SetProjection(Projection)
 
@@ -1609,17 +1540,11 @@ class classifyImage:
             pushFeedback("Predicting model...")
 
         if feedback == "gui":
-            progress_text = (
-                f"Predicting model ({d} bands)..." if d > 3 else "Predicting model..."
-            )
-            progress = pB.progressBar(progress_text, int(total / 10))
+            progress_text = f"Predicting model ({d} bands)..." if d > 3 else "Predicting model..."
+            progress = progress_bar.progressBar(progress_text, int(total / 10))
         elif feedback is not None and hasattr(feedback, "setProgress"):
             # Handle batch processing feedback
-            progress_text = (
-                f"Predicting model for {d}-band image..."
-                if d > 3
-                else "Predicting model..."
-            )
+            progress_text = f"Predicting model for {d}-band image..." if d > 3 else "Predicting model..."
             feedback.setProgressText(progress_text)
             feedback.setProgress(0)
 
@@ -1635,15 +1560,9 @@ class classifyImage:
                 elif feedback is not None and hasattr(feedback, "setProgress"):
                     feedback.setProgress(int(i / total * 100))
 
-            if i + y_block_size < nl:  # Check for size consistency in Y
-                lines = y_block_size
-            else:
-                lines = nl - i
+            lines = y_block_size if i + y_block_size < nl else nl - i  # Check for size consistency in Y
             for j in range(0, nc, x_block_size):  # Check for size consistency in X
-                if j + x_block_size < nc:
-                    cols = x_block_size
-                else:
-                    cols = nc - j
+                cols = x_block_size if j + x_block_size < nc else nc - j
 
                 # Load the data efficiently
                 X = self._load_block_data(raster, d, j, i, cols, lines, feedback)
@@ -1658,50 +1577,40 @@ class classifyImage:
 
                 if mask is None:
                     band_temp = raster.GetRasterBand(1)
-                    mask_temp = band_temp.ReadAsArray(j, i, cols, lines).reshape(
-                        cols * lines
-                    )
+                    mask_temp = band_temp.ReadAsArray(j, i, cols, lines).reshape(cols * lines)
                     temp_nodata = np.where(mask_temp != nodata_temp)[0]
                     # t = np.where((mask_temp!=0) & (X[:,0]!=NODATA))[0]
                     t = np.where(X[:, 0] != nodata_temp)[0]
                     yp = np.zeros((cols * lines,))
                     # K = np.zeros((cols*lines,))
-                    if confidenceMapPerClass or confidenceMap and classifier != "GMM":
+                    if confidenceMapPerClass or (confidenceMap and classifier != "GMM"):
                         K = np.zeros((cols * lines, nClass))
                         K[:, :] = -1
                     else:
-                        K = np.zeros((cols * lines))
+                        K = np.zeros(cols * lines)
                         K[:] = -1
 
                 else:
-                    mask_temp = (
-                        mask.GetRasterBand(1)
-                        .ReadAsArray(j, i, cols, lines)
-                        .reshape(cols * lines)
-                    )
+                    mask_temp = mask.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols * lines)
                     t = np.where((mask_temp != 0) & (X[:, 0] != nodata_temp))[0]
                     yp = np.zeros((cols * lines,))
                     yp[:] = NODATA
                     # K = np.zeros((cols*lines,))
-                    if confidenceMapPerClass or confidenceMap and classifier != "GMM":
+                    if confidenceMapPerClass or (confidenceMap and classifier != "GMM"):
                         K = np.ones((cols * lines, nClass))
                         K = np.negative(K)
                     else:
-                        K = np.zeros((cols * lines))
+                        K = np.zeros(cols * lines)
                         K = np.negative(K)
 
                 # TODO: Change this part accorindgly ...
                 if t.size > 0:
                     if confidenceMap and classifier == "GMM":
-                        yp[t], K[t] = model.predict(
-                            self.scale(X[t, :], M=M, m=m), None, confidenceMap
-                        )
+                        yp[t], K[t] = model.predict(self.scale(X[t, :], M=M, m=m), None, confidenceMap)
 
-                    elif confidenceMap or confidenceMapPerClass and classifier != "GMM":
+                    elif confidenceMap or (confidenceMapPerClass and classifier != "GMM"):
                         yp[t] = model.predict(self.scale(X[t, :], M=M, m=m))
-                        K[t, :] = (
-                            model.predict_proba(self.scale(X[t, :], M=M, m=m)) * 100
-                        )
+                        K[t, :] = model.predict_proba(self.scale(X[t, :], M=M, m=m)) * 100
 
                     else:
                         yp[t] = model.predict(self.scale(X[t, :], M=M, m=m))
@@ -1728,13 +1637,9 @@ class classifyImage:
                 if confidenceMapPerClass and classifier != "GMM":
                     for band in range(nClass):
                         gdalBand = band + 1
-                        out_confidenceMapPerClass = (
-                            dst_confidenceMapPerClass.GetRasterBand(gdalBand)
-                        )
+                        out_confidenceMapPerClass = dst_confidenceMapPerClass.GetRasterBand(gdalBand)
                         out_confidenceMapPerClass.SetNoDataValue(-1)
-                        out_confidenceMapPerClass.WriteArray(
-                            K[:, band].reshape(lines, cols), j, i
-                        )
+                        out_confidenceMapPerClass.WriteArray(K[:, band].reshape(lines, cols), j, i)
                         out_confidenceMapPerClass.FlushCache()
 
                 # Explicit memory cleanup
@@ -1752,9 +1657,7 @@ class classifyImage:
         dst_ds = None
         return output_path
 
-    def _calculate_optimal_block_size(
-        self, raster, num_bands: int, feedback
-    ) -> Tuple[int, int]:
+    def _calculate_optimal_block_size(self, raster, num_bands: int, feedback) -> Tuple[int, int]:
         """Calculate optimal block size for memory efficiency."""
         # Get default block size
         band = raster.GetRasterBand(1)
@@ -1797,13 +1700,9 @@ class classifyImage:
             X = np.empty((cols * lines, num_bands), dtype=dtype)
 
             for band_idx in range(num_bands):
-                band_data = raster.GetRasterBand(band_idx + 1).ReadAsArray(
-                    x_offset, y_offset, cols, lines
-                )
+                band_data = raster.GetRasterBand(band_idx + 1).ReadAsArray(x_offset, y_offset, cols, lines)
                 if band_data is None:
-                    pushFeedback(
-                        f"Error reading band {band_idx + 1}", feedback=feedback
-                    )
+                    pushFeedback(f"Error reading band {band_idx + 1}", feedback=feedback)
                     return None
                 X[:, band_idx] = band_data.reshape(cols * lines)
 
@@ -1825,16 +1724,17 @@ class classifyImage:
     def _show_github_issue_popup(self, error_title, error_type, error_message, context):
         """Show a popup with GitHub issue template for copy/paste."""
         try:
+            import platform
+
+            from PyQt5.QtGui import QFont
             from PyQt5.QtWidgets import (
                 QDialog,
-                QVBoxLayout,
-                QTextEdit,
-                QPushButton,
-                QLabel,
                 QHBoxLayout,
+                QLabel,
+                QPushButton,
+                QTextEdit,
+                QVBoxLayout,
             )
-            from PyQt5.QtGui import QFont
-            import platform
             from qgis.core import QgsApplication
 
             # Get system information
@@ -1863,8 +1763,8 @@ class classifyImage:
 
 **Steps to Reproduce:**
 1. [Please describe the steps that led to this error]
-2. 
-3. 
+2.
+3.
 
 **Expected Behavior:**
 [What you expected to happen]
@@ -1903,9 +1803,7 @@ class classifyImage:
             button_layout = QHBoxLayout()
 
             copy_button = QPushButton("Copy to Clipboard")
-            copy_button.clicked.connect(
-                lambda: self._copy_to_clipboard(github_template)
-            )
+            copy_button.clicked.connect(lambda: self._copy_to_clipboard(github_template))
 
             github_button = QPushButton("Open GitHub Issues")
             github_button.clicked.connect(lambda: self._open_github_issues())
@@ -1937,9 +1835,7 @@ class classifyImage:
 
             from PyQt5.QtWidgets import QMessageBox
 
-            QMessageBox.information(
-                None, "Copied", "GitHub issue template copied to clipboard!"
-            )
+            QMessageBox.information(None, "Copied", "GitHub issue template copied to clipboard!")
         except Exception as e:
             pushFeedback(f"Could not copy to clipboard: {e}", feedback="gui")
 
@@ -1953,7 +1849,7 @@ class classifyImage:
             pushFeedback(f"Could not open GitHub: {e}", feedback="gui")
 
 
-class confusionMatrix:
+class ConfusionMatrix:
     """Class for computing confusion matrix statistics from raster predictions."""
 
     def __init__(self):
@@ -1961,14 +1857,12 @@ class confusionMatrix:
         self.OA: Optional[float] = None
         self.Kappa: Optional[float] = None
 
-    @backward_compatible(
-        inRaster="raster_path", inShape="shapefile_path", inField="class_field"
-    )
+    @backward_compatible(inRaster="raster_path", inShape="shapefile_path", inField="class_field")
     def computeStatistics(
         self,
-        raster_path: str = None,
-        shapefile_path: str = None,
-        class_field: str = None,
+        raster_path: Optional[str] = None,
+        shapefile_path: Optional[str] = None,
+        class_field: Optional[str] = None,
         feedback=None,
     ) -> None:
         """Compute confusion matrix statistics.
@@ -1987,6 +1881,7 @@ class confusionMatrix:
         Notes
         -----
         Backward compatibility is maintained through the @backward_compatible decorator.
+
         """
         if not raster_path:
             raise ValueError("raster_path (or inRaster) is required")
@@ -1998,31 +1893,27 @@ class confusionMatrix:
         try:
             rasterized = rasterize(raster_path, shapefile_path, class_field)
             Yp, Yt = dataraster.get_samples_from_roi(raster_path, rasterized)
-            CONF = ai.CONFUSION_MATRIX()
+            CONF = ai.ConfusionMatrix()
             CONF.compute_confusion_matrix(Yp, Yt)
             self.confusion_matrix = CONF.confusion_matrix
             self.Kappa = CONF.Kappa
             self.OA = CONF.OA
 
             # Clean up temporary raster
-            try:
+            with contextlib.suppress(OSError):
                 os.remove(rasterized)
-            except OSError:
-                pass
 
         except Exception as e:
             error_msg = f"Error during statistics calculation: {e}"
             pushFeedback(error_msg, feedback=feedback)
-            raise RuntimeError(error_msg)
+            raise RuntimeError(error_msg) from e
 
 
-@backward_compatible(
-    inRaster="raster_path", inShape="shapefile_path", inField="class_field"
-)
+@backward_compatible(inRaster="raster_path", inShape="shapefile_path", inField="class_field")
 def rasterize(
-    raster_path: str = None,
-    shapefile_path: str = None,
-    class_field: str = None,
+    raster_path: Optional[str] = None,
+    shapefile_path: Optional[str] = None,
+    class_field: Optional[str] = None,
 ) -> str:
     """Rasterize vector data to match raster extent and resolution.
 
@@ -2043,6 +1934,7 @@ def rasterize(
     Notes
     -----
     Backward compatibility is maintained through the @backward_compatible decorator.
+
     """
     if not raster_path:
         raise ValueError("raster_path (or inRaster) is required")
@@ -2072,9 +1964,7 @@ def rasterize(
             raise RuntimeError(f"Cannot access layer in shapefile: {shapefile_path}")
 
         driver = gdal.GetDriverByName("GTiff")
-        dst_ds = driver.Create(
-            filename, data.RasterXSize, data.RasterYSize, 1, gdal.GDT_UInt16
-        )
+        dst_ds = driver.Create(filename, data.RasterXSize, data.RasterYSize, 1, gdal.GDT_UInt16)
 
         if dst_ds is None:
             raise RuntimeError(f"Cannot create output raster: {filename}")
@@ -2091,11 +1981,9 @@ def rasterize(
     except Exception as e:
         # Clean up on error
         if os.path.exists(filename):
-            try:
+            with contextlib.suppress(OSError):
                 os.remove(filename)
-            except OSError:
-                pass
-        raise RuntimeError(f"Rasterization error: {e}")
+        raise RuntimeError(f"Rasterization error: {e}") from e
     finally:
         # Ensure GDAL objects are properly closed
         data, dst_ds, shp, lyr = None, None, None, None
@@ -2112,6 +2000,7 @@ def pushFeedback(message, feedback=None) -> None:
         Message to display or progress value
     feedback : object, optional
         Feedback interface object
+
     """
     isNum = isinstance(message, (float, int))
 
@@ -2149,7 +2038,7 @@ if __name__ == "__main__":
     OUTPUT_PATH = "/mnt/DATA/demo/test/class.tif"
 
     # Using new parameter names
-    temp = learnModel(
+    temp = LearnModel(
         raster_path=RASTER_PATH,
         vector_path=VECTOR_PATH,
         class_field=CLASS_FIELD,
@@ -2163,7 +2052,7 @@ if __name__ == "__main__":
     )
     print("learned")
 
-    temp = classifyImage()
+    temp = ClassifyImage()
     temp.initPredict(
         raster_path=RASTER_PATH,
         model_path=MODEL_PATH,
@@ -2175,7 +2064,7 @@ if __name__ == "__main__":
 
     # Example showing backward compatibility still works
     print("\n=== Testing Backward Compatibility ===")
-    temp_old = learnModel(
+    temp_old = LearnModel(
         inRaster=RASTER_PATH,  # Old parameter name
         inVector=VECTOR_PATH,  # Old parameter name
         inField=CLASS_FIELD,  # Old parameter name
@@ -2193,13 +2082,13 @@ if __name__ == "__main__":
     Test = "SLOO"
 
     if Test == "STAND":
-        extraParam = {
+        extra_param = {
             "inStand": "Stand",
             "saveDir": "/tmp/test1/",
             "maxIter": 5,
             "SLOO": False,
         }
-        learnModel(
+        LearnModel(
             raster_path=RASTER_PATH,
             vector_path=VECTOR_PATH,
             class_field=CLASS_FIELD,
@@ -2209,7 +2098,7 @@ if __name__ == "__main__":
             matrix_path=None,
             classifier=CLASSIFIER_TYPE,
             feedback=None,
-            extraParam=extraParam,
+            extraParam=extra_param,
         )
 
     if Test == "SLOO":
@@ -2217,8 +2106,8 @@ if __name__ == "__main__":
         VECTOR_PATH = "/mnt/DATA/Test/DA/ROI_2154.sqlite"
         CLASS_FIELD = "level1"
 
-        extraParam = {"distance": 100, "maxIter": 5, "saveDir": "/tmp/"}
-        learnModel(
+        extra_param = {"distance": 100, "maxIter": 5, "saveDir": "/tmp/"}
+        LearnModel(
             raster_path=RASTER_PATH,
             vector_path=VECTOR_PATH,
             class_field=CLASS_FIELD,
@@ -2228,5 +2117,5 @@ if __name__ == "__main__":
             matrix_path=None,
             classifier=CLASSIFIER_TYPE,
             feedback=None,
-            extraParam=extraParam,
+            extraParam=extra_param,
         )

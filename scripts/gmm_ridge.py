@@ -1,17 +1,15 @@
-"""!@brief Script by Mathieu Fauvel which performs Gaussian Mixture Model"""  # -*- coding: utf-8 -*-
+"""!@brief Script by Mathieu Fauvel which performs Gaussian Mixture Model."""  # -*- coding: utf-8 -*-
 
-from __future__ import print_function
-from builtins import str
-from builtins import range
-from builtins import object
+import multiprocessing as mp
+
 import numpy as np
 from numpy import linalg
-import multiprocessing as mp
 
 # Temporary predict function
 
 
 def predict(tau, model, xT, yT):
+    """Predict using GMM model with different tau values."""
     err = np.zeros(tau.size)
     for j, t in enumerate(tau):
         yp = model.predict(xT, tau=t)[0]
@@ -20,21 +18,21 @@ def predict(tau, model, xT, yT):
     return err
 
 
-class CV(object):
-    """
-    This class implements the generation of several folds to be used in the cross validation
-    """
+class CV:
+    """Implements the generation of several folds for cross validation."""
 
     def __init__(self):
         self.it = []
         self.iT = []
 
     def split_data(self, n, v=5):
-        """The function split the data into v folds. Whatever the number of sample per class
+        """Split the data into v folds.
+
+        Whatever the number of sample per class
         Input:
             n : the number of samples
             v : the number of folds
-        Output: None
+        Output: None.
         """
         step = n // v  # Compute the number of samples in each fold
         # Set the random generator to the same initial state
@@ -49,19 +47,21 @@ class CV(object):
 
         for i in range(v):
             self.iT.append(np.asarray(indices[i]))
-            l = list(range(v))
-            l.remove(i)
+            indices_list = list(range(v))
+            indices_list.remove(i)
             temp = np.empty(0, dtype=np.int64)
-            for j in l:
+            for j in indices_list:
                 temp = np.concatenate((temp, np.asarray(indices[j])))
             self.it.append(temp)
 
     def split_data_class(self, y, v=5):
-        """The function split the data into v folds. The samples of each class are split approximatly in v folds
+        """Split the data into v folds with class-based splitting.
+
+        The samples of each class are split approximately in v folds
         Input:
             n : the number of samples
             v : the number of folds
-        Output: None
+        Output: None.
         """
         # Get parameters
         C = y.max().astype("int")
@@ -78,12 +78,7 @@ class CV(object):
                 stepc = nc // v  # Step size for each class
                 if stepc == 0:
                     # fix_print_with_import
-                    print(
-                        "Not enough sample to build "
-                        + str(v)
-                        + " folds in class "
-                        + str(i)
-                    )
+                    print("Not enough sample to build " + str(v) + " folds in class " + str(i))
                 # Set the random generator to the same initial state
                 np.random.seed(i)
                 # Random sampling of indices of samples for class i
@@ -97,18 +92,20 @@ class CV(object):
                 tempiT.extend(np.asarray(tc[start:end]))  # Testing
                 k = list(range(v))
                 k.remove(j)
-                for l in k:
-                    if l < (v - 1):
-                        start, end = l * stepc, (l + 1) * stepc
+                for fold_idx in k:
+                    if fold_idx < (v - 1):
+                        start, end = fold_idx * stepc, (fold_idx + 1) * stepc
                     else:
-                        start, end = l * stepc, nc
+                        start, end = fold_idx * stepc, nc
                     tempit.extend(np.asarray(tc[start:end]))  # Training
 
             self.it.append(tempit)
             self.iT.append(tempiT)
 
 
-class GMMR(object):
+class GMMR:
+    """Gaussian Mixture Model Ridge regression implementation."""
+
     def __init__(self):
         self.ni = []
         self.prop = []
@@ -121,15 +118,14 @@ class GMMR(object):
         self.tau = 0.0
 
     def learn(self, x, y):
-        """
-        Function that learns the GMM with ridge regularizationb from training samples
+        """Learn the GMM with ridge regularization from training samples.
+
         Input:
             x : the training samples
             y :  the labels
         Output:
-            the mean, covariance and proportion of each class, as well as the spectral decomposition of the covariance matrix
+            the mean, covariance and proportion of each class, as well as the spectral decomposition of the covariance matrix.
         """
-
         # Get information from the data
         C = np.unique(y).shape[0]
         # C = int(y.max(0))  # Number of classes
@@ -164,15 +160,14 @@ class GMMR(object):
             self.Q[c, :, :] = Q[:, idx]
 
     def predict(self, xt, tau=None, confidenceMap=None):
-        """
-        Function that predict the label for sample xt using the learned model
+        """Predict the label for sample xt using the learned model.
+
         Inputs:
             xt: the samples to be classified
         Outputs:
             y: the class
-            K: the decision value for each class
+            K: the decision value for each class.
         """
-
         MAX = np.finfo(np.float64).max
         # Maximum value that is possible to compute with sp.exp
         E_MAX = np.log(MAX)
@@ -184,10 +179,7 @@ class GMMR(object):
         # Initialization
         K = np.empty((nt, C))
 
-        if tau is None:
-            TAU = self.tau
-        else:
-            TAU = tau
+        TAU = self.tau if tau is None else tau
 
         for c in range(C):
             invCov, logdet = self.compute_inverse_logdet(c, TAU)
@@ -219,6 +211,7 @@ class GMMR(object):
             return yp, K
 
     def compute_inverse_logdet(self, c, tau):
+        """Compute inverse covariance matrix and log determinant."""
         Lr = self.L[c, :] + tau  # Regularized eigenvalues
         temp = self.Q[c, :, :] * (1 / Lr)
         invCov = np.dot(temp, self.Q[c, :, :].T)  # Pre compute the inverse
@@ -226,18 +219,13 @@ class GMMR(object):
         return invCov, logdet
 
     def BIC(self, x, y, tau=None):
-        """
-        Computes the Bayesian Information Criterion of the model
-        """
+        """Computes the Bayesian Information Criterion of the model."""
         # Get information from the data
         C, d = self.mean.shape
         n = x.shape[0]
 
         # Initialization
-        if tau is None:
-            TAU = self.tau
-        else:
-            TAU = tau
+        TAU = self.tau if tau is None else tau
 
         # Penalization
         P = C * (d * (d + 3) / 2) + (C - 1)
@@ -259,15 +247,15 @@ class GMMR(object):
         return L + P
 
     def cross_validation(self, x, y, tau, v=5):
-        """
-        Function that computes the cross validation accuracy for the value tau of the regularization
+        """Compute the cross validation accuracy for the value tau of the regularization.
+
         Input:
             x : the training samples
             y : the labels
             tau : a range of values to be tested
             v : the number of fold
         Output:
-            err : the estimated error with cross validation for all tau's value
+            err : the estimated error with cross validation for all tau's value.
         """
         # Initialization
         np = tau.size  # Number of parameters to test
@@ -283,12 +271,7 @@ class GMMR(object):
 
         # Initialization of the pool of processes
         pool = mp.Pool()
-        processes = [
-            pool.apply_async(
-                predict, args=(tau, model_cv[i], x[cv.iT[i], :], y[cv.iT[i]])
-            )
-            for i in range(v)
-        ]
+        processes = [pool.apply_async(predict, args=(tau, model_cv[i], x[cv.iT[i], :], y[cv.iT[i]])) for i in range(v)]
         pool.close()
         pool.join()
         for p in processes:

@@ -14895,8 +14895,8 @@ qt_resource_struct_v2 = b"\
 \x00\x00\x01\x64\x4f\xe4\x19\xfb\
 "
 
-qt_version = QtCore.qVersion().split('.')
-if qt_version < ['5', '8', '0']:
+qt_version = QtCore.qVersion().split(".")
+if qt_version < ["5", "8", "0"]:
     rcc_version = 1
     qt_resource_struct = qt_resource_struct_v1
 else:
@@ -14906,18 +14906,14 @@ else:
 
 def qInitResources():
     QtCore.qRegisterResourceData(
-        rcc_version,
-        qt_resource_struct,
-        qt_resource_name,
-        qt_resource_data)
+        rcc_version, qt_resource_struct, qt_resource_name, qt_resource_data
+    )
 
 
 def qCleanupResources():
     QtCore.qUnregisterResourceData(
-        rcc_version,
-        qt_resource_struct,
-        qt_resource_name,
-        qt_resource_data)
+        rcc_version, qt_resource_struct, qt_resource_name, qt_resource_data
+    )
 
 
 qInitResources()

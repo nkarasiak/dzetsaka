@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
+"""TO PUT ON PYTHON 3.
 
-"""
-# TO PUT ON PYTHON 3
 ##
 ##
 #

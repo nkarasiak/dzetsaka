@@ -1,7 +1,1 @@
-# Files to ignore
-*.pyc
-*.py~
-*_filtered*
-__pycache__
-*spyproject*
-
+# Git ignore file for dzetsaka QGIS plugin
