@@ -7,9 +7,9 @@ classification algorithms.
 
 Key Components:
 --------------
-- learnModel: Train classification models with various algorithms
-- classifyImage: Classify entire raster images using trained models
-- confusionMatrix: Compute accuracy statistics from classifications
+- LearnModel: Train classification models with various algorithms
+- ClassifyImage: Classify entire raster images using trained models
+- ConfusionMatrix: Compute accuracy statistics from classifications
 - Backward compatibility decorators for parameter name changes
 - Advanced cross-validation methods (SLOO, STAND)
 - Label encoding wrappers for XGBoost and LightGBM
@@ -59,16 +59,43 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from osgeo import gdal, ogr
-from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.preprocessing import LabelEncoder
+
+# Import sklearn modules (optional dependency)
+try:
+    from sklearn.base import BaseEstimator, ClassifierMixin
+    from sklearn.metrics import confusion_matrix
+    from sklearn.preprocessing import LabelEncoder
+
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    # Create dummy classes when sklearn is not available
+    class BaseEstimator:
+        """Dummy BaseEstimator class when sklearn is not available."""
+
+
+    class ClassifierMixin:
+        """Dummy ClassifierMixin class when sklearn is not available."""
+
+
+    class LabelEncoder:
+        """Dummy LabelEncoder class when sklearn is not available."""
+
+        def fit(self, y):
+            """Dummy fit method."""
+            return self
+
+        def transform(self, y):
+            """Dummy transform method."""
+            return y
+
+        def fit_transform(self, y):
+            """Dummy fit_transform method."""
+            return y
+
+    confusion_matrix = None
+    SKLEARN_AVAILABLE = False
 
 from .. import classifier_config
-
-# Import sklearn modules for confusion matrix
-try:
-    from sklearn.metrics import confusion_matrix
-except ImportError:
-    confusion_matrix = None
 
 
 # Backward compatibility decorator
@@ -1057,7 +1084,7 @@ class LearnModel:
     def _setup_progress_feedback(self, feedback):
         """Setup progress feedback based on feedback type."""
         if feedback == "gui":
-            return progress_bar.progressBar("Loading...", 6)
+            return progress_bar.ProgressBar("Loading...", 6)
         elif feedback is not None and hasattr(feedback, "setProgress"):
             feedback.setProgressText("Loading...")
             feedback.setProgress(0)
@@ -1541,7 +1568,7 @@ class ClassifyImage:
 
         if feedback == "gui":
             progress_text = f"Predicting model ({d} bands)..." if d > 3 else "Predicting model..."
-            progress = progress_bar.progressBar(progress_text, int(total / 10))
+            progress = progress_bar.ProgressBar(progress_text, int(total / 10))
         elif feedback is not None and hasattr(feedback, "setProgress"):
             # Handle batch processing feedback
             progress_text = f"Predicting model for {d}-band image..." if d > 3 else "Predicting model..."

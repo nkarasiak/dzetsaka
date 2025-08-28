@@ -10,7 +10,7 @@
 name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
 description=Fast and Easy Classification plugin for Qgis with 11 ML algorithms + Auto-Install
-version=4.2.0
+version=4.2.2
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -36,6 +36,14 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+    4.2.2
+      * 🐛 FIX: Fixed import errors for splitTrain and trainAlgorithm class names
+      * 🐛 FIX: Fixed progress_bar.progressBar attribute error (corrected case to ProgressBar)
+      * 🐛 FIX: Restored missing toolbar icons by fixing Qt resources import
+      * 🐛 FIX: Fixed incorrect resource path in sieve_area.py 
+      * 🧹 ENHANCED: Applied ruff linting fixes and improved code quality
+      * 📝 ENHANCED: Added proper docstrings to sklearn fallback classes
+      * 🔧 ENHANCED: Better exception chaining for improved debugging
     4.2.0
       * 🎯 NEW: 7 additional machine learning algorithms - XGBoost, LightGBM, Extra Trees, Gradient Boosting, Logistic Regression, Naive Bayes, MLP
       * 🚀 NEW: Automatic dependency installation system - one-click install of scikit-learn, XGBoost, LightGBM

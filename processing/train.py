@@ -181,7 +181,7 @@ class TrainAlgorithm(QgsProcessingAlgorithm):
 
         # learn model
         if libOk:
-            mainfunction.learnModel(
+            mainfunction.LearnModel(
                 INPUT_RASTER.source(),
                 INPUT_LAYER.dataProvider().dataSourceUri().split("|")[0],
                 INPUT_COLUMN[0],

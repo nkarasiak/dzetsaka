@@ -79,7 +79,7 @@ from .scripts import mainfunction
 
 # Import resources for icons
 with contextlib.suppress(ImportError):
-    pass
+    from . import resources
 
 
 class DzetsakaGUI(QDialog):
@@ -809,7 +809,7 @@ class DzetsakaGUI(QDialog):
                         level=Qgis.Info,
                     )
 
-                    temp = mainfunction.learnModel(
+                    temp = mainfunction.LearnModel(
                         raster_path=inRaster,
                         vector_path=inShape,
                         class_field=inField,

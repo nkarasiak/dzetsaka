@@ -24,7 +24,12 @@ class RandomInSubset:
         outValidation : str path of shp output file (e.g. '/tmp/valid.shp')
         outTrain : str path of shp output file (e.g. '/tmp/train.shp').
         """
-        from sklearn.model_selection import train_test_split
+        try:
+            from sklearn.model_selection import train_test_split
+        except ImportError as e:
+            raise ImportError(
+                "scikit-learn is required for train/test split functionality. Install with: pip install scikit-learn"
+            ) from e
 
         number = number / 100.0 if percent else int(number)
 

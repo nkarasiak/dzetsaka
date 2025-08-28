@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.2] - 2025-08-28
+
+### Fixed
+- 🐛 **Import errors**: Fixed `splitTrain` and `trainAlgorithm` class name imports in dzetsaka_provider.py
+- 🐛 **Progress bar module**: Fixed `progress_bar.progressBar` attribute error by correcting case to `progress_bar.ProgressBar`
+- 🐛 **Missing toolbar icons**: Restored Qt resources import in dzetsaka.py to properly load embedded icon data
+- 🐛 **Resource paths**: Fixed incorrect resource path in sieve_area.py (`:/plugins/dzetsaka/icon.png` → `:/plugins/dzetsaka/img/icon.png`)
+- 🧹 **Code quality**: Applied ruff linting fixes including docstrings for dummy classes and proper exception chaining
+
+### Improved
+- 📝 **Documentation**: Added proper docstrings to sklearn fallback classes (BaseEstimator, ClassifierMixin, LabelEncoder)
+- 🔧 **Error handling**: Enhanced exception chaining with `raise ... from e` pattern for better debugging
+
 ## [4.2.0] - 2025-07-16
 
 ### Added

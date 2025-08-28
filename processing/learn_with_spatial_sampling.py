@@ -211,7 +211,7 @@ class TrainSLOOAlgorithm(QgsProcessingAlgorithm):
 
         # QgsMessageLog.logMessage(str(eval(PARAMGRID)))
 
-        mainfunction.learnModel(
+        mainfunction.LearnModel(
             INPUT_RASTER.source(),
             INPUT_LAYER.source(),
             INPUT_COLUMN[0],
