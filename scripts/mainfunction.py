@@ -72,10 +72,8 @@ except ImportError:
     class BaseEstimator:
         """Dummy BaseEstimator class when sklearn is not available."""
 
-
     class ClassifierMixin:
         """Dummy ClassifierMixin class when sklearn is not available."""
-
 
     class LabelEncoder:
         """Dummy LabelEncoder class when sklearn is not available."""
