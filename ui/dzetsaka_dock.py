@@ -7,7 +7,8 @@
 # WARNING! All changes made in this file will be lost!
 
 from qgis.gui import QgsCollapsibleGroupBox, QgsMapLayerComboBox
-from PyQt5 import QtCore, QtGui, QtWidgets
+# Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
+from qgis.PyQt import QtCore, QtGui, QtWidgets
 
 
 class Ui_DockWidget(object):

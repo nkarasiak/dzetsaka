@@ -12,6 +12,51 @@ except ImportError:
 # from osgeo import gdal_array
 
 
+def get_layer_source_path(layer):
+    """Extract file path from a QGIS layer, handling URI formats safely.
+
+    This function provides a robust way to get the underlying file path
+    from a QGIS vector or raster layer, properly handling various URI
+    formats (shapefiles, GeoPackage, etc.) that may include query
+    parameters like '|layerid=0' or '|layername=table'.
+
+    Parameters
+    ----------
+    layer : QgsMapLayer
+        A QGIS layer (vector or raster).
+
+    Returns
+    -------
+    str
+        The file system path to the layer's data source.
+
+    Notes
+    -----
+    For QGIS 4.0+ compatibility, this uses QgsProviderRegistry when
+    available, falling back to string parsing for older versions.
+
+    """
+    try:
+        # Preferred method: use QgsProviderRegistry to decode URI properly
+        from qgis.core import QgsProviderRegistry
+
+        provider_key = layer.providerType()
+        uri = layer.dataProvider().dataSourceUri()
+        decoded = QgsProviderRegistry.instance().decodeUri(provider_key, uri)
+
+        # 'path' key contains the file path for most providers
+        if "path" in decoded:
+            return decoded["path"]
+        # Fallback to full URI if no path key
+        return uri.split("|")[0]
+
+    except (ImportError, AttributeError, KeyError):
+        # Fallback for environments without QgsProviderRegistry
+        # or if decodeUri fails
+        uri = layer.dataProvider().dataSourceUri()
+        return uri.split("|")[0]
+
+
 def convertGdalDataTypeToOTB(gdalDT):
     """Convert GDAL data type to OTB code."""
     # availableCode = uint8/uint16/int16/uint32/int32/float/double
@@ -20,61 +65,66 @@ def convertGdalDataTypeToOTB(gdalDT):
     return code[gdalDT]
 
 
+# GDAL to NumPy datatype mapping for efficient lookup
+_GDAL_TO_NUMPY_DTYPE = {
+    gdal.GDT_Byte: "uint8",
+    gdal.GDT_Int16: "int16",
+    gdal.GDT_UInt16: "uint16",
+    gdal.GDT_Int32: "int32",
+    gdal.GDT_UInt32: "uint32",
+    gdal.GDT_Float32: "float32",
+    gdal.GDT_Float64: "float64",
+    gdal.GDT_CInt16: "complex64",
+    gdal.GDT_CInt32: "complex64",
+    gdal.GDT_CFloat32: "complex64",
+    gdal.GDT_CFloat64: "complex64",
+}
+
+
 def open_data(filename):
     """Open and load the image given its name.
 
-    The type of the data is checked from the file and the scipy array is initialized accordingly.
-    Input:
-        filename: the name of the file
-    Output:
-        im: the data cube
-        GeoTransform: the geotransform information
-        Projection: the projection information.
+    The type of the data is checked from the file and the numpy array is
+    initialized accordingly.
+
+    Parameters
+    ----------
+    filename : str
+        The name/path of the raster file to open.
+
+    Returns
+    -------
+    im : np.ndarray
+        The data cube of shape (rows, cols) for single-band or
+        (rows, cols, bands) for multi-band images.
+    GeoTransform : tuple
+        The geotransform information (6-element tuple).
+    Projection : str
+        The projection information as WKT string.
+
     """
     data = gdal.Open(filename, gdal.GA_ReadOnly)
     if data is None:
         print("Impossible to open " + filename)
-        # exit()
-    nc = data.RasterXSize
-    nl = data.RasterYSize
+        return None, None, None
+
     d = data.RasterCount
 
-    # Get the type of the data
+    # Get the type of the data using dict lookup
     gdal_dt = data.GetRasterBand(1).DataType
-    if gdal_dt == gdal.GDT_Byte:
-        dt = "uint8"
-    elif gdal_dt == gdal.GDT_Int16:
-        dt = "int16"
-    elif gdal_dt == gdal.GDT_UInt16:
-        dt = "uint16"
-    elif gdal_dt == gdal.GDT_Int32:
-        dt = "int32"
-    elif gdal_dt == gdal.GDT_UInt32:
-        dt = "uint32"
+    dt = _GDAL_TO_NUMPY_DTYPE.get(gdal_dt)
+    if dt is None:
+        print("Data type unknown")
+        dt = "float64"  # Fallback to float64
 
-    elif gdal_dt == gdal.GDT_Float32:
-        dt = "float32"
-    elif gdal_dt == gdal.GDT_Float64:
-        dt = "float64"
-    elif (
-        gdal_dt == gdal.GDT_CInt16
-        or gdal_dt == gdal.GDT_CInt32
-        or gdal_dt == gdal.GDT_CFloat32
-        or gdal_dt == gdal.GDT_CFloat64
-    ):
-        dt = "complex64"
-    else:
-        print("Data type unkown")
-        # exit()
-
-    # Initialize the array
-    im = np.empty((nl, nc), dtype=dt) if d == 1 else np.empty((nl, nc, d), dtype=dt)
-
+    # Read all bands at once using GDAL's ReadAsArray on the dataset
+    # This is more efficient than reading band by band
     if d == 1:
-        im[:, :] = data.GetRasterBand(1).ReadAsArray()
+        im = data.GetRasterBand(1).ReadAsArray().astype(dt)
     else:
-        for i in range(d):
-            im[:, :, i] = data.GetRasterBand(i + 1).ReadAsArray()
+        # ReadAsArray() on dataset returns (bands, rows, cols)
+        # Transpose to (rows, cols, bands) for compatibility
+        im = data.ReadAsArray().transpose(1, 2, 0).astype(dt)
 
     GeoTransform = data.GetGeoTransform()
     Projection = data.GetProjection()
@@ -306,11 +356,16 @@ def get_samples_from_roi(raster_name, roi_name, stand_name=False, getCoords=Fals
                     """
                     coords = np.concatenate((coords, coordsTp))
 
-                # Load the Variables
-                Xtp = np.empty((t[0].shape[0], d))
-                for k in range(d):
-                    band = raster.GetRasterBand(k + 1).ReadAsArray(j, i, cols, lines)
-                    Xtp[:, k] = band[t]
+                # Load all bands at once for this block, then extract ROI pixels
+                # This is more efficient than reading band by band
+                block_data = raster.ReadAsArray(j, i, cols, lines)  # Shape: (d, lines, cols)
+                if d == 1:
+                    # Single band case: ReadAsArray returns (lines, cols)
+                    Xtp = block_data[t].reshape(-1, 1)
+                else:
+                    # Multi-band: extract pixels at ROI locations using advanced indexing
+                    # block_data shape is (d, lines, cols), t is (row_indices, col_indices)
+                    Xtp = block_data[:, t[0], t[1]].T  # Shape: (n_pixels, d)
                 try:
                     X = np.concatenate((X, Xtp))
                 except MemoryError:
@@ -337,7 +392,7 @@ def get_samples_from_roi(raster_name, roi_name, stand_name=False, getCoords=Fals
     """
 
     # Clean/Close variables
-    del Xtp, band
+    del Xtp
     roi = None  # Close the roi file
     raster = None  # Close the raster file
 
@@ -352,82 +407,63 @@ def get_samples_from_roi(raster_name, roi_name, stand_name=False, getCoords=Fals
         return X, Y
 
 
+# NumPy to GDAL datatype mapping for efficient lookup
+_NUMPY_TO_GDAL_DTYPE = {
+    "bool": gdal.GDT_Byte,
+    "uint8": gdal.GDT_Byte,
+    "int8": gdal.GDT_Int16,
+    "int16": gdal.GDT_Int16,
+    "uint16": gdal.GDT_UInt16,
+    "int32": gdal.GDT_Int32,
+    "uint32": gdal.GDT_UInt32,
+    "int64": gdal.GDT_Float32,
+    "uint64": gdal.GDT_Float32,
+    "float16": gdal.GDT_Float32,
+    "float32": gdal.GDT_Float32,
+    "float64": gdal.GDT_Float64,
+    "complex64": gdal.GDT_CFloat64,
+}
+
+
 def getDTfromGDAL(gdal_dt):
-    """Returns datatype (numpy/scipy) from gdal_dt.
+    """Convert GDAL datatype to numpy datatype string.
 
     Parameters
     ----------
-    gdal_dt : datatype
-        data.GetRasterBand(1).DataType
+    gdal_dt : int
+        GDAL datatype constant (e.g., gdal.GDT_Byte).
 
-    Return
-    ----------
-    dt : datatype
+    Returns
+    -------
+    dt : str
+        Numpy datatype string (e.g., 'uint8').
 
     """
-    if gdal_dt == gdal.GDT_Byte:
-        dt = "uint8"
-    elif gdal_dt == gdal.GDT_Int16:
-        dt = "int16"
-    elif gdal_dt == gdal.GDT_UInt16:
-        dt = "uint16"
-    elif gdal_dt == gdal.GDT_Int32:
-        dt = "int32"
-    elif gdal_dt == gdal.GDT_UInt32:
-        dt = "uint32"
-    elif gdal_dt == gdal.GDT_Float32:
-        dt = "float32"
-    elif gdal_dt == gdal.GDT_Float64:
-        dt = "float64"
-    elif (
-        gdal_dt == gdal.GDT_CInt16
-        or gdal_dt == gdal.GDT_CInt32
-        or gdal_dt == gdal.GDT_CFloat32
-        or gdal_dt == gdal.GDT_CFloat64
-    ):
-        dt = "complex64"
-    else:
-        print("Data type unkown")
-        # exit()
+    dt = _GDAL_TO_NUMPY_DTYPE.get(gdal_dt)
+    if dt is None:
+        print("Data type unknown")
+        dt = "float64"  # Fallback
     return dt
 
 
 def getGDALGDT(dt):
-    """Convert numpy datatype to GDAL datatype.
-
-    Need arr.dtype.name in entry.
-    Returns gdal_dt from dt (numpy/scipy).
+    """Convert numpy datatype string to GDAL datatype.
 
     Parameters
     ----------
-    dt : datatype
-        Numpy datatype to convert to GDAL datatype.
+    dt : str
+        Numpy datatype string (e.g., 'float32', from arr.dtype.name).
 
-    Return
-    ----------
-    gdal_dt : gdal datatype
+    Returns
+    -------
+    gdal_dt : int
+        GDAL datatype constant.
 
     """
-    if dt == "bool" or dt == "uint8":
-        gdal_dt = gdal.GDT_Byte
-    elif dt == "int8" or dt == "int16":
-        gdal_dt = gdal.GDT_Int16
-    elif dt == "uint16":
-        gdal_dt = gdal.GDT_UInt16
-    elif dt == "int32":
-        gdal_dt = gdal.GDT_Int32
-    elif dt == "uint32":
-        gdal_dt = gdal.GDT_UInt32
-    elif dt == "int64" or dt == "uint64" or dt == "float16" or dt == "float32":
-        gdal_dt = gdal.GDT_Float32
-    elif dt == "float64":
-        gdal_dt = gdal.GDT_Float64
-    elif dt == "complex64":
-        gdal_dt = gdal.GDT_CFloat64
-    else:
-        print("Data type non-suported")
-        # exit()
-
+    gdal_dt = _NUMPY_TO_GDAL_DTYPE.get(dt)
+    if gdal_dt is None:
+        print("Data type non-supported: " + str(dt))
+        gdal_dt = gdal.GDT_Float64  # Fallback
     return gdal_dt
 
 
@@ -606,37 +642,48 @@ def rasterize(data, vectorSrc, field, outFile):
     return outFile
 
 
-def scale(x, M=None, m=None):  # TODO:  DO IN PLACE SCALING
-    """Standardize the data.
+def scale(x, M=None, m=None):
+    """Standardize the data using min-max scaling to [-1, 1] range.
 
-    Input:
-        x: the data
-        M: the Max vector
-        m: the Min vector
-    Output:
-        x: the standardize data
-        M: the Max vector
-        m: the Min vector.
+    Parameters
+    ----------
+    x : np.ndarray
+        The data array of shape (n_samples, n_features).
+    M : np.ndarray, optional
+        The max vector. If None, computed from x.
+    m : np.ndarray, optional
+        The min vector. If None, computed from x.
+
+    Returns
+    -------
+    xs : np.ndarray
+        The standardized data.
+    M : np.ndarray
+        The max vector (only if M was None on input).
+    m : np.ndarray
+        The min vector (only if M was None on input).
+
     """
-    [n, d] = x.shape
     if np.float64 != x.dtype.type:
         x = x.astype("float")
 
-    # Initialization of the output
-    xs = np.empty_like(x)
-
-    # get the parameters of the scaling
+    # Get the parameters of the scaling
     minMax = False
     if M is None:
         minMax = True
         M, m = np.amax(x, axis=0), np.amin(x, axis=0)
 
+    # Vectorized scaling: avoid division by zero with safe denominator
     den = M - m
-    for i in range(d):
-        if den[i] != 0:
-            xs[:, i] = 2 * (x[:, i] - m[i]) / den[i] - 1
-        else:
-            xs[:, i] = x[:, i]
+    den_safe = np.where(den != 0, den, 1.0)  # Replace zeros with 1 to avoid division by zero
+
+    # Vectorized computation across all columns at once
+    xs = 2.0 * (x - m) / den_safe - 1.0
+
+    # Restore original values for columns with zero range
+    zero_range_mask = den == 0
+    if np.any(zero_range_mask):
+        xs[:, zero_range_mask] = x[:, zero_range_mask]
 
     if minMax:
         return xs, M, m

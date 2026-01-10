@@ -22,7 +22,12 @@ from itertools import product
 
 # from sklearn import preprocessing
 import numpy as np
-from sklearn.metrics import mean_squared_error
+
+# Lazy import to allow plugin loading without sklearn
+try:
+    from sklearn.metrics import mean_squared_error
+except ImportError:
+    mean_squared_error = None
 
 
 class RasterOT:

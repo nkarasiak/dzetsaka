@@ -59,16 +59,24 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from osgeo import gdal, ogr
-from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.preprocessing import LabelEncoder
 
 from .. import classifier_config
 
-# Import sklearn modules for confusion matrix
+# Import sklearn modules lazily to allow plugin loading without sklearn
+# This enables the auto-install system to work
+SKLEARN_AVAILABLE = False
+BaseEstimator = None
+ClassifierMixin = None
+LabelEncoder = None
+confusion_matrix = None
+
 try:
+    from sklearn.base import BaseEstimator, ClassifierMixin
+    from sklearn.preprocessing import LabelEncoder
     from sklearn.metrics import confusion_matrix
+    SKLEARN_AVAILABLE = True
 except ImportError:
-    confusion_matrix = None
+    pass
 
 
 # Backward compatibility decorator
@@ -119,100 +127,103 @@ def backward_compatible(**parameter_mapping):
 
 
 # Label encoding wrapper for XGBoost and LightGBM
+# Only define these classes if sklearn is available
+XGBLabelWrapper = None
+LGBLabelWrapper = None
 
+if SKLEARN_AVAILABLE:
 
-class XGBLabelWrapper(BaseEstimator, ClassifierMixin):
-    """Wrapper for XGBoost that handles sparse label encoding/decoding."""
+    class XGBLabelWrapper(BaseEstimator, ClassifierMixin):
+        """Wrapper for XGBoost that handles sparse label encoding/decoding."""
 
-    def __init__(self, **xgb_params):
-        self.xgb_params = xgb_params
-        self.label_encoder = LabelEncoder()
-        self.xgb_classifier = None
+        def __init__(self, **xgb_params):
+            self.xgb_params = xgb_params
+            self.label_encoder = LabelEncoder()
+            self.xgb_classifier = None
 
-    def fit(self, X, y):
-        """Fit the XGBoost classifier with label encoding."""
-        try:
-            from xgboost import XGBClassifier
-        except ImportError:
-            raise ImportError("XGBoost not found. Install with: pip install xgboost") from None
+        def fit(self, X, y):
+            """Fit the XGBoost classifier with label encoding."""
+            try:
+                from xgboost import XGBClassifier
+            except ImportError:
+                raise ImportError("XGBoost not found. Install with: pip install xgboost") from None
 
-        y_encoded = self.label_encoder.fit_transform(y)
-        self.xgb_classifier = XGBClassifier(**self.xgb_params)
-        self.xgb_classifier.fit(X, y_encoded)
-        return self
+            y_encoded = self.label_encoder.fit_transform(y)
+            self.xgb_classifier = XGBClassifier(**self.xgb_params)
+            self.xgb_classifier.fit(X, y_encoded)
+            return self
 
-    def predict(self, X):
-        """Predict labels using the fitted classifier."""
-        y_encoded = self.xgb_classifier.predict(X)
-        return self.label_encoder.inverse_transform(y_encoded)
+        def predict(self, X):
+            """Predict labels using the fitted classifier."""
+            y_encoded = self.xgb_classifier.predict(X)
+            return self.label_encoder.inverse_transform(y_encoded)
 
-    def predict_proba(self, X):
-        """Predict class probabilities using the fitted classifier."""
-        return self.xgb_classifier.predict_proba(X)
+        def predict_proba(self, X):
+            """Predict class probabilities using the fitted classifier."""
+            return self.xgb_classifier.predict_proba(X)
 
-    @property
-    def classes_(self):
-        """Get class labels."""
-        return self.label_encoder.classes_
+        @property
+        def classes_(self):
+            """Get class labels."""
+            return self.label_encoder.classes_
 
-    def get_params(self, deep=True):
-        """Get parameters for this estimator."""
-        # Return XGBoost parameters directly
-        return self.xgb_params.copy()
+        def get_params(self, deep=True):
+            """Get parameters for this estimator."""
+            # Return XGBoost parameters directly
+            return self.xgb_params.copy()
 
-    def set_params(self, **params):
-        """Set parameters for this estimator."""
-        self.xgb_params.update(params)
-        if self.xgb_classifier is not None:
-            self.xgb_classifier.set_params(**params)
-        return self
+        def set_params(self, **params):
+            """Set parameters for this estimator."""
+            self.xgb_params.update(params)
+            if self.xgb_classifier is not None:
+                self.xgb_classifier.set_params(**params)
+            return self
 
+    class LGBLabelWrapper(BaseEstimator, ClassifierMixin):
+        """Wrapper for LightGBM that handles sparse label encoding/decoding."""
 
-class LGBLabelWrapper(BaseEstimator, ClassifierMixin):
-    """Wrapper for LightGBM that handles sparse label encoding/decoding."""
+        def __init__(self, **lgb_params):
+            self.lgb_params = lgb_params
+            self.label_encoder = LabelEncoder()
+            self.lgb_classifier = None
 
-    def __init__(self, **lgb_params):
-        self.lgb_params = lgb_params
-        self.label_encoder = LabelEncoder()
-        self.lgb_classifier = None
+        def fit(self, X, y):
+            """Fit the LightGBM classifier with label encoding."""
+            try:
+                from lightgbm import LGBMClassifier
+            except ImportError:
+                raise ImportError("LightGBM not found. Install with: pip install lightgbm") from None
 
-    def fit(self, X, y):
-        """Fit the LightGBM classifier with label encoding."""
-        try:
-            from lightgbm import LGBMClassifier
-        except ImportError:
-            raise ImportError("LightGBM not found. Install with: pip install lightgbm") from None
+            y_encoded = self.label_encoder.fit_transform(y)
+            self.lgb_classifier = LGBMClassifier(**self.lgb_params)
+            self.lgb_classifier.fit(X, y_encoded)
+            return self
 
-        y_encoded = self.label_encoder.fit_transform(y)
-        self.lgb_classifier = LGBMClassifier(**self.lgb_params)
-        self.lgb_classifier.fit(X, y_encoded)
-        return self
+        def predict(self, X):
+            """Predict class labels for samples."""
+            y_encoded = self.lgb_classifier.predict(X)
+            return self.label_encoder.inverse_transform(y_encoded)
 
-    def predict(self, X):
-        """Predict class labels for samples."""
-        y_encoded = self.lgb_classifier.predict(X)
-        return self.label_encoder.inverse_transform(y_encoded)
+        def predict_proba(self, X):
+            """Predict class probabilities for samples."""
+            return self.lgb_classifier.predict_proba(X)
 
-    def predict_proba(self, X):
-        """Predict class probabilities for samples."""
-        return self.lgb_classifier.predict_proba(X)
+        @property
+        def classes_(self):
+            """Get class labels."""
+            return self.label_encoder.classes_
 
-    @property
-    def classes_(self):
-        """Get class labels."""
-        return self.label_encoder.classes_
+        def get_params(self, deep=True):
+            """Get parameters for this estimator."""
+            # Return LightGBM parameters directly
+            return self.lgb_params.copy()
 
-    def get_params(self, deep=True):
-        """Get parameters for this estimator."""
-        # Return LightGBM parameters directly
-        return self.lgb_params.copy()
-
-    def set_params(self, **params):
-        """Set parameters for this estimator."""
-        self.lgb_params.update(params)
-        if self.lgb_classifier is not None:
-            self.lgb_classifier.set_params(**params)
-        return self
+        def set_params(self, **params):
+            """Set parameters for this estimator."""
+            self.lgb_params.update(params)
+            if self.lgb_classifier is not None:
+                self.lgb_classifier.set_params(**params)
+            return self
 
 
 # Configuration constants
@@ -409,22 +420,31 @@ class LearnModel:
         try:
             if isinstance(SPLIT, (int, float)):
                 if SPLIT < 100:
-                    # Random selection of the sample
-                    x = np.array([]).reshape(0, d)
-                    y = np.array([]).reshape(0, 1)
-                    xt = np.array([]).reshape(0, d)
-                    yt = np.array([]).reshape(0, 1)
+                    # Random stratified selection of samples
+                    # Collect indices first, then create arrays in one operation
+                    # This avoids O(n^2) memory allocation from repeated concatenation
+                    np.random.seed(random_seed)
 
-                    np.random.seed(random_seed)  # Set the random generator state
+                    train_indices = []
+                    test_indices = []
+
                     for i in range(C):
                         t = np.where((i + 1) == Y)[0]
                         nc = t.size
                         ns = int(nc * (SPLIT / float(100)))
                         rp = np.random.permutation(nc)
-                        x = np.concatenate((X[t[rp[0:ns]], :], x))
-                        xt = np.concatenate((X[t[rp[ns:]], :], xt))
-                        y = np.concatenate((Y[t[rp[0:ns]]], y))
-                        yt = np.concatenate((Y[t[rp[ns:]]], yt))
+                        train_indices.append(t[rp[:ns]])
+                        test_indices.append(t[rp[ns:]])
+
+                    # Concatenate all indices at once
+                    train_idx = np.concatenate(train_indices)
+                    test_idx = np.concatenate(test_indices)
+
+                    # Create arrays using fancy indexing (single operation)
+                    x = X[train_idx, :]
+                    y = Y[train_idx]
+                    xt = X[test_idx, :]
+                    yt = Y[test_idx]
 
                 else:
                     x, y = X, Y
@@ -753,7 +773,7 @@ class LearnModel:
                     feedback=feedback,
                 )
                 if feedback == "gui":
-                    progress_bar.reset()
+                    progress.reset()
                 return None
             except Exception as e:
                 pushFeedback(
@@ -761,7 +781,7 @@ class LearnModel:
                     feedback=feedback,
                 )
                 if feedback == "gui":
-                    progress_bar.reset()
+                    progress.reset()
                 return None
 
             if feedback == "gui":
@@ -1008,32 +1028,44 @@ class LearnModel:
             feedback.setProgress(100)
 
     def scale(self, x, M=None, m=None):
-        """!@brief Function that standardize the data.
+        """Standardize the data using min-max scaling to [-1, 1] range.
 
-        Input:
-            x: the data
-            M: the Max vector
-            m: the Min vector
-        Output:
-            x: the standardize data
-            M: the Max vector
-            m: the Min vector
+        Parameters
+        ----------
+        x : np.ndarray
+            The data array of shape (n_samples, n_features).
+        M : np.ndarray, optional
+            The max vector (unused, computed from x).
+        m : np.ndarray, optional
+            The min vector (unused, computed from x).
+
+        Returns
+        -------
+        xs : np.ndarray
+            The standardized data.
+        M : np.ndarray
+            The max vector.
+        m : np.ndarray
+            The min vector.
+
         """
-        [n, d] = x.shape
         if np.float64 != x.dtype.type:
             x = x.astype("float")
 
-        # Initialization of the output
-        xs = np.empty_like(x)
-
-        # get the parameters of the scaling
+        # Get the parameters of the scaling
         M, m = np.amax(x, axis=0), np.amin(x, axis=0)
+
+        # Vectorized scaling: avoid division by zero with safe denominator
         den = M - m
-        for i in range(d):
-            if den[i] != 0:
-                xs[:, i] = 2 * (x[:, i] - m[i]) / den[i] - 1
-            else:
-                xs[:, i] = x[:, i]
+        den_safe = np.where(den != 0, den, 1.0)
+
+        # Vectorized computation across all columns at once
+        xs = 2.0 * (x - m) / den_safe - 1.0
+
+        # Restore original values for columns with zero range
+        zero_range_mask = den == 0
+        if np.any(zero_range_mask):
+            xs[:, zero_range_mask] = x[:, zero_range_mask]
 
         return xs, M, m
 
@@ -1057,7 +1089,7 @@ class LearnModel:
     def _setup_progress_feedback(self, feedback):
         """Setup progress feedback based on feedback type."""
         if feedback == "gui":
-            return progress_bar.progressBar("Loading...", 6)
+            return progress_bar.ProgressBar("Loading...", 6)
         elif feedback is not None and hasattr(feedback, "setProgress"):
             feedback.setProgressText("Loading...")
             feedback.setProgress(0)
@@ -1391,34 +1423,41 @@ class ClassifyImage:
         M: Optional[np.ndarray] = None,
         m: Optional[np.ndarray] = None,
     ) -> np.ndarray:
-        """!@brief Function that standardize the data.
+        """Standardize the data using min-max scaling to [-1, 1] range.
 
-        Input:
-            x: the data
-            M: the Max vector
-            m: the Min vector
-        Output:
-            x: the standardize data
-            M: the Max vector
-            m: the Min vector
+        Parameters
+        ----------
+        x : np.ndarray
+            The data array of shape (n_samples, n_features).
+        M : np.ndarray, optional
+            The max vector. If None, computed from x.
+        m : np.ndarray, optional
+            The min vector. If None, computed from x.
+
+        Returns
+        -------
+        xs : np.ndarray
+            The standardized data.
+
         """
-        [n, d] = x.shape
         if np.float64 != x.dtype.type:
             x = x.astype("float")
 
-        # Initialization of the output
-        xs = np.empty_like(x)
-
-        # get the parameters of the scaling
+        # Get the parameters of the scaling
         if M is None:
             M, m = np.amax(x, axis=0), np.amin(x, axis=0)
 
+        # Vectorized scaling: avoid division by zero with safe denominator
         den = M - m
-        for i in range(d):
-            if den[i] != 0:
-                xs[:, i] = 2 * (x[:, i] - m[i]) / den[i] - 1
-            else:
-                xs[:, i] = x[:, i]
+        den_safe = np.where(den != 0, den, 1.0)
+
+        # Vectorized computation across all columns at once
+        xs = 2.0 * (x - m) / den_safe - 1.0
+
+        # Restore original values for columns with zero range
+        zero_range_mask = den == 0
+        if np.any(zero_range_mask):
+            xs[:, zero_range_mask] = x[:, zero_range_mask]
 
         return xs
 
@@ -1541,7 +1580,7 @@ class ClassifyImage:
 
         if feedback == "gui":
             progress_text = f"Predicting model ({d} bands)..." if d > 3 else "Predicting model..."
-            progress = progress_bar.progressBar(progress_text, int(total / 10))
+            progress = progress_bar.ProgressBar(progress_text, int(total / 10))
         elif feedback is not None and hasattr(feedback, "setProgress"):
             # Handle batch processing feedback
             progress_text = f"Predicting model for {d}-band image..." if d > 3 else "Predicting model..."
@@ -1726,8 +1765,8 @@ class ClassifyImage:
         try:
             import platform
 
-            from PyQt5.QtGui import QFont
-            from PyQt5.QtWidgets import (
+            from qgis.PyQt.QtGui import QFont
+            from qgis.PyQt.QtWidgets import (
                 QDialog,
                 QHBoxLayout,
                 QLabel,
@@ -1828,12 +1867,10 @@ class ClassifyImage:
     def _copy_to_clipboard(self, text):
         """Copy text to clipboard."""
         try:
-            from PyQt5.QtWidgets import QApplication
+            from qgis.PyQt.QtWidgets import QApplication, QMessageBox
 
             clipboard = QApplication.clipboard()
             clipboard.setText(text)
-
-            from PyQt5.QtWidgets import QMessageBox
 
             QMessageBox.information(None, "Copied", "GitHub issue template copied to clipboard!")
         except Exception as e:

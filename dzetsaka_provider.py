@@ -17,11 +17,11 @@ from qgis.core import QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
 from .processing.classify import ClassifyAlgorithm
-from .processing.split_train_validation import splitTrain
+from .processing.split_train_validation import SplitTrain
 
 # from .moduleName_algorithm import classNameAlgorithm
 # from .processing.moduleName_algorithm import classNameAlgorithm
-from .processing.train import trainAlgorithm
+from .processing.train import TrainAlgorithm
 
 plugin_path = os.path.dirname(__file__)
 
@@ -67,9 +67,9 @@ class DzetsakaProvider(QgsProcessingProvider):
 
     def loadAlgorithms(self):
         """Loads all algorithms belonging to this provider."""
-        self.addAlgorithm(trainAlgorithm())
+        self.addAlgorithm(TrainAlgorithm())
         self.addAlgorithm(ClassifyAlgorithm())
-        self.addAlgorithm(splitTrain())
+        self.addAlgorithm(SplitTrain())
         # self.addAlgorithm(trainSTANDalgorithm())
 
         if self.providerType == "Experimental":
@@ -80,10 +80,10 @@ class DzetsakaProvider(QgsProcessingProvider):
             self.addAlgorithm(MedianFilterAlgorithm())
 
             from .processing.domain_adaptation import DomainAdaptation
-            from .processing.shannon_entropy import shannonAlgorithm
+            from .processing.shannon_entropy import ShannonAlgorithm
 
             self.addAlgorithm(DomainAdaptation())
-            self.addAlgorithm(shannonAlgorithm())
+            self.addAlgorithm(ShannonAlgorithm())
 
     def id(self):
         """Return the unique provider id.

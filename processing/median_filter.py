@@ -21,14 +21,15 @@ __revision__ = "$Format:%H$"
 
 import os
 
-from PyQt5.QtCore import QCoreApplication
+# Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
+from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtGui import QIcon
 from qgis.core import (
     QgsProcessingAlgorithm,
     QgsProcessingParameterNumber,
     QgsProcessingParameterRasterDestination,
     QgsProcessingParameterRasterLayer,
 )
-from qgis.PyQt.QtGui import QIcon
 
 from ..scripts import function_dataraster as dataraster
 

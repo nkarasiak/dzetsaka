@@ -28,79 +28,77 @@ class CV:
     def split_data(self, n, v=5):
         """Split the data into v folds.
 
-        Whatever the number of sample per class
-        Input:
-            n : the number of samples
-            v : the number of folds
-        Output: None.
+        Parameters
+        ----------
+        n : int
+            The number of samples.
+        v : int, optional
+            The number of folds (default 5).
+
         """
-        step = n // v  # Compute the number of samples in each fold
-        # Set the random generator to the same initial state
+        step = n // v
         np.random.seed(1)
-        # Generate random sampling of the indices
         t = np.random.permutation(n)
 
+        # Create fold boundaries
         indices = []
-        for i in range(v - 1):  # group in v fold
+        for i in range(v - 1):
             indices.append(t[i * step : (i + 1) * step])
         indices.append(t[(v - 1) * step : n])
 
+        # Build train/test splits efficiently using list concatenation
         for i in range(v):
             self.iT.append(np.asarray(indices[i]))
-            indices_list = list(range(v))
-            indices_list.remove(i)
-            temp = np.empty(0, dtype=np.int64)
-            for j in indices_list:
-                temp = np.concatenate((temp, np.asarray(indices[j])))
-            self.it.append(temp)
+            # Collect all other folds' indices, then concatenate once
+            train_folds = [indices[j] for j in range(v) if j != i]
+            self.it.append(np.concatenate(train_folds))
 
     def split_data_class(self, y, v=5):
-        """Split the data into v folds with class-based splitting.
+        """Split the data into v folds with stratified class-based splitting.
 
-        The samples of each class are split approximately in v folds
-        Input:
-            n : the number of samples
-            v : the number of folds
-        Output: None.
+        Parameters
+        ----------
+        y : np.ndarray
+            Class labels for each sample.
+        v : int, optional
+            The number of folds (default 5).
+
         """
-        # Get parameters
         C = y.max().astype("int")
 
-        # Get the step for each class
-        tc = []
         for j in range(v):
-            tempit = []
-            tempiT = []
+            train_indices = []
+            test_indices = []
+
             for i in range(C):
-                # Get all samples for each class
                 t = np.where(y == (i + 1))[0]
                 nc = t.size
-                stepc = nc // v  # Step size for each class
+                stepc = nc // v
                 if stepc == 0:
-                    # fix_print_with_import
                     print("Not enough sample to build " + str(v) + " folds in class " + str(i))
-                # Set the random generator to the same initial state
+
                 np.random.seed(i)
-                # Random sampling of indices of samples for class i
                 tc = t[np.random.permutation(nc)]
 
-                # Set testing and training samples
+                # Test indices for this fold
                 if j < (v - 1):
                     start, end = j * stepc, (j + 1) * stepc
                 else:
                     start, end = j * stepc, nc
-                tempiT.extend(np.asarray(tc[start:end]))  # Testing
-                k = list(range(v))
-                k.remove(j)
-                for fold_idx in k:
-                    if fold_idx < (v - 1):
-                        start, end = fold_idx * stepc, (fold_idx + 1) * stepc
-                    else:
-                        start, end = fold_idx * stepc, nc
-                    tempit.extend(np.asarray(tc[start:end]))  # Training
+                test_indices.append(tc[start:end])
 
-            self.it.append(tempit)
-            self.iT.append(tempiT)
+                # Training indices: all other folds
+                for fold_idx in range(v):
+                    if fold_idx != j:
+                        if fold_idx < (v - 1):
+                            start, end = fold_idx * stepc, (fold_idx + 1) * stepc
+                        else:
+                            start, end = fold_idx * stepc, nc
+                        train_indices.append(tc[start:end])
+
+            # Concatenate all indices at once instead of repeated extend
+            self.it.append(np.concatenate(train_indices))
+            self.iT.append(np.concatenate(test_indices))
 
 
 class GMMR:
@@ -162,33 +160,51 @@ class GMMR:
     def predict(self, xt, tau=None, confidenceMap=None):
         """Predict the label for sample xt using the learned model.
 
-        Inputs:
-            xt: the samples to be classified
-        Outputs:
-            y: the class
-            K: the decision value for each class.
+        Parameters
+        ----------
+        xt : np.ndarray
+            The samples to be classified, shape (n_samples, n_features).
+        tau : float, optional
+            Regularization parameter. If None, uses self.tau.
+        confidenceMap : bool, optional
+            If True, returns confidence values along with predictions.
+
+        Returns
+        -------
+        yp : np.ndarray
+            Predicted class labels.
+        K : np.ndarray, optional
+            Confidence values (only if confidenceMap is True).
+
         """
         MAX = np.finfo(np.float64).max
-        # Maximum value that is possible to compute with sp.exp
         E_MAX = np.log(MAX)
 
-        # Get information from the data
         nt = xt.shape[0]  # Number of testing samples
         C = self.ni.shape[0]  # Number of classes
-
-        # Initialization
-        K = np.empty((nt, C))
+        d = xt.shape[1]  # Number of features
 
         TAU = self.tau if tau is None else tau
 
-        for c in range(C):
-            invCov, logdet = self.compute_inverse_logdet(c, TAU)
-            cst = logdet - 2 * np.log(self.prop[c])  # Pre compute the constant
+        # Precompute all inverse covariances, log determinants, and constants
+        invCovs = np.empty((C, d, d))
+        csts = np.empty(C)
 
-            xtc = xt - self.mean[c, :]
-            temp = np.dot(invCov, xtc.T).T
-            K[:, c] = np.sum(xtc * temp, axis=1) + cst
-            del temp, xtc
+        for c in range(C):
+            Lr = self.L[c, :] + TAU
+            temp = self.Q[c, :, :] * (1.0 / Lr)
+            invCovs[c] = np.dot(temp, self.Q[c, :, :].T)
+            logdet = np.sum(np.log(Lr))
+            csts[c] = logdet - 2.0 * np.log(self.prop[c])
+
+        # Vectorized discriminant computation using einsum
+        # xtc shape: (nt, C, d) - centered data for each class
+        xtc = xt[:, np.newaxis, :] - self.mean  # Broadcasting: (nt, 1, d) - (C, d)
+
+        # Compute quadratic form: sum_ij(xtc_i * invCov_ij * xtc_j) for each sample and class
+        # Using einsum: 'nci,cij,ncj->nc' means:
+        # n=samples, c=classes, i,j=features
+        K = np.einsum('nci,cij,ncj->nc', xtc, invCovs, xtc) + csts
 
         yp = np.argmin(K, 1)
 

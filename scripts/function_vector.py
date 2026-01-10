@@ -462,22 +462,39 @@ class DistanceCV:
 def distMatrix(inCoords, distanceMetric=False):
     """Compute distance matrix between points.
 
-    coords : nparray shape[nPoints,2], with first column X, and Y. Proj 4326(WGS84)
-    Return matrix of distance matrix between points.
+    Parameters
+    ----------
+    inCoords : np.ndarray
+        Array of shape (n_points, 2) with first column X (lon), second Y (lat).
+        For distanceMetric=True, coordinates should be in WGS84 (EPSG:4326).
+    distanceMetric : bool, optional
+        If True, compute geodesic distances on WGS84 ellipsoid.
+        If False (default), compute Euclidean distances.
+
+    Returns
+    -------
+    distArray : np.ndarray
+        Distance matrix of shape (n_points, n_points).
+
     """
     if distanceMetric:
         from pyproj import Geod
 
         geod = Geod(ellps="WGS84")
+        n = len(inCoords)
 
-        distArray = np.zeros((len(inCoords), len(inCoords)))
-        for n, p in enumerate(np.nditer(inCoords.T.copy(), flags=["external_loop"], order="F")):
-            for i in range(len(inCoords)):
-                x1, y1 = p
-                x2, y2 = inCoords[i]
-                angle1, angle2, dist = geod.inv(x1, y1, x2, y2)
+        # Vectorized geodesic distance computation
+        # Create meshgrid of all coordinate pairs
+        lons1 = np.repeat(inCoords[:, 0], n)
+        lats1 = np.repeat(inCoords[:, 1], n)
+        lons2 = np.tile(inCoords[:, 0], n)
+        lats2 = np.tile(inCoords[:, 1], n)
 
-                distArray[n, i] = dist
+        # Compute all distances at once using pyproj's vectorized inv
+        _, _, dists = geod.inv(lons1, lats1, lons2, lats2)
+
+        # Reshape to distance matrix
+        distArray = dists.reshape(n, n)
 
     else:
         from scipy.spatial import distance
