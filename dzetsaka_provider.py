@@ -23,6 +23,22 @@ from .processing.split_train_validation import SplitTrain
 # from .processing.moduleName_algorithm import classNameAlgorithm
 from .processing.train import TrainAlgorithm
 
+# Try to import SHAP explainer algorithm (optional)
+try:
+    from .processing.explain_model import ExplainModelAlgorithm
+
+    EXPLAIN_MODEL_AVAILABLE = True
+except ImportError:
+    EXPLAIN_MODEL_AVAILABLE = False
+
+# Try to import Nested CV algorithm (optional)
+try:
+    from .processing.nested_cv_algorithm import NestedCVAlgorithm
+
+    NESTED_CV_ALGORITHM_AVAILABLE = True
+except ImportError:
+    NESTED_CV_ALGORITHM_AVAILABLE = False
+
 plugin_path = os.path.dirname(__file__)
 
 """
@@ -71,6 +87,14 @@ class DzetsakaProvider(QgsProcessingProvider):
         self.addAlgorithm(ClassifyAlgorithm())
         self.addAlgorithm(SplitTrain())
         # self.addAlgorithm(TrainSTANDAlgorithm())
+
+        # Add SHAP explainer algorithm if available
+        if EXPLAIN_MODEL_AVAILABLE:
+            self.addAlgorithm(ExplainModelAlgorithm())
+
+        # Add Nested CV algorithm if available
+        if NESTED_CV_ALGORITHM_AVAILABLE:
+            self.addAlgorithm(NestedCVAlgorithm())
 
         if self.providerType == "Experimental":
             from .processing.closing_filter import ClosingFilterAlgorithm

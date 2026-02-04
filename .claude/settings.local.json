@@ -24,7 +24,13 @@
       "Bash(git tag:*)",
       "Bash(del \"C:\\Users\\nicar\\git\\dzetsaka\\test_sklearn_imports.py\")",
       "Bash(rg:*)",
-      "Bash(where pyrcc5)"
+      "Bash(where pyrcc5)",
+      "Bash(test:*)",
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(pytest:*)",
+      "Bash(python3:*)",
+      "Bash(make lint:*)"
     ],
     "deny": []
   }

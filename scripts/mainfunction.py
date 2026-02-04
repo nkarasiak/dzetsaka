@@ -69,6 +69,42 @@ except ImportError:
     OPTUNA_AVAILABLE = False
     OptunaOptimizer = None
 
+# Try to import SHAP explainer (optional)
+try:
+    from .explainability.shap_explainer import ModelExplainer, SHAP_AVAILABLE
+except ImportError:
+    SHAP_AVAILABLE = False
+    ModelExplainer = None
+
+# Try to import sampling techniques (Phase 3)
+try:
+    from .sampling.smote_sampler import SMOTESampler, apply_smote_if_needed, IMBLEARN_AVAILABLE
+    from .sampling.class_weights import (
+        compute_class_weights,
+        apply_class_weights_to_model,
+        compute_sample_weights,
+        recommend_strategy,
+    )
+
+    SAMPLING_AVAILABLE = True
+except ImportError:
+    SAMPLING_AVAILABLE = False
+    IMBLEARN_AVAILABLE = False
+    SMOTESampler = None
+    apply_smote_if_needed = None
+    compute_class_weights = None
+
+# Try to import validation techniques (Phase 3)
+try:
+    from .validation.nested_cv import NestedCrossValidator, perform_nested_cv
+    from .validation.metrics import ValidationMetrics, create_classification_summary
+
+    VALIDATION_AVAILABLE = True
+except ImportError:
+    VALIDATION_AVAILABLE = False
+    NestedCrossValidator = None
+    ValidationMetrics = None
+
 # Import sklearn modules (optional dependency)
 try:
     from sklearn.base import BaseEstimator, ClassifierMixin
@@ -378,10 +414,42 @@ class LearnModel:
             - 'MLP': Multi-layer Perceptron (sklearn)
         extraParam : dict, optional
             Additional parameters for advanced configurations:
+
+            Optimization (Phase 1):
             - 'USE_OPTUNA': bool, default=False
                 Use Optuna for hyperparameter optimization (2-10x faster than GridSearchCV)
             - 'OPTUNA_TRIALS': int, default=100
                 Number of optimization trials for Optuna
+
+            Explainability (Phase 2):
+            - 'COMPUTE_SHAP': bool, default=False
+                Compute SHAP feature importance after training (requires shap>=0.41.0)
+            - 'SHAP_OUTPUT': str, optional
+                Path to save feature importance raster (e.g., 'importance.tif')
+            - 'SHAP_SAMPLE_SIZE': int, default=1000
+                Number of pixels to sample for SHAP computation
+
+            Imbalance Handling (Phase 3):
+            - 'USE_SMOTE': bool, default=False
+                Apply SMOTE oversampling for imbalanced datasets (requires imbalanced-learn)
+            - 'SMOTE_K_NEIGHBORS': int, default=5
+                Number of neighbors for SMOTE
+            - 'USE_CLASS_WEIGHTS': bool, default=False
+                Apply class weights for cost-sensitive learning
+            - 'CLASS_WEIGHT_STRATEGY': str, default='balanced'
+                Weight strategy ('balanced', 'custom')
+            - 'CUSTOM_CLASS_WEIGHTS': dict, optional
+                Custom weights {class_label: weight}
+
+            Validation (Phase 3):
+            - 'USE_NESTED_CV': bool, default=False
+                Use nested cross-validation for unbiased evaluation
+            - 'NESTED_INNER_CV': int, default=3
+                Inner CV folds for parameter tuning
+            - 'NESTED_OUTER_CV': int, default=5
+                Outer CV folds for evaluation
+
+            Other:
             - 'param_grid': dict, optional
                 Custom parameter grid for GridSearchCV (overrides defaults)
         feedback : object, optional
@@ -435,14 +503,27 @@ class LearnModel:
         # os.remove(filename)
         # os.rmdir(temp_folder)
 
+        # Phase 3: Class imbalance handling
+        self._handle_class_imbalance(X, Y, classifier, extraParam, feedback)
+
+        # Apply SMOTE oversampling if enabled
+        if extraParam.get("USE_SMOTE", False):
+            X, Y = self._apply_smote(X, Y, extraParam, feedback)
+
+        # Compute class weights if enabled
+        self.class_weights_ = None
+        if extraParam.get("USE_CLASS_WEIGHTS", False):
+            self.class_weights_ = self._compute_weights(Y, extraParam, feedback)
+
+        [n, d] = X.shape
+        C = int(Y.max())
+
         # Scale the data
         X, M, m = self.scale(X)
 
-        pushFeedback(int(1 * total))
+        pushFeedback(int(1 * total), feedback=feedback)
         if feedback == "gui":
-            progress.addStep()  # Add Step to ProgressBar
-        elif feedback is not None and hasattr(feedback, "setProgress"):
-            feedback.setProgress(int(1 * total))
+            progress.prgBar.setValue(10)
         # Learning process take split of groundthruth pixels for training and
         # the remaining for testing
 
@@ -479,9 +560,7 @@ class LearnModel:
 
         pushFeedback(int(2 * total), feedback=feedback)
         if feedback == "gui":
-            progress.addStep()
-        elif feedback is not None and hasattr(feedback, "setProgress"):
-            feedback.setProgress(int(2 * total))
+            progress.prgBar.setValue(20)
 
         pushFeedback("Starting model training process...", feedback=feedback)
         pushFeedback(
@@ -490,7 +569,7 @@ class LearnModel:
         )
 
         if feedback == "gui":
-            progress.addStep()  # Add Step to ProgressBar
+            progress.prgBar.setValue(25)
         # Train Classifier
         if classifier == "GMM":
             try:
@@ -793,7 +872,7 @@ class LearnModel:
                     feedback=feedback,
                 )
                 if feedback == "gui":
-                    progress_bar.reset()
+                    progress.reset()
                 return None
             except Exception as e:
                 pushFeedback(
@@ -801,11 +880,11 @@ class LearnModel:
                     feedback=feedback,
                 )
                 if feedback == "gui":
-                    progress_bar.reset()
+                    progress.reset()
                 return None
 
             if feedback == "gui":
-                progress.prgBar.setValue(5)  # Add Step to ProgressBar
+                progress.prgBar.setValue(30)
 
             y.shape = (y.size,)
 
@@ -1125,14 +1204,27 @@ class LearnModel:
 
         # Update progress after model training completion
         if feedback == "gui":
-            progress.addStep()  # Move from 5 to 6
+            progress.prgBar.setValue(95)
         elif feedback is not None and hasattr(feedback, "setProgress"):
-            feedback.setProgress(95)  # Near completion
+            feedback.setProgress(95)
 
         # Save Tree model
         self.model = model
         self.M = M
         self.m = m
+
+        # SHAP explainability computation (optional)
+        if extraParam.get("COMPUTE_SHAP", False):
+            self._compute_shap_importance(
+                model=model,
+                raster_path=raster_path,
+                X_train=x if 'x' in locals() else X,
+                feature_names=None,  # Will generate Band_1, Band_2, etc.
+                shap_output_path=extraParam.get("SHAP_OUTPUT"),
+                sample_size=extraParam.get("SHAP_SAMPLE_SIZE", 1000),
+                feedback=feedback,
+            )
+
         if model_path is not None:
             # Debug: log what we're saving
             pushFeedback(
@@ -1179,6 +1271,261 @@ class LearnModel:
 
         return xs, M, m
 
+    def _compute_shap_importance(
+        self,
+        model: Any,
+        raster_path: Union[str, np.ndarray],
+        X_train: np.ndarray,
+        feature_names: Optional[List[str]],
+        shap_output_path: Optional[str],
+        sample_size: int,
+        feedback,
+    ) -> None:
+        """Compute SHAP feature importance and optionally create raster output.
+
+        Parameters
+        ----------
+        model : Any
+            Trained classifier model
+        raster_path : str or np.ndarray
+            Path to raster or numpy array
+        X_train : np.ndarray
+            Training data for background samples
+        feature_names : List[str], optional
+            Names of features (bands)
+        shap_output_path : str, optional
+            Path to save importance raster
+        sample_size : int
+            Number of samples for SHAP computation
+        feedback : object
+            Feedback interface for progress reporting
+
+        """
+        if not SHAP_AVAILABLE:
+            pushFeedback(
+                "SHAP is not installed. Install with: pip install shap>=0.41.0",
+                feedback=feedback,
+            )
+            return
+
+        try:
+            pushFeedback("Computing SHAP feature importance...", feedback=feedback)
+
+            # Generate feature names if not provided
+            n_features = X_train.shape[1]
+            if feature_names is None:
+                feature_names = [f"Band_{i+1}" for i in range(n_features)]
+
+            # Create ModelExplainer
+            explainer = ModelExplainer(
+                model=model,
+                feature_names=feature_names,
+                background_data=X_train[:min(100, len(X_train))],  # Use up to 100 samples as background
+            )
+
+            # Compute feature importance on training sample
+            sample_for_shap = X_train[:min(sample_size, len(X_train))]
+            importance = explainer.get_feature_importance(
+                X_sample=sample_for_shap,
+                aggregate_method="mean_abs",
+            )
+
+            # Log importance scores
+            pushFeedback("\nFeature Importance (SHAP values):", feedback=feedback)
+            for feat, score in sorted(importance.items(), key=lambda x: -x[1]):
+                pushFeedback(f"  {feat}: {score:.4f}", feedback=feedback)
+
+            # Store importance in model metadata
+            self.feature_importance = importance
+
+            # Create importance raster if output path provided and raster_path is a file
+            if shap_output_path and isinstance(raster_path, str):
+                pushFeedback(f"Generating feature importance raster: {shap_output_path}", feedback=feedback)
+
+                # Create progress callback for SHAP raster generation
+                def shap_progress_callback(pct):
+                    if feedback is not None and hasattr(feedback, "setProgress"):
+                        # Map SHAP progress (0-100) to remaining progress window
+                        feedback.setProgress(int(95 + pct * 0.05))
+
+                explainer.create_importance_raster(
+                    raster_path=raster_path,
+                    output_path=shap_output_path,
+                    sample_size=sample_size,
+                    progress_callback=shap_progress_callback if feedback else None,
+                )
+
+                pushFeedback(f"Feature importance raster saved to: {shap_output_path}", feedback=feedback)
+
+        except Exception as e:
+            pushFeedback(
+                f"Warning: SHAP computation failed: {e!s}\nContinuing without SHAP analysis.",
+                feedback=feedback,
+            )
+            # Don't raise - continue with normal workflow
+
+    def _handle_class_imbalance(
+        self,
+        X: np.ndarray,
+        Y: np.ndarray,
+        classifier: str,
+        extraParam: Dict[str, Any],
+        feedback,
+    ) -> None:
+        """Analyze class imbalance and log recommendations.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Training features
+        Y : np.ndarray
+            Training labels
+        classifier : str
+            Classifier code
+        extraParam : dict
+            Extra parameters
+        feedback : object
+            Feedback interface
+
+        """
+        if not SAMPLING_AVAILABLE:
+            return
+
+        # Check imbalance ratio
+        unique, counts = np.unique(Y, return_counts=True)
+        if len(unique) < 2:
+            return
+
+        ratio = counts.max() / counts.min()
+
+        # Log class distribution
+        pushFeedback("Class distribution:", feedback=feedback)
+        for cls, count in zip(unique, counts):
+            pct = (count / len(Y)) * 100
+            pushFeedback(f"  Class {int(cls)}: {int(count)} samples ({pct:.1f}%)", feedback=feedback)
+        pushFeedback(f"  Imbalance ratio: {ratio:.2f}", feedback=feedback)
+
+        # Recommend strategy if not already configured
+        if not extraParam.get("USE_SMOTE", False) and not extraParam.get("USE_CLASS_WEIGHTS", False):
+            strategy = recommend_strategy(Y)
+            if strategy == "smote":
+                pushFeedback(
+                    "Warning: Dataset is severely imbalanced. "
+                    "Consider enabling USE_SMOTE=True or USE_CLASS_WEIGHTS=True.",
+                    feedback=feedback,
+                )
+            elif strategy == "class_weights":
+                pushFeedback(
+                    "Note: Dataset is moderately imbalanced. "
+                    "Consider enabling USE_CLASS_WEIGHTS=True for better performance.",
+                    feedback=feedback,
+                )
+
+    def _apply_smote(
+        self,
+        X: np.ndarray,
+        Y: np.ndarray,
+        extraParam: Dict[str, Any],
+        feedback,
+    ) -> tuple:
+        """Apply SMOTE oversampling if conditions are met.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Training features
+        Y : np.ndarray
+            Training labels
+        extraParam : dict
+            Extra parameters
+        feedback : object
+            Feedback interface
+
+        Returns
+        -------
+        X_resampled : np.ndarray
+            Resampled features
+        Y_resampled : np.ndarray
+            Resampled labels
+
+        """
+        if not SAMPLING_AVAILABLE or not IMBLEARN_AVAILABLE:
+            pushFeedback(
+                "Warning: SMOTE requires imbalanced-learn. Install with: pip install imbalanced-learn>=0.10.0",
+                feedback=feedback,
+            )
+            return X, Y
+
+        k_neighbors = extraParam.get("SMOTE_K_NEIGHBORS", 5)
+
+        try:
+            pushFeedback("Applying SMOTE oversampling...", feedback=feedback)
+            original_size = len(Y)
+
+            sampler = SMOTESampler(k_neighbors=k_neighbors, random_state=0)
+            X_resampled, Y_resampled = sampler.fit_resample(X, Y)
+
+            new_size = len(Y_resampled)
+            pushFeedback(
+                f"SMOTE complete: {original_size} -> {new_size} samples ({new_size - original_size} synthetic)",
+                feedback=feedback,
+            )
+
+            return X_resampled, Y_resampled
+
+        except Exception as e:
+            pushFeedback(
+                f"Warning: SMOTE failed: {e!s}. Continuing with original data.",
+                feedback=feedback,
+            )
+            return X, Y
+
+    def _compute_weights(
+        self,
+        Y: np.ndarray,
+        extraParam: Dict[str, Any],
+        feedback,
+    ) -> Optional[Dict[int, float]]:
+        """Compute class weights for cost-sensitive learning.
+
+        Parameters
+        ----------
+        Y : np.ndarray
+            Training labels
+        extraParam : dict
+            Extra parameters
+        feedback : object
+            Feedback interface
+
+        Returns
+        -------
+        weights : dict or None
+            Class weights or None if computation fails
+
+        """
+        if not SAMPLING_AVAILABLE:
+            return None
+
+        strategy = extraParam.get("CLASS_WEIGHT_STRATEGY", "balanced")
+        custom_weights = extraParam.get("CUSTOM_CLASS_WEIGHTS", None)
+
+        try:
+            weights = compute_class_weights(Y, strategy=strategy, custom_weights=custom_weights)
+
+            pushFeedback("Class weights computed:", feedback=feedback)
+            for cls, weight in sorted(weights.items()):
+                pushFeedback(f"  Class {cls}: {weight:.4f}", feedback=feedback)
+
+            return weights
+
+        except Exception as e:
+            pushFeedback(
+                f"Warning: Class weight computation failed: {e!s}. "
+                "Continuing without class weights.",
+                feedback=feedback,
+            )
+            return None
+
     def _validate_inputs(
         self,
         raster_path: Union[str, np.ndarray],
@@ -1199,7 +1546,7 @@ class LearnModel:
     def _setup_progress_feedback(self, feedback):
         """Setup progress feedback based on feedback type."""
         if feedback == "gui":
-            return progress_bar.ProgressBar("Loading...", 6)
+            return progress_bar.ProgressBar("Loading...", 100)
         elif feedback is not None and hasattr(feedback, "setProgress"):
             feedback.setProgressText("Loading...")
             feedback.setProgress(0)
@@ -1674,7 +2021,7 @@ class ClassifyImage:
 
         # Perform the classification
 
-        total = nl * y_block_size
+        total = nl
 
         if d > 3:
             pushFeedback(f"Predicting model for {d}-band image...")
@@ -1683,7 +2030,7 @@ class ClassifyImage:
 
         if feedback == "gui":
             progress_text = f"Predicting model ({d} bands)..." if d > 3 else "Predicting model..."
-            progress = progress_bar.ProgressBar(progress_text, int(total / 10))
+            progress = progress_bar.ProgressBar(progress_text, 100)
         elif feedback is not None and hasattr(feedback, "setProgress"):
             # Handle batch processing feedback
             progress_text = f"Predicting model for {d}-band image..." if d > 3 else "Predicting model..."
@@ -1695,12 +2042,10 @@ class ClassifyImage:
                 lastBlock = i
             if int(lastBlock / total * 100) != int(i / total * 100):
                 lastBlock = i
-                pushFeedback(int(i / total * 100))
-
+                pct = int(i / total * 100)
+                pushFeedback(pct, feedback=feedback)
                 if feedback == "gui":
-                    progress.addStep()
-                elif feedback is not None and hasattr(feedback, "setProgress"):
-                    feedback.setProgress(int(i / total * 100))
+                    progress.prgBar.setValue(pct)
 
             lines = y_block_size if i + y_block_size < nl else nl - i  # Check for size consistency in Y
             for j in range(0, nc, x_block_size):  # Check for size consistency in X

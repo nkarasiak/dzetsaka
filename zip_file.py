@@ -34,17 +34,35 @@ def get_version_from_metadata(metadata_file="metadata.txt"):
 
 def should_exclude(path):
     """Check if a file or directory should be excluded from the package."""
+    # readme.md is used by the QGIS Plugin Repository as the long description
+    if os.path.basename(path).lower() == "readme.md":
+        return False
+
     exclude_patterns = [
+        # Build / cache artefacts
         "__pycache__",
-        "*.qrc",
-        "*.ui",
-        "img/*",
-        "*.sh",
-        "*.bat",
-        "*.py~",
         "*.pyc",
         "*.pyo",
+        "*.py~",
+        # Qt source files (generated .py files ARE included)
+        "*.qrc",
+        "*.ui",
+        # Assets (loaded at runtime via resources.py)
+        "img/*",
+        # Dev tooling & scripts
+        "Makefile",
+        "conftest.py",
+        "zip_file.py",
+        "*.sh",
+        "*.bat",
+        # Dev / CI config
+        "pyproject.toml",
         ".git*",
+        # Dev-only directories
+        "tests",
+        # Documentation (readme.md whitelisted above)
+        "*.md",
+        # Packaging output
         "*.zip",
     ]
 

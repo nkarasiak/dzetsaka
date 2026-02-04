@@ -48,8 +48,7 @@ class ProgressBar:
         QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
 
         # if Max 0 and value 0, no progressBar, only cursor loading
-        # default is set to 0
-        prgBar.setValue(1)
+        prgBar.setValue(0)
         # set Maximum for progressBar - ensure integer conversion for Python 3.12+ compatibility
         prgBar.setMaximum(int(inMaxStep))
 

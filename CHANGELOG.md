@@ -5,6 +5,220 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0] - 2026-02-04
+
+### Added - Phase 5: Polish & Testing
+- Comprehensive unit tests for all wizard helper functions and comparison panel data builder
+- `tests/unit/test_wizard.py` — 40+ tests covering dependency checks, smart defaults, review summary, classifier metadata, extraParam construction, and output config extraction
+- `tests/unit/test_comparison_panel.py` — 20+ tests covering table data structure, feature support mapping, and availability logic
+
+### Changed
+- Version bumped to 5.0.0 (stable release)
+- `metadata.txt` and `pyproject.toml` updated to 5.0.0
+
+## [4.6.0] - 2026-02-04
+
+### Added - Phase 4: Wizard UI
+- **Classification Wizard** (`ui/wizard_widget.py`): 5-page QWizard guiding users through the full classification workflow
+  - Page 0 — Input Data: raster/vector selection via QgsMapLayerComboBox (with QLineEdit fallback), class-field combo, load-model mode
+  - Page 1 — Algorithm: classifier combo with live green/red dependency-status labels, Smart Defaults button, Compare button
+  - Page 2 — Advanced Options: 4 QGroupBoxes for Optimization (Optuna), Imbalance (SMOTE + class weights), Explainability (SHAP), Validation (nested CV); controls enabled/disabled by dep availability
+  - Page 3 — Output: output raster, confidence map, save model, confusion matrix paths with browse buttons; split % spinbox
+  - Page 4 — Review & Run: read-only summary regenerated from all pages; Finish button labelled "Run Classification"
+- **Algorithm Comparison Panel** (`ui/comparison_panel.py`): modal QDialog with a colour-coded QTableWidget (red text for missing deps); "Use Selected" button propagates choice back to the wizard
+- **Standalone helpers** (testable without Qt):
+  - `check_dependency_availability()` — runtime import-check for sklearn/xgboost/lightgbm/optuna/shap/imblearn
+  - `build_smart_defaults(deps)` — pre-filled extraParam dict based on available packages
+  - `build_review_summary(config)` — formatted multi-line summary string
+- **dzetsaka.py integration**:
+  - New "Classification Wizard" menu action (menu-only, no toolbar icon)
+  - `run_wizard()` instantiates and shows the wizard
+  - `execute_wizard_config(config)` drives training + classification from the wizard's config dict, reusing the same LearnModel/ClassifyImage pattern as the dock widget
+
+### Changed
+- `ui/__init__.py` — added imports for `ClassificationWizard` and `AlgorithmComparisonPanel`
+
+## [4.5.0] - 2026-02-03
+
+### Added - Phase 3: Class Imbalance & Nested CV ⚖️
+- ⚖️ **SMOTE oversampling**: Synthetic Minority Over-sampling Technique for imbalanced datasets
+  - KNN-based synthetic sample generation
+  - Multi-class support
+  - Automatic k_neighbors adjustment for small classes
+  - Configurable sampling strategies (auto, minority, not majority, etc.)
+  - Automatic imbalance ratio detection and SMOTE recommendation
+- 📊 **Class weight computation**: Cost-sensitive learning for all algorithms
+  - Balanced, uniform, and custom weight strategies
+  - Model-specific parameter format conversion (RF, SVM, XGB, LGB)
+  - Sample weight generation for XGBoost multiclass
+  - Weight normalization and validation
+- 🔄 **Nested cross-validation**: Unbiased model evaluation
+  - Inner loop for hyperparameter tuning (GridSearchCV or Optuna)
+  - Outer loop for model performance estimation
+  - Configurable inner/outer CV folds
+  - Per-fold best parameters tracking
+- 📈 **Enhanced validation metrics**:
+  - Per-class precision, recall, F1 scores
+  - ROC curves for binary and multiclass (one-vs-rest)
+  - AUC computation
+  - Learning curves for overfitting detection
+  - Improved confusion matrix visualization
+  - Comprehensive classification summaries
+- 🗺️ **Nested CV Processing algorithm**: Batch nested CV evaluation in QGIS Toolbox
+
+### Improved
+- 🧠 **Automatic strategy recommendations**: Analyzes class distribution and suggests best handling approach
+- 📝 **Enhanced documentation**: Comprehensive docstrings and usage examples
+- ⚙️ **New extraParam keys**: 8 new parameters for imbalance and validation control
+- 🛡️ **Graceful fallback**: All features degrade gracefully when dependencies unavailable
+
+### Performance
+- 📊 **SMOTE**: Handles datasets up to 500K+ samples efficiently
+- 🔄 **Nested CV**: 3×5 default provides good balance of speed and accuracy
+- 💾 **Memory efficient**: Sample-based processing for large datasets
+
+### Dependencies
+- **New optional**: `imbalanced-learn>=0.10.0` for SMOTE
+- **New optional**: `matplotlib>=3.5.0`, `seaborn>=0.11.0` for metric visualizations
+- Install with: `pip install dzetsaka[imbalanced]` or `pip install dzetsaka[full]`
+
+### Usage Examples
+```python
+# SMOTE oversampling
+model = LearnModel(
+    raster_path="image.tif",
+    vector_path="training.shp",
+    class_field="class",
+    classifier="RF",
+    extraParam={
+        "USE_SMOTE": True,
+        "SMOTE_K_NEIGHBORS": 5
+    }
+)
+
+# Class weights
+model = LearnModel(
+    ...,
+    extraParam={
+        "USE_CLASS_WEIGHTS": True,
+        "CLASS_WEIGHT_STRATEGY": "balanced"
+    }
+)
+
+# Combined: SMOTE + class weights + Optuna
+model = LearnModel(
+    ...,
+    extraParam={
+        "USE_OPTUNA": True,
+        "USE_SMOTE": True,
+        "USE_CLASS_WEIGHTS": True,
+        "COMPUTE_SHAP": True
+    }
+)
+```
+
+### Files Changed
+- **New**: `scripts/sampling/smote_sampler.py` - SMOTE implementation
+- **New**: `scripts/sampling/class_weights.py` - Class weight utilities
+- **New**: `scripts/sampling/__init__.py` - Module exports
+- **New**: `scripts/validation/nested_cv.py` - Nested CV implementation
+- **New**: `scripts/validation/metrics.py` - Enhanced metrics
+- **New**: `scripts/validation/__init__.py` - Module exports
+- **New**: `processing/nested_cv_algorithm.py` - Processing algorithm
+- **New**: `tests/unit/test_smote_sampler.py` - SMOTE unit tests
+- **New**: `tests/unit/test_class_weights.py` - Class weight tests
+- **New**: `tests/integration/test_imbalance_workflow.py` - Integration tests
+- **Modified**: `scripts/mainfunction.py` - Integrated SMOTE and class weights
+- **Modified**: `dzetsaka_provider.py` - Registered NestedCVAlgorithm
+
+## [4.4.0] - 2026-02-03
+
+### Added - Phase 2: SHAP & Explainability 🔍
+- 📊 **SHAP explainability module**: Comprehensive model interpretability using SHapley Additive exPlanations
+  - `ModelExplainer` class with automatic explainer selection based on model type
+  - TreeExplainer for tree-based models (RF, XGB, LGB, ET, GBC) - fast and exact
+  - KernelExplainer fallback for other models (SVM, KNN, LR, NB, MLP) - universal but slower
+  - Feature importance computation with multiple aggregation methods (mean_abs, mean, max_abs)
+  - Memory-efficient block-based raster processing
+- 🗺️ **Feature importance raster generation**: Create multi-band rasters showing per-feature importance
+  - Each band shows importance (0-100) of corresponding input feature
+  - Sample-based computation for memory efficiency
+  - Customizable sample size (default: 1000 pixels)
+  - Progress callback integration with QGIS feedback system
+- 🔧 **Processing algorithm**: "Explain Model (SHAP)" for batch feature importance generation
+  - Inputs: trained model (.model file) + raster image
+  - Outputs: multi-band feature importance raster
+  - Comprehensive help documentation with usage tips
+  - Batch processing ready for workflow integration
+- ⚙️ **Training integration**: Optional SHAP computation during model training
+  - New parameters: `COMPUTE_SHAP`, `SHAP_OUTPUT`, `SHAP_SAMPLE_SIZE` in `extraParam`
+  - Automatic feature importance logging after training
+  - Graceful fallback if SHAP unavailable
+  - Backward compatible (SHAP disabled by default)
+
+### Improved
+- 📝 **Enhanced documentation**: Detailed docstrings with examples for all SHAP functionality
+- 🛡️ **Error handling**: Graceful degradation when SHAP unavailable with clear installation instructions
+- 🎯 **Type hints**: Full type annotations for explainability module
+- 📦 **Dependency management**: Optional SHAP dependency with clear installation paths
+
+### Performance
+- 🌳 **TreeExplainer**: 10-30 seconds for tree-based models (RF, XGB, LGB, ET, GBC)
+- 🔄 **KernelExplainer**: 2-5 minutes for other models (still provides valuable insights)
+- 💾 **Memory efficient**: Sample-based computation prevents memory issues with large rasters
+- 📊 **Configurable accuracy**: Adjustable sample size balances speed vs. precision
+
+### Technical Details
+- **Explainer selection**: Automatic detection of tree-based models via attribute introspection
+- **Multiclass support**: Aggregates SHAP values across classes for unified importance scores
+- **Background data**: Uses training samples for KernelExplainer context
+- **Normalization**: Importance scores normalized to sum to 1.0 for interpretability
+- **Pickle support**: ModelExplainer can be saved/loaded for reuse
+
+### Usage Examples
+```python
+# Method 1: During training (integrated)
+model = LearnModel(
+    raster_path="image.tif",
+    vector_path="training.shp",
+    class_field="class",
+    classifier="RF",
+    extraParam={
+        "COMPUTE_SHAP": True,
+        "SHAP_OUTPUT": "importance.tif",
+        "SHAP_SAMPLE_SIZE": 1000
+    }
+)
+
+# Method 2: Standalone (on existing model)
+from scripts.explainability import ModelExplainer
+explainer = ModelExplainer(model, feature_names=['B1', 'B2', 'B3', 'NDVI'])
+importance = explainer.get_feature_importance(X_sample)
+explainer.create_importance_raster('image.tif', 'importance.tif')
+
+# Method 3: QGIS Processing Toolbox
+# Use "Explain Model (SHAP)" algorithm in Processing Toolbox
+```
+
+### Dependencies
+- **New functionality requires**: `shap>=0.41.0`
+- Install with: `pip install dzetsaka[explainability]` or `pip install dzetsaka[full]`
+- SHAP features automatically disabled if library not available
+
+### Files Changed
+- **New**: `scripts/explainability/shap_explainer.py` (~700 lines) - Core SHAP implementation
+- **New**: `scripts/explainability/__init__.py` - Module exports and availability checks
+- **New**: `processing/explain_model.py` (~300 lines) - QGIS Processing algorithm
+- **Modified**: `scripts/mainfunction.py` - Integrated SHAP computation in LearnModel
+- **Modified**: `dzetsaka_provider.py` - Registered ExplainModelAlgorithm
+- **Modified**: `metadata.txt` - Updated version to 4.4.0 and added SHAP to description
+- **Modified**: `pyproject.toml` - Updated version and description
+
+### Coming Next (Phase 3: Weeks 6-7)
+- ⚖️ **Class imbalance handling**: SMOTE, class weights, stratified sampling
+- 🔄 **Nested cross-validation**: Unbiased hyperparameter tuning with separate test sets
+- 📊 **Enhanced validation metrics**: Per-class metrics, ROC curves, learning curves
+
 ## [4.3.0] - 2026-02-03
 
 ### Added - Phase 1: Speed & Foundation 🚀

@@ -376,6 +376,16 @@ class DzetsakaGUI(QDialog):
         self.iface.addToolBarIcon(self.settingsIcon)
         self.actions.append(self.settingsIcon)
 
+        # Classification Wizard — menu only, no toolbar icon
+        icon_path = self.get_icon_path("icon.png")
+        self.add_action(
+            icon_path,
+            text=self.tr("Classification Wizard"),
+            callback=self.run_wizard,
+            add_to_toolbar=False,
+            parent=self.iface.mainWindow(),
+        )
+
     # --------------------------------------------------------------------------
 
     def onClosePlugin(self):
@@ -1030,9 +1040,9 @@ class DzetsakaGUI(QDialog):
             selected_classifier = self.settingsdock.selectClassifier.currentText()
             classifier_code = classifier_config.get_classifier_code(selected_classifier)
 
-            # Check dependencies
-            missing_deps = []
-            error_message = ""
+            # Check required dependencies
+            missing_required = []
+            required_message = ""
 
             if classifier_config.requires_sklearn(classifier_code):
                 # Test sklearn availability directly
@@ -1048,28 +1058,43 @@ class DzetsakaGUI(QDialog):
                     QgsMessageLog.logMessage(f"Sklearn import failed for {selected_classifier}: {e}")
 
                 if not sklearn_available:
-                    missing_deps.append("scikit-learn")
-                    error_message += "Scikit-learn library is missing.<br>"
-                    error_message += "Install with: <code>pip install scikit-learn</code><br><br>"
+                    missing_required.append("scikit-learn")
+                    required_message += "Scikit-learn library is missing.<br>"
+                    required_message += "Install with: <code>pip install scikit-learn</code><br><br>"
 
             if classifier_config.requires_xgboost(classifier_code):
                 try:
                     import xgboost  # noqa: F401
                 except ImportError:
-                    missing_deps.append("XGBoost")
-                    error_message += "XGBoost library is missing.<br>"
-                    error_message += "Install with: <code>pip install xgboost</code><br><br>"
+                    missing_required.append("XGBoost")
+                    required_message += "XGBoost library is missing.<br>"
+                    required_message += "Install with: <code>pip install xgboost</code><br><br>"
 
             if classifier_config.requires_lightgbm(classifier_code):
                 try:
                     import lightgbm  # noqa: F401
                 except ImportError:
-                    missing_deps.append("LightGBM")
-                    error_message += "LightGBM library is missing.<br>"
-                    error_message += "Install with: <code>pip install lightgbm</code><br><br>"
+                    missing_required.append("LightGBM")
+                    required_message += "LightGBM library is missing.<br>"
+                    required_message += "Install with: <code>pip install lightgbm</code><br><br>"
 
-            if missing_deps:
-                # Offer experimental auto-installation
+            # Check optional enhancements (for sklearn-based classifiers)
+            missing_optional = []
+            optional_message = ""
+            if classifier_config.requires_sklearn(classifier_code):
+                try:
+                    import optuna  # noqa: F401
+                except ImportError:
+                    missing_optional.append("Optuna")
+                    optional_message += "Optuna library is missing (optional - advanced hyperparameter optimization).<br>"
+                    optional_message += "Install with: <code>pip install optuna</code><br><br>"
+
+            if missing_required:
+                # Required dependencies missing — must install or fall back to GMM
+                error_message = "<b>Required dependencies:</b><br>" + required_message
+                if missing_optional:
+                    error_message += "<b>Optional enhancements:</b><br>" + optional_message
+
                 reply = QMessageBox.question(
                     self,
                     f"Missing Dependencies for {selected_classifier}",
@@ -1084,8 +1109,8 @@ class DzetsakaGUI(QDialog):
                 )
 
                 if reply == QMessageBox.Yes:
-                    # Try experimental auto-installation
-                    if self._try_install_dependencies(missing_deps):
+                    # Try auto-installation (required + optional together)
+                    if self._try_install_dependencies(missing_required + missing_optional):
                         # Success! Update classifier
                         self.settings.setValue("/dzetsaka/classifier", selected_classifier)
                         self.classifier = selected_classifier
@@ -1109,8 +1134,28 @@ class DzetsakaGUI(QDialog):
                     self.settings.setValue("/dzetsaka/classifier", "Gaussian Mixture Model")
                     self.classifier = "Gaussian Mixture Model"
                 # If No, keep current selection but don't save (user will handle manually)
+
+            elif missing_optional:
+                # Only optional deps missing — classifier is fully usable, suggest install
+                if self.classifier != selected_classifier:
+                    self.settings.setValue("/dzetsaka/classifier", selected_classifier)
+                    self.classifier = selected_classifier
+
+                reply = QMessageBox.question(
+                    self,
+                    "Optional Enhancement Available",
+                    f"{optional_message}"
+                    f"<b>Note:</b> {selected_classifier} works without it using standard cross-validation.<br><br>"
+                    f"Would you like to install it automatically?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No,
+                )
+
+                if reply == QMessageBox.Yes:
+                    self._try_install_dependencies(missing_optional)
+
             else:
-                # Dependencies satisfied, update classifier
+                # All dependencies satisfied, update classifier
                 if self.classifier != selected_classifier:
                     self.settings.setValue("/dzetsaka/classifier", selected_classifier)
                     self.classifier = selected_classifier
@@ -1261,6 +1306,7 @@ Settings:
                     stderr=subprocess.STDOUT,
                     text=True,
                     universal_newlines=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
                 )
 
                 # Stream output in real-time
@@ -1291,6 +1337,7 @@ Settings:
             "scikit-learn": "scikit-learn",
             "XGBoost": "xgboost",
             "LightGBM": "lightgbm",
+            "Optuna": "optuna",
         }
 
         try:
@@ -1344,6 +1391,10 @@ Settings:
                                 importlib.invalidate_caches()
                                 lightgbm = importlib.import_module("lightgbm")
                                 QgsMessageLog.logMessage(f"Verified lightgbm import: {lightgbm.__version__}")
+                            elif dep == "Optuna":
+                                importlib.invalidate_caches()
+                                optuna = importlib.import_module("optuna")
+                                QgsMessageLog.logMessage(f"Verified optuna import: {optuna.__version__}")
                         except ImportError as import_error:
                             QgsMessageLog.logMessage(
                                 f"Package {package_name} installed but not immediately available: {import_error}"
@@ -1379,10 +1430,120 @@ Settings:
                 "Installation Error",
                 f"An error occurred during installation:<br><br>{e!s}<br><br>"
                 f"Please install dependencies manually using:<br>"
-                f"pip install scikit-learn xgboost lightgbm",
+                f"pip install scikit-learn xgboost lightgbm optuna",
                 QMessageBox.Ok,
             )
             return False
+
+    def run_wizard(self):
+        """Open the Classification Wizard dialog."""
+        self._wizard = ui.ClassificationWizard(self.iface.mainWindow())
+        self._wizard.classificationRequested.connect(self.execute_wizard_config)
+        self._wizard.show()
+
+    def execute_wizard_config(self, config):
+        """Run training and classification driven by the wizard config dict.
+
+        Parameters
+        ----------
+        config : dict
+            The full configuration dictionary emitted by ClassificationWizard.
+            Keys: raster, vector, class_field, load_model, classifier,
+            extraParam, output_raster, confidence_map, save_model,
+            confusion_matrix, split_percent.
+
+        """
+        from qgis.core import Qgis
+
+        inRaster = config.get("raster", "")
+        inShape = config.get("vector", "")
+        inField = config.get("class_field", "")
+        inClassifier = str(config.get("classifier", "GMM"))
+        extraParam = config.get("extraParam", None)
+
+        # --- output raster (temp if blank) ---
+        outRaster = config.get("output_raster", "")
+        if not outRaster:
+            tempFolder = tempfile.mkdtemp()
+            outRaster = os.path.join(tempFolder, os.path.splitext(os.path.basename(inRaster))[0] + "_class.tif")
+
+        # --- confidence map ---
+        confidenceMap = config.get("confidence_map", "") or None
+
+        # --- model path ---
+        loadModel = config.get("load_model", "")
+        if loadModel:
+            model = loadModel
+        else:
+            saveModel = config.get("save_model", "")
+            model = saveModel if saveModel else tempfile.mktemp("." + inClassifier)
+
+        # --- confusion matrix / split ---
+        outMatrix = config.get("confusion_matrix", "") or None
+        inSplit = config.get("split_percent", 100)
+        if not outMatrix:
+            inSplit = 100
+
+        NODATA = -9999
+        inSeed = 0
+        stop = False
+
+        # --- Training phase (skipped when loading an existing model) ---
+        if not loadModel:
+            try:
+                QgsMessageLog.logMessage(
+                    f"[Wizard] Training with {inClassifier}",
+                    level=Qgis.Info,
+                )
+                mainfunction.LearnModel(
+                    raster_path=inRaster,
+                    vector_path=inShape,
+                    class_field=inField,
+                    model_path=model,
+                    split_config=inSplit,
+                    random_seed=inSeed,
+                    matrix_path=outMatrix,
+                    classifier=inClassifier,
+                    extraParam=extraParam,
+                    feedback="gui",
+                )
+            except Exception as e:
+                QgsMessageLog.logMessage("[Wizard] Training failed: " + str(e))
+                message = (
+                    "Training failed:<br><br>"
+                    + str(e).replace("\n", "<br>")
+                    + "<br><br>Check the QGIS log for details."
+                )
+                QMessageBox.warning(self, "dzetsaka Wizard — Training Error", message, QMessageBox.Ok)
+                stop = True
+
+        # --- Classification phase ---
+        if not stop:
+            try:
+                QgsMessageLog.logMessage("[Wizard] Starting classification", level=Qgis.Info)
+                classifier_obj = mainfunction.ClassifyImage()
+                classifier_obj.initPredict(
+                    raster_path=inRaster,
+                    model_path=model,
+                    output_path=outRaster,
+                    mask_path=None,
+                    confidenceMap=confidenceMap,
+                    confidenceMapPerClass=None,
+                    NODATA=NODATA,
+                    feedback="gui",
+                )
+                QgsMessageLog.logMessage("[Wizard] Classification completed", level=Qgis.Info)
+                self.iface.addRasterLayer(outRaster)
+                if confidenceMap:
+                    self.iface.addRasterLayer(confidenceMap)
+            except Exception as e:
+                QgsMessageLog.logMessage("[Wizard] Classification failed: " + str(e))
+                message = (
+                    "Classification failed:<br><br>"
+                    + str(e).replace("\n", "<br>")
+                    + "<br><br>Check the QGIS log for details."
+                )
+                QMessageBox.warning(self, "dzetsaka Wizard — Classification Error", message, QMessageBox.Ok)
 
     def modifyConfig(self, section, option, value):
         """Modify configuration file with new section/option/value.

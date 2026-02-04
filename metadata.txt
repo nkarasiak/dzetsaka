@@ -9,8 +9,8 @@
 [general]
 name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
-description=Fast and Easy Classification plugin for Qgis with 11 ML algorithms + Optuna Optimization
-version=4.3.0
+description=Fast and Easy Classification plugin for Qgis with 11 ML algorithms + Optuna Optimization + SHAP Explainability + Class Imbalance Handling
+version=5.0.0
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -20,9 +20,11 @@ about=
       CORE: GMM, Random Forest, SVM, KNN
       ADVANCED: XGBoost, LightGBM, Extra Trees, Gradient Boosting, Logistic Regression, Naive Bayes, MLP
 
+      ⚖️ NEW in v4.5.0: Class imbalance handling - SMOTE, class weights, and nested cross-validation!
+      ⚡ NEW in v4.4.0: SHAP explainability - understand which features drive your model's predictions!
       ⚡ NEW in v4.3.0: Optuna hyperparameter optimization - 2-10x faster training with Bayesian optimization!
 
-      🚀 Features: Auto-install dependencies, intelligent hyperparameter tuning, sparse label handling, improved error handling, and GitHub issue integration.
+      🚀 Features: SMOTE oversampling, class weights, nested CV, SHAP feature importance maps, auto-install dependencies, intelligent hyperparameter tuning, sparse label handling, improved error handling, and GitHub issue integration.
 
       Very easy, fast, and powerful to use.
       For more information: https://github.com/nkarasiak/dzetsaka/
@@ -36,6 +38,37 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+    5.0.0
+      * NEW: Classification Wizard - step-by-step QWizard interface (Input, Algorithm, Advanced Options, Output, Review)
+      * NEW: Algorithm Comparison Panel - colour-coded table of all 11 classifiers with feature and dependency status
+      * NEW: Smart Defaults button auto-enables Optuna/SHAP/SMOTE when packages are available
+      * NEW: Wizard-driven classification with full extraParam support (Optuna, SHAP, SMOTE, class weights, nested CV)
+      * ENHANCED: Menu-accessible wizard keeps toolbar clean while adding powerful guided workflow
+    4.6.0
+      * NEW: ui/wizard_widget.py - 5-page QWizard with DataInput, Algorithm, AdvancedOptions, OutputConfig, Review pages
+      * NEW: ui/comparison_panel.py - AlgorithmComparisonPanel QDialog with dependency-aware colouring
+      * NEW: Standalone helper functions (check_dependency_availability, build_smart_defaults, build_review_summary)
+    4.5.0
+      * ⚖️ NEW: SMOTE oversampling for imbalanced datasets (automatic ratio detection)
+      * 📊 NEW: Class weight computation (balanced, uniform, custom strategies)
+      * 🔄 NEW: Nested cross-validation for unbiased model evaluation
+      * 📈 NEW: Enhanced metrics (per-class F1, ROC curves, learning curves)
+      * 🗺️ NEW: "Nested Cross-Validation" processing algorithm for batch evaluation
+      * ⚙️ NEW: 8 new extraParam keys for imbalance handling and validation
+      * 🧠 ENHANCED: Automatic imbalance ratio detection and strategy recommendations
+      * 🛡️ ENHANCED: Cost-sensitive learning for all supported algorithms
+      * 📝 ENHANCED: Comprehensive unit and integration tests for imbalance handling
+    4.4.0
+      * 🔍 NEW: SHAP explainability - feature importance computation for model interpretability
+      * 📊 NEW: "Explain Model (SHAP)" processing algorithm - generate feature importance rasters
+      * 🎯 NEW: ModelExplainer class with automatic explainer selection (TreeExplainer/KernelExplainer)
+      * 🗺️ NEW: Feature importance raster generation - visualize which bands matter most
+      * ⚙️ NEW: COMPUTE_SHAP, SHAP_OUTPUT, SHAP_SAMPLE_SIZE parameters in extraParam
+      * 📦 NEW: scripts/explainability module with comprehensive SHAP integration
+      * 🌳 PERFORMANCE: Fast TreeExplainer for tree-based models (RF, XGB, LGB, ET, GBC)
+      * 🔄 PERFORMANCE: KernelExplainer fallback for other models (SVM, KNN, LR, NB, MLP)
+      * 📝 ENHANCED: Detailed help strings and usage examples for SHAP algorithm
+      * 🛡️ ENHANCED: Graceful fallback when SHAP unavailable with clear installation instructions
     4.3.0
       * ⚡ NEW: Optuna hyperparameter optimization - 2-10x faster training with Bayesian optimization (TPE algorithm)
       * 🏗️ NEW: Factory pattern for classifiers - clean, extensible registry replacing 700+ line if/elif chains
@@ -95,7 +128,7 @@ changelog=
       * Move dzetsaka icons to extension toolbar
 
 # Tags are comma separated with spaces allowed
-tags=classification,machine learning,xgboost,lightgbm,random forest,svm,knn,neural network,auto-install,processing,optuna,hyperparameter optimization,bayesian optimization
+tags=classification,machine learning,xgboost,lightgbm,random forest,svm,knn,neural network,auto-install,processing,optuna,hyperparameter optimization,bayesian optimization,shap,explainability,feature importance,interpretability,smote,class imbalance,nested cross-validation,cost-sensitive learning
 
 homepage=http://www.github.com/nkarasiak/dzetsaka
 category=Raster

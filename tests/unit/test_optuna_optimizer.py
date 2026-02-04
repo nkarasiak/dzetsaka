@@ -16,7 +16,7 @@ import pytest
 
 # Skip all tests if optuna is not available
 try:
-    import optuna  # noqa: F401
+    import optuna
 
     OPTUNA_AVAILABLE = True
 except ImportError:
@@ -183,6 +183,8 @@ def test_sklearn_import():
     assert cross_val_score is not None
 
 
+@skip_if_no_optuna
+@skip_if_no_sklearn
 def test_module_constants():
     """Test module-level constants."""
     from scripts.optimization.optuna_optimizer import OPTUNA_AVAILABLE, SKLEARN_AVAILABLE

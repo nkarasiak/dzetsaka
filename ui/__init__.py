@@ -45,3 +45,8 @@ class welcomeWidget(QtWidgets.QDockWidget, welcome.Ui_DockWidget):
     def closeEvent(self, event):
         self.closingPlugin.emit()
         event.accept()
+
+
+# Wizard UI (Phase 4)
+from .wizard_widget import ClassificationWizard
+from .comparison_panel import AlgorithmComparisonPanel
