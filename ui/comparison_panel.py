@@ -1,6 +1,6 @@
 """Algorithm comparison panel for dzetsaka.
 
-A modal QDialog that displays all 11 supported classifiers in a
+A modal QDialog that displays all 12 supported classifiers in a
 colour-coded table.  Rows whose hard dependencies are missing are
 shown in red.  The user can select an algorithm and click
 "Use Selected" to propagate the choice back to the wizard's
@@ -22,6 +22,7 @@ from qgis.PyQt.QtWidgets import (
     QDialogButtonBox,
     QHBoxLayout,
     QLabel,
+    QAbstractItemView,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -33,19 +34,20 @@ from .wizard_widget import check_dependency_availability
 # Static table data
 # ---------------------------------------------------------------------------
 
-# Each entry: (code, name, classifier_type, speed, needs_sklearn, needs_xgboost, needs_lightgbm)
+# Each entry: (code, name, classifier_type, speed, needs_sklearn, needs_xgboost, needs_lightgbm, needs_catboost)
 _ALGO_TABLE_DATA = [
-    ("GMM", "Gaussian Mixture Model", "Probabilistic", "Fast", False, False, False),
-    ("RF", "Random Forest", "Ensemble", "Fast", True, False, False),
-    ("SVM", "Support Vector Machine", "Kernel", "Medium", True, False, False),
-    ("KNN", "K-Nearest Neighbors", "Instance-based", "Medium", True, False, False),
-    ("XGB", "XGBoost", "Boosting", "Medium", False, True, False),
-    ("LGB", "LightGBM", "Boosting", "Fast", False, False, True),
-    ("ET", "Extra Trees", "Ensemble", "Fast", True, False, False),
-    ("GBC", "Gradient Boosting Classifier", "Boosting", "Medium", True, False, False),
-    ("LR", "Logistic Regression", "Linear", "Fast", True, False, False),
-    ("NB", "Gaussian Naive Bayes", "Probabilistic", "Fast", True, False, False),
-    ("MLP", "Multi-layer Perceptron", "Neural Network", "Slow", True, False, False),
+    ("GMM", "Gaussian Mixture Model", "Probabilistic", "Fast", False, False, False, False),
+    ("RF", "Random Forest", "Ensemble", "Fast", True, False, False, False),
+    ("SVM", "Support Vector Machine", "Kernel", "Medium", True, False, False, False),
+    ("KNN", "K-Nearest Neighbors", "Instance-based", "Medium", True, False, False, False),
+    ("XGB", "XGBoost", "Boosting", "Medium", False, True, False, False),
+    ("LGB", "LightGBM", "Boosting", "Fast", False, False, True, False),
+    ("CB", "CatBoost", "Boosting", "Medium", False, False, False, True),
+    ("ET", "Extra Trees", "Ensemble", "Fast", True, False, False, False),
+    ("GBC", "Gradient Boosting Classifier", "Boosting", "Medium", True, False, False, False),
+    ("LR", "Logistic Regression", "Linear", "Fast", True, False, False, False),
+    ("NB", "Gaussian Naive Bayes", "Probabilistic", "Fast", True, False, False, False),
+    ("MLP", "Multi-layer Perceptron", "Neural Network", "Slow", True, False, False, False),
 ]
 
 # Which features each algorithm supports (optuna, shap, smote, class_weights)
@@ -56,6 +58,7 @@ _FEATURE_SUPPORT = {
     "KNN": {"optuna": True, "shap": True, "smote": True, "class_weights": False},
     "XGB": {"optuna": True, "shap": True, "smote": True, "class_weights": True},
     "LGB": {"optuna": True, "shap": True, "smote": True, "class_weights": True},
+    "CB": {"optuna": True, "shap": True, "smote": True, "class_weights": True},
     "ET": {"optuna": True, "shap": True, "smote": True, "class_weights": True},
     "GBC": {"optuna": True, "shap": True, "smote": True, "class_weights": True},
     "LR": {"optuna": True, "shap": True, "smote": True, "class_weights": True},
@@ -87,17 +90,19 @@ def build_comparison_data(deps):
 
     Notes
     -----
-    All 11 classifiers are always represented regardless of what is
+    All 12 classifiers are always represented regardless of what is
     installed.  The ``available`` flag drives row colouring in the UI.
     """
     rows = []  # type: List[Tuple[str, str, str, str, bool, str, str, str, str]]
-    for code, name, algo_type, speed, needs_sk, needs_xgb, needs_lgb in _ALGO_TABLE_DATA:
+    for code, name, algo_type, speed, needs_sk, needs_xgb, needs_lgb, needs_cb in _ALGO_TABLE_DATA:
         available = True
         if needs_sk and not deps.get("sklearn", False):
             available = False
         if needs_xgb and not deps.get("xgboost", False):
             available = False
         if needs_lgb and not deps.get("lightgbm", False):
+            available = False
+        if needs_cb and not deps.get("catboost", False):
             available = False
 
         features = _FEATURE_SUPPORT.get(code, {})
@@ -133,7 +138,7 @@ _HEADERS = ["Algorithm", "Type", "Speed", "Available", "Optuna", "SHAP", "SMOTE"
 
 
 class AlgorithmComparisonPanel(QDialog):
-    """Modal dialog showing a comparison table of all 11 classifiers.
+    """Modal dialog showing a comparison table of all 12 classifiers.
 
     Signals
     -------
@@ -149,45 +154,10 @@ class AlgorithmComparisonPanel(QDialog):
         super(AlgorithmComparisonPanel, self).__init__(parent)
         self.setWindowTitle("Algorithm Comparison")
         self.setMinimumSize(720, 400)
-        self.setStyleSheet(
-            """
-            QDialog {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                    stop:0 #f7f7fb, stop:1 #eef1f7);
-                font-family: "Segoe UI Variable", "Plus Jakarta Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-            }
-            QLabel {
-                color: #0f172a;
-            }
-            QTableWidget {
-                background: #ffffff;
-                border: 1px solid #e6e8f0;
-                gridline-color: #e6e8f0;
-                selection-background-color: #fde68a;
-            }
-            QHeaderView::section {
-                background: #2b2f38;
-                color: #ffffff;
-                padding: 7px;
-                border: none;
-            }
-            QPushButton {
-                background: #f3f4f6;
-                color: #111827;
-                border: 1px solid #d1d5db;
-                border-radius: 10px;
-                padding: 7px 12px;
-            }
-            QPushButton:hover {
-                background: #e5e7eb;
-            }
-            """
-        )
 
         layout = QVBoxLayout()
 
         hint = QLabel("Algorithms highlighted in red have missing dependencies.")
-        hint.setStyleSheet("color: #7c2d12;")
         layout.addWidget(hint)
 
         # Table
@@ -197,7 +167,8 @@ class AlgorithmComparisonPanel(QDialog):
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        # Qt6 compatibility: SelectRows lives on QAbstractItemView, not QTableWidget
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         layout.addWidget(self.table)
 
@@ -223,13 +194,18 @@ class AlgorithmComparisonPanel(QDialog):
         red = QColor(200, 0, 0)
         black = QColor(0, 0, 0)
 
+        try:
+            editable_flag = Qt.ItemIsEditable
+        except AttributeError:
+            editable_flag = Qt.ItemFlag.ItemIsEditable
+
         for row_idx, (code, name, algo_type, speed, available, optuna, shap, smote, cw) in enumerate(rows):
             colour = black if available else red
             cells = [name, algo_type, speed, _yes_no(available), optuna, shap, smote, cw]
             for col_idx, text in enumerate(cells):
                 item = QTableWidgetItem(text)
                 item.setForeground(colour)
-                item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                item.setFlags(item.flags() & ~editable_flag)
                 self.table.setItem(row_idx, col_idx, item)
 
         self.table.resizeColumnsToContents()
