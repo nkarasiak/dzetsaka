@@ -169,7 +169,8 @@ class AlgorithmComparisonPanel(QDialog):
         self.table.verticalHeader().setVisible(False)
         # Qt6 compatibility: SelectRows lives on QAbstractItemView, not QTableWidget
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        # Qt6 compatibility: NoEditTriggers lives on QAbstractItemView
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         layout.addWidget(self.table)
 
         self._populate_table()
