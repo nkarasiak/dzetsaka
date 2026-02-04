@@ -9,7 +9,6 @@ import pickle
 
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
-    QgsMessageLog,
     QgsProcessingAlgorithm,
     QgsProcessingParameterEnum,
     QgsProcessingParameterField,
@@ -21,6 +20,7 @@ from qgis.core import (
 from qgis.PyQt.QtGui import QIcon
 
 from .. import classifier_config
+from ..logging_utils import show_error_dialog
 
 # Try to import nested CV
 try:
@@ -197,6 +197,10 @@ CSV file with:
         # Check nested CV availability
         if not NESTED_CV_AVAILABLE:
             feedback.reportError("Nested CV requires scikit-learn. Install with: pip install scikit-learn>=1.0.0")
+            show_error_dialog(
+                "dzetsaka Nested CV Error",
+                "Nested CV requires scikit-learn>=1.0.0. Install with pip install scikit-learn>=1.0.0.",
+            )
             return {}
 
         # Get parameters
@@ -232,6 +236,7 @@ CSV file with:
 
         except ImportError as e:
             feedback.reportError(f"Failed to import mainfunction: {e!s}")
+            show_error_dialog("dzetsaka Nested CV Error", f"Failed to import mainfunction: {e!s}")
             return {}
 
         # Log configuration

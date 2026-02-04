@@ -9,7 +9,6 @@ import pickle
 
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
-    QgsMessageLog,
     QgsProcessingAlgorithm,
     QgsProcessingParameterFile,
     QgsProcessingParameterNumber,
@@ -17,6 +16,8 @@ from qgis.core import (
     QgsProcessingParameterRasterLayer,
 )
 from qgis.PyQt.QtGui import QIcon
+
+from ..logging_utils import show_error_dialog
 
 # Try to import SHAP explainer
 try:
@@ -138,6 +139,10 @@ All dzetsaka algorithms are supported:
                 "Please install it using: pip install shap>=0.41.0\n"
                 "Or install dzetsaka with explainability support: pip install dzetsaka[explainability]"
             )
+            show_error_dialog(
+                "dzetsaka Explain Model Error",
+                "SHAP library is not installed. Install shap>=0.41.0 or dzetsaka[explainability].",
+            )
             return {}
 
         # Get parameters
@@ -167,13 +172,16 @@ All dzetsaka algorithms are supported:
                 feedback.pushInfo(f"Loaded {classifier_code} model successfully")
             else:
                 feedback.reportError("Invalid model file format")
+                show_error_dialog("dzetsaka Explain Model Error", "Invalid model file format.")
                 return {}
 
         except FileNotFoundError:
             feedback.reportError(f"Model file not found: {model_path}")
+            show_error_dialog("dzetsaka Explain Model Error", f"Model file not found: {model_path}")
             return {}
         except Exception as e:
             feedback.reportError(f"Failed to load model: {e!s}")
+            show_error_dialog("dzetsaka Explain Model Error", f"Failed to load model: {e!s}")
             return {}
 
         # Get raster information
@@ -194,6 +202,7 @@ All dzetsaka algorithms are supported:
             )
         except Exception as e:
             feedback.reportError(f"Failed to create explainer: {e!s}")
+            show_error_dialog("dzetsaka Explain Model Error", f"Failed to create explainer: {e!s}")
             return {}
 
         # Generate importance raster
@@ -228,6 +237,11 @@ All dzetsaka algorithms are supported:
             feedback.reportError("- Insufficient memory (try reducing sample_size)")
             feedback.reportError("- Model incompatibility")
             feedback.reportError("- Raster dimension mismatch")
+            show_error_dialog(
+                "dzetsaka Explain Model Error",
+                "SHAP computation failed. This may be due to insufficient memory, model incompatibility, "
+                "or raster dimension mismatch. Check the QGIS log for details.",
+            )
             return {}
 
     def tr(self, string):
