@@ -7,7 +7,7 @@ cross-validation to evaluate model performance without bias.
 import os
 import pickle
 
-from PyQt5.QtCore import QCoreApplication
+from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
     QgsMessageLog,
     QgsProcessingAlgorithm,

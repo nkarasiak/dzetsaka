@@ -7,7 +7,8 @@
 # WARNING! All changes made in this file will be lost!
 
 from qgis.gui import QgsCollapsibleGroupBox, QgsMapLayerComboBox
-from PyQt5 import QtCore, QtGui, QtWidgets
+# Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
+from qgis.PyQt import QtCore, QtGui, QtWidgets
 
 
 class Ui_DockWidget(object):
@@ -19,14 +20,38 @@ class Ui_DockWidget(object):
         self.dockWidgetContents = QtWidgets.QWidget()
         self.dockWidgetContents.setObjectName("dockWidgetContents")
         self.gridLayout_2 = QtWidgets.QGridLayout(self.dockWidgetContents)
+        self.gridLayout_2.setContentsMargins(8, 6, 8, 6)
+        self.gridLayout_2.setVerticalSpacing(6)
         self.gridLayout_2.setObjectName("gridLayout_2")
         self.label_8 = QtWidgets.QLabel(self.dockWidgetContents)
         self.label_8.setMinimumSize(QtCore.QSize(250, 0))
+        self.label_8.setMaximumSize(QtCore.QSize(16777215, 90))
         self.label_8.setText("")
         self.label_8.setPixmap(QtGui.QPixmap(":/plugins/dzetsaka/img/parcguyane.jpg"))
         self.label_8.setObjectName("label_8")
         self.gridLayout_2.addWidget(self.label_8, 0, 0, 1, 1)
+        self.messageBanner = QtWidgets.QLabel(self.dockWidgetContents)
+        self.messageBanner.setMinimumSize(QtCore.QSize(250, 0))
+        self.messageBanner.setMaximumSize(QtCore.QSize(16777215, 58))
+        self.messageBanner.setWordWrap(True)
+        self.messageBanner.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        self.messageBanner.setTextFormat(QtCore.Qt.RichText)
+        self.messageBanner.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
+        self.messageBanner.setOpenExternalLinks(False)
+        self.messageBanner.setStyleSheet(
+            "QLabel {"
+            "background: #f6f7fb;"
+            "border: 1px solid #dbe2ef;"
+            "border-radius: 8px;"
+            "padding: 8px 10px;"
+            "color: #1f2d3d;"
+            "font: 9pt 'Segoe UI';"
+            "}"
+        )
+        self.messageBanner.setObjectName("messageBanner")
+        self.gridLayout_2.addWidget(self.messageBanner, 1, 0, 1, 1)
         self.gridLayout = QtWidgets.QGridLayout()
+        self.gridLayout.setVerticalSpacing(4)
         self.gridLayout.setObjectName("gridLayout")
         self.label_2 = QtWidgets.QLabel(self.dockWidgetContents)
         self.label_2.setMinimumSize(QtCore.QSize(15, 15))
@@ -126,11 +151,11 @@ class Ui_DockWidget(object):
         self.outRasterButton.setObjectName("outRasterButton")
         self.gridLayout_5.addWidget(self.outRasterButton, 0, 3, 1, 1)
         self.gridLayout.addLayout(self.gridLayout_5, 3, 1, 1, 3)
-        self.gridLayout_2.addLayout(self.gridLayout, 1, 0, 1, 1)
+        self.gridLayout_2.addLayout(self.gridLayout, 2, 0, 1, 1)
         spacerItem2 = QtWidgets.QSpacerItem(
-            100, 1, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
+            20, 1, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.gridLayout_2.addItem(spacerItem2, 3, 0, 1, 1)
+        self.gridLayout_2.addItem(spacerItem2, 4, 0, 1, 1)
         self.mGroupBox = QgsCollapsibleGroupBox(self.dockWidgetContents)
         self.mGroupBox.setEnabled(True)
         self.mGroupBox.setMaximumSize(QtCore.QSize(16777215, 23))
@@ -141,7 +166,8 @@ class Ui_DockWidget(object):
         self.mGroupBox.setSaveCheckedState(False)
         self.mGroupBox.setObjectName("mGroupBox")
         self.gridLayout_3 = QtWidgets.QGridLayout(self.mGroupBox)
-        self.gridLayout_3.setContentsMargins(0, -1, 0, -1)
+        self.gridLayout_3.setContentsMargins(0, 0, 0, 0)
+        self.gridLayout_3.setVerticalSpacing(4)
         self.gridLayout_3.setObjectName("gridLayout_3")
         self.label_7 = QtWidgets.QLabel(self.mGroupBox)
         self.label_7.setMaximumSize(QtCore.QSize(20, 20))
@@ -233,7 +259,7 @@ class Ui_DockWidget(object):
         self.label_10.setFont(font)
         self.label_10.setObjectName("label_10")
         self.gridLayout_3.addWidget(self.label_10, 4, 2, 1, 1)
-        self.gridLayout_2.addWidget(self.mGroupBox, 2, 0, 1, 1)
+        self.gridLayout_2.addWidget(self.mGroupBox, 3, 0, 1, 1)
         DockWidget.setWidget(self.dockWidgetContents)
 
         self.retranslateUi(DockWidget)
@@ -273,6 +299,19 @@ class Ui_DockWidget(object):
             _translate(
                 "DockWidget",
                 "<html><head/><body><p>Column name where class number is stored</p></body></html>",
+            )
+        )
+        self.messageBanner.setText(
+            _translate(
+                "DockWidget",
+                "<b>New dock, clearer results.</b><br>"
+                "<a href=\"open_wizard\">Try the new wizard →</a>",
+            )
+        )
+        self.messageBanner.setToolTip(
+            _translate(
+                "DockWidget",
+                "New dock = smarter parameters and clearer diagnostics.",
             )
         )
         self.inModel.setPlaceholderText(_translate("DockWidget", "Model"))

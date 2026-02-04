@@ -7,9 +7,9 @@ models across different domains in remote sensing applications.
 import os
 from typing import ClassVar
 
-from PyQt5.QtCore import QCoreApplication
-
-# from PyQt5.QtWidgets import QMessageBox
+# Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
+from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtGui import QIcon
 from qgis.core import (
     QgsProcessingAlgorithm,
     QgsProcessingParameterEnum,
@@ -19,7 +19,6 @@ from qgis.core import (
     QgsProcessingParameterString,
     QgsProcessingParameterVectorLayer,
 )
-from qgis.PyQt.QtGui import QIcon
 
 from ..scripts import domain_adaptation as da
 from ..scripts import function_dataraster as dataraster

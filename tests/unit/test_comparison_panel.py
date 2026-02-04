@@ -11,7 +11,7 @@ import sys
 import pytest
 
 # ---------------------------------------------------------------------------
-# Load comparison_panel directly, bypassing ui/__init__.py which pulls PyQt5.
+# Load comparison_panel directly, bypassing ui/__init__.py which pulls qgis.PyQt.
 # We first ensure wizard_widget is available as a sibling stub (comparison_panel
 # imports check_dependency_availability from it).
 # ---------------------------------------------------------------------------
@@ -22,12 +22,12 @@ try:
     # Track which keys we inject so we can clean them up afterwards and avoid
     # polluting sys.modules for tests that run later in the same session.
     _STUB_KEYS = (
-        "PyQt5", "PyQt5.QtCore", "PyQt5.QtWidgets", "PyQt5.QtGui",
+        "qgis", "qgis.PyQt", "qgis.PyQt.QtCore", "qgis.PyQt.QtWidgets", "qgis.PyQt.QtGui",
         "ui", "ui.wizard_widget", "ui.comparison_panel",
     )
     _inserted_keys = [k for k in _STUB_KEYS if k not in sys.modules]
 
-    # --- Minimal PyQt5 stub tree ---
+    # --- Minimal qgis.PyQt stub tree ---
     class _FakeSignal:
         """Stub for pyqtSignal."""
 
@@ -40,27 +40,30 @@ try:
         def __init__(self, *a, **kw):
             pass
 
-    _pyqt5 = type(sys)("PyQt5")
-    _pyqt5_core = type(sys)("PyQt5.QtCore")
-    _pyqt5_core.pyqtSignal = _FakeSignal
-    _pyqt5_core.Qt = type("Qt", (), {"ItemIsEditable": 0})()
-    _pyqt5_widgets = type(sys)("PyQt5.QtWidgets")
+    _qgis = type(sys)("qgis")
+    _pyqt = type(sys)("qgis.PyQt")
+    _pyqt_core = type(sys)("qgis.PyQt.QtCore")
+    _pyqt_core.pyqtSignal = _FakeSignal
+    _pyqt_core.Qt = type("Qt", (), {"ItemIsEditable": 0})()
+    _pyqt_widgets = type(sys)("qgis.PyQt.QtWidgets")
     for _cls_name in (
         "QCheckBox", "QComboBox", "QDialog", "QDialogButtonBox",
         "QFileDialog", "QGroupBox", "QHBoxLayout", "QLabel", "QLineEdit",
-        "QPushButton", "QSpinBox", "QTableWidget", "QTableWidgetItem",
+        "QMessageBox", "QPushButton", "QSpinBox", "QTableWidget", "QTableWidgetItem",
         "QTextEdit", "QVBoxLayout", "QWidget", "QWizard", "QWizardPage",
     ):
-        setattr(_pyqt5_widgets, _cls_name, _FakeWidget)
-    _pyqt5_gui = type(sys)("PyQt5.QtGui")
-    _pyqt5_gui.QColor = _FakeWidget
-    _pyqt5.QtCore = _pyqt5_core
-    _pyqt5.QtWidgets = _pyqt5_widgets
-    _pyqt5.QtGui = _pyqt5_gui
-    sys.modules["PyQt5"] = _pyqt5
-    sys.modules["PyQt5.QtCore"] = _pyqt5_core
-    sys.modules["PyQt5.QtWidgets"] = _pyqt5_widgets
-    sys.modules["PyQt5.QtGui"] = _pyqt5_gui
+        setattr(_pyqt_widgets, _cls_name, _FakeWidget)
+    _pyqt_gui = type(sys)("qgis.PyQt.QtGui")
+    _pyqt_gui.QColor = _FakeWidget
+    _pyqt.QtCore = _pyqt_core
+    _pyqt.QtWidgets = _pyqt_widgets
+    _pyqt.QtGui = _pyqt_gui
+    _qgis.PyQt = _pyqt
+    sys.modules["qgis"] = _qgis
+    sys.modules["qgis.PyQt"] = _pyqt
+    sys.modules["qgis.PyQt.QtCore"] = _pyqt_core
+    sys.modules["qgis.PyQt.QtWidgets"] = _pyqt_widgets
+    sys.modules["qgis.PyQt.QtGui"] = _pyqt_gui
 
     _UI_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "ui"))
 

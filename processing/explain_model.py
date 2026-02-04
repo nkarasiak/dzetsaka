@@ -7,7 +7,7 @@ feature importance maps from trained models.
 import os
 import pickle
 
-from PyQt5.QtCore import QCoreApplication
+from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
     QgsMessageLog,
     QgsProcessingAlgorithm,

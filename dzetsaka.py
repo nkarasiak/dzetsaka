@@ -58,9 +58,10 @@ import os.path
 # import configparser
 import tempfile
 
-from PyQt5.QtCore import QCoreApplication, QSettings, Qt
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QAction, QApplication, QDialog, QFileDialog, QMessageBox
+# Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
+from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QAction, QApplication, QDialog, QFileDialog, QMessageBox
 from qgis.core import QgsApplication, QgsMessageLog
 
 try:
@@ -76,6 +77,7 @@ import contextlib
 from . import classifier_config, ui
 from .dzetsaka_provider import DzetsakaProvider
 from .scripts import mainfunction
+from .scripts.function_dataraster import get_layer_source_path
 
 # Import resources for icons
 with contextlib.suppress(ImportError):
@@ -471,6 +473,9 @@ class DzetsakaGUI(QDialog):
 
             self.dockwidget.inField.clear()
 
+            if hasattr(self.dockwidget, "messageBanner"):
+                self.dockwidget.messageBanner.linkActivated.connect(lambda _=None: self.run_wizard())
+
             # show the dockwidget
             # TODO: fix to allow choice of dock location
             self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
@@ -692,8 +697,8 @@ class DzetsakaGUI(QDialog):
             if self.dockwidget.inModel.text() == "":
                 # verif srs
                 # get vector
-                inShape = self.dockwidget.inShape.currentLayer()
-                inShape = inShape.dataProvider().dataSourceUri().split("|")[0]  # Remove layerid=0 from SHP Path
+                inShapeLayer = self.dockwidget.inShape.currentLayer()
+                inShape = get_layer_source_path(inShapeLayer)
                 # get shp proj
                 inShapeOp = ogr.Open(inShape)
                 inShapeLyr = inShapeOp.GetLayer()
@@ -1267,70 +1272,128 @@ Settings:
 
         # Package installation with proper Python executable detection
         def install_package(package):
-            try:
-                import os
-                import subprocess
-                import sys
+            import os
+            import subprocess
+            import sys
 
-                # Find the correct Python executable (workaround for QGIS sys.executable issue)
-                def find_python():
-                    if sys.platform != "win32":
-                        return sys.executable
+            def run_command(cmd, description):
+                """Run a command and return (success, output)."""
+                try:
+                    QgsMessageLog.logMessage(f"Trying {description}: {' '.join(cmd)}")
+                    process = subprocess.Popen(
+                        cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        universal_newlines=True,
+                    )
 
-                    # On Windows, sys.executable points to QGIS, not Python
-                    # Search sys.path for python executables
-                    for path in sys.path:
-                        assumed_path = os.path.join(path, "python.exe")
-                        if os.path.isfile(assumed_path):
-                            QgsMessageLog.logMessage(f"Found Python executable: {assumed_path}")
-                            return assumed_path
+                    output_lines = []
+                    while True:
+                        output = process.stdout.readline()
+                        if output == "" and process.poll() is not None:
+                            break
+                        if output:
+                            output_lines.append(output.strip())
+                            QgsMessageLog.logMessage(f"  {output.strip()}")
 
-                    # Fallback: try 'python' command directly
-                    return "python"
+                    return_code = process.poll()
+                    output_text = "\n".join(output_lines)
+                    return return_code == 0, output_text
 
-                python_exe = find_python()
-                QgsMessageLog.logMessage(f"Installing {package} using Python executable: {python_exe}")
+                except FileNotFoundError:
+                    QgsMessageLog.logMessage(f"Command not found: {cmd[0]}")
+                    return False, "Command not found"
+                except Exception as e:
+                    QgsMessageLog.logMessage(f"Error: {e}")
+                    return False, str(e)
 
-                # Use Popen for real-time output with non-interactive flags
-                process = subprocess.Popen(
-                    [
-                        python_exe,
-                        "-m",
-                        "pip",
-                        "install",
-                        package,
-                        "--no-input",
-                        "--quiet",
-                    ],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    universal_newlines=True,
-                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+            # Find the correct Python executable (workaround for QGIS sys.executable issue)
+            def find_python():
+                if sys.platform != "win32":
+                    return sys.executable
+
+                # On Windows, sys.executable points to QGIS, not Python
+                for path in sys.path:
+                    assumed_path = os.path.join(path, "python.exe")
+                    if os.path.isfile(assumed_path):
+                        QgsMessageLog.logMessage(f"Found Python executable: {assumed_path}")
+                        return assumed_path
+                return "python"
+
+            python_exe = find_python()
+            QgsMessageLog.logMessage(f"Installing {package} for Python: {python_exe}")
+
+            # Method 1: Try python -m pip (preferred)
+            success, output = run_command(
+                [python_exe, "-m", "pip", "install", package, "--user", "--no-input"],
+                "pip module",
+            )
+            if success:
+                QgsMessageLog.logMessage(f"Successfully installed {package}")
+                return True
+
+            # Check if pip module is missing
+            pip_missing = "No module named pip" in output
+
+            if pip_missing:
+                QgsMessageLog.logMessage("pip module not available, trying alternatives...")
+
+                # Method 2: Try ensurepip to bootstrap pip
+                QgsMessageLog.logMessage("Attempting to bootstrap pip with ensurepip...")
+                success, _ = run_command(
+                    [python_exe, "-m", "ensurepip", "--user"],
+                    "ensurepip",
                 )
+                if success:
+                    # Retry pip install after bootstrapping
+                    success, _ = run_command(
+                        [python_exe, "-m", "pip", "install", package, "--user", "--no-input"],
+                        "pip after ensurepip",
+                    )
+                    if success:
+                        QgsMessageLog.logMessage(f"Successfully installed {package}")
+                        return True
 
-                # Stream output in real-time
-                while True:
-                    output = process.stdout.readline()
-                    if output == "" and process.poll() is not None:
-                        break
-                    if output:
-                        QgsMessageLog.logMessage(f"pip: {output.strip()}")
+                # Method 3: On Linux, try apt/dnf for system packages
+                if sys.platform.startswith("linux"):
+                    # Map pip packages to apt packages
+                    apt_packages = {
+                        "scikit-learn": "python3-sklearn",
+                        "xgboost": "python3-xgboost",
+                        "lightgbm": "python3-lightgbm",
+                    }
+                    apt_pkg = apt_packages.get(package.lower())
 
-                return_code = process.poll()
-                if return_code == 0:
-                    QgsMessageLog.logMessage(f"Successfully installed {package}")
-                    return True
-                else:
-                    QgsMessageLog.logMessage(f"Pip install failed with return code: {return_code}")
-                    return False
+                    if apt_pkg:
+                        # Check if apt is available
+                        apt_path = "/usr/bin/apt"
+                        if os.path.exists(apt_path):
+                            QgsMessageLog.logMessage(
+                                f"Trying system package manager (apt install {apt_pkg})..."
+                            )
+                            # Try pkexec for graphical sudo
+                            success, output = run_command(
+                                ["pkexec", apt_path, "install", "-y", apt_pkg],
+                                "apt via pkexec",
+                            )
+                            if success:
+                                QgsMessageLog.logMessage(f"Successfully installed {apt_pkg} via apt")
+                                return True
+                            else:
+                                QgsMessageLog.logMessage(f"apt install failed: {output}")
 
-            except subprocess.CalledProcessError as e:
-                QgsMessageLog.logMessage(f"Failed to install {package}: {e}")
-                return False
-            except Exception as e:
-                QgsMessageLog.logMessage(f"Installation error for {package}: {e}")
-                return False
+            # All methods failed
+            QgsMessageLog.logMessage(
+                f"Could not install {package}. Please install manually:\n"
+                "  Option 1 - Install pip first:\n"
+                "    sudo apt install python3-pip\n"
+                "    pip3 install --user scikit-learn\n"
+                "  Option 2 - Install via apt directly:\n"
+                "    sudo apt install python3-sklearn\n"
+                "  Then restart QGIS."
+            )
+            return False
 
         # Mapping of dependency names to pip packages
         pip_packages = {
@@ -1342,8 +1405,7 @@ Settings:
 
         try:
             # Show progress dialog
-            # from PyQt5.QtCore import QEventLoop, QTimer
-            from PyQt5.QtWidgets import QProgressDialog
+            from qgis.PyQt.QtWidgets import QProgressDialog
 
             progress = QProgressDialog("Installing dependencies...", "Cancel", 0, len(missing_deps), self)
             progress.setWindowModality(2)  # ApplicationModal
@@ -1417,8 +1479,14 @@ Settings:
                 QMessageBox.warning(
                     self,
                     "Installation Incomplete",
-                    f"Only {success_count} of {len(missing_deps)} dependencies were installed successfully.<br>"
-                    f"Please check the QGIS log for details and consider manual installation.",
+                    f"Only {success_count} of {len(missing_deps)} dependencies were installed successfully.<br><br>"
+                    f"<b>To install manually, run one of these commands in a terminal:</b><br><br>"
+                    f"<b>Option 1</b> - Install via apt (recommended for Debian/Ubuntu):<br>"
+                    f"<code>sudo apt install python3-sklearn</code><br><br>"
+                    f"<b>Option 2</b> - Install pip first, then use pip:<br>"
+                    f"<code>sudo apt install python3-pip</code><br>"
+                    f"<code>pip3 install --user scikit-learn</code><br><br>"
+                    f"Then restart QGIS.",
                     QMessageBox.Ok,
                 )
                 return False
@@ -1429,15 +1497,18 @@ Settings:
                 self,
                 "Installation Error",
                 f"An error occurred during installation:<br><br>{e!s}<br><br>"
-                f"Please install dependencies manually using:<br>"
-                f"pip install scikit-learn xgboost lightgbm optuna",
+                f"<b>To install manually:</b><br><br>"
+                f"<code>pip install scikit-learn xgboost lightgbm optuna</code><br><br>"
+                f"On Debian/Ubuntu you can also install scikit-learn via apt:<br>"
+                f"<code>sudo apt install python3-sklearn</code><br><br>"
+                f"Then restart QGIS.",
                 QMessageBox.Ok,
             )
             return False
 
     def run_wizard(self):
         """Open the Classification Wizard dialog."""
-        self._wizard = ui.ClassificationWizard(self.iface.mainWindow())
+        self._wizard = ui.ClassificationWizard(self.iface.mainWindow(), installer=self)
         self._wizard.classificationRequested.connect(self.execute_wizard_config)
         self._wizard.show()
 

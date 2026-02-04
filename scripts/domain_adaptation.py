@@ -23,6 +23,7 @@ from itertools import product
 # from sklearn import preprocessing
 import numpy as np
 
+# Lazy import to allow plugin loading without sklearn
 try:
     from sklearn.metrics import mean_squared_error
 except ImportError:

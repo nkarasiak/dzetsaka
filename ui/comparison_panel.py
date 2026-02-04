@@ -4,7 +4,7 @@ A modal QDialog that displays all 11 supported classifiers in a
 colour-coded table.  Rows whose hard dependencies are missing are
 shown in red.  The user can select an algorithm and click
 "Use Selected" to propagate the choice back to the wizard's
-AlgorithmPage via the ``algorithmSelected`` signal.
+Input & Algorithm page via the ``algorithmSelected`` signal.
 
 The table data is built by ``build_comparison_data``, a module-level
 function that can be tested without a Qt runtime.
@@ -15,9 +15,9 @@ Author:
 
 from typing import Dict, List, Tuple
 
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import (
+from qgis.PyQt.QtCore import Qt, pyqtSignal
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QHBoxLayout,
@@ -149,16 +149,54 @@ class AlgorithmComparisonPanel(QDialog):
         super(AlgorithmComparisonPanel, self).__init__(parent)
         self.setWindowTitle("Algorithm Comparison")
         self.setMinimumSize(720, 400)
+        self.setStyleSheet(
+            """
+            QDialog {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #f7f7fb, stop:1 #eef1f7);
+                font-family: "Segoe UI Variable", "Plus Jakarta Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+            }
+            QLabel {
+                color: #0f172a;
+            }
+            QTableWidget {
+                background: #ffffff;
+                border: 1px solid #e6e8f0;
+                gridline-color: #e6e8f0;
+                selection-background-color: #fde68a;
+            }
+            QHeaderView::section {
+                background: #2b2f38;
+                color: #ffffff;
+                padding: 7px;
+                border: none;
+            }
+            QPushButton {
+                background: #f3f4f6;
+                color: #111827;
+                border: 1px solid #d1d5db;
+                border-radius: 10px;
+                padding: 7px 12px;
+            }
+            QPushButton:hover {
+                background: #e5e7eb;
+            }
+            """
+        )
 
         layout = QVBoxLayout()
 
-        layout.addWidget(QLabel("Algorithms highlighted in red have missing dependencies."))
+        hint = QLabel("Algorithms highlighted in red have missing dependencies.")
+        hint.setStyleSheet("color: #7c2d12;")
+        layout.addWidget(hint)
 
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(len(_HEADERS))
         self.table.setHorizontalHeaderLabels(_HEADERS)
         self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.setAlternatingRowColors(True)
+        self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         layout.addWidget(self.table)
@@ -211,4 +249,4 @@ class AlgorithmComparisonPanel(QDialog):
 # Minimal QPushButton import needed for the dialog (not at module top to
 # keep the module importable even in unusual Qt configurations)
 # ---------------------------------------------------------------------------
-from PyQt5.QtWidgets import QPushButton  # noqa: E402
+from qgis.PyQt.QtWidgets import QPushButton  # noqa: E402

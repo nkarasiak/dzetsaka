@@ -6,7 +6,8 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-from PyQt5 import QtCore
+# Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
+from qgis.PyQt import QtCore
 
 qt_resource_data = b"\
 \x00\x00\x0b\x73\

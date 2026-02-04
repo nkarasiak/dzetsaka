@@ -6,9 +6,9 @@ Distance) cross-validation methods for robust model evaluation.
 
 import os
 
-from PyQt5.QtCore import QCoreApplication
-
-# from PyQt5.QtWidgets import QMessageBox
+# Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
+from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtGui import QIcon
 from qgis.core import (
     QgsProcessingAlgorithm,
     QgsProcessingParameterBoolean,
@@ -21,10 +21,10 @@ from qgis.core import (
     QgsProcessingParameterString,
     QgsProcessingParameterVectorLayer,
 )
-from qgis.PyQt.QtGui import QIcon
 
 from .. import classifier_config
 from ..scripts import mainfunction
+from ..scripts.function_dataraster import get_layer_source_path
 
 plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
@@ -210,7 +210,7 @@ class TrainSTANDAlgorithm(QgsProcessingAlgorithm):
         # learn model
         mainfunction.LearnModel(
             INPUT_RASTER.source(),
-            INPUT_LAYER.dataProvider().dataSourceUri().split("|")[0],
+            get_layer_source_path(INPUT_LAYER),
             INPUT_COLUMN[0],
             OUTPUT_MODEL,
             "STAND",

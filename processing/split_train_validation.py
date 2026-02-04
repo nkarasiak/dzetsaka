@@ -7,7 +7,9 @@ and validation subsets for robust model evaluation.
 import os
 from typing import ClassVar
 
-from PyQt5.QtCore import QCoreApplication
+# Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
+from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtGui import QIcon
 from qgis.core import (
     QgsMessageLog,
     QgsProcessingAlgorithm,
@@ -17,10 +19,9 @@ from qgis.core import (
     QgsProcessingParameterVectorDestination,
     QgsProcessingParameterVectorLayer,
 )
-from qgis.PyQt.QtGui import QIcon
 
-# from PyQt5.QtWidgets import QMessageBox
 from ..scripts import function_vector
+from ..scripts.function_dataraster import get_layer_source_path
 
 plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
@@ -126,7 +127,7 @@ class SplitTrain(QgsProcessingAlgorithm):
 
         if libOk:
             function_vector.RandomInSubset(
-                INPUT_LAYER.dataProvider().dataSourceUri().split("|")[0],
+                get_layer_source_path(INPUT_LAYER),
                 str(INPUT_COLUMN[0]),
                 OUTPUT_VALIDATION,
                 OUTPUT_TRAIN,

@@ -6,16 +6,15 @@ allowing users to classify raster images using trained machine learning models.
 
 import os
 
-from PyQt5.QtCore import QCoreApplication
-
-# from PyQt5.QtWidgets import QMessageBox
+# Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
+from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtGui import QIcon
 from qgis.core import (
     QgsProcessingAlgorithm,
     QgsProcessingParameterFile,
     QgsProcessingParameterRasterDestination,
     QgsProcessingParameterRasterLayer,
 )
-from qgis.PyQt.QtGui import QIcon
 
 from ..scripts.mainfunction import ClassifyImage
 

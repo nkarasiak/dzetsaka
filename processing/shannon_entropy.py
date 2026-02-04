@@ -21,13 +21,14 @@ __revision__ = "$Format:%H$"
 
 import os
 
-from PyQt5.QtCore import QCoreApplication
+# Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
+from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtGui import QIcon
 from qgis.core import (
     QgsProcessingAlgorithm,
     QgsProcessingParameterRasterDestination,
     QgsProcessingParameterRasterLayer,
 )
-from qgis.PyQt.QtGui import QIcon
 
 try:
     from osgeo import gdal
@@ -165,39 +166,40 @@ class ShannonAlgorithm(QgsProcessingAlgorithm):
 
 
 def calcul_shannon(image):
-    """Set all the first three bands, corresponding to the fractions, to sum unity.
+    """Calculate Shannon entropy for each pixel across all bands.
 
-    INPUT image : Image tableau scipy à 13bandes
-    OUTPUT resultat : Image tableau scipy à 6 bandes avec
-        bande 1: première valeur maximale max1
-        bande 2: deuxième valeur maximale max2
-        bande 3: troisième valeur maximale max3
-        bande 4: catégorie (espèce) correspondante à la valeur max1
-        bande 5: catégorie (espèce) correspondante à la valeur max2
-        bande 6: catégorie (espèce) correspondante à la valeur max3.
+    Computes Shannon entropy H = -sum(p * log2(p)) where p is the probability
+    (pixel value) for each band. Zero values are handled by excluding them
+    from the sum (log(0) is undefined).
+
+    Parameters
+    ----------
+    image : np.ndarray
+        Input image array of shape (rows, cols, bands) containing probability
+        values (typically 0-1 range from classification confidence maps).
+
+    Returns
+    -------
+    resultat : np.ndarray
+        Shannon entropy image of shape (rows, cols, 1) where each pixel
+        contains the entropy value computed across all bands.
+
     """
-    # on recupère les dimensions de notre image : (4036, 4531, 13)
     shape = np.shape(image)
-    # on cree notre tableau pour stocker la sortie
     outputShape = (shape[0], shape[1], 1)
-    dimX = outputShape[0]
-    dimY = outputShape[1]
-    nbBandes = shape[2]
     resultat = np.zeros(outputShape)
 
-    # boucle pour retrouver chaque pixel:
-    for i in range(dimX):
-        for j in range(dimY):
-            # on est dans un pixel de coordonnees (i,j), array taille 13:
-            # image[i,j,:]
+    # Vectorized Shannon entropy calculation
+    # Create mask for non-zero values (log(0) is undefined)
+    mask = image > 0
 
-            shannon = float(0)
+    # Compute log2 only for non-zero values, zeros elsewhere
+    log_vals = np.zeros_like(image)
+    log_vals[mask] = np.log2(image[mask])
 
-            for k in range(nbBandes):  # de 0 à 13
-                if image[i, j, k] != 0:  # on stocke max_i
-                    shannon = shannon + image[i, j, k] * math.log(image[i, j, k], 2)
-
-            resultat[i, j, 0] = -shannon
+    # Shannon entropy: H = -sum(p * log2(p))
+    # Sum across all bands (axis=2)
+    resultat[:, :, 0] = -np.sum(image * log_vals, axis=2)
 
     return resultat
 

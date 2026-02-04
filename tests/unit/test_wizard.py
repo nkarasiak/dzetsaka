@@ -16,7 +16,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # Import the module under test.  The helpers are defined before any Qt class
 # in wizard_widget.py, so we load the file directly via importlib to avoid
-# triggering ui/__init__.py (which pulls in PyQt5).
+# triggering ui/__init__.py (which pulls in qgis.PyQt).
 # ---------------------------------------------------------------------------
 
 _WIZARD_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "ui", "wizard_widget.py")
@@ -24,10 +24,10 @@ _WIZARD_PATH = os.path.abspath(_WIZARD_PATH)
 
 WIZARD_MODULE_AVAILABLE = False
 try:
-    # Inject a minimal stub for PyQt5 so the module-level Qt imports resolve
-    # without actually needing PyQt5 installed.  We track which keys we add
+    # Inject a minimal stub for qgis.PyQt so the module-level Qt imports resolve
+    # without actually needing QGIS installed.  We track which keys we add
     # and remove them afterwards so the stubs don't pollute other tests.
-    _STUB_KEYS = ("PyQt5", "PyQt5.QtCore", "PyQt5.QtWidgets")
+    _STUB_KEYS = ("qgis", "qgis.PyQt", "qgis.PyQt.QtCore", "qgis.PyQt.QtWidgets")
     _inserted_keys = [k for k in _STUB_KEYS if k not in sys.modules]
 
     class _FakeSignal:
@@ -42,21 +42,24 @@ try:
         def __init__(self, *a, **kw):
             pass
 
-    _pyqt5 = type(sys)("PyQt5")
-    _pyqt5_core = type(sys)("PyQt5.QtCore")
-    _pyqt5_core.pyqtSignal = _FakeSignal
-    _pyqt5_widgets = type(sys)("PyQt5.QtWidgets")
+    _qgis = type(sys)("qgis")
+    _pyqt = type(sys)("qgis.PyQt")
+    _pyqt_core = type(sys)("qgis.PyQt.QtCore")
+    _pyqt_core.pyqtSignal = _FakeSignal
+    _pyqt_widgets = type(sys)("qgis.PyQt.QtWidgets")
     for _cls_name in (
         "QCheckBox", "QComboBox", "QFileDialog", "QGroupBox", "QHBoxLayout",
-        "QLabel", "QLineEdit", "QPushButton", "QSpinBox", "QTextEdit",
+        "QLabel", "QLineEdit", "QMessageBox", "QPushButton", "QSpinBox", "QTextEdit",
         "QVBoxLayout", "QWidget", "QWizard", "QWizardPage",
     ):
-        setattr(_pyqt5_widgets, _cls_name, _FakeWidget)
-    _pyqt5.QtCore = _pyqt5_core
-    _pyqt5.QtWidgets = _pyqt5_widgets
-    sys.modules.setdefault("PyQt5", _pyqt5)
-    sys.modules.setdefault("PyQt5.QtCore", _pyqt5_core)
-    sys.modules.setdefault("PyQt5.QtWidgets", _pyqt5_widgets)
+        setattr(_pyqt_widgets, _cls_name, _FakeWidget)
+    _pyqt.QtCore = _pyqt_core
+    _pyqt.QtWidgets = _pyqt_widgets
+    _qgis.PyQt = _pyqt
+    sys.modules.setdefault("qgis", _qgis)
+    sys.modules.setdefault("qgis.PyQt", _pyqt)
+    sys.modules.setdefault("qgis.PyQt.QtCore", _pyqt_core)
+    sys.modules.setdefault("qgis.PyQt.QtWidgets", _pyqt_widgets)
 
     spec = importlib.util.spec_from_file_location("_wizard_widget_test", _WIZARD_PATH)
     _wizard_mod = importlib.util.module_from_spec(spec)
