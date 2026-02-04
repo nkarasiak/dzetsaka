@@ -1499,7 +1499,11 @@ Settings:
             from qgis.PyQt.QtWidgets import QProgressDialog
 
             progress = QProgressDialog("Installing dependencies...", "Cancel", 0, len(missing_deps), self)
-            progress.setWindowModality(2)  # ApplicationModal
+            try:
+                modality = Qt.WindowModality.ApplicationModal
+            except AttributeError:
+                modality = Qt.ApplicationModal
+            progress.setWindowModality(modality)
             progress.show()
 
             success_count = 0

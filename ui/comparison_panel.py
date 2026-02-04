@@ -192,8 +192,9 @@ class AlgorithmComparisonPanel(QDialog):
         rows = build_comparison_data(deps)
         self.table.setRowCount(len(rows))
 
-        red = QColor(200, 0, 0)
+        red_text = QColor(120, 0, 0)
         black = QColor(0, 0, 0)
+        red_bg = QColor(255, 235, 235)
 
         try:
             editable_flag = Qt.ItemIsEditable
@@ -201,11 +202,13 @@ class AlgorithmComparisonPanel(QDialog):
             editable_flag = Qt.ItemFlag.ItemIsEditable
 
         for row_idx, (code, name, algo_type, speed, available, optuna, shap, smote, cw) in enumerate(rows):
-            colour = black if available else red
+            colour = black if available else red_text
             cells = [name, algo_type, speed, _yes_no(available), optuna, shap, smote, cw]
             for col_idx, text in enumerate(cells):
                 item = QTableWidgetItem(text)
                 item.setForeground(colour)
+                if not available:
+                    item.setBackground(red_bg)
                 item.setFlags(item.flags() & ~editable_flag)
                 self.table.setItem(row_idx, col_idx, item)
 
