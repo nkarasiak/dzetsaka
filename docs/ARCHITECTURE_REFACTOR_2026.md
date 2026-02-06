@@ -118,6 +118,7 @@ dzetsaka/
 - 2026-02-06: Extracted dependency installation flow from plugin runtime to `src/dzetsaka/presentation/qgis/dependency_installer.py`.
 - 2026-02-06: Extracted debug information builder from plugin runtime to `src/dzetsaka/presentation/qgis/debug_info.py`.
 - 2026-02-06: Extracted classification input validation from plugin runtime to `src/dzetsaka/presentation/qgis/input_validation.py`.
+- 2026-02-06: Extracted classifier runtime dependency checks to `src/dzetsaka/presentation/qgis/classifier_runtime.py`.
 
 ### Phase 0: Baseline and Guardrails
 

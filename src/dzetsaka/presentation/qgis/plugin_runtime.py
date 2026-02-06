@@ -1186,53 +1186,21 @@ class DzetsakaGUI(QDialog):
     def _missing_classifier_dependencies(self, classifier_code):
         # type: (str) -> list[str]
         """Return missing runtime dependencies for a classifier code."""
-        code = str(classifier_code or "").strip().upper()
-        missing = []
+        from dzetsaka.presentation.qgis.classifier_runtime import missing_classifier_dependencies
 
-        sklearn_ok, _sklearn_details = self._check_sklearn_usable()
-        # XGB/LGB/CB wrappers also require sklearn runtime for label encoding.
-        needs_sklearn_runtime = classifier_config.requires_sklearn(code) or code in {"XGB", "LGB", "CB"}
-        if needs_sklearn_runtime and not sklearn_ok:
-            missing.append("scikit-learn")
-
-        if classifier_config.requires_xgboost(code) and not self._is_module_importable("xgboost"):
-            missing.append("xgboost")
-        if classifier_config.requires_lightgbm(code) and not self._is_module_importable("lightgbm"):
-            missing.append("lightgbm")
-        if classifier_config.requires_catboost(code) and not self._is_module_importable("catboost"):
-            missing.append("catboost")
-
-        # De-duplicate while preserving order.
-        seen = set()
-        return [d for d in missing if not (d in seen or seen.add(d))]
+        return missing_classifier_dependencies(self, classifier_code)
 
     def _ensure_classifier_runtime_ready(self, classifier_code, source_label="Classification", fallback_to_gmm=False):
         # type: (str, str, bool) -> bool
         """Validate runtime dependencies for selected classifier before launching task."""
-        missing = self._missing_classifier_dependencies(classifier_code)
-        if not missing:
-            return True
+        from dzetsaka.presentation.qgis.classifier_runtime import ensure_classifier_runtime_ready
 
-        classifier_name = classifier_config.get_classifier_name(str(classifier_code or "").upper())
-        missing_list = ", ".join(missing)
-        QMessageBox.warning(
-            self.iface.mainWindow(),
-            "Dependencies Missing for dzetsaka",
-            (
-                f"{source_label}: selected classifier <b>{classifier_name}</b> cannot run right now.<br><br>"
-                f"Missing runtime dependencies: <code>{missing_list}</code><br><br>"
-                "Please install dependencies from the dashboard installer and restart QGIS."
-            ),
-            QMessageBox.StandardButton.Ok,
+        return ensure_classifier_runtime_ready(
+            self,
+            classifier_code=classifier_code,
+            source_label=source_label,
+            fallback_to_gmm=fallback_to_gmm,
         )
-        self.log.warning(
-            f"{source_label} blocked: classifier {classifier_code} missing runtime deps: {missing_list}"
-        )
-
-        if fallback_to_gmm:
-            self.settings.setValue("/dzetsaka/classifier", "Gaussian Mixture Model")
-            self.classifier = "Gaussian Mixture Model"
-        return False
 
     def _start_classification_task(
         self,
