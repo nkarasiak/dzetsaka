@@ -1,105 +1,49 @@
-"""Compatibility bridge for Dzetsaka QGIS processing provider.
-
-This module is kept for backward compatibility while provider implementation is
-migrated to `src/dzetsaka/presentation/qgis/provider.py`.
-"""
+"""Compatibility shim for the migrated processing provider runtime."""
 
 from __future__ import annotations
 
 import importlib.util
-import os
 from pathlib import Path
 
 
-def _load_new_provider_class():
-    """Load DzetsakaProvider from new architecture path, if available."""
-    root_dir = Path(__file__).resolve().parent
-    provider_path = root_dir / "src" / "dzetsaka" / "presentation" / "qgis" / "provider.py"
-    if not provider_path.exists():
-        return None
-
-    spec = importlib.util.spec_from_file_location("_dzetsaka_new_provider", provider_path)
+def _load_provider_class():
+    provider_path = (
+        Path(__file__).resolve().parent / "src" / "dzetsaka" / "presentation" / "qgis" / "provider.py"
+    )
+    spec = importlib.util.spec_from_file_location("_dzetsaka_provider_runtime", provider_path)
     if spec is None or spec.loader is None:
-        return None
+        raise ImportError(f"Unable to load dzetsaka provider module from {provider_path}")
 
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    runtime_cls = getattr(module, "DzetsakaProvider", None)
+    if runtime_cls is None:
+        raise ImportError("DzetsakaProvider class not found in migrated provider runtime")
+    return runtime_cls
+
+
+_provider_cls = None
+_provider_error = None
+
+
+def _get_provider_class():
+    global _provider_cls, _provider_error
+    if _provider_cls is not None:
+        return _provider_cls
+    if _provider_error is not None:
+        raise _provider_error
     try:
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-    except Exception:
-        return None
-    return getattr(module, "DzetsakaProvider", None)
+        _provider_cls = _load_provider_class()
+        return _provider_cls
+    except Exception as exc:  # pragma: no cover - depends on QGIS runtime
+        _provider_error = exc
+        raise
 
 
-DzetsakaProvider = _load_new_provider_class()
+class DzetsakaProvider:
+    """Lazy proxy to migrated provider class."""
 
-if DzetsakaProvider is None:
-    from qgis.core import QgsProcessingProvider
-    from qgis.PyQt.QtGui import QIcon
-
-    from .processing.classify import ClassifyAlgorithm
-    from .processing.split_train_validation import SplitTrain
-    from .processing.train import TrainAlgorithm
-
-    try:
-        from .processing.explain_model import ExplainModelAlgorithm
-
-        EXPLAIN_MODEL_AVAILABLE = True
-    except ImportError:
-        EXPLAIN_MODEL_AVAILABLE = False
-
-    try:
-        from .processing.nested_cv_algorithm import NestedCVAlgorithm
-
-        NESTED_CV_ALGORITHM_AVAILABLE = True
-    except ImportError:
-        NESTED_CV_ALGORITHM_AVAILABLE = False
-
-    plugin_path = os.path.dirname(__file__)
-
-    class DzetsakaProvider(QgsProcessingProvider):
-        """Processing provider for dzetsaka algorithms."""
-
-        def __init__(self, providerType="Standard"):
-            super().__init__()
-            self.providerType = providerType
-
-        def icon(self):
-            iconPath = os.path.join(plugin_path, "icon.png")
-            return QIcon(os.path.join(iconPath))
-
-        def unload(self):
-            """Unload provider."""
-
-        def loadAlgorithms(self):
-            self.addAlgorithm(TrainAlgorithm())
-            self.addAlgorithm(ClassifyAlgorithm())
-            self.addAlgorithm(SplitTrain())
-
-            if EXPLAIN_MODEL_AVAILABLE:
-                self.addAlgorithm(ExplainModelAlgorithm())
-
-            if NESTED_CV_ALGORITHM_AVAILABLE:
-                self.addAlgorithm(NestedCVAlgorithm())
-
-            if self.providerType == "Experimental":
-                from .processing.closing_filter import ClosingFilterAlgorithm
-                from .processing.median_filter import MedianFilterAlgorithm
-
-                self.addAlgorithm(ClosingFilterAlgorithm())
-                self.addAlgorithm(MedianFilterAlgorithm())
-
-                from .processing.domain_adaptation import DomainAdaptation
-                from .processing.shannon_entropy import ShannonAlgorithm
-
-                self.addAlgorithm(DomainAdaptation())
-                self.addAlgorithm(ShannonAlgorithm())
-
-        def id(self):
-            return "dzetsaka"
-
-        def name(self):
-            return self.tr("dzetsaka")
-
-        def longName(self):
-            return self.name()
+    def __new__(cls, *args, **kwargs):
+        runtime_cls = _get_provider_class()
+        return runtime_cls(*args, **kwargs)
 

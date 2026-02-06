@@ -112,6 +112,7 @@ dzetsaka/
 - 2026-02-06: Root `dzetsaka.py` converted to a lazy compatibility shim that proxies runtime classes from `src/.../plugin_runtime.py`.
 - 2026-02-06: Added architecture guardrail tests in `tests/unit/test_architecture_guardrails.py` (domain must remain framework-free).
 - 2026-02-06: Extracted task orchestration from plugin runtime into `src/dzetsaka/presentation/qgis/task_runner.py` and wired runtime to import it.
+- 2026-02-06: Converted `dzetsaka_provider.py` into a lazy shim that proxies to `src/dzetsaka/presentation/qgis/provider.py`.
 
 ### Phase 0: Baseline and Guardrails
 

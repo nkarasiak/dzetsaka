@@ -50,3 +50,9 @@ def test_compat_shim_has_no_eager_qgis_import() -> None:
     roots = _import_roots_from_file(shim_path)
     assert "qgis" not in roots, f"{shim_path.relative_to(REPO_ROOT)} imports qgis eagerly"
 
+
+def test_provider_shim_has_no_eager_qgis_import() -> None:
+    """Provider shim must stay importable outside QGIS runtime."""
+    shim_path = REPO_ROOT / "dzetsaka_provider.py"
+    roots = _import_roots_from_file(shim_path)
+    assert "qgis" not in roots, f"{shim_path.relative_to(REPO_ROOT)} imports qgis eagerly"
