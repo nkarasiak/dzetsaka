@@ -23,7 +23,7 @@ except ImportError:
     EXPLAIN_MODEL_AVAILABLE = False
 
 try:
-    from dzetsaka.processing.nested_cv_algorithm import NestedCVAlgorithm
+    from dzetsaka.presentation.qgis.processing.algorithms.nested_cv_algorithm import NestedCVAlgorithm
 
     NESTED_CV_ALGORITHM_AVAILABLE = True
 except ImportError:
