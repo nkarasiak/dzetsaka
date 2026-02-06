@@ -18,10 +18,10 @@ from qgis.core import (
 )
 
 from dzetsaka import classifier_config
+from dzetsaka.application.use_cases.train_model import run_training
 from dzetsaka.logging_utils import QgisLogger, show_error_dialog
 from dzetsaka.processing import metadata_helpers
 from dzetsaka.scripts.function_dataraster import get_layer_source_path
-from dzetsaka.services.use_case_bridge import run_training
 
 plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), *([".."] * 7)))
 

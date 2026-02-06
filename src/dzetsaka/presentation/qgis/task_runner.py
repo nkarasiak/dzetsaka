@@ -8,8 +8,9 @@ from typing import Any, Callable, Optional
 
 from qgis.core import QgsTask
 
+from dzetsaka.application.use_cases.classify_raster import run_classification
+from dzetsaka.application.use_cases.train_model import run_training
 from dzetsaka import classifier_config
-from dzetsaka.services.use_case_bridge import run_classification, run_training
 
 
 class TaskFeedbackAdapter:
@@ -166,4 +167,3 @@ class ClassificationTask(QgsTask):
         title = self.error_title or "dzetsaka Task Error"
         message = self.error_message or "Background classification task failed."
         self.on_error(title, message)
-
