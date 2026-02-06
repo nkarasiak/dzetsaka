@@ -65,7 +65,7 @@ from qgis.core import QgsApplication
 
 # Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
-from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox
+from qgis.PyQt.QtWidgets import QDialog, QMessageBox
 
 try:
     from osgeo import gdal, ogr, osr
@@ -388,44 +388,9 @@ class DzetsakaGUI(QDialog):
 
     def select_output_file(self):
         """!@brief Select file to save, and gives the right extension if the user don't put it."""
-        sender = self.sender()
+        from dzetsaka.presentation.qgis.file_form_handlers import select_output_file
 
-        fileName, _filter = QFileDialog.getSaveFileName(
-            self.dockwidget, "Select output file", self.lastSaveDir, "TIF (*.tif)"
-        )
-        self.rememberLastSaveDir(fileName)
-
-        if not fileName:
-            return
-            # If user give right file extension, we don't add it
-
-        fileName, fileExtension = os.path.splitext(fileName)
-
-        if sender == self.dockwidget.outRasterButton:
-            if fileExtension != ".tif":
-                self.dockwidget.outRaster.setText(fileName + ".tif")
-            else:
-                self.dockwidget.outRaster.setText(fileName + fileExtension)
-
-        # check if historical map run
-        if "self.historicalmap" in locals():
-            if sender == self.historicalmap.outRasterButton:
-                if fileExtension != ".tif":
-                    self.historicalmap.outRaster.setText(fileName + ".tif")
-                else:
-                    self.historicalmap.outRaster.setText(fileName + fileExtension)
-            if sender == self.historicalmap.outShpButton:
-                if fileExtension != ".shp":
-                    self.historicalmap.outShp.setText(fileName + ".shp")
-                else:
-                    self.historicalmap.outShp.setText(fileName + fileExtension)
-        # check if filters_dock run
-        if "self.filters_dock" in locals():
-            if sender == self.filters_dock.outRasterButton:
-                if fileExtension != ".tif":
-                    self.filters_dock.outRaster.setText(fileName + ".tif")
-            else:
-                self.filters_dock.outRaster.setText(fileName + fileExtension)
+        select_output_file(self)
 
     def loadConfig(self):
         """!@brief Class that loads all saved settings from config.txt."""
@@ -701,118 +666,9 @@ class DzetsakaGUI(QDialog):
 
     def checkbox_state(self):
         """!@brief Manage checkbox in main dock."""
-        sender = self.sender()
+        from dzetsaka.presentation.qgis.file_form_handlers import checkbox_state
 
-        # If load model
-        if sender == self.dockwidget.checkInModel and self.dockwidget.checkInModel.isChecked():
-            fileName, _filter = QFileDialog.getOpenFileName(self.dockwidget, "Select your file", self.lastSaveDir)
-            self.rememberLastSaveDir(fileName)
-            if fileName != "":
-                self.dockwidget.inModel.setText(fileName)
-                self.dockwidget.inModel.setEnabled(True)
-                # Disable training, so disable vector choise
-                self.dockwidget.inShape.setEnabled(False)
-                self.dockwidget.inField.setEnabled(False)
-
-            else:
-                self.dockwidget.checkInModel.setChecked(False)
-                self.dockwidget.inModel.setEnabled(False)
-                self.dockwidget.inShape.setEnabled(True)
-                self.dockwidget.inField.setEnabled(True)
-
-        elif sender == self.dockwidget.checkInModel:
-            self.dockwidget.inModel.clear()
-            self.dockwidget.inModel.setEnabled(False)
-            self.dockwidget.inShape.setEnabled(True)
-            self.dockwidget.inField.setEnabled(True)
-
-        # If save model
-        if sender == self.dockwidget.checkOutModel and self.dockwidget.checkOutModel.isChecked():
-            fileName, _filter = QFileDialog.getSaveFileName(self.dockwidget, "Select output file", self.lastSaveDir)
-            self.rememberLastSaveDir(fileName)
-            if fileName != "":
-                self.dockwidget.outModel.setText(fileName)
-                self.dockwidget.outModel.setEnabled(True)
-
-            else:
-                self.dockwidget.checkOutModel.setChecked(False)
-                self.dockwidget.outModel.setEnabled(False)
-
-        elif sender == self.dockwidget.checkOutModel:
-            self.dockwidget.outModel.clear()
-            self.dockwidget.outModel.setEnabled(False)
-
-        # If mask
-        if sender == self.dockwidget.checkInMask and self.dockwidget.checkInMask.isChecked():
-            fileName, _filter = QFileDialog.getOpenFileName(
-                self.dockwidget,
-                "Select your mask raster",
-                self.lastSaveDir,
-                "TIF (*.tif)",
-            )
-            self.rememberLastSaveDir(fileName)
-            if fileName != "":
-                self.dockwidget.inMask.setText(fileName)
-                self.dockwidget.inMask.setEnabled(True)
-            else:
-                self.dockwidget.checkInMask.setChecked(False)
-                self.dockwidget.inMask.setEnabled(False)
-        elif sender == self.dockwidget.checkInMask:
-            self.dockwidget.inMask.clear()
-            self.dockwidget.inMask.setEnabled(False)
-
-        # If save matrix
-        if sender == self.dockwidget.checkOutMatrix and self.dockwidget.checkOutMatrix.isChecked():
-            fileName, _filter = QFileDialog.getSaveFileName(
-                self.dockwidget, "Save to a *.csv file", self.lastSaveDir, "CSV (*.csv)"
-            )
-            self.rememberLastSaveDir(fileName)
-            if fileName != "":
-                fileName, fileExtension = os.path.splitext(fileName)
-                fileName = fileName + ".csv"
-                self.dockwidget.outMatrix.setText(fileName)
-                self.dockwidget.outMatrix.setEnabled(True)
-                self.dockwidget.inSplit.setEnabled(True)
-                self.dockwidget.inSplit.setValue(50)
-            else:
-                self.dockwidget.checkOutMatrix.setChecked(False)
-                self.dockwidget.outMatrix.setEnabled(False)
-                self.dockwidget.outMatrix.setEnabled(False)
-                self.dockwidget.inSplit.setEnabled(False)
-                self.dockwidget.inSplit.setValue(100)
-
-        elif sender == self.dockwidget.checkOutMatrix:
-            self.dockwidget.outMatrix.clear()
-            self.dockwidget.checkOutMatrix.setChecked(False)
-            self.dockwidget.outMatrix.setEnabled(False)
-            self.dockwidget.outMatrix.setEnabled(False)
-            self.dockwidget.inSplit.setEnabled(False)
-            self.dockwidget.inSplit.setValue(100)
-
-        # If save model
-        # retrieve shortname classifier
-        if sender == self.dockwidget.checkInConfidence and self.dockwidget.checkInConfidence.isChecked():
-            fileName, _filter = QFileDialog.getSaveFileName(
-                self.dockwidget,
-                "Select output file (*.tif)",
-                self.lastSaveDir,
-                "TIF (*.tif)",
-            )
-            self.rememberLastSaveDir(fileName)
-            if fileName != "":
-                fileName, fileExtension = os.path.splitext(fileName)
-                fileName = fileName + ".tif"
-                self.dockwidget.outConfidenceMap.setText(fileName)
-                self.dockwidget.outConfidenceMap.setEnabled(True)
-
-            else:
-                self.dockwidget.checkInConfidence.setChecked(False)
-                self.dockwidget.outConfidenceMap.setEnabled(False)
-
-        elif sender == self.dockwidget.checkInConfidence:
-            self.dockwidget.outConfidenceMap.clear()
-            self.dockwidget.checkInConfidence.setChecked(False)
-            self.dockwidget.outConfidenceMap.setEnabled(False)
+        checkbox_state(self)
 
     def _check_sklearn_usable(self):
         # type: () -> tuple[bool, str]
