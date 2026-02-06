@@ -124,6 +124,7 @@ dzetsaka/
 - 2026-02-06: Extracted shared runtime helpers (`is_module_importable`, config write) to `src/dzetsaka/presentation/qgis/runtime_utils.py`.
 - 2026-02-06: Extended architecture guardrails to block new `presentation/qgis` helper modules from importing legacy `scripts/mainfunction`.
 - 2026-02-06: Extracted wizard-driven execution flow to `src/dzetsaka/presentation/qgis/wizard_execution.py`.
+- 2026-02-06: Extracted plugin metadata version read helper to `src/dzetsaka/presentation/qgis/metadata_utils.py`.
 
 ### Phase 0: Baseline and Guardrails
 

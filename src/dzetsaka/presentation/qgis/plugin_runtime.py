@@ -387,15 +387,9 @@ class DzetsakaGUI(QDialog):
     def _read_plugin_version(self):
         # type: () -> str
         """Read plugin version from metadata.txt, fallback to 'unknown'."""
-        metadata_path = os.path.join(self.plugin_dir, "metadata.txt")
-        parser = configparser.ConfigParser()
-        try:
-            if parser.read(metadata_path, encoding="utf-8") and parser.has_section("general"):
-                version = parser.get("general", "version", fallback="unknown").strip()
-                return version or "unknown"
-        except Exception as exc:
-            self.log.warning(f"Unable to read plugin version from metadata.txt: {exc}")
-        return "unknown"
+        from dzetsaka.presentation.qgis.metadata_utils import read_plugin_version
+
+        return read_plugin_version(self.plugin_dir, logger=self.log)
 
     # --------------------------------------------------------------------------
 
