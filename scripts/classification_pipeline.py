@@ -297,53 +297,6 @@ def _refresh_runtime_dependency_state():
         create_classification_summary = None
 
 
-# Backward compatibility decorator
-def backward_compatible(**parameter_mapping):
-    """Decorator to handle backward compatibility for function parameters.
-
-    Parameters
-    ----------
-    **parameter_mapping : dict
-        Mapping from old parameter names to new parameter names
-        Example: backward_compatible(inRaster='raster_path', inVector='vector_path')
-
-    """
-
-    def decorator(func):
-        import functools
-        import warnings
-
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            # Create a copy of kwargs to avoid modifying the original
-            new_kwargs = kwargs.copy()
-
-            # Process parameter mapping
-            for old_param, new_param in parameter_mapping.items():
-                if old_param in kwargs and new_param not in kwargs:
-                    # Move old parameter to new parameter name
-                    new_kwargs[new_param] = new_kwargs.pop(old_param)
-                    warnings.warn(
-                        f"Parameter '{old_param}' is deprecated. Use '{new_param}' instead.",
-                        DeprecationWarning,
-                        stacklevel=2,
-                    )
-                elif old_param in kwargs and new_param in kwargs:
-                    # Both old and new parameters provided - remove old one and warn
-                    new_kwargs.pop(old_param)
-                    warnings.warn(
-                        f"Both '{old_param}' and '{new_param}' provided. Using '{new_param}' and ignoring '{old_param}'.",
-                        DeprecationWarning,
-                        stacklevel=2,
-                    )
-
-            return func(*args, **new_kwargs)
-
-        return wrapper
-
-    return decorator
-
-
 # Note: Label encoding wrappers (XGBLabelWrapper, LGBLabelWrapper, CBClassifierWrapper)
 # are now imported from .wrappers.label_encoders module (see imports at top)
 
@@ -551,16 +504,6 @@ def _report(report: Reporter, message: Any) -> None:
 class LearnModel:
     """Machine learning model training class for dzetsaka classification."""
 
-    @backward_compatible(
-        inRaster="raster_path",
-        inVector="vector_path",
-        inField="class_field",
-        outModel="model_path",
-        inSplit="split_config",
-        inSeed="random_seed",
-        outMatrix="matrix_path",
-        inClassifier="classifier",
-    )
     def __init__(
         self,
         raster_path: Union[str, np.ndarray] = None,
@@ -653,11 +596,6 @@ class LearnModel:
         -------
         None
             Stores model in self.model, scaling parameters in self.M and self.m
-
-        Notes
-        -----
-        Backward compatibility is maintained through the @backward_compatible decorator.
-        Old parameter names (inRaster, inVector, etc.) are automatically mapped to new names.
 
         """
         # Re-evaluate optional backends at runtime so newly installed
@@ -1416,7 +1354,7 @@ class LearnModel:
                     testIndex.append(test_index)
                 for i, _j in enumerate(CM):
                     if SPLIT == "SLOO":
-                        # np.savetxt((saveDir+'matrix/'+str(distance)+'_'+str(inField)+'_'+str(minTrain)+'_'+str(i)+'.csv'),CM[i],delimiter=',',fmt='%.d')
+                        # np.savetxt((saveDir+'matrix/'+str(distance)+'_'+str(class_field)+'_'+str(minTrain)+'_'+str(i)+'.csv'),CM[i],delimiter=',',fmt='%.d')
                         np.savetxt(
                             os.path.join(
                                 saveDir,
@@ -1466,7 +1404,7 @@ class LearnModel:
                             )
 
                     elif SPLIT == "STAND":
-                        # np.savetxt((saveDir+'matrix/stand_'+str(inField)+'_'+str(i)+'.csv'),CM[i],delimiter=',',fmt='%.d')
+                        # np.savetxt((saveDir+'matrix/stand_'+str(class_field)+'_'+str(i)+'.csv'),CM[i],delimiter=',',fmt='%.d')
                         np.savetxt(
                             os.path.join(
                                 saveDir,
@@ -1485,7 +1423,7 @@ class LearnModel:
 
         if (vector_test_path or isinstance(SPLIT, int)) and (SPLIT != 100 or vector_test_path):
             # from sklearn.metrics import cohen_kappa_score,accuracy_score,f1_score
-            # if  inClassifier == 'GMM':
+            # if classifier == 'GMM':
             #          = model.predict(xt)[0]
             # else:
             yp = model.predict(xt)
@@ -2002,31 +1940,7 @@ class LearnModel:
 
 
 class ClassifyImage:
-    """!@brief Classify image with learn clasifier and learned model.
-
-    Create a raster file, fill hole from your give class (inClassForest), convert to a vector,
-    remove parcel size which are under a certain size (defined in inMinSize) and save it to shp.
-
-        Input :
-            inRaster : Filtered image name ('sample_filtered.tif',str)
-            inModel : Output name of the filtered file ('training.shp',str)
-            outShpFile : Output name of vector files ('sample.shp',str)
-            inMinSize : min size in acre for the forest, ex 6 means all polygons below 6000 m2 (int)
-            inField : Column name where are stored class number (str)
-            inNODATA : if NODATA (int)
-            inClassForest : Classification number of the forest class (int)
-
-        Output :
-            SHP file with deleted polygon below inMinSize
-
-    """
-
-    @backward_compatible(
-        inRaster="raster_path",
-        inModel="model_path",
-        outRaster="output_path",
-        inMask="mask_path",
-    )
+    """Classify a raster image from a trained model and optional mask."""
     def initPredict(
         self,
         raster_path: Optional[str] = None,
@@ -2040,11 +1954,11 @@ class ClassifyImage:
     ) -> Optional[str]:
         """Initialize prediction with raster and model paths."""
         if not raster_path:
-            raise ValueError("raster_path (or inRaster) is required")
+            raise ValueError("raster_path is required")
         if not model_path:
-            raise ValueError("model_path (or inModel) is required")
+            raise ValueError("model_path is required")
         if not output_path:
-            raise ValueError("output_path (or outRaster) is required")
+            raise ValueError("output_path is required")
 
         self.report = Reporter.from_feedback(feedback, tag=LOG_TAG)
 
@@ -2120,7 +2034,7 @@ class ClassifyImage:
             feedback=feedback,
         )
         # except:
-        #   QgsMessageLog.logMessage("Problem while predicting "+inRaster+" in temp"+rasterTemp)
+        #   QgsMessageLog.logMessage("Problem while predicting "+raster_path+" in temp"+rasterTemp)
 
         return predictedImage
 
@@ -2540,7 +2454,6 @@ class ConfusionMatrix:
         self.OA: Optional[float] = None
         self.Kappa: Optional[float] = None
 
-    @backward_compatible(inRaster="raster_path", inShape="shapefile_path", inField="class_field")
     def computeStatistics(
         self,
         raster_path: Optional[str] = None,
@@ -2561,18 +2474,14 @@ class ConfusionMatrix:
         feedback : object, optional
             Feedback interface for progress reporting
 
-        Notes
-        -----
-        Backward compatibility is maintained through the @backward_compatible decorator.
-
         """
         report = Reporter.from_feedback(feedback, tag=LOG_TAG)
         if not raster_path:
-            raise ValueError("raster_path (or inRaster) is required")
+            raise ValueError("raster_path is required")
         if not shapefile_path:
-            raise ValueError("shapefile_path (or inShape) is required")
+            raise ValueError("shapefile_path is required")
         if not class_field:
-            raise ValueError("class_field (or inField) is required")
+            raise ValueError("class_field is required")
 
         try:
             rasterized = rasterize(raster_path, shapefile_path, class_field)
@@ -2593,7 +2502,6 @@ class ConfusionMatrix:
             raise RuntimeError(error_msg) from e
 
 
-@backward_compatible(inRaster="raster_path", inShape="shapefile_path", inField="class_field")
 def rasterize(
     raster_path: Optional[str] = None,
     shapefile_path: Optional[str] = None,
@@ -2615,17 +2523,13 @@ def rasterize(
     str
         Path to temporary rasterized file
 
-    Notes
-    -----
-    Backward compatibility is maintained through the @backward_compatible decorator.
-
     """
     if not raster_path:
-        raise ValueError("raster_path (or inRaster) is required")
+        raise ValueError("raster_path is required")
     if not shapefile_path:
-        raise ValueError("shapefile_path (or inShape) is required")
+        raise ValueError("shapefile_path is required")
     if not class_field:
-        raise ValueError("class_field (or inField) is required")
+        raise ValueError("class_field is required")
 
     if not os.path.exists(raster_path):
         raise FileNotFoundError(f"Raster file not found: {raster_path}")
@@ -2712,22 +2616,6 @@ if __name__ == "__main__":
         confidenceMap=CONFIDENCE_PATH,
     )
     print("classified")
-
-    # Example showing backward compatibility still works
-    print("\n=== Testing Backward Compatibility ===")
-    temp_old = LearnModel(
-        inRaster=RASTER_PATH,  # Old parameter name
-        inVector=VECTOR_PATH,  # Old parameter name
-        inField=CLASS_FIELD,  # Old parameter name
-        outModel=MODEL_PATH,  # Old parameter name
-        inSplit=SPLIT_PERCENT,  # Old parameter name
-        inSeed=0,  # Old parameter name
-        outMatrix=MATRIX_PATH,  # Old parameter name
-        inClassifier=CLASSIFIER_TYPE,  # Old parameter name
-        extraParam=None,
-        feedback=None,
-    )
-    print("backward compatibility test passed")
 
     # Advanced testing examples
     Test = "SLOO"

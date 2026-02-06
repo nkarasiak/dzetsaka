@@ -1,8 +1,8 @@
-"""Legacy ML adapter backed by scripts.mainfunction."""
+"""ML adapter backed by scripts.classification_pipeline."""
 
 from __future__ import annotations
 
-from dzetsaka.scripts import mainfunction
+from dzetsaka.scripts import classification_pipeline
 
 
 def learn_model(
@@ -18,8 +18,8 @@ def learn_model(
     extra_params,
     feedback,
 ):
-    """Train a model through the legacy training entrypoint."""
-    return mainfunction.LearnModel(
+    """Train a model through the classification pipeline entrypoint."""
+    return classification_pipeline.LearnModel(
         raster_path=raster_path,
         vector_path=vector_path,
         class_field=class_field,
@@ -43,8 +43,8 @@ def classify_image(
     nodata,
     feedback,
 ):
-    """Run prediction through the legacy classification entrypoint."""
-    classifier_worker = mainfunction.ClassifyImage()
+    """Run prediction through the classification pipeline entrypoint."""
+    classifier_worker = classification_pipeline.ClassifyImage()
     return classifier_worker.initPredict(
         raster_path=raster_path,
         model_path=model_path,
@@ -55,3 +55,5 @@ def classify_image(
         NODATA=nodata,
         feedback=feedback,
     )
+
+

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dzetsaka.infrastructure.ml.legacy_mainfunction import learn_model
+from dzetsaka.infrastructure.ml.ml_pipeline_adapter import learn_model
 
 
 def run_training(

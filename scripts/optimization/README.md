@@ -41,10 +41,10 @@ print(f"Best score: {history['best_value']:.4f}")
 print(f"Best parameters: {history['best_params']}")
 ```
 
-**Integration with mainfunction.py**:
+**Integration with classification_pipeline.py**:
 
 ```python
-from scripts.mainfunction import LearnModel
+from scripts.classification_pipeline import LearnModel
 
 # Use Optuna for training
 model = LearnModel(
@@ -87,3 +87,4 @@ pip install optuna>=3.0.0
 - Multi-objective optimization (accuracy vs. speed)
 - Visualization integration with QGIS
 - Progress reporting in QGIS progress bar
+

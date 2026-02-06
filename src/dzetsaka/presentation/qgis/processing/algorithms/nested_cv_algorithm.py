@@ -6,7 +6,6 @@ cross-validation to evaluate model performance without bias.
 
 import os
 
-from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
     QgsProcessingAlgorithm,
     QgsProcessingParameterEnum,
@@ -16,6 +15,7 @@ from qgis.core import (
     QgsProcessingParameterRasterLayer,
     QgsProcessingParameterVectorLayer,
 )
+from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 
 from dzetsaka import classifier_config
@@ -33,8 +33,8 @@ except ImportError:
 
 # Try to import sampling
 try:
-    from dzetsaka.scripts.sampling.class_weights import compute_class_weights
-    from dzetsaka.scripts.sampling.smote_sampler import apply_smote_if_needed
+    from dzetsaka.scripts.sampling import class_weights as _class_weights  # noqa: F401
+    from dzetsaka.scripts.sampling import smote_sampler as _smote_sampler  # noqa: F401
 
     SAMPLING_AVAILABLE = True
 except ImportError:
@@ -204,9 +204,9 @@ CSV file with:
             return {}
 
         # Get parameters
-        raster_layer = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
-        vector_layer = self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
-        class_field = self.parameterAsFields(parameters, self.INPUT_COLUMN, context)
+        self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
+        self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
+        self.parameterAsFields(parameters, self.INPUT_COLUMN, context)
         classifier_idx = self.parameterAsEnums(parameters, self.TRAIN, context)
         inner_cv = self.parameterAsInt(parameters, self.INNER_CV, context)
         outer_cv = self.parameterAsInt(parameters, self.OUTER_CV, context)
@@ -222,9 +222,9 @@ CSV file with:
         feedback.pushInfo(f"SMOTE: {'Yes' if use_smote else 'No'}")
         feedback.pushInfo(f"Class weights: {'Yes' if use_class_weights else 'No'}")
 
-        # Load data using mainfunction
+        # Load data using classification_pipeline
         try:
-            from dzetsaka.scripts import mainfunction
+            from dzetsaka.scripts import classification_pipeline as _classification_pipeline  # noqa: F401
 
             # Create a LearnModel instance just for data loading
             feedback.pushInfo("Loading data...")
@@ -235,8 +235,8 @@ CSV file with:
             feedback.pushInfo(f"Output path: {output_path}")
 
         except ImportError as e:
-            feedback.reportError(f"Failed to import mainfunction: {e!s}")
-            show_error_dialog("dzetsaka Nested CV Error", f"Failed to import mainfunction: {e!s}")
+            feedback.reportError(f"Failed to import classification_pipeline: {e!s}")
+            show_error_dialog("dzetsaka Nested CV Error", f"Failed to import classification_pipeline: {e!s}")
             return {}
 
         # Log configuration
@@ -288,3 +288,4 @@ CSV file with:
         common = metadata_helpers.get_common_tags()
         specific = metadata_helpers.get_algorithm_specific_tags("validation")
         return common + specific
+

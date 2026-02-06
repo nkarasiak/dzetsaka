@@ -452,7 +452,7 @@ def initialize_factory() -> None:
 
     # XGBoost
     try:
-        from scripts.mainfunction import XGBClassifierWrapper
+        from scripts.classification_pipeline import XGBClassifierWrapper
 
         ClassifierFactory.register(
             code="XGB",
@@ -472,7 +472,7 @@ def initialize_factory() -> None:
 
     # LightGBM
     try:
-        from scripts.mainfunction import LGBMClassifierWrapper
+        from scripts.classification_pipeline import LGBMClassifierWrapper
 
         ClassifierFactory.register(
             code="LGB",
@@ -492,7 +492,7 @@ def initialize_factory() -> None:
 
     # CatBoost
     try:
-        from scripts.mainfunction import CBClassifierWrapper
+        from scripts.classification_pipeline import CBClassifierWrapper
 
         if CBClassifierWrapper is None:
             raise ImportError("CatBoost wrapper unavailable")

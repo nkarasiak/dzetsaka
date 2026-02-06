@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dzetsaka.infrastructure.ml.legacy_mainfunction import classify_image
+from dzetsaka.infrastructure.ml.ml_pipeline_adapter import classify_image
 
 
 def run_classification(
