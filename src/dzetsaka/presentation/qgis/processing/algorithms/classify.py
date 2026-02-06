@@ -15,7 +15,7 @@ from qgis.core import (
 
 from dzetsaka.logging_utils import QgisLogger, show_error_dialog
 from dzetsaka.processing import metadata_helpers
-from dzetsaka.scripts.mainfunction import ClassifyImage
+from dzetsaka.services.use_case_bridge import run_classification
 
 plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), *([".."] * 7)))
 
@@ -68,14 +68,14 @@ class ClassifyAlgorithm(QgsProcessingAlgorithm):
             if confidence_raster:
                 feedback.pushInfo(f"Confidence raster: {confidence_raster}")
 
-            worker = ClassifyImage()
             mask = None if input_mask is None else input_mask.source()
-            worker.initPredict(
-                input_raster.source(),
-                input_model,
-                output_raster,
-                mask,
-                confidenceMap=confidence_raster,
+            run_classification(
+                raster_path=input_raster.source(),
+                model_path=input_model,
+                output_path=output_raster,
+                mask_path=mask,
+                confidence_map=confidence_raster,
+                nodata=-9999,
                 feedback=feedback,
             )
 

@@ -20,8 +20,8 @@ from qgis.core import (
 from dzetsaka import classifier_config
 from dzetsaka.logging_utils import QgisLogger, show_error_dialog
 from dzetsaka.processing import metadata_helpers
-from dzetsaka.scripts import mainfunction
 from dzetsaka.scripts.function_dataraster import get_layer_source_path
+from dzetsaka.services.use_case_bridge import run_training
 
 plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), *([".."] * 7)))
 
@@ -195,17 +195,16 @@ class TrainAlgorithm(QgsProcessingAlgorithm):
                     show_error_dialog("dzetsaka Train Error", error_msg)
                     return {}
 
-            # learn model
-            mainfunction.LearnModel(
-                INPUT_RASTER.source(),
-                get_layer_source_path(INPUT_LAYER),
-                INPUT_COLUMN[0],
-                OUTPUT_MODEL,
-                SPLIT_PERCENT,
-                0,
-                OUTPUT_MATRIX,
-                SELECTED_ALGORITHM,
-                extraParam=extraParam,
+            run_training(
+                raster_path=INPUT_RASTER.source(),
+                vector_path=get_layer_source_path(INPUT_LAYER),
+                class_field=INPUT_COLUMN[0],
+                model_path=OUTPUT_MODEL,
+                split_config=SPLIT_PERCENT,
+                random_seed=0,
+                matrix_path=OUTPUT_MATRIX,
+                classifier=SELECTED_ALGORITHM,
+                extra_params=extraParam,
                 feedback=feedback,
             )
             return {self.OUTPUT_MATRIX: OUTPUT_MATRIX, self.OUTPUT_MODEL: OUTPUT_MODEL}
