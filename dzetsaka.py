@@ -54,17 +54,18 @@ DOI: 10.5281/zenodo.2552284
 
 # import basics
 import os.path
+from typing import Any, Callable, Optional
 
 # import outside libraries
 # import configparser
 import tempfile
 
-from qgis.core import QgsApplication
+from qgis.core import QgsApplication, QgsTask
 
 # Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
-from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QThread, pyqtSignal
+from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
 from qgis.PyQt.QtGui import QAction, QIcon
-from qgis.PyQt.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QProgressDialog
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox
 
 try:
     from osgeo import gdal, ogr, osr
@@ -78,7 +79,7 @@ import contextlib
 
 from . import classifier_config, ui
 from .dzetsaka_provider import DzetsakaProvider
-from .logging_utils import QgisLogger, show_error_dialog
+from .logging_utils import QgisLogger, show_error_dialog, show_issue_popup
 from .scripts import mainfunction
 from .scripts.function_dataraster import get_layer_source_path
 
@@ -87,67 +88,52 @@ with contextlib.suppress(ImportError):
     from . import resources
 
 
-class ClassificationWorker(QThread):
-    """Worker thread for training and classification to prevent UI freezing.
+class _TaskFeedbackAdapter:
+    """Minimal feedback adapter compatible with mainfunction feedback hooks."""
 
-    This worker runs training and/or classification in a background thread,
-    emitting signals for progress updates, completion, and errors.
-    """
+    def __init__(self, task):
+        self.task = task
+        self._last_text = ""
 
-    # Signals for communication with main thread
-    finished = pyqtSignal()
-    error = pyqtSignal(str, str)  # (title, message)
-    progress_update = pyqtSignal(str)  # Status message
-    classification_complete = pyqtSignal(str, str)  # (output_raster, confidence_map)
+    def setProgress(self, value):
+        with contextlib.suppress(Exception):
+            self.task.setProgress(float(value))
+
+    def setProgressText(self, text):
+        message = str(text)
+        if message and message != self._last_text:
+            self._last_text = message
+            self.task.status_message = message
+            if hasattr(self.task, "setDescription"):
+                with contextlib.suppress(Exception):
+                    self.task.setDescription(message)
+
+
+class ClassificationTask(QgsTask):
+    """QGIS background task for training + classification."""
 
     def __init__(
         self,
-        do_training=False,
-        raster_path=None,
-        vector_path=None,
-        class_field=None,
-        model_path=None,
-        split_config=None,
-        random_seed=0,
-        matrix_path=None,
-        classifier=None,
-        output_path=None,
-        mask_path=None,
-        confidence_map=None,
-        nodata=-9999,
+        description: str,
+        *,
+        do_training: bool,
+        raster_path: str,
+        vector_path: Optional[str],
+        class_field: Optional[str],
+        model_path: str,
+        split_config: Any,
+        random_seed: int,
+        matrix_path: Optional[str],
+        classifier: str,
+        output_path: str,
+        mask_path: Optional[str],
+        confidence_map: Optional[str],
+        nodata: int,
+        extra_params: Optional[dict],
+        on_success: Callable[[str, str], None],
+        on_error: Callable[[str, str], None],
     ):
-        """Initialize the classification worker.
-
-        Parameters
-        ----------
-        do_training : bool
-            Whether to perform training before classification
-        raster_path : str
-            Path to input raster
-        vector_path : str, optional
-            Path to training vector (required if do_training=True)
-        class_field : str, optional
-            Field name containing class labels (required if do_training=True)
-        model_path : str
-            Path to model file (input if not training, output if training)
-        split_config : int, optional
-            Train/validation split percentage
-        random_seed : int
-            Random seed for reproducibility
-        matrix_path : str, optional
-            Path to save confusion matrix
-        classifier : str
-            Classifier code (e.g., 'RF', 'SVM')
-        output_path : str
-            Path for output classification raster
-        mask_path : str, optional
-            Path to mask raster
-        confidence_map : str, optional
-            Path for confidence map output
-        nodata : int
-            NoData value for output
-        """
-        super().__init__()
+        super().__init__(description)
         self.do_training = do_training
         self.raster_path = raster_path
         self.vector_path = vector_path
@@ -161,72 +147,103 @@ class ClassificationWorker(QThread):
         self.mask_path = mask_path
         self.confidence_map = confidence_map
         self.nodata = nodata
-        self._stop = False
+        self.extra_params = extra_params or {}
+        self.on_success = on_success
+        self.on_error = on_error
+        self.error_title = ""
+        self.error_message = ""
+        self.status_message = ""
 
-    def run(self):
-        """Execute the training and/or classification workflow."""
+    def _set_error(self, title: str, message: str) -> None:
+        self.error_title = title
+        self.error_message = message
+
+    def run(self) -> bool:
+        """Execute training and/or classification in the background task."""
         try:
-            # Training phase
+            classifier_name = classifier_config.get_classifier_name(self.classifier)
+            feedback = _TaskFeedbackAdapter(self)
+
             if self.do_training:
-                self.progress_update.emit(f"Training {self.classifier} model...")
-                try:
-                    mainfunction.LearnModel(
-                        raster_path=self.raster_path,
-                        vector_path=self.vector_path,
-                        class_field=self.class_field,
-                        model_path=self.model_path,
-                        split_config=self.split_config,
-                        random_seed=self.random_seed,
-                        matrix_path=self.matrix_path,
-                        classifier=self.classifier,
-                        extraParam=None,
-                        feedback="gui",
-                    )
-                    self.progress_update.emit("Training completed successfully")
-                except Exception as e:
-                    error_msg = (
-                        f"Training failed: {e!s}<br><br>"
-                        "Common issues:<br>"
-                        f"• Non-integer values in the '{self.class_field}' column<br>"
-                        "• Mismatched projections between shapefile and raster<br>"
-                        "• Invalid geometries in the shapefile<br>"
-                        "• Insufficient training samples"
-                    )
-                    self.error.emit("dzetsaka Training Error", error_msg)
-                    return
-
-            if self._stop:
-                return
-
-            # Classification phase
-            self.progress_update.emit(f"Classifying image with {self.classifier}...")
-            try:
-                worker = mainfunction.ClassifyImage()
-                worker.initPredict(
+                self.status_message = f"Training {classifier_name}..."
+                self.setProgress(1)
+                mainfunction.LearnModel(
                     raster_path=self.raster_path,
+                    vector_path=self.vector_path,
+                    class_field=self.class_field,
                     model_path=self.model_path,
-                    output_path=self.output_path,
-                    mask_path=self.mask_path,
-                    confidenceMap=self.confidence_map,
-                    confidenceMapPerClass=None,
-                    NODATA=self.nodata,
-                    feedback="gui",
+                    split_config=self.split_config,
+                    random_seed=self.random_seed,
+                    matrix_path=self.matrix_path,
+                    classifier=self.classifier,
+                    extraParam=self.extra_params,
+                    feedback=feedback,
                 )
-                self.progress_update.emit("Classification completed successfully")
-                self.classification_complete.emit(self.output_path, self.confidence_map or "")
-            except Exception as e:
-                error_msg = f"Classification failed: {e!s}"
-                self.error.emit("dzetsaka Classification Error", error_msg)
-                return
 
-        except Exception as e:
-            self.error.emit("dzetsaka Error", f"Unexpected error: {e!s}")
-        finally:
-            self.finished.emit()
+                if self.isCanceled():
+                    return False
 
-    def stop(self):
-        """Request the worker to stop."""
-        self._stop = True
+                if not self.model_path or not os.path.exists(self.model_path):
+                    self._set_error(
+                        "dzetsaka Training Error",
+                        (
+                            "Training did not produce a valid model file.<br><br>"
+                            f"Expected model path: <code>{self.model_path}</code><br><br>"
+                            "This often happens when a dependency failed to initialize. "
+                            "If dependencies were installed in this session, restart QGIS and retry."
+                        ),
+                    )
+                    return False
+
+            if self.isCanceled():
+                return False
+
+            self.status_message = f"Running inference with {classifier_name}..."
+            self.setProgress(max(self.progress(), 80))
+            classifier_worker = mainfunction.ClassifyImage()
+            prediction_result = classifier_worker.initPredict(
+                raster_path=self.raster_path,
+                model_path=self.model_path,
+                output_path=self.output_path,
+                mask_path=self.mask_path,
+                confidenceMap=self.confidence_map,
+                confidenceMapPerClass=None,
+                NODATA=self.nodata,
+                feedback=feedback,
+            )
+            if prediction_result is None:
+                self._set_error(
+                    "dzetsaka Classification Error",
+                    (
+                        "Classification failed: model prediction did not complete.<br><br>"
+                        "Check the QGIS log for root cause details. "
+                        "If dependencies were installed during this session, restart QGIS first."
+                    ),
+                )
+                return False
+
+            self.setProgress(100)
+            return True
+        except Exception as exc:
+            self._set_error("dzetsaka Error", f"Unexpected error: {exc!s}")
+            return False
+
+    def finished(self, result: bool) -> None:
+        """Handle task completion in the main thread."""
+        if result:
+            self.on_success(self.output_path, self.confidence_map or "")
+            return
+
+        if self.isCanceled():
+            self.on_error(
+                "dzetsaka Task Cancelled",
+                "Training/classification task was cancelled.",
+            )
+            return
+
+        title = self.error_title or "dzetsaka Task Error"
+        message = self.error_message or "Background classification task failed."
+        self.on_error(title, message)
 
 
 class DzetsakaGUI(QDialog):
@@ -330,6 +347,7 @@ class DzetsakaGUI(QDialog):
         #        self.toolbar.setObjectName(u'dzetsaka')
         self.pluginIsActive = False
         self.dockwidget = None
+        self._active_classification_task = None
         #
 
         # param
@@ -837,48 +855,82 @@ class DzetsakaGUI(QDialog):
         """
         VERIFICATION STEP
         """
-        # verif before doing the job
+        # Mandatory checks should stop immediately (no "continue anyway").
         message = " "
+        inRaster = ""
+        inShape = ""
+        inRasterOp = None
+        inShapeProj = None
+        inRasterProj = None
+        model_path = self.dockwidget.inModel.text().strip()
 
-        if self.dockwidget.inModel.text() == "":
+        inRasterLayer = self.dockwidget.inRaster.currentLayer()
+        if inRasterLayer is None:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Missing Input",
+                "Please select an input raster before running classification.",
+                QMessageBox.StandardButton.Ok,
+            )
+            return
+
+        try:
+            inRaster = get_layer_source_path(inRasterLayer)
+        except Exception:
+            inRaster = ""
+        if not inRaster:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Invalid Raster",
+                "Could not read the selected raster source. Please select a valid raster layer.",
+                QMessageBox.StandardButton.Ok,
+            )
+            return
+
+        # Vector is mandatory only when a model is not provided.
+        if model_path == "":
+            inShapeLayer = self.dockwidget.inShape.currentLayer()
+            if inShapeLayer is None:
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "Missing Input",
+                    "If you don't use a model, please select a training vector.",
+                    QMessageBox.StandardButton.Ok,
+                )
+                return
             try:
-                self.dockwidget.inShape.currentLayer().dataProvider().dataSourceUri()
-            except BaseException:
-                message = "\n - If you don't use a model, please specify a vector"
-        try:
-            self.dockwidget.inRaster.currentLayer().dataProvider().dataSourceUri()
-        except BaseException:
-            message = message + "\n - You need a raster to make a classification."
+                inShape = get_layer_source_path(inShapeLayer)
+            except Exception:
+                inShape = ""
+            if not inShape:
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "Invalid Vector",
+                    "Could not read the selected training vector source. Please select a valid vector layer.",
+                    QMessageBox.StandardButton.Ok,
+                )
+                return
 
         try:
-            # get raster
-            inRaster = self.dockwidget.inRaster.currentLayer()
-            inRaster = inRaster.dataProvider().dataSourceUri()
-
             # get raster proj
             inRasterOp = gdal.Open(inRaster)
-            inRasterProj = inRasterOp.GetProjection()
-            inRasterProj = osr.SpatialReference(inRasterProj)
+            inRasterProj = osr.SpatialReference(inRasterOp.GetProjection()) if inRasterOp is not None else None
 
-            if self.dockwidget.inModel.text() == "":
-                # verif srs
-                # get vector
-                inShapeLayer = self.dockwidget.inShape.currentLayer()
-                inShape = get_layer_source_path(inShapeLayer)
-                # get shp proj
+            if model_path == "":
+                # verif srs only when training vector is used
                 inShapeOp = ogr.Open(inShape)
-                inShapeLyr = inShapeOp.GetLayer()
-                inShapeProj = inShapeLyr.GetSpatialRef()
+                inShapeLyr = inShapeOp.GetLayer() if inShapeOp is not None else None
+                inShapeProj = inShapeLyr.GetSpatialRef() if inShapeLyr is not None else None
 
-                # chekc IsSame Projection
-                if inShapeProj.IsSameGeogCS(inRasterProj) == 0:
+                # check IsSame Projection
+                if inShapeProj is not None and inRasterProj is not None and inShapeProj.IsSameGeogCS(inRasterProj) == 0:
                     message = message + "\n - Raster and ROI do not have the same projection."
-        except BaseException:
-            self.log.error("inShape is : " + inShape)
-            self.log.error("inRaster is : " + inRaster)
-            self.log.error(
-                "inShapeProj.IsSameGeogCS(inRasterProj) : " + inShapeProj.IsSameGeogCS(inRasterProj)
-            )
+        except Exception as exc:
+            self.log.error(f"Projection validation error: {exc}")
+            if inShape:
+                self.log.error("inShape is : " + inShape)
+            if inRaster:
+                self.log.error("inRaster is : " + inRaster)
             message = message + "\n - Can't compare projection between raster and vector."
 
         try:
@@ -894,7 +946,7 @@ class DzetsakaGUI(QDialog):
                 inMask = autoMask
                 self.log.info("Mask found : " + str(autoMask))
 
-            if inMask is not None:
+            if inMask is not None and inRasterOp is not None:
                 mask = gdal.Open(inMask, gdal.GA_ReadOnly)
                 # Check size
                 if (inRasterOp.RasterXSize != mask.RasterXSize) or (inRasterOp.RasterYSize != mask.RasterYSize):
@@ -978,15 +1030,21 @@ class DzetsakaGUI(QDialog):
                 inSplit = 100
                 outMatrix = None
 
-            # Create and configure worker thread
             do_training = not self.dockwidget.checkInModel.isChecked()
-
+            if not self._validate_classification_request(
+                raster_path=inRaster,
+                do_training=do_training,
+                vector_path=inShape if do_training else None,
+                class_field=inField if do_training else None,
+                model_path=model if not do_training else None,
+                source_label="Main Panel",
+            ):
+                return
             self.log.info(
                 f"Starting {'training and ' if do_training else ''}classification with {inClassifier} classifier"
             )
-
-            # Create worker
-            self.classification_worker = ClassificationWorker(
+            self._start_classification_task(
+                description=f"dzetsaka: {inClassifier} classification",
                 do_training=do_training,
                 raster_path=inRaster,
                 vector_path=inShape if do_training else None,
@@ -1000,58 +1058,10 @@ class DzetsakaGUI(QDialog):
                 mask_path=inMask,
                 confidence_map=confidenceMap,
                 nodata=NODATA,
+                extra_params=None,
+                error_context="Main panel classification workflow",
+                success_prefix="Main",
             )
-
-            # Create progress dialog
-            self.progress_dialog = QProgressDialog(
-                "Initializing classification...", "Cancel", 0, 0, self.iface.mainWindow()
-            )
-            self.progress_dialog.setWindowTitle("dzetsaka Classification")
-            self.progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
-            self.progress_dialog.setMinimumDuration(0)
-            self.progress_dialog.setCancelButton(None)  # Disable cancel for now
-            self.progress_dialog.show()
-
-            # Connect worker signals
-            def on_progress_update(message):
-                self.progress_dialog.setLabelText(message)
-                self.log.info(message)
-
-            def on_error(title, message):
-                self.progress_dialog.close()
-                # Log configuration for GitHub issue reporting
-                config_info = self._get_debug_info()
-                self.log.error(f"{title}: {message}")
-                self.log.info("Configuration for issue reporting:")
-                self.log.info(config_info)
-
-                # Add GitHub reporting link to message
-                full_message = (
-                    message
-                    + "<br><br>Please check the log for more details.<br><br>"
-                    + "<b>If this issue persists:</b><br>"
-                    + "Please report it at <a href='https://github.com/nkarasiak/dzetsaka/issues'>github.com/nkarasiak/dzetsaka/issues</a><br>"
-                    + "Include your classifier settings, QGIS version, and error details."
-                )
-                QMessageBox.warning(self, title, full_message, QMessageBox.StandardButton.Ok)
-
-            def on_classification_complete(output_raster, confidence_map):
-                self.log.info("Classification completed successfully")
-                self.iface.addRasterLayer(output_raster)
-                if confidence_map:
-                    self.iface.addRasterLayer(confidence_map)
-
-            def on_finished():
-                self.progress_dialog.close()
-                self.classification_worker = None
-
-            self.classification_worker.progress_update.connect(on_progress_update)
-            self.classification_worker.error.connect(on_error)
-            self.classification_worker.classification_complete.connect(on_classification_complete)
-            self.classification_worker.finished.connect(on_finished)
-
-            # Start worker
-            self.classification_worker.start()
 
     def checkbox_state(self):
         """!@brief Manage checkbox in main dock."""
@@ -1177,7 +1187,6 @@ class DzetsakaGUI(QDialog):
 
             # Check required dependencies
             missing_required = []
-            required_message = ""
 
             if classifier_config.requires_sklearn(classifier_code):
                 # Test sklearn availability directly
@@ -1194,67 +1203,61 @@ class DzetsakaGUI(QDialog):
 
                 if not sklearn_available:
                     missing_required.append("scikit-learn")
-                    required_message += "Scikit-learn library is missing.<br>"
-                    required_message += "Install with: <code>pip install scikit-learn</code><br><br>"
 
             if classifier_config.requires_xgboost(classifier_code):
                 try:
                     import xgboost  # noqa: F401
                 except ImportError:
-                    missing_required.append("XGBoost")
-                    required_message += "XGBoost library is missing.<br>"
-                    required_message += "Install with: <code>pip install xgboost</code><br><br>"
+                    missing_required.append("xgboost")
 
             if classifier_config.requires_lightgbm(classifier_code):
                 try:
                     import lightgbm  # noqa: F401
                 except ImportError:
-                    missing_required.append("LightGBM")
-                    required_message += "LightGBM library is missing.<br>"
-                    required_message += "Install with: <code>pip install lightgbm</code><br><br>"
+                    missing_required.append("lightgbm")
             if classifier_config.requires_catboost(classifier_code):
                 try:
                     import catboost  # noqa: F401
                 except ImportError:
-                    missing_required.append("CatBoost")
-                    required_message += "CatBoost library is missing.<br>"
-                    required_message += "Install with: <code>pip install catboost</code><br><br>"
+                    missing_required.append("catboost")
 
             # Check optional enhancements (for sklearn-based classifiers)
             missing_optional = []
-            optional_message = ""
             if classifier_config.requires_sklearn(classifier_code):
                 try:
                     import optuna  # noqa: F401
                 except ImportError:
-                    missing_optional.append("Optuna")
-                    optional_message += "Optuna library is missing (optional - advanced hyperparameter optimization).<br>"
-                    optional_message += "Install with: <code>pip install optuna</code><br><br>"
+                    missing_optional.append("optuna")
 
             if missing_required:
-                # Required dependencies missing — must install or fall back to GMM
-                error_message = "<b>Required dependencies:</b><br>" + required_message
-                if missing_optional:
-                    error_message += "<b>Optional enhancements:</b><br>" + optional_message
-
+                req_list = ", ".join(missing_required)
+                opt_list = ", ".join(missing_optional) if missing_optional else "none"
                 reply = QMessageBox.question(
                     self,
-                    f"Missing Dependencies for {selected_classifier}",
-                    f"{error_message}<br>"
-                    f"<b>🧪 Experimental Feature:</b><br>"
-                    f"Would you like dzetsaka to try installing the missing dependencies automatically?<br><br>"
-                    f"<b>Note:</b> This is experimental and may not work in all QGIS environments.<br>"
-                    f"Click 'Yes' to try auto-install, 'No' to install manually, or 'Cancel' to use GMM.<br><br>"
-                    f"<a href='https://github.com/lennepkade/dzetsaka/#installation'>Manual installation guide</a>",
+                    f"Dependencies for {selected_classifier}",
+                    (
+                        "To fully use dzetsaka capabilities, we recommend installing all dependencies.<br><br>"
+                        f"Required missing now: <code>{req_list}</code><br>"
+                        f"Optional missing now: <code>{opt_list}</code><br><br>"
+                        "Install the full dzetsaka dependency bundle now?"
+                    ),
                     QMessageBox.StandardButton.Yes
-                    | QMessageBox.StandardButton.No
-                    | QMessageBox.StandardButton.Cancel,
+                    | QMessageBox.StandardButton.No,
                     QMessageBox.StandardButton.No,
                 )
 
                 if reply == QMessageBox.StandardButton.Yes:
-                    # Try auto-installation (required + optional together)
-                    if self._try_install_dependencies(missing_required + missing_optional):
+                    # Install full stack when requested (all-or-nothing mode).
+                    to_install = [
+                        "scikit-learn",
+                        "xgboost",
+                        "lightgbm",
+                        "catboost",
+                        "optuna",
+                        "shap",
+                        "imbalanced-learn",
+                    ]
+                    if self._try_install_dependencies(to_install):
                         # Success! Update classifier
                         self.settings.setValue("/dzetsaka/classifier", selected_classifier)
                         self.classifier = selected_classifier
@@ -1262,8 +1265,9 @@ class DzetsakaGUI(QDialog):
                             self,
                             "Installation Successful",
                             f"Dependencies installed successfully!<br><br>"
-                            f"<b>Note:</b> If {selected_classifier} doesn't work immediately, "
-                            f"please restart QGIS to ensure the new libraries are properly loaded.<br><br>"
+                            "<b>Important:</b> Please restart QGIS now.<br>"
+                            "Without restarting, newly installed libraries may not be loaded, "
+                            f"and {selected_classifier} training/inference can fail.<br><br>"
                             f"You can now try using {selected_classifier}.",
                             QMessageBox.StandardButton.Ok,
                         )
@@ -1272,31 +1276,11 @@ class DzetsakaGUI(QDialog):
                         self.settingsdock.selectClassifier.setCurrentIndex(0)
                         self.settings.setValue("/dzetsaka/classifier", "Gaussian Mixture Model")
                         self.classifier = "Gaussian Mixture Model"
-                elif reply == QMessageBox.StandardButton.Cancel:
+                elif reply == QMessageBox.StandardButton.No:
                     # Reset to GMM
                     self.settingsdock.selectClassifier.setCurrentIndex(0)
                     self.settings.setValue("/dzetsaka/classifier", "Gaussian Mixture Model")
                     self.classifier = "Gaussian Mixture Model"
-                # If No, keep current selection but don't save (user will handle manually)
-
-            elif missing_optional:
-                # Only optional deps missing — classifier is fully usable, suggest install
-                if self.classifier != selected_classifier:
-                    self.settings.setValue("/dzetsaka/classifier", selected_classifier)
-                    self.classifier = selected_classifier
-
-                reply = QMessageBox.question(
-                    self,
-                    "Optional Enhancement Available",
-                    f"{optional_message}"
-                    f"<b>Note:</b> {selected_classifier} works without it using standard cross-validation.<br><br>"
-                    f"Would you like to install it automatically?",
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    QMessageBox.StandardButton.No,
-                )
-
-                if reply == QMessageBox.StandardButton.Yes:
-                    self._try_install_dependencies(missing_optional)
 
             else:
                 # All dependencies satisfied, update classifier
@@ -1403,6 +1387,16 @@ Settings:
         except Exception as e:
             return f"Error generating debug info: {e!s}"
 
+    def _show_github_issue_popup(self, error_title, error_type, error_message, context):
+        """Show standardized compact issue popup."""
+        show_issue_popup(
+            error_title=error_title,
+            error_type=error_type,
+            error_message=error_message,
+            context=context,
+            parent=self,
+        )
+
     def _try_install_dependencies(self, missing_deps):
         """Experimental feature to auto-install missing dependencies.
 
@@ -1417,13 +1411,47 @@ Settings:
             True if installation succeeded, False otherwise
 
         """
+        FULL_DEPENDENCY_BUNDLE = [
+            "scikit-learn",
+            "xgboost",
+            "lightgbm",
+            "catboost",
+            "optuna",
+            "shap",
+            "imbalanced-learn",
+        ]
+
+        if not missing_deps:
+            return True
+
+        # Normalize and deduplicate dependency names to avoid repeated install attempts.
+        normalized_missing_deps = []
+        seen = set()
+        for dep in missing_deps:
+            dep_norm = str(dep).strip()
+            if not dep_norm:
+                continue
+            dep_key = dep_norm.lower()
+            if dep_key in seen:
+                continue
+            seen.add(dep_key)
+            normalized_missing_deps.append(dep_norm)
+        requested_deps = normalized_missing_deps
+        missing_deps = FULL_DEPENDENCY_BUNDLE.copy()
+        self.log.info(
+            "All-or-nothing dependency mode enabled. "
+            f"Requested={requested_deps!r}, installing full bundle={missing_deps!r}"
+        )
+
         from qgis.PyQt.QtCore import QEventLoop, QProcess
 
         from .ui.install_progress_dialog import InstallProgressDialog
 
         # Package installation using QProcess for responsive UI
         def install_package(package, progress_dialog, extra_args=None):
+            import glob
             import os
+            import shutil
             import sys
 
             def run_command(cmd, description):
@@ -1470,17 +1498,44 @@ Settings:
                     cancel_timer.timeout.connect(check_cancel)
                     cancel_timer.start(100)  # Check every 100ms
 
+                    # Hard timeout to avoid indefinite hangs that can look like a frozen QGIS UI.
+                    timeout_ms = 900000
+                    timed_out = {"value": False}
+
+                    def handle_timeout():
+                        timed_out["value"] = True
+                        progress_dialog.append_output(
+                            f"\n⚠ Command timed out after {int(timeout_ms / 1000)}s, terminating...\n"
+                        )
+                        process.terminate()
+                        process.waitForFinished(3000)
+                        if process.state() == QProcess.ProcessState.Running:
+                            process.kill()
+                        loop.quit()
+
+                    timeout_timer = QTimer()
+                    timeout_timer.setSingleShot(True)
+                    timeout_timer.timeout.connect(handle_timeout)
+                    timeout_timer.start(timeout_ms)
+
                     if not process.waitForStarted(5000):
                         cancel_timer.stop()
+                        timeout_timer.stop()
                         self.log.error(f"Failed to start process: {cmd[0]}")
                         return False, "Failed to start process"
 
-                    loop.exec_()
+                    if hasattr(loop, "exec"):
+                        loop.exec()
+                    else:
+                        loop.exec_()
                     cancel_timer.stop()
+                    timeout_timer.stop()
 
                     # Check if cancelled
                     if progress_dialog.was_cancelled():
                         return False, "Cancelled by user"
+                    if timed_out["value"]:
+                        return False, "Timed out while waiting for dependency installer process"
 
                     # Read any remaining output
                     handle_output()
@@ -1509,92 +1564,144 @@ Settings:
                     self.log.error(f"Error running command: {e}")
                     return False, str(e)
 
-            # Find the correct Python executable (workaround for QGIS sys.executable issue)
-            def find_python():
-                if sys.platform != "win32":
-                    return sys.executable
+            # Build candidate Python launchers (QGIS on Windows often has no plain "python" in PATH).
+            def find_python_candidates():
+                candidates = []
 
-                # On Windows, sys.executable points to QGIS, not Python
+                def _add(path):
+                    if path and path not in candidates:
+                        candidates.append(path)
+
+                def _looks_like_python_launcher(path):
+                    if path in {"python", "python3", "py"}:
+                        return True
+                    base = os.path.basename(str(path)).lower()
+                    return base in {"python.exe", "python3.exe", "py.exe"}
+
+                if sys.executable:
+                    _add(sys.executable)
+                    _add(os.path.join(os.path.dirname(sys.executable), "python.exe"))
+                    _add(os.path.join(os.path.dirname(sys.executable), "python3.exe"))
+                _add(os.path.join(sys.prefix, "python.exe"))
+                _add(os.path.join(sys.base_prefix, "python.exe"))
+                _add(os.path.join(os.path.dirname(os.__file__), "..", "python.exe"))
+
+                osgeo_root = os.environ.get("OSGEO4W_ROOT", "")
+                if osgeo_root:
+                    _add(os.path.join(osgeo_root, "bin", "python3.exe"))
+                    _add(os.path.join(osgeo_root, "bin", "python.exe"))
+                    for py in glob.glob(os.path.join(osgeo_root, "apps", "Python*", "python.exe")):
+                        _add(py)
+
+                # Legacy heuristic kept as a fallback.
                 for path in sys.path:
-                    assumed_path = os.path.join(path, "python.exe")
-                    if os.path.isfile(assumed_path):
-                        self.log.info(f"Found Python executable: {assumed_path}")
-                        return assumed_path
-                return "python"
+                    _add(os.path.join(path, "python.exe"))
+                    _add(os.path.join(path, "python3.exe"))
 
-            python_exe = find_python()
-            self.log.info(f"Installing {package} for Python: {python_exe}")
+                for cmd in ("python", "python3", "py"):
+                    found = shutil.which(cmd)
+                    if found:
+                        _add(found)
+
+                filtered = []
+                for c in candidates:
+                    if not ((os.path.isabs(c) and os.path.isfile(c)) or c in {"python", "python3", "py"}):
+                        continue
+                    if not _looks_like_python_launcher(c):
+                        continue
+                    filtered.append(c)
+                return filtered
+
+            def validate_python_candidates(raw_candidates):
+                validated = []
+                for py in raw_candidates:
+                    probe_cmd = [py, "-c", "print('DZETSAKA_PY_OK')"]
+                    success, output = run_command(probe_cmd, f"python probe via {py}")
+                    if success and "DZETSAKA_PY_OK" in (output or ""):
+                        validated.append(py)
+                    else:
+                        self.log.warning(f"Skipping non-python launcher candidate: {py}")
+                        progress_dialog.append_output(f"⚠ Skipping non-python launcher: {py}\n")
+                return validated
+
+            python_candidates = validate_python_candidates(find_python_candidates())
+            self.log.info(f"Installing {package}. Python candidates: {python_candidates!r}")
+            progress_dialog.append_output(
+                "Python candidates: " + (", ".join(python_candidates) if python_candidates else "<none found>")
+            )
 
             # Check for cancellation before starting
             if progress_dialog.was_cancelled():
                 return False
 
-            # Method 1: Try python -m pip (preferred)
-            pip_args = ["-m", "pip", "install", package, "--user", "--no-input", "--no-deps"]
+            pip_args = [
+                "-m",
+                "pip",
+                "install",
+                package,
+                "--user",
+                "--no-input",
+                "--disable-pip-version-check",
+                "--prefer-binary",
+            ]
             if extra_args:
                 pip_args.extend(extra_args)
-            success, output = run_command(
-                [python_exe, *pip_args],
-                "pip module",
+
+            attempts = []
+            for py in python_candidates:
+                attempts.append(([py, *pip_args], f"pip module via {py}"))
+                attempts.append(([py, "-m", "ensurepip", "--user"], f"ensurepip via {py}"))
+                attempts.append(([py, *pip_args], f"pip module after ensurepip via {py}"))
+
+            # Shell launcher fallbacks (common on Windows/QGIS environments).
+            attempts.extend(
+                [
+                    (["py", "-3", *pip_args], "pip via py -3"),
+                    (["py", *pip_args], "pip via py"),
+                    (["python3", *pip_args], "pip via python3"),
+                    (["python", *pip_args], "pip via python"),
+                ]
             )
-            if success:
-                self.log.info(f"Successfully installed {package}")
-                progress_dialog.append_output(f"\n✓ install_package returning True for {package}\n")
-                return True
-            else:
-                self.log.warning(f"Installation failed for {package}, exit code was non-zero")
-                progress_dialog.append_output(f"\n✗ install_package returning False for {package}\n")
 
-            # Check if pip module is missing
-            pip_missing = "No module named pip" in output
+            last_output = ""
+            for cmd, description in attempts:
+                # Avoid running ensurepip unless pip is really missing for that attempt.
+                if "ensurepip" in cmd:
+                    if "No module named pip" not in last_output and "pip is not installed" not in last_output.lower():
+                        continue
+                success, output = run_command(cmd, description)
+                last_output = output or ""
+                if success and "ensurepip" not in cmd:
+                    self.log.info(f"Successfully installed {package} using: {' '.join(cmd)}")
+                    progress_dialog.append_output(f"\n✓ install_package returning True for {package}\n")
+                    return True
 
-            if pip_missing:
-                self.log.warning("pip module not available, trying alternatives...")
-                progress_dialog.append_output("\n⚠ pip not found, trying to bootstrap...\n")
+            self.log.warning(f"Installation failed for {package} after all launcher attempts")
+            progress_dialog.append_output(f"\n✗ install_package returning False for {package}\n")
 
-                # Method 2: Try ensurepip to bootstrap pip
-                self.log.info("Attempting to bootstrap pip with ensurepip...")
-                success, _ = run_command(
-                    [python_exe, "-m", "ensurepip", "--user"],
-                    "ensurepip",
-                )
-                if success:
-                    # Retry pip install after bootstrapping
-                    success, _ = run_command(
-                        [python_exe, *pip_args],
-                        "pip after ensurepip",
-                    )
-                    if success:
-                        self.log.info(f"Successfully installed {package}")
-                        return True
+            # Method 3: On Linux, try apt as final fallback
+            if sys.platform.startswith("linux"):
+                apt_packages = {
+                    "scikit-learn": "python3-sklearn",
+                    "xgboost": "python3-xgboost",
+                    "lightgbm": "python3-lightgbm",
+                    "catboost": "python3-catboost",
+                }
+                apt_pkg = apt_packages.get(package.lower())
 
-                # Method 3: On Linux, try apt/dnf for system packages
-                if sys.platform.startswith("linux"):
-                    # Map pip packages to apt packages
-                    apt_packages = {
-                        "scikit-learn": "python3-sklearn",
-                        "xgboost": "python3-xgboost",
-                        "lightgbm": "python3-lightgbm",
-                        "catboost": "python3-catboost",
-                    }
-                    apt_pkg = apt_packages.get(package.lower())
-
-                    if apt_pkg:
-                        # Check if apt is available
-                        apt_path = "/usr/bin/apt"
-                        if os.path.exists(apt_path):
-                            self.log.info(f"Trying system package manager (apt install {apt_pkg})...")
-                            progress_dialog.append_output("\n⚠ Trying system package manager...\n")
-                            # Try pkexec for graphical sudo
-                            success, output = run_command(
-                                ["pkexec", apt_path, "install", "-y", apt_pkg],
-                                "apt via pkexec",
-                            )
-                            if success:
-                                self.log.info(f"Successfully installed {apt_pkg} via apt")
-                                return True
-                            else:
-                                self.log.warning(f"apt install failed: {output}")
+                if apt_pkg:
+                    apt_path = "/usr/bin/apt"
+                    if os.path.exists(apt_path):
+                        self.log.info(f"Trying system package manager (apt install {apt_pkg})...")
+                        progress_dialog.append_output("\n⚠ Trying system package manager...\n")
+                        success, output = run_command(
+                            ["pkexec", apt_path, "install", "-y", apt_pkg],
+                            "apt via pkexec",
+                        )
+                        if success:
+                            self.log.info(f"Successfully installed {apt_pkg} via apt")
+                            return True
+                        self.log.warning(f"apt install failed: {output}")
 
             # All methods failed
             self.log.error(
@@ -1616,6 +1723,8 @@ Settings:
         # Mapping of dependency names to pip packages
         pip_packages = {
             "scikit-learn": "scikit-learn",
+            "sklearn": "scikit-learn",
+            "Sklearn": "scikit-learn",
             "xgboost": "xgboost",
             "lightgbm": "lightgbm",
             "catboost": "catboost",
@@ -1629,32 +1738,19 @@ Settings:
             "Optuna": "optuna",
         }
 
-        package_deps = {
-            # Absolute-minimum deps needed for import/runtime (no upgrades).
-            "scikit-learn": [
-                ("numpy", "numpy"),
-                ("scipy", "scipy"),
-                ("joblib", "joblib"),
-                ("threadpoolctl", "threadpoolctl"),
-            ],
-            "xgboost": [("numpy", "numpy")],
-            "lightgbm": [("numpy", "numpy")],
-            "catboost": [("numpy", "numpy")],
-            "optuna": [
-                ("numpy", "numpy"),
-                ("scipy", "scipy"),
-                ("tqdm", "tqdm"),
-                ("typing_extensions", "typing_extensions"),
-            ],
-            "shap": [
-                ("numpy", "numpy"),
-                ("scipy", "scipy"),
-                ("pandas", "pandas"),
-            ],
-            "imbalanced-learn": [("numpy", "numpy"), ("scipy", "scipy"), ("sklearn", "scikit-learn")],
+        progress_labels = {
+            "scikit-learn": "scikit-learn (core algorithms: RF, SVM, KNN, ET, GBC, LR, NB, MLP)",
+            "xgboost": "XGBoost algorithm",
+            "lightgbm": "LightGBM algorithm",
+            "catboost": "CatBoost algorithm",
+            "optuna": "Optuna (hyperparameter optimization)",
+            "shap": "SHAP (explainability)",
+            "imbalanced-learn": "imbalanced-learn (SMOTE / class imbalance tools)",
         }
+
         base_imports = {
             "scikit-learn": "sklearn",
+            "sklearn": "sklearn",
             "xgboost": "xgboost",
             "lightgbm": "lightgbm",
             "catboost": "catboost",
@@ -1685,13 +1781,12 @@ Settings:
                 # Get the pip package name
                 dep_key = dep.strip()
                 package_name = pip_packages.get(dep_key, pip_packages.get(dep_key.lower(), dep_key.lower()))
+                package_name = pip_packages.get(package_name, package_name)
 
-                progress.set_current_package(package_name, i)
+                display_name = progress_labels.get(package_name, package_name)
+                progress.set_current_package(display_name, i)
 
                 targets = [package_name]
-                for import_name, pip_name in package_deps.get(package_name, []):
-                    if not _is_importable(import_name):
-                        targets.append(pip_name)
                 # Deduplicate while preserving order
                 seen = set()
                 targets = [t for t in targets if not (t in seen or seen.add(t))]
@@ -1712,43 +1807,40 @@ Settings:
                         if dep_installed and target == package_name:
                             continue
                         # Try direct pip installation first (preferred method)
-                        self.log.info(f"Attempting to install {target} using direct pip (no-deps)...")
+                        self.log.info(f"Attempting to install {target} using direct pip...")
 
                         install_result = install_package(target, progress)
                         self.log.info(f"install_package({target}) returned: {install_result}")
                         if install_result:
                             self.log.info(f"Successfully installed {target}")
                             progress.append_output(f"✓ {target} installed successfully\n")
-                            self.log.info(
-                                f"Checking condition: target={target}, package_name={package_name}, "
-                                f"dep_installed={dep_installed}"
-                            )
-                            if target == package_name and not dep_installed:
-                                success_count += 1
-                                dep_installed = True
-                                self.log.info(f"SUCCESS! Incremented success_count to {success_count}")
-                                progress.append_output(f"✓ success_count = {success_count}\n")
-
-                            # Try to import to verify installation (after clearing import cache)
+                            # Try to import to verify installation (after clearing import cache).
+                            # Do not mark success unless the module is actually importable.
                             import importlib
 
                             try:
                                 importlib.invalidate_caches()
-                                imported = importlib.import_module(target)
+                                import_target = base_imports.get(target, target)
+                                imported = importlib.import_module(import_target)
                                 if hasattr(imported, "__version__"):
-                                    self.log.info(f"Verified {target} import: {imported.__version__}")
+                                    self.log.info(f"Verified {import_target} import: {imported.__version__}")
                                     progress.append_output(f"  Version: {imported.__version__}\n")
                                 else:
-                                    self.log.info(f"Verified {target} import.")
+                                    self.log.info(f"Verified {import_target} import.")
+                                self.log.info(
+                                    f"Checking condition: target={target}, package_name={package_name}, "
+                                    f"dep_installed={dep_installed}"
+                                )
+                                if target == package_name and not dep_installed:
+                                    success_count += 1
+                                    dep_installed = True
+                                    self.log.info(f"SUCCESS! Incremented success_count to {success_count}")
+                                    progress.append_output(f"✓ success_count = {success_count}\n")
                             except ImportError as import_error:
                                 self.log.warning(
-                                    f"Package {target} installed but not immediately available: {import_error}"
+                                    f"Package {target} install command succeeded but import failed: {import_error}"
                                 )
-                                self.log.warning("You may need to restart QGIS to use this library.")
-                                progress.append_output(
-                                    "⚠ Package installed but may need QGIS restart to use\n"
-                                )
-                                # Still count as success since pip succeeded
+                                progress.append_output("✗ Package not importable after install attempt\n")
                         else:
                             self.log.warning(f"Direct pip installation failed for {target}")
                             progress.append_output(f"✗ Failed to install {target}\n")
@@ -1769,35 +1861,27 @@ Settings:
                 progress.close()
                 return True
             else:
-                QMessageBox.warning(
-                    self,
-                    "Installation Incomplete",
-                    f"Only {success_count} of {len(missing_deps)} dependencies were installed successfully.<br><br>"
-                    f"<b>To install manually, run one of these commands in a terminal:</b><br><br>"
-                    f"<b>Option 1</b> - Install via apt (recommended for Debian/Ubuntu):<br>"
-                    f"<code>sudo apt install python3-sklearn</code><br><br>"
-                    f"<b>Option 2</b> - Install pip first, then use pip:<br>"
-                    f"<code>sudo apt install python3-pip</code><br>"
-                    f"<code>pip3 install --user scikit-learn</code><br><br>"
-                    f"Then restart QGIS.",
-                    QMessageBox.StandardButton.Ok,
+                self._show_github_issue_popup(
+                    error_title="Installation Incomplete",
+                    error_type="Dependency Installation Error",
+                    error_message=(
+                        f"Only {success_count} of {len(missing_deps)} dependencies were installed successfully.\n"
+                        "Manual fallback examples:\n"
+                        "  pip install --user scikit-learn\n"
+                        "  pip install --user xgboost lightgbm catboost optuna shap imbalanced-learn\n"
+                    ),
+                    context=f"Missing dependencies requested: {', '.join(missing_deps)}",
                 )
                 progress.close()
                 return False
 
         except Exception as e:
             self.log.error(f"Error during dependency installation: {e!s}")
-            QMessageBox.critical(
-                self,
-                "Installation Error",
-                f"An error occurred during installation:<br><br>{e!s}<br><br>"
-                f"<b>To install manually:</b><br><br>"
-                f"<code>pip install scikit-learn xgboost lightgbm optuna</code><br><br>"
-                f"<code>pip install catboost</code><br><br>"
-                f"On Debian/Ubuntu you can also install scikit-learn via apt:<br>"
-                f"<code>sudo apt install python3-sklearn</code><br><br>"
-                f"Then restart QGIS.",
-                QMessageBox.StandardButton.Ok,
+            self._show_github_issue_popup(
+                error_title="Installation Error",
+                error_type=type(e).__name__,
+                error_message=str(e),
+                context=f"Dependency installation flow for: {', '.join(missing_deps)}",
             )
             return False
 
@@ -1806,6 +1890,147 @@ Settings:
         self._wizard = ui.ClassificationWizard(self.iface.mainWindow(), installer=self)
         self._wizard.classificationRequested.connect(self.execute_wizard_config)
         self._wizard.show()
+
+    def _validate_classification_request(
+        self,
+        *,
+        raster_path,
+        do_training,
+        vector_path=None,
+        class_field=None,
+        model_path=None,
+        source_label="Classification",
+    ):
+        # type: (...) -> bool
+        """Validate required inputs before launching a classification task."""
+        errors = []
+
+        raster_path = (raster_path or "").strip()
+        vector_path = (vector_path or "").strip()
+        class_field = (class_field or "").strip()
+        model_path = (model_path or "").strip()
+
+        if not raster_path:
+            errors.append("Input raster is required.")
+        else:
+            raster_fs_path = raster_path.split("|")[0]
+            if raster_fs_path and not os.path.exists(raster_fs_path):
+                errors.append(f"Input raster was not found: {raster_fs_path}")
+
+        if do_training:
+            if not vector_path:
+                errors.append("Training vector is required when no model is loaded.")
+            else:
+                vector_fs_path = vector_path.split("|")[0]
+                if vector_fs_path and not os.path.exists(vector_fs_path):
+                    errors.append(f"Training vector was not found: {vector_fs_path}")
+            if not class_field:
+                errors.append("Class field is required when training a new model.")
+        else:
+            if not model_path:
+                errors.append("A model path is required when loading an existing model.")
+            elif not os.path.exists(model_path):
+                errors.append(f"Model file was not found: {model_path}")
+
+        if errors:
+            details = "<br>".join(f"- {line}" for line in errors)
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                f"{source_label} Input Error",
+                f"Please fix the following before running:<br><br>{details}",
+                QMessageBox.StandardButton.Ok,
+            )
+            self.log.warning(f"{source_label} validation failed: {' | '.join(errors)}")
+            return False
+        return True
+
+    def _start_classification_task(
+        self,
+        *,
+        description,
+        do_training,
+        raster_path,
+        vector_path,
+        class_field,
+        model_path,
+        split_config,
+        random_seed,
+        matrix_path,
+        classifier,
+        output_path,
+        mask_path,
+        confidence_map,
+        nodata,
+        extra_params,
+        error_context,
+        success_prefix,
+    ):
+        # type: (...) -> None
+        """Submit a background classification task to the QGIS task manager."""
+        if self._active_classification_task is not None:
+            task_active = False
+            try:
+                status = self._active_classification_task.status()
+                try:
+                    done_statuses = {QgsTask.TaskStatus.Complete, QgsTask.TaskStatus.Terminated}
+                except AttributeError:
+                    done_statuses = {QgsTask.Complete, QgsTask.Terminated}
+                task_active = status not in done_statuses
+            except Exception:
+                task_active = False
+
+            if task_active:
+                QMessageBox.information(
+                    self.iface.mainWindow(),
+                    "Task Already Running",
+                    "A dzetsaka classification task is already running in the QGIS Task Manager. "
+                    "Please wait for it to finish before starting a new one.",
+                    QMessageBox.StandardButton.Ok,
+                )
+                return
+
+        def on_task_error(title, message):
+            self._active_classification_task = None
+            config_info = self._get_debug_info()
+            self.log.error(f"{title}: {message}")
+            self.log.info("Configuration for issue reporting:")
+            self.log.info(config_info)
+            self._show_github_issue_popup(
+                error_title=title,
+                error_type="Runtime Error",
+                error_message=message,
+                context=error_context,
+            )
+
+        def on_task_success(out_raster, out_confidence):
+            self._active_classification_task = None
+            self.log.info(f"[{success_prefix}] Classification completed successfully")
+            self.iface.addRasterLayer(out_raster)
+            if out_confidence:
+                self.iface.addRasterLayer(out_confidence)
+
+        task = ClassificationTask(
+            description,
+            do_training=do_training,
+            raster_path=raster_path,
+            vector_path=vector_path,
+            class_field=class_field,
+            model_path=model_path,
+            split_config=split_config,
+            random_seed=random_seed,
+            matrix_path=matrix_path,
+            classifier=classifier,
+            output_path=output_path,
+            mask_path=mask_path,
+            confidence_map=confidence_map,
+            nodata=nodata,
+            extra_params=extra_params,
+            on_success=on_task_success,
+            on_error=on_task_error,
+        )
+        self._active_classification_task = task
+        QgsApplication.taskManager().addTask(task)
+        self.log.info(f"Task submitted to QGIS task manager: {description}")
 
     def execute_wizard_config(self, config):
         """Run training and classification driven by the wizard config dict.
@@ -1825,15 +2050,6 @@ Settings:
         inClassifier = str(config.get("classifier", "GMM"))
         extraParam = config.get("extraParam", None)
 
-        # --- output raster (temp if blank) ---
-        outRaster = config.get("output_raster", "")
-        if not outRaster:
-            tempFolder = tempfile.mkdtemp()
-            outRaster = os.path.join(tempFolder, os.path.splitext(os.path.basename(inRaster))[0] + "_class.tif")
-
-        # --- confidence map ---
-        confidenceMap = config.get("confidence_map", "") or None
-
         # --- model path ---
         loadModel = config.get("load_model", "")
         if loadModel:
@@ -1851,13 +2067,29 @@ Settings:
         NODATA = -9999
         inSeed = 0
 
-        # Create and configure worker thread for wizard
         do_training = not loadModel
+        if not self._validate_classification_request(
+            raster_path=inRaster,
+            do_training=do_training,
+            vector_path=inShape if do_training else None,
+            class_field=inField if do_training else None,
+            model_path=model if not do_training else None,
+            source_label="Wizard",
+        ):
+            return
+
+        # --- output raster (temp if blank) ---
+        outRaster = config.get("output_raster", "")
+        if not outRaster:
+            tempFolder = tempfile.mkdtemp()
+            outRaster = os.path.join(tempFolder, os.path.splitext(os.path.basename(inRaster))[0] + "_class.tif")
+
+        # --- confidence map ---
+        confidenceMap = config.get("confidence_map", "") or None
 
         self.log.info(f"[Wizard] Starting {'training and ' if do_training else ''}classification with {inClassifier}")
-
-        # Create wizard worker
-        self.wizard_worker = ClassificationWorker(
+        self._start_classification_task(
+            description=f"dzetsaka Wizard: {inClassifier} classification",
             do_training=do_training,
             raster_path=inRaster,
             vector_path=inShape if do_training else None,
@@ -1871,46 +2103,10 @@ Settings:
             mask_path=None,
             confidence_map=confidenceMap,
             nodata=NODATA,
+            extra_params=extraParam,
+            error_context="Wizard classification workflow",
+            success_prefix="Wizard",
         )
-
-        # Create progress dialog
-        self.wizard_progress_dialog = QProgressDialog(
-            "Initializing wizard classification...", "Cancel", 0, 0, self.iface.mainWindow()
-        )
-        self.wizard_progress_dialog.setWindowTitle("dzetsaka Wizard Classification")
-        self.wizard_progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
-        self.wizard_progress_dialog.setMinimumDuration(0)
-        self.wizard_progress_dialog.setCancelButton(None)  # Disable cancel for now
-        self.wizard_progress_dialog.show()
-
-        # Connect worker signals
-        def on_wizard_progress_update(message):
-            self.wizard_progress_dialog.setLabelText(message)
-            self.log.info(f"[Wizard] {message}")
-
-        def on_wizard_error(title, message):
-            self.wizard_progress_dialog.close()
-            self.log.error(f"[Wizard] {title}: {message}")
-            full_message = message + "<br><br>Check the QGIS log for details."
-            QMessageBox.warning(self, f"dzetsaka Wizard — {title}", full_message, QMessageBox.StandardButton.Ok)
-
-        def on_wizard_classification_complete(output_raster, confidence_map):
-            self.log.info("[Wizard] Classification completed")
-            self.iface.addRasterLayer(output_raster)
-            if confidence_map:
-                self.iface.addRasterLayer(confidence_map)
-
-        def on_wizard_finished():
-            self.wizard_progress_dialog.close()
-            self.wizard_worker = None
-
-        self.wizard_worker.progress_update.connect(on_wizard_progress_update)
-        self.wizard_worker.error.connect(on_wizard_error)
-        self.wizard_worker.classification_complete.connect(on_wizard_classification_complete)
-        self.wizard_worker.finished.connect(on_wizard_finished)
-
-        # Start wizard worker
-        self.wizard_worker.start()
 
     def modifyConfig(self, section, option, value):
         """Modify configuration file with new section/option/value.

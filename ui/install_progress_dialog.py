@@ -1,10 +1,7 @@
-"""Custom progress dialog for package installation with live output display.
+"""Custom progress dialog for package installation.
 
-This dialog provides:
-- Live pip output streaming
-- Responsive UI during installation
-- Functional cancel button
-- Auto-scrolling terminal-like output
+Default behavior is progress-first: logs stay hidden unless the user
+explicitly expands details.
 """
 
 from qgis.PyQt.QtCore import Qt, pyqtSlot
@@ -21,7 +18,12 @@ from qgis.PyQt.QtWidgets import (
 
 
 class InstallProgressDialog(QDialog):
-    """Progress dialog for package installation with live output."""
+    """Progress dialog for package installation with optional details."""
+
+    _COLLAPSED_MIN_HEIGHT = 150
+    _COLLAPSED_TARGET_HEIGHT = 190
+    _EXPANDED_MIN_HEIGHT = 380
+    _EXPANDED_TARGET_HEIGHT = 420
 
     def __init__(self, parent=None, total_packages=1):
         """Initialize the installation progress dialog.
@@ -37,16 +39,17 @@ class InstallProgressDialog(QDialog):
         self.total_packages = total_packages
         self.current_package = 0
         self._cancelled = False
+        self._details_visible = False
 
         self.setWindowTitle("Installing Dependencies")
-        self.setMinimumWidth(600)
-        self.setMinimumHeight(400)
+        self.setMinimumWidth(520)
+        self.setMinimumHeight(self._COLLAPSED_MIN_HEIGHT)
 
-        # Set window modality - WindowModal allows continued QGIS interaction
+        # Keep non-modal to avoid perceived UI freezes while install runs.
         try:
-            modality = Qt.WindowModality.WindowModal
+            modality = Qt.WindowModality.NonModal
         except AttributeError:
-            modality = Qt.WindowModal
+            modality = Qt.NonModal
         self.setWindowModality(modality)
 
         self._setup_ui()
@@ -65,9 +68,10 @@ class InstallProgressDialog(QDialog):
         self.progress_bar.setValue(0)
         layout.addWidget(self.progress_bar)
 
-        # Output text area
-        output_label = QLabel("Installation Output:")
-        layout.addWidget(output_label)
+        # Output text area (hidden by default)
+        self.output_label = QLabel("Installation Output:")
+        self.output_label.setVisible(False)
+        layout.addWidget(self.output_label)
 
         self.output_text = QPlainTextEdit()
         self.output_text.setReadOnly(True)
@@ -81,10 +85,16 @@ class InstallProgressDialog(QDialog):
             font = QFont("monospace", 9)
         self.output_text.setFont(font)
 
+        self.output_text.setVisible(False)
         layout.addWidget(self.output_text)
 
         # Button layout
         button_layout = QHBoxLayout()
+
+        self.details_button = QPushButton("Show details")
+        self.details_button.clicked.connect(self._toggle_details)
+        button_layout.addWidget(self.details_button)
+
         button_layout.addStretch()
 
         self.cancel_button = QPushButton("Cancel")
@@ -160,3 +170,18 @@ class InstallProgressDialog(QDialog):
             self._cancelled = True
             self.status_label.setText("Cancelling installation...")
             self.cancel_button.setEnabled(False)
+
+    @pyqtSlot()
+    def _toggle_details(self):
+        """Toggle visibility of installation log output."""
+        self._details_visible = not self._details_visible
+        self.output_label.setVisible(self._details_visible)
+        self.output_text.setVisible(self._details_visible)
+        self.details_button.setText("Hide details" if self._details_visible else "Show details")
+        if self._details_visible:
+            self.setMinimumHeight(self._EXPANDED_MIN_HEIGHT)
+            self.resize(max(self.width(), 600), max(self.height(), self._EXPANDED_TARGET_HEIGHT))
+        else:
+            self.setMinimumHeight(self._COLLAPSED_MIN_HEIGHT)
+            # Explicitly shrink back after the user hides details.
+            self.resize(max(self.width(), 520), self._COLLAPSED_TARGET_HEIGHT)

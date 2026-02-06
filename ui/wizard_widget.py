@@ -14,23 +14,31 @@ Author:
     Nicolas Karasiak
 """
 
+import json
 import os
 import tempfile
+import urllib.request
+from collections import Counter
 from typing import Dict, List, Optional
 
-from qgis.PyQt.QtCore import pyqtSignal
+from qgis.PyQt.QtCore import QSettings, pyqtSignal
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QDialog,
     QFileDialog,
     QGroupBox,
     QGridLayout,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QMessageBox,
     QPushButton,
     QSpinBox,
+    QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -50,14 +58,15 @@ def check_dependency_availability():
     Returns
     -------
     dict[str, bool]
-        Keys: ``sklearn``, ``xgboost``, ``lightgbm``, ``optuna``,
-        ``shap``, ``imblearn``.  Values: True when the package can be
+        Keys: ``sklearn``, ``xgboost``, ``lightgbm``, ``catboost``,
+        ``optuna``, ``shap``, ``imblearn``.  Values: True when the package can be
         imported successfully.
     """
     deps = {
         "sklearn": False,
         "xgboost": False,
         "lightgbm": False,
+        "catboost": False,
         "optuna": False,
         "shap": False,
         "imblearn": False,
@@ -69,6 +78,87 @@ def check_dependency_availability():
         except ImportError:
             pass
     return deps
+
+
+def validate_recipe_dependencies(recipe):
+    # type: (Dict[str, object]) -> tuple[bool, List[str]]
+    """Validate that all dependencies required by a recipe are available.
+
+    Parameters
+    ----------
+    recipe : dict
+        Recipe dictionary containing classifier configuration
+
+    Returns
+    -------
+    tuple[bool, list[str]]
+        (is_valid, missing_packages) - is_valid is True if all dependencies
+        are met, missing_packages contains names of missing packages
+    """
+    from .. import classifier_config
+
+    missing = []  # type: List[str]
+
+    # Get classifier code from recipe
+    classifier = recipe.get("classifier", {})
+    code = classifier.get("code", "GMM")
+
+    # Check current dependencies
+    deps = check_dependency_availability()
+
+    # Check classifier-specific dependencies
+    if code in classifier_config.SKLEARN_DEPENDENT:
+        if not deps.get("sklearn", False):
+            missing.append("scikit-learn")
+
+    if code in classifier_config.XGBOOST_DEPENDENT:
+        if not deps.get("xgboost", False):
+            missing.append("xgboost")
+
+    if code in classifier_config.LIGHTGBM_DEPENDENT:
+        if not deps.get("lightgbm", False):
+            missing.append("lightgbm")
+
+    if code in classifier_config.CATBOOST_DEPENDENT:
+        if not deps.get("catboost", False):
+            missing.append("catboost")
+
+    # Check for optional features in extraParam
+    extra = recipe.get("extraParam", {})
+    if extra:
+        if extra.get("USE_OPTUNA", False) and not deps.get("optuna", False):
+            missing.append("optuna (for hyperparameter optimization)")
+
+        if extra.get("USE_SHAP", False) and not deps.get("shap", False):
+            missing.append("shap (for explainability)")
+
+        if extra.get("USE_SMOTE", False) and not deps.get("imblearn", False):
+            missing.append("imbalanced-learn (for SMOTE)")
+
+    return len(missing) == 0, missing
+
+
+def _show_issue_popup(owner, installer, title, error_type, error_message, context):
+    # type: (QWidget, object, str, str, str, str) -> None
+    """Show the standard issue-report popup from whichever integration is available."""
+    if installer and hasattr(installer, "_show_github_issue_popup"):
+        installer._show_github_issue_popup(title, error_type, error_message, context)
+        return
+
+    try:
+        from ..logging_utils import show_error_dialog
+
+        show_error_dialog(
+            title,
+            f"{error_type}: {error_message}\n\nContext: {context}",
+            parent=owner,
+        )
+    except Exception:
+        QMessageBox.warning(
+            owner,
+            title,
+            f"{error_type}: {error_message}\n\nPlease report at https://github.com/nkarasiak/dzetsaka/issues",
+        )
 
 
 def build_smart_defaults(deps):
@@ -173,29 +263,270 @@ def build_review_summary(config):
 
 
 # ---------------------------------------------------------------------------
+# Recipe helpers
+# ---------------------------------------------------------------------------
+
+_RECIPE_VERSION = 1
+
+_RECIPE_SCHEMA_TEXT = (
+    "Remote recipe endpoint schema (JSON):\n"
+    "- Accepts either a list of recipes or an object with a 'recipes' list.\n"
+    "- Each recipe is a JSON object with:\n"
+    "  - name: string (required)\n"
+    "  - description: string (optional)\n"
+    "  - classifier: { code: one of GMM, RF, SVM, KNN, XGB, LGB, CB, ET, GBC, LR, NB, MLP }\n"
+    "  - postprocess: { confidence_map: bool, save_model: bool, confusion_matrix: bool }\n"
+    "  - validation: { split_percent: 10-100, nested_cv: bool, nested_inner_cv: 2-10, nested_outer_cv: 2-10 }\n"
+    "  - extraParam: (optional) wizard extra parameters\n"
+)
+
+
+def _recipe_template():
+    # type: () -> Dict[str, object]
+    return {
+        "version": _RECIPE_VERSION,
+        "name": "Unnamed Recipe",
+        "description": "",
+        "preprocessing": {},
+        "features": {"bands": "all"},
+        "classifier": {"code": "GMM"},
+        "postprocess": {"confidence_map": False, "save_model": False, "confusion_matrix": False},
+        "validation": {
+            "split_percent": 100,
+            "nested_cv": False,
+            "nested_inner_cv": 3,
+            "nested_outer_cv": 5,
+        },
+        "extraParam": {
+            "USE_OPTUNA": False,
+            "OPTUNA_TRIALS": 100,
+            "COMPUTE_SHAP": False,
+            "SHAP_OUTPUT": "",
+            "SHAP_SAMPLE_SIZE": 1000,
+            "USE_SMOTE": False,
+            "SMOTE_K_NEIGHBORS": 5,
+            "USE_CLASS_WEIGHTS": False,
+            "CLASS_WEIGHT_STRATEGY": "balanced",
+            "CUSTOM_CLASS_WEIGHTS": {},
+            "USE_NESTED_CV": False,
+            "NESTED_INNER_CV": 3,
+            "NESTED_OUTER_CV": 5,
+        },
+    }  # type: Dict[str, object]
+
+
+def build_fast_recipe():
+    # type: () -> Dict[str, object]
+    recipe = _recipe_template()
+    recipe.update(
+        {
+            "name": "Fast (Default)",
+            "description": "Minimal dependencies, quick baseline for immediate success.",
+        }
+    )
+    return recipe
+
+
+def build_catboost_recipe():
+    # type: () -> Dict[str, object]
+    recipe = _recipe_template()
+    recipe.update(
+        {
+            "name": "CatBoost Quick",
+            "description": "Great for heterogeneous, tabular features (handles categorical values well).",
+            "classifier": {"code": "CB"},
+            "extraParam": dict(_recipe_template()["extraParam"], USE_OPTUNA=False, COMPUTE_SHAP=False),
+        }
+    )
+    return recipe
+
+
+def normalize_recipe(recipe):
+    # type: (Dict[str, object]) -> Dict[str, object]
+    """Ensure a recipe contains all required keys."""
+    base = _recipe_template()
+    for key, value in base.items():
+        if key not in recipe:
+            recipe[key] = value
+    # Defensive: ensure nested keys exist
+    recipe.setdefault("classifier", {"code": "GMM"})
+    recipe.setdefault("preprocessing", {})
+    recipe.setdefault("features", {"bands": "all"})
+    recipe.setdefault("postprocess", {})
+    recipe.setdefault("validation", {})
+    recipe.setdefault("extraParam", {})
+    return recipe
+
+
+def _valid_classifier_codes():
+    # type: () -> List[str]
+    return [code for code, _n, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META]
+
+
+def validate_recipe_list(payload):
+    # type: (object) -> tuple
+    """Validate a payload and return (recipes, errors)."""
+    errors = []  # type: List[str]
+    recipes = []  # type: List[Dict[str, object]]
+
+    if isinstance(payload, dict):
+        payload = payload.get("recipes", [])
+    if not isinstance(payload, list):
+        return [], ["Root must be a list or an object with 'recipes' list."]
+
+    valid_codes = set(_valid_classifier_codes())
+
+    for idx, item in enumerate(payload):
+        if not isinstance(item, dict):
+            errors.append(f"Recipe #{idx+1}: not an object.")
+            continue
+        name = item.get("name", "")
+        if not isinstance(name, str) or not name.strip():
+            errors.append(f"Recipe #{idx+1}: missing or empty 'name'.")
+            continue
+        if "classifier" not in item:
+            errors.append(f"Recipe '{name}': missing required 'classifier'.")
+            continue
+        classifier = item.get("classifier", {})
+        if not isinstance(classifier, dict):
+            errors.append(f"Recipe '{name}': classifier must be an object.")
+            continue
+        if "code" not in classifier:
+            errors.append(f"Recipe '{name}': missing required classifier.code.")
+            continue
+        code = classifier.get("code")
+        if code not in valid_codes:
+            errors.append(f"Recipe '{name}': unknown classifier code '{code}'.")
+            continue
+        validation = item.get("validation", {})
+        if isinstance(validation, dict):
+            split = validation.get("split_percent", 100)
+            if not isinstance(split, int):
+                errors.append(f"Recipe '{name}': split_percent must be an integer.")
+                continue
+            if split < 10 or split > 100:
+                errors.append(f"Recipe '{name}': split_percent must be 10-100.")
+                continue
+        extra = item.get("extraParam", {})
+        if isinstance(extra, dict) and "CLASS_WEIGHT_STRATEGY" in extra:
+            strategy = extra.get("CLASS_WEIGHT_STRATEGY")
+            if strategy not in ("balanced", "uniform"):
+                errors.append(
+                    f"Recipe '{name}': CLASS_WEIGHT_STRATEGY must be 'balanced' or 'uniform'."
+                )
+                continue
+        recipes.append(normalize_recipe(item))
+
+    return recipes, errors
+
+
+def format_recipe_summary(recipe):
+    # type: (Dict[str, object]) -> str
+    """Return a readable multi-line summary for a recipe."""
+    recipe = normalize_recipe(dict(recipe))
+    classifier = recipe.get("classifier", {})
+    classifier_code = classifier.get("code", "GMM")
+    validation = recipe.get("validation", {})
+    extra = recipe.get("extraParam", {})
+    lines = []
+    lines.append(f"Name: {recipe.get('name', '')}")
+    description = recipe.get("description", "")
+    if description:
+        lines.append(f"Description: {description}")
+    lines.append(f"Classifier: {classifier_code}")
+    lines.append(f"Optuna: {extra.get('USE_OPTUNA', False)}")
+    lines.append(f"SMOTE: {extra.get('USE_SMOTE', False)}")
+    lines.append(f"Class Weights: {extra.get('USE_CLASS_WEIGHTS', False)}")
+    lines.append(f"SHAP: {extra.get('COMPUTE_SHAP', False)}")
+    lines.append(f"Nested CV: {validation.get('nested_cv', extra.get('USE_NESTED_CV', False))}")
+    lines.append(f"Split %: {validation.get('split_percent', 100)}")
+    return "\n".join(lines)
+
+
+def load_recipes(settings):
+    # type: (QSettings) -> List[Dict[str, object]]
+    """Load recipes from QSettings; seed with defaults when missing."""
+    raw = settings.value("/dzetsaka/recipes", "", str)
+    recipes = []  # type: List[Dict[str, object]]
+    if raw:
+        try:
+            data = json.loads(raw)
+            if isinstance(data, dict):
+                recipes = data.get("recipes", [])
+            elif isinstance(data, list):
+                recipes = data
+        except (TypeError, ValueError):
+            recipes = []
+    if not recipes:
+        recipes = [build_fast_recipe(), build_catboost_recipe()]
+    else:
+        recipes = [normalize_recipe(r) for r in recipes if isinstance(r, dict)]
+        names = {r.get("name") for r in recipes}
+        if "Fast (Default)" not in names:
+            recipes.insert(0, build_fast_recipe())
+        if "CatBoost Quick" not in names:
+            recipes.append(build_catboost_recipe())
+    return recipes
+
+
+def save_recipes(settings, recipes):
+    # type: (QSettings, List[Dict[str, object]]) -> None
+    """Persist recipes to QSettings."""
+    settings.setValue("/dzetsaka/recipes", json.dumps(recipes))
+
+
+def recipe_from_config(config, name, description=""):
+    # type: (Dict[str, object], str, str) -> Dict[str, object]
+    """Create a recipe dict from the current wizard config."""
+    extra = config.get("extraParam", {}) or {}
+    recipe = _recipe_template()
+    recipe.update(
+        {
+            "name": name,
+            "description": description,
+            "classifier": {"code": config.get("classifier", "GMM")},
+            "postprocess": {
+                "confidence_map": bool(config.get("confidence_map")),
+                "save_model": bool(config.get("save_model")),
+                "confusion_matrix": bool(config.get("confusion_matrix")),
+            },
+            "validation": {
+                "split_percent": int(config.get("split_percent", 100)),
+                "nested_cv": bool(extra.get("USE_NESTED_CV", False)),
+                "nested_inner_cv": int(extra.get("NESTED_INNER_CV", 3)),
+                "nested_outer_cv": int(extra.get("NESTED_OUTER_CV", 5)),
+            },
+            "extraParam": extra,
+        }
+    )
+    return recipe
+
+
+# ---------------------------------------------------------------------------
 # Classifier metadata used by the wizard (mirrors classifier_config)
 # ---------------------------------------------------------------------------
 
-# (code, full name, requires_sklearn, requires_xgboost, requires_lightgbm)
+# (code, full name, requires_sklearn, requires_xgboost, requires_lightgbm, requires_catboost)
 _CLASSIFIER_META = [
-    ("GMM", "Gaussian Mixture Model", False, False, False),
-    ("RF", "Random Forest", True, False, False),
-    ("SVM", "Support Vector Machine", True, False, False),
-    ("KNN", "K-Nearest Neighbors", True, False, False),
-    ("XGB", "XGBoost", False, True, False),
-    ("LGB", "LightGBM", False, False, True),
-    ("ET", "Extra Trees", True, False, False),
-    ("GBC", "Gradient Boosting Classifier", True, False, False),
-    ("LR", "Logistic Regression", True, False, False),
-    ("NB", "Gaussian Naive Bayes", True, False, False),
-    ("MLP", "Multi-layer Perceptron", True, False, False),
+    ("GMM", "Gaussian Mixture Model", False, False, False, False),
+    ("RF", "Random Forest", True, False, False, False),
+    ("SVM", "Support Vector Machine", True, False, False, False),
+    ("KNN", "K-Nearest Neighbors", True, False, False, False),
+    ("XGB", "XGBoost", False, True, False, False),
+    ("LGB", "LightGBM", False, False, True, False),
+    ("CB", "CatBoost", False, False, False, True),
+    ("ET", "Extra Trees", True, False, False, False),
+    ("GBC", "Gradient Boosting Classifier", True, False, False, False),
+    ("LR", "Logistic Regression", True, False, False, False),
+    ("NB", "Gaussian Naive Bayes", True, False, False, False),
+    ("MLP", "Multi-layer Perceptron", True, False, False, False),
 ]
 
 
 def _classifier_available(code, deps):
     # type: (str, Dict[str, bool]) -> bool
     """Return True when all hard dependencies for *code* are satisfied."""
-    for c, _name, needs_sk, needs_xgb, needs_lgb in _CLASSIFIER_META:
+    for c, _name, needs_sk, needs_xgb, needs_lgb, needs_cb in _CLASSIFIER_META:
         if c == code:
             if needs_sk and not deps.get("sklearn", False):
                 return False
@@ -203,8 +534,411 @@ def _classifier_available(code, deps):
                 return False
             if needs_lgb and not deps.get("lightgbm", False):
                 return False
+            if needs_cb and not deps.get("catboost", False):
+                return False
             return True
     return False
+
+
+# ---------------------------------------------------------------------------
+# Recipe gallery dialog
+# ---------------------------------------------------------------------------
+
+
+class RecipeGalleryDialog(QDialog):
+    """Dialog that shows local and remote recipe galleries."""
+
+    recipeApplied = pyqtSignal(dict)
+    recipesUpdated = pyqtSignal(list)
+    remoteUrlUpdated = pyqtSignal(str)
+
+    def __init__(self, parent=None, recipes=None, remote_url=""):
+        super(RecipeGalleryDialog, self).__init__(parent)
+        self.setWindowTitle("Recipe Gallery")
+        self.setMinimumSize(720, 420)
+
+        self._local_recipes = recipes or []
+        self._remote_url = remote_url
+        self._remote_recipes = []
+
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("Browse and share segmentation recipes (local + remote)."))
+
+        self.tabs = QTabWidget()
+        self.tabs.addTab(self._build_local_tab(), "Local")
+        self.tabs.addTab(self._build_remote_tab(), "Remote")
+        layout.addWidget(self.tabs)
+
+        button_row = QHBoxLayout()
+        self.useBtn = QPushButton("Use Selected")
+        self.useBtn.clicked.connect(self._use_selected)
+        self.closeBtn = QPushButton("Close")
+        self.closeBtn.clicked.connect(self.close)
+        button_row.addStretch()
+        button_row.addWidget(self.useBtn)
+        button_row.addWidget(self.closeBtn)
+        layout.addLayout(button_row)
+
+        self.setLayout(layout)
+        self._populate_local()
+        self._refresh_remote_summary()
+
+    def _build_local_tab(self):
+        # type: () -> QWidget
+        widget = QWidget()
+        layout = QVBoxLayout()
+        self.localList = QListWidget()
+        self.localList.currentItemChanged.connect(self._on_local_selected)
+        layout.addWidget(self.localList)
+
+        self.localSummary = QTextEdit()
+        self.localSummary.setReadOnly(True)
+        self.localSummary.setMinimumHeight(120)
+        layout.addWidget(self.localSummary)
+
+        btn_row = QHBoxLayout()
+        self.exportBtn = QPushButton("Export JSON…")
+        self.exportBtn.clicked.connect(self._export_selected_local)
+        btn_row.addWidget(self.exportBtn)
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
+
+        widget.setLayout(layout)
+        return widget
+
+    def _build_remote_tab(self):
+        # type: () -> QWidget
+        widget = QWidget()
+        layout = QVBoxLayout()
+
+        url_row = QHBoxLayout()
+        self.remoteUrlLabel = QLabel(self._remote_url or "<no remote URL>")
+        url_row.addWidget(QLabel("Remote URL:"))
+        url_row.addWidget(self.remoteUrlLabel)
+        url_row.addStretch()
+        self.setUrlBtn = QPushButton("Set URL…")
+        self.setUrlBtn.clicked.connect(self._set_remote_url)
+        url_row.addWidget(self.setUrlBtn)
+        self.schemaBtn = QPushButton("Schema")
+        self.schemaBtn.clicked.connect(self._show_schema)
+        url_row.addWidget(self.schemaBtn)
+        self.refreshBtn = QPushButton("Refresh")
+        self.refreshBtn.clicked.connect(self._refresh_remote)
+        url_row.addWidget(self.refreshBtn)
+        layout.addLayout(url_row)
+
+        self.remoteList = QListWidget()
+        self.remoteList.currentItemChanged.connect(self._on_remote_selected)
+        layout.addWidget(self.remoteList)
+
+        self.remoteSummary = QTextEdit()
+        self.remoteSummary.setReadOnly(True)
+        self.remoteSummary.setMinimumHeight(120)
+        layout.addWidget(self.remoteSummary)
+
+        btn_row = QHBoxLayout()
+        self.saveRemoteBtn = QPushButton("Save To Local")
+        self.saveRemoteBtn.clicked.connect(self._save_remote_to_local)
+        btn_row.addWidget(self.saveRemoteBtn)
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
+
+        widget.setLayout(layout)
+        return widget
+
+    def _populate_local(self):
+        # type: () -> None
+        self.localList.clear()
+        for recipe in self._local_recipes:
+            name = recipe.get("name", "Unnamed Recipe")
+            self.localList.addItem(QListWidgetItem(name))
+
+    def _populate_remote(self):
+        # type: () -> None
+        self.remoteList.clear()
+        for recipe in self._remote_recipes:
+            name = recipe.get("name", "Unnamed Recipe")
+            self.remoteList.addItem(QListWidgetItem(name))
+
+    def _on_local_selected(self, current, _previous=None):
+        # type: (QListWidgetItem, Optional[QListWidgetItem]) -> None
+        if current is None:
+            self.localSummary.setPlainText("")
+            return
+        recipe = self._find_recipe(self._local_recipes, current.text())
+        self.localSummary.setPlainText(format_recipe_summary(recipe) if recipe else "")
+
+    def _on_remote_selected(self, current, _previous=None):
+        # type: (QListWidgetItem, Optional[QListWidgetItem]) -> None
+        if current is None:
+            self.remoteSummary.setPlainText("")
+            return
+        recipe = self._find_recipe(self._remote_recipes, current.text())
+        self.remoteSummary.setPlainText(format_recipe_summary(recipe) if recipe else "")
+
+    def _find_recipe(self, recipes, name):
+        # type: (List[Dict[str, object]], str) -> Optional[Dict[str, object]]
+        for recipe in recipes:
+            if recipe.get("name") == name:
+                return recipe
+        return None
+
+    def _use_selected(self):
+        # type: () -> None
+        if self.tabs.currentIndex() == 0:
+            item = self.localList.currentItem()
+            if item is None:
+                return
+            recipe = self._find_recipe(self._local_recipes, item.text())
+        else:
+            item = self.remoteList.currentItem()
+            if item is None:
+                return
+            recipe = self._find_recipe(self._remote_recipes, item.text())
+        if recipe:
+            self.recipeApplied.emit(recipe)
+            self.close()
+
+    def _export_selected_local(self):
+        # type: () -> None
+        item = self.localList.currentItem()
+        if item is None:
+            return
+        recipe = self._find_recipe(self._local_recipes, item.text())
+        if recipe is None:
+            return
+        path, _f = QFileDialog.getSaveFileName(self, "Export recipe", "", "JSON (*.json)")
+        if not path:
+            return
+        try:
+            with open(path, "w", encoding="utf-8") as handle:
+                json.dump(recipe, handle, indent=2)
+        except Exception as exc:
+            installer = getattr(self.parent(), "_installer", None)
+            _show_issue_popup(
+                self,
+                installer,
+                "Export failed",
+                type(exc).__name__,
+                str(exc),
+                "Recipe gallery: export selected local recipe",
+            )
+
+    def _set_remote_url(self):
+        # type: () -> None
+        url, ok = QInputDialog.getText(
+            self, "Remote Recipe URL", "Enter a URL that returns recipe JSON:", text=self._remote_url
+        )
+        if not ok:
+            return
+        self._remote_url = url.strip()
+        self.remoteUrlLabel.setText(self._remote_url or "<no remote URL>")
+        self.remoteUrlUpdated.emit(self._remote_url)
+
+    def _show_schema(self):
+        # type: () -> None
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Remote Recipe Schema")
+        dialog.setMinimumSize(520, 360)
+        layout = QVBoxLayout()
+        info = QTextEdit()
+        info.setReadOnly(True)
+        info.setPlainText(_RECIPE_SCHEMA_TEXT)
+        layout.addWidget(info)
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dialog.close)
+        row = QHBoxLayout()
+        row.addStretch()
+        row.addWidget(close_btn)
+        layout.addLayout(row)
+        dialog.setLayout(layout)
+        try:
+            dialog.exec_()
+        except AttributeError:
+            dialog.exec()
+
+    def _refresh_remote(self):
+        # type: () -> None
+        if not self._remote_url:
+            QMessageBox.information(
+                self, "Remote gallery", "Set a remote URL to fetch shared recipes."
+            )
+            return
+        try:
+            with urllib.request.urlopen(self._remote_url, timeout=4) as response:
+                data = response.read().decode("utf-8")
+            payload = json.loads(data)
+            recipes, errors = validate_recipe_list(payload)
+            if errors:
+                installer = getattr(self.parent(), "_installer", None)
+                _show_issue_popup(
+                    self,
+                    installer,
+                    "Remote gallery validation errors",
+                    "Recipe Validation Error",
+                    "\n".join(errors[:8]),
+                    f"Remote URL: {self._remote_url}",
+                )
+            self._remote_recipes = recipes
+            self._populate_remote()
+            self._refresh_remote_summary()
+        except Exception as exc:
+            installer = getattr(self.parent(), "_installer", None)
+            _show_issue_popup(
+                self,
+                installer,
+                "Remote gallery load failed",
+                type(exc).__name__,
+                str(exc),
+                f"Remote URL: {self._remote_url}",
+            )
+
+    def _refresh_remote_summary(self):
+        # type: () -> None
+        self.remoteSummary.setPlainText(
+            "Select a remote recipe to see its details." if not self._remote_recipes else ""
+        )
+
+    def _save_remote_to_local(self):
+        # type: () -> None
+        item = self.remoteList.currentItem()
+        if item is None:
+            return
+        recipe = self._find_recipe(self._remote_recipes, item.text())
+        if recipe is None:
+            return
+        self._local_recipes = [r for r in self._local_recipes if r.get("name") != recipe.get("name")]
+        self._local_recipes.append(recipe)
+        self._populate_local()
+        self.recipesUpdated.emit(self._local_recipes)
+
+
+# ---------------------------------------------------------------------------
+# Geometry explorer dialog
+# ---------------------------------------------------------------------------
+
+
+class VectorInsightDialog(QDialog):
+    """Dialog showing vector geometry insight and tips."""
+
+    def __init__(self, parent=None, vector_path="", class_field="", layer=None):
+        super(VectorInsightDialog, self).__init__(parent)
+        self.setWindowTitle("Geometry Explorer")
+        self.setMinimumSize(640, 360)
+
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("Vector Insight & Tips"))
+        self.summaryEdit = QTextEdit()
+        self.summaryEdit.setReadOnly(True)
+        layout.addWidget(self.summaryEdit)
+
+        self._populate(vector_path, class_field, layer)
+        self.setLayout(layout)
+
+    def _populate(self, vector_path, class_field, layer):
+        # type: (str, str, object) -> None
+        summary, tips = _collect_vector_insight(vector_path, class_field, layer)
+        text = summary
+        if tips:
+            text += "\n\nTips:\n" + "\n".join(f"- {tip}" for tip in tips)
+        self.summaryEdit.setPlainText(text)
+
+
+def _collect_vector_insight(vector_path, class_field, layer=None):
+    # type: (str, str, object) -> tuple
+    """Return summary text and tip list for a vector layer/path."""
+    lines = []
+    tips = []
+    max_samples = 10000
+    counts = Counter()
+    nulls = 0
+    total = None
+    sampled = 0
+    geom_name = "Unknown"
+    fields = []
+
+    if layer is not None:
+        try:
+            from qgis.core import QgsWkbTypes
+
+            geom_name = QgsWkbTypes.displayString(layer.wkbType())
+            total = layer.featureCount()
+            fields = [f.name() for f in layer.fields()]
+            if class_field and class_field in fields:
+                for feat in layer.getFeatures():
+                    if sampled >= max_samples:
+                        break
+                    value = feat[class_field]
+                    sampled += 1
+                    if value in (None, ""):
+                        nulls += 1
+                    else:
+                        counts[str(value)] += 1
+        except Exception:
+            layer = None
+
+    if layer is None and vector_path:
+        try:
+            from osgeo import ogr
+        except ImportError:
+            try:
+                import ogr  # type: ignore[no-redef]
+            except ImportError:
+                ogr = None
+        if ogr is not None:
+            ds = ogr.Open(vector_path)
+            if ds is not None:
+                lyr = ds.GetLayer()
+                if lyr is not None:
+                    try:
+                        geom_name = ogr.GeometryTypeToName(lyr.GetGeomType())
+                    except Exception:
+                        geom_name = "Unknown"
+                    total = lyr.GetFeatureCount()
+                    defn = lyr.GetLayerDefn()
+                    fields = [defn.GetFieldDefn(i).GetName() for i in range(defn.GetFieldCount())]
+                    if class_field and class_field in fields:
+                        for feat in lyr:
+                            if sampled >= max_samples:
+                                break
+                            value = feat.GetField(class_field)
+                            sampled += 1
+                            if value in (None, ""):
+                                nulls += 1
+                            else:
+                                counts[str(value)] += 1
+
+    lines.append(f"Vector: {vector_path or '<from layer>'}")
+    lines.append(f"Geometry: {geom_name}")
+    if total is not None:
+        lines.append(f"Features: {total}")
+    if fields:
+        lines.append(f"Fields: {', '.join(fields[:12])}{'…' if len(fields) > 12 else ''}")
+    if class_field:
+        lines.append(f"Class field: {class_field}")
+    if counts:
+        top = counts.most_common(5)
+        lines.append("Top classes (sampled): " + ", ".join([f"{k}={v}" for k, v in top]))
+        total_sampled = sum(counts.values()) + nulls
+        if total_sampled:
+            null_ratio = nulls / float(total_sampled)
+            if null_ratio > 0.05:
+                tips.append("More than 5% of class values are missing; fill or remove null labels.")
+            if len(counts) >= 2:
+                max_c = max(counts.values())
+                min_c = min(counts.values())
+                if min_c > 0 and max_c / float(min_c) >= 5.0:
+                    tips.append("Strong class imbalance detected; consider class weights or SMOTE.")
+    else:
+        if class_field:
+            tips.append("Class field has no readable values yet; verify field name and data types.")
+        else:
+            tips.append("Pick a class field to see class distribution and imbalance tips.")
+
+    if total is not None and total > max_samples:
+        tips.append(f"Stats are based on the first {max_samples} features.")
+
+    return "\n".join(lines), tips
 
 
 # ---------------------------------------------------------------------------
@@ -225,8 +959,32 @@ class DataInputPage(QWizardPage):
         self._installer = installer
         self._smart_defaults_applied = False  # type: bool
         self._last_prompt_signature = None  # type: Optional[tuple]
+        self._suppress_dependency_prompt = False  # type: bool
+        self._recipes = []  # type: List[Dict[str, object]]
 
         layout = QVBoxLayout()
+
+        # --- Recipe group ---
+        recipe_group = QGroupBox("Recipe")
+        recipe_layout = QGridLayout()
+        recipe_layout.addWidget(QLabel("Recipe:"), 0, 0)
+        self.recipeCombo = QComboBox()
+        recipe_layout.addWidget(self.recipeCombo, 0, 1, 1, 3)
+
+        self.recipeApplyBtn = QPushButton("Apply")
+        self.recipeApplyBtn.clicked.connect(self._apply_selected_recipe)
+        recipe_layout.addWidget(self.recipeApplyBtn, 1, 1)
+
+        self.recipeSaveBtn = QPushButton("Save Current…")
+        self.recipeSaveBtn.clicked.connect(self._save_current_recipe)
+        recipe_layout.addWidget(self.recipeSaveBtn, 1, 2)
+
+        self.recipeGalleryBtn = QPushButton("Gallery…")
+        self.recipeGalleryBtn.clicked.connect(self._open_recipe_gallery)
+        recipe_layout.addWidget(self.recipeGalleryBtn, 1, 3)
+
+        recipe_group.setLayout(recipe_layout)
+        layout.addWidget(recipe_group)
 
         # --- Input group ---
         input_group = QGroupBox("Input Data")
@@ -292,8 +1050,10 @@ class DataInputPage(QWizardPage):
         self.classFieldCombo = QComboBox()
         input_layout.addWidget(self.classFieldCombo)
         self.fieldStatusLabel = QLabel()
-        self.fieldStatusLabel.setStyleSheet("color: #666;")
         input_layout.addWidget(self.fieldStatusLabel)
+        self.geometryExplorerBtn = QPushButton("Geometry Explorer…")
+        self.geometryExplorerBtn.clicked.connect(self._open_geometry_explorer)
+        input_layout.addWidget(self.geometryExplorerBtn)
 
         self.loadModelCheck = QCheckBox("Load an existing model (skip training)")
         input_layout.addWidget(self.loadModelCheck)
@@ -320,7 +1080,7 @@ class DataInputPage(QWizardPage):
 
         algo_layout.addWidget(QLabel("Classifier:"))
         self.classifierCombo = QComboBox()
-        for _code, name, _sk, _xgb, _lgb in _CLASSIFIER_META:
+        for _code, name, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
             self.classifierCombo.addItem(name)
         algo_layout.addWidget(self.classifierCombo)
 
@@ -514,13 +1274,15 @@ class DataInputPage(QWizardPage):
         code = _CLASSIFIER_META[index][0]
         available = _classifier_available(code, self._deps)
         missing_required = []  # type: List[str]
-        _code, _name, needs_sk, needs_xgb, needs_lgb = _CLASSIFIER_META[index]
+        _code, _name, needs_sk, needs_xgb, needs_lgb, needs_cb = _CLASSIFIER_META[index]
         if needs_sk and not self._deps.get("sklearn", False):
             missing_required.append("scikit-learn")
         if needs_xgb and not self._deps.get("xgboost", False):
             missing_required.append("xgboost")
         if needs_lgb and not self._deps.get("lightgbm", False):
             missing_required.append("lightgbm")
+        if needs_cb and not self._deps.get("catboost", False):
+            missing_required.append("catboost")
 
         missing_optional = []
         if not self._deps.get("optuna", False):
@@ -548,7 +1310,12 @@ class DataInputPage(QWizardPage):
     def _maybe_prompt_install(self, missing_required, missing_optional):
         # type: (List[str], List[str]) -> None
         """Offer to install missing dependencies, similar to settings panel behavior."""
+        if self._suppress_dependency_prompt:
+            return
         if not missing_required and not missing_optional:
+            return
+        if not missing_required:
+            # Do not prompt optional dependency installation at classifier-selection time.
             return
 
         classifier_name = self.get_classifier_name()
@@ -564,74 +1331,62 @@ class DataInputPage(QWizardPage):
             "scikit-learn": "scikit-learn",
             "xgboost": "xgboost",
             "lightgbm": "lightgbm",
+            "catboost": "catboost",
             "optuna": "optuna",
             "shap": "shap",
             "imblearn (SMOTE)": "imbalanced-learn",
         }
 
-        required_msg = ""
-        for dep in missing_required:
-            required_msg += f"{dep} is missing.<br>"
-            if dep in package_map:
-                required_msg += f"Install with: <code>pip install {package_map[dep]}</code><br><br>"
-
-        optional_msg = ""
-        for dep in missing_optional:
-            optional_msg += f"{dep} is missing (optional).<br>"
-            if dep in package_map:
-                optional_msg += f"Install with: <code>pip install {package_map[dep]}</code><br><br>"
-
         if missing_required:
-            error_message = "<b>Required dependencies:</b><br>" + required_msg
-            if missing_optional:
-                error_message += "<b>Optional enhancements:</b><br>" + optional_msg
+            req_list = ", ".join(missing_required)
+            opt_list = ", ".join(missing_optional) if missing_optional else "none"
             reply = QMessageBox.question(
                 self,
-                f"Missing Dependencies for {classifier_name}",
-                f"{error_message}<br>"
-                f"<b>🧪 Experimental Feature:</b><br>"
-                f"Would you like dzetsaka to try installing the missing dependencies automatically?<br><br>"
-                f"<b>Note:</b> This is experimental and may not work in all QGIS environments.<br>"
-                f"Please wait — installing dependencies can take up to 2 minutes.<br>"
-                f"Click 'Yes' to try auto-install, 'No' to install manually, or 'Cancel' to use GMM.",
-                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
-                QMessageBox.No,
+                f"Dependencies for {classifier_name}",
+                (
+                    "To fully use dzetsaka capabilities, we recommend installing all dependencies.<br><br>"
+                    f"Required missing now: <code>{req_list}</code><br>"
+                    f"Optional missing now: <code>{opt_list}</code><br><br>"
+                    "Install the full dzetsaka dependency bundle now?"
+                ),
+                QMessageBox.StandardButton.Yes
+                | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
             )
 
-            if reply == QMessageBox.Yes:
-                to_install = [package_map.get(dep, dep) for dep in (missing_required + missing_optional)]
+            if reply == QMessageBox.StandardButton.Yes:
+                to_install = [
+                    "scikit-learn",
+                    "xgboost",
+                    "lightgbm",
+                    "catboost",
+                    "optuna",
+                    "shap",
+                    "imbalanced-learn",
+                ]
                 if self._installer._try_install_dependencies(to_install):
                     QMessageBox.information(
                         self,
                         "Installation Successful",
                         f"Dependencies installed successfully!<br><br>"
-                        f"<b>Note:</b> If {classifier_name} doesn't work immediately, "
-                        f"please restart QGIS to ensure the new libraries are properly loaded.",
-                        QMessageBox.Ok,
+                        f"<b>Important:</b> Please restart QGIS now.<br>"
+                        f"Without restarting, newly installed libraries may not be loaded, "
+                        f"and {classifier_name} training/inference can fail.",
+                        QMessageBox.StandardButton.Ok,
                     )
                     self._deps = check_dependency_availability()
                     self._update_dep_status(self.classifierCombo.currentIndex())
                 else:
+                    if hasattr(self._installer, "_show_github_issue_popup"):
+                        self._installer._show_github_issue_popup(
+                            "Dependency Installation Failed",
+                            "Dependency Installation Error",
+                            f"Automatic installation failed for: {', '.join(to_install)}",
+                            f"Wizard classifier selection: {classifier_name}",
+                        )
                     self.classifierCombo.setCurrentIndex(0)
-            elif reply == QMessageBox.Cancel:
+            elif reply == QMessageBox.StandardButton.No:
                 self.classifierCombo.setCurrentIndex(0)
-
-        elif missing_optional:
-            reply = QMessageBox.question(
-                self,
-                "Optional Enhancements Available",
-                f"{optional_msg}"
-                f"<b>Note:</b> {classifier_name} works without them using standard options.<br><br>"
-                f"Please wait — installing dependencies can take up to 2 minutes.<br>"
-                f"Would you like to install them automatically?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
-            )
-            if reply == QMessageBox.Yes:
-                to_install = [package_map.get(dep, dep) for dep in missing_optional]
-                self._installer._try_install_dependencies(to_install)
-                self._deps = check_dependency_availability()
-                self._update_dep_status(self.classifierCombo.currentIndex())
 
     def _apply_smart_defaults(self):
         # type: () -> None
@@ -650,10 +1405,72 @@ class DataInputPage(QWizardPage):
     def _set_algorithm_from_comparison(self, name):
         # type: (str) -> None
         """Set the combo to the algorithm chosen in the comparison panel."""
-        for i, (_code, n, _sk, _xgb, _lgb) in enumerate(_CLASSIFIER_META):
+        for i, (_code, n, _sk, _xgb, _lgb, _cb) in enumerate(_CLASSIFIER_META):
             if n == name:
                 self.classifierCombo.setCurrentIndex(i)
                 break
+
+    def set_classifier_by_code(self, code):
+        # type: (str) -> None
+        """Set the combo to the classifier matching the provided code."""
+        for i, (c, _n, _sk, _xgb, _lgb, _cb) in enumerate(_CLASSIFIER_META):
+            if c == code:
+                self.classifierCombo.setCurrentIndex(i)
+                break
+
+    def set_dependency_prompt_suppressed(self, suppressed):
+        # type: (bool) -> None
+        """Enable/disable dependency-install prompt while programmatically changing classifier."""
+        self._suppress_dependency_prompt = suppressed
+
+    def set_recipe_list(self, recipes):
+        # type: (List[Dict[str, object]]) -> None
+        """Populate the recipe combo with provided recipes."""
+        self._recipes = recipes
+        self.recipeCombo.clear()
+        for recipe in recipes:
+            self.recipeCombo.addItem(recipe.get("name", "Unnamed Recipe"))
+
+    def _apply_selected_recipe(self):
+        # type: () -> None
+        wizard = self.wizard()  # type: Optional[ClassificationWizard]
+        if wizard is None or not self._recipes:
+            return
+        name = self.recipeCombo.currentText()
+        for recipe in self._recipes:
+            if recipe.get("name") == name:
+                wizard.apply_recipe(recipe)
+                break
+
+    def _save_current_recipe(self):
+        # type: () -> None
+        wizard = self.wizard()  # type: Optional[ClassificationWizard]
+        if wizard is None:
+            return
+        wizard.save_current_recipe()
+
+    def _open_recipe_gallery(self):
+        # type: () -> None
+        wizard = self.wizard()  # type: Optional[ClassificationWizard]
+        if wizard is None:
+            return
+        wizard.open_recipe_gallery()
+
+    def _open_geometry_explorer(self):
+        # type: () -> None
+        vector_path = self.get_vector_path()
+        class_field = self.get_class_field()
+        layer = self._vector_combo.currentLayer() if self._vector_combo is not None else None
+        if not vector_path and layer is None:
+            QMessageBox.information(
+                self, "Geometry Explorer", "Select a vector layer or enter a vector path first."
+            )
+            return
+        dialog = VectorInsightDialog(self, vector_path=vector_path, class_field=class_field, layer=layer)
+        try:
+            dialog.exec_()
+        except AttributeError:
+            dialog.exec()
 
     def get_classifier_code(self):
         # type: () -> str
@@ -847,6 +1664,27 @@ class AdvancedOptionsPage(QWizardPage):
         self.classWeightCheck.setChecked(bool(defaults.get("USE_CLASS_WEIGHTS", False)))
         self.shapCheck.setChecked(bool(defaults.get("COMPUTE_SHAP", False)))
         self.shapSampleSize.setValue(int(defaults.get("SHAP_SAMPLE_SIZE", 1000)))
+
+    def apply_recipe(self, recipe):
+        # type: (Dict[str, object]) -> None
+        """Apply recipe settings to advanced options."""
+        recipe = normalize_recipe(dict(recipe))
+        extra = recipe.get("extraParam", {})
+        validation = recipe.get("validation", {})
+        self.optunaCheck.setChecked(bool(extra.get("USE_OPTUNA", False)))
+        self.optunaTrials.setValue(int(extra.get("OPTUNA_TRIALS", 100)))
+        self.smoteCheck.setChecked(bool(extra.get("USE_SMOTE", False)))
+        self.smoteK.setValue(int(extra.get("SMOTE_K_NEIGHBORS", 5)))
+        self.classWeightCheck.setChecked(bool(extra.get("USE_CLASS_WEIGHTS", False)))
+        self.weightStrategyCombo.setCurrentText(str(extra.get("CLASS_WEIGHT_STRATEGY", "balanced")))
+        self.shapCheck.setChecked(bool(extra.get("COMPUTE_SHAP", False)))
+        self.shapSampleSize.setValue(int(extra.get("SHAP_SAMPLE_SIZE", 1000)))
+        self.shapOutput.setText(str(extra.get("SHAP_OUTPUT", "")))
+
+        nested = bool(validation.get("nested_cv", extra.get("USE_NESTED_CV", False)))
+        self.nestedCVCheck.setChecked(nested)
+        self.innerFolds.setValue(int(validation.get("nested_inner_cv", extra.get("NESTED_INNER_CV", 3))))
+        self.outerFolds.setValue(int(validation.get("nested_outer_cv", extra.get("NESTED_OUTER_CV", 5))))
 
     def get_extra_params(self):
         # type: () -> Dict[str, object]
@@ -1076,6 +1914,21 @@ class OutputConfigPage(QWizardPage):
             "split_percent": split,
         }  # type: Dict[str, object]
 
+    def apply_recipe(self, recipe):
+        # type: (Dict[str, object]) -> None
+        """Apply recipe settings to output toggles."""
+        recipe = normalize_recipe(dict(recipe))
+        post = recipe.get("postprocess", {})
+        validation = recipe.get("validation", {})
+
+        self.confidenceCheck.setChecked(bool(post.get("confidence_map", False)))
+        self.saveModelCheck.setChecked(bool(post.get("save_model", False)))
+
+        split = int(validation.get("split_percent", 100))
+        matrix = bool(post.get("confusion_matrix", False)) or split < 100
+        self.matrixCheck.setChecked(matrix)
+        self.splitSpinBox.setValue(split)
+
 
 # ---------------------------------------------------------------------------
 # Main Wizard
@@ -1095,70 +1948,11 @@ class ClassificationWizard(QWizard):
         """Initialise ClassificationWizard with all 3 pages."""
         super(ClassificationWizard, self).__init__(parent)
         self.setWindowTitle("dzetsaka Classification Wizard")
+        self._settings = QSettings()
         self._deps = check_dependency_availability()
         self._installer = installer
-
-        self.setStyleSheet(
-            """
-            QWizard {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                    stop:0 #f7f7fb, stop:1 #eef1f7);
-                font-family: "Segoe UI Variable", "Plus Jakarta Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-                font-size: 12px;
-                color: #0f172a;
-            }
-            QWizardPage {
-                background: transparent;
-            }
-            QGroupBox {
-                background: #ffffff;
-                border: 1px solid #e6e8f0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding: 8px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 12px;
-                padding: 0 8px;
-                color: #111827;
-                font-weight: 600;
-            }
-            QLabel {
-                color: #0f172a;
-            }
-            QLineEdit, QComboBox, QSpinBox, QTextEdit {
-                background: #ffffff;
-                border: 1px solid #d7dbe6;
-                border-radius: 8px;
-                padding: 6px 8px;
-                selection-background-color: #fde68a;
-            }
-            QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QTextEdit:focus {
-                border: 1px solid #b45309;
-            }
-            QPushButton {
-                background: #f3f4f6;
-                color: #111827;
-                border: 1px solid #d1d5db;
-                border-radius: 10px;
-                padding: 7px 12px;
-            }
-            QPushButton:hover {
-                background: #e5e7eb;
-            }
-            QPushButton:disabled {
-                background: #e5e7eb;
-                color: #9ca3af;
-            }
-            QCheckBox {
-                padding: 2px 0;
-            }
-            QTextEdit {
-                background: #f9fafb;
-            }
-            """
-        )
+        self._recipes = load_recipes(self._settings)
+        self._remote_recipe_url = self._settings.value("/dzetsaka/recipesRemoteUrl", "", str)
 
         # Pages
         self.dataPage = DataInputPage(deps=self._deps, installer=self._installer)
@@ -1169,10 +1963,20 @@ class ClassificationWizard(QWizard):
         self.addPage(self.advPage)       # index 1
         self.addPage(self.outputPage)    # index 2
 
-        # Override the Finish button text
-        self.setButtonText(QWizard.FinishButton, "Run Classification")
+        self.dataPage.set_recipe_list(self._recipes)
 
-        self.setWizardStyle(QWizard.ModernStyle)
+        # Override the Finish button text
+        try:
+            finish_button = QWizard.FinishButton
+        except AttributeError:
+            finish_button = QWizard.WizardButton.FinishButton
+        self.setButtonText(finish_button, "Run Classification")
+
+        try:
+            wizard_style = QWizard.ModernStyle
+        except AttributeError:
+            wizard_style = QWizard.WizardStyle.ModernStyle
+        self.setWizardStyle(wizard_style)
 
     # --- page-transition hook ---------------------------------------------
 
@@ -1187,6 +1991,157 @@ class ClassificationWizard(QWizard):
             # Reset flag so it fires only once
             self.dataPage._smart_defaults_applied = False
         return super(ClassificationWizard, self).validateCurrentPage()
+
+    # --- recipe helpers ---------------------------------------------------
+
+    def _update_recipes(self, recipes):
+        # type: (List[Dict[str, object]]) -> None
+        self._recipes = recipes
+        save_recipes(self._settings, self._recipes)
+        self.dataPage.set_recipe_list(self._recipes)
+
+    def apply_recipe(self, recipe):
+        # type: (Dict[str, object]) -> None
+        """Apply a recipe to the wizard UI with dependency validation."""
+        recipe = normalize_recipe(dict(recipe))
+
+        # Validate recipe dependencies
+        is_valid, missing = validate_recipe_dependencies(recipe)
+
+        if not is_valid:
+            # Show warning dialog with missing dependencies
+            classifier = recipe.get("classifier", {})
+            recipe_name = recipe.get("name", "this recipe")
+            classifier_name = classifier.get("name", classifier.get("code", "selected classifier"))
+            missing_list = ", ".join(missing)
+
+            reply = QMessageBox.question(
+                self,
+                f"Dependencies for {classifier_name}",
+                (
+                    "To fully use dzetsaka capabilities, we recommend installing all dependencies.<br><br>"
+                    f"Recipe: <code>{recipe_name}</code><br>"
+                    f"Missing now: <code>{missing_list}</code><br><br>"
+                    "Install the full dzetsaka dependency bundle now?"
+                ),
+                QMessageBox.StandardButton.Yes
+                | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+
+            if reply == QMessageBox.StandardButton.Yes:
+                to_install = [
+                    "scikit-learn",
+                    "xgboost",
+                    "lightgbm",
+                    "catboost",
+                    "optuna",
+                    "shap",
+                    "imbalanced-learn",
+                ]
+
+                # Check if installer is available
+                if self._installer and hasattr(self._installer, "_try_install_dependencies"):
+                    if self._installer._try_install_dependencies(to_install):
+                        QMessageBox.information(
+                            self,
+                            "Installation Successful",
+                            f"Dependencies installed successfully!<br><br>"
+                            "<b>Important:</b> Please restart QGIS now.<br>"
+                            "Without restarting, newly installed libraries may not be loaded, "
+                            "and training/inference can fail.",
+                            QMessageBox.StandardButton.Ok,
+                        )
+                        # Re-check after installation
+                        is_valid_now, still_missing = validate_recipe_dependencies(recipe)
+                        if not is_valid_now:
+                            _show_issue_popup(
+                                self,
+                                self._installer,
+                                "Dependencies Still Missing",
+                                "Dependency Validation Error",
+                                "Some dependencies are still missing after auto-install.",
+                                f"Recipe: {recipe.get('name', 'unnamed')}; Missing: {', '.join(still_missing)}",
+                            )
+                    else:
+                        _show_issue_popup(
+                            self,
+                            self._installer,
+                            "Installation Failed",
+                            "Dependency Installation Error",
+                            "Failed to install dependencies automatically.",
+                            f"Recipe: {recipe.get('name', 'unnamed')}; Requested: {', '.join(to_install)}",
+                        )
+                else:
+                    QMessageBox.information(
+                        self,
+                        "Manual Installation Required",
+                        "Please install the full dependency bundle manually using:\n"
+                        f"pip install {' '.join(to_install)}",
+                    )
+            else:
+                # User chose not to install, show warning
+                _show_issue_popup(
+                    self,
+                    self._installer,
+                    "Recipe May Not Work",
+                    "Missing Dependencies",
+                    "User chose not to install required dependencies.",
+                    f"Recipe: {recipe.get('name', 'unnamed')}; Missing: {', '.join(missing)}",
+                )
+
+        # Apply the recipe to UI pages
+        classifier = recipe.get("classifier", {})
+        code = classifier.get("code", "GMM")
+        self.dataPage.set_dependency_prompt_suppressed(True)
+        try:
+            self.dataPage.set_classifier_by_code(code)
+        finally:
+            self.dataPage.set_dependency_prompt_suppressed(False)
+        self.advPage.apply_recipe(recipe)
+        self.outputPage.apply_recipe(recipe)
+
+    def save_current_recipe(self):
+        # type: () -> None
+        """Save the current wizard configuration as a recipe."""
+        name, ok = QInputDialog.getText(self, "Save Recipe", "Recipe name:")
+        if not ok or not name.strip():
+            return
+        description, _ok = QInputDialog.getText(self, "Save Recipe", "Description (optional):")
+        config = self.collect_config()
+        recipe = recipe_from_config(config, name.strip(), description.strip())
+        if any(r.get("name") == recipe.get("name") for r in self._recipes):
+            reply = QMessageBox.question(
+                self,
+                "Overwrite recipe?",
+                f"A recipe named '{recipe.get('name')}' already exists. Overwrite it?",
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+        updated = [r for r in self._recipes if r.get("name") != recipe.get("name")]
+        updated.append(recipe)
+        self._update_recipes(updated)
+
+    def open_recipe_gallery(self):
+        # type: () -> None
+        """Open the recipe gallery (local + remote)."""
+        dialog = RecipeGalleryDialog(
+            parent=self,
+            recipes=list(self._recipes),
+            remote_url=self._remote_recipe_url,
+        )
+        dialog.recipeApplied.connect(self.apply_recipe)
+        dialog.recipesUpdated.connect(self._update_recipes)
+        dialog.remoteUrlUpdated.connect(self._set_remote_recipe_url)
+        try:
+            dialog.exec_()
+        except AttributeError:
+            dialog.exec()
+
+    def _set_remote_recipe_url(self, url):
+        # type: (str) -> None
+        self._remote_recipe_url = url
+        self._settings.setValue("/dzetsaka/recipesRemoteUrl", url)
 
     # --- config assembly --------------------------------------------------
 
