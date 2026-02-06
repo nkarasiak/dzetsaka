@@ -11,7 +11,7 @@ from pathlib import Path
 from qgis.core import QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
-from dzetsaka.processing.classify import ClassifyAlgorithm
+from dzetsaka.presentation.qgis.processing.algorithms.classify import ClassifyAlgorithm
 from dzetsaka.processing.split_train_validation import SplitTrain
 from dzetsaka.processing.train import TrainAlgorithm
 
