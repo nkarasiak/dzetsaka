@@ -21,7 +21,8 @@ import urllib.request
 from collections import Counter
 from typing import Dict, List, Optional
 
-from qgis.PyQt.QtCore import QSettings, pyqtSignal
+from qgis.PyQt.QtCore import QSettings, Qt, pyqtSignal
+from qgis.PyQt.QtGui import QIcon, QPixmap
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -38,10 +39,13 @@ from qgis.PyQt.QtWidgets import (
     QListWidgetItem,
     QMessageBox,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QSpinBox,
     QStackedWidget,
     QTabWidget,
     QTextEdit,
+    QToolButton,
     QVBoxLayout,
     QWidget,
     QWizard,
@@ -523,6 +527,22 @@ _CLASSIFIER_META = [
     ("NB", "Gaussian Naive Bayes", True, False, False, False),
     ("MLP", "Multi-layer Perceptron", True, False, False, False),
 ]
+
+
+def _qt_align_top():
+    # type: () -> object
+    """Return a Qt top-alignment flag compatible with Qt5 and Qt6 APIs."""
+    if hasattr(Qt, "AlignmentFlag"):
+        return Qt.AlignmentFlag.AlignTop
+    return Qt.AlignTop
+
+
+def _qt_align_hcenter():
+    # type: () -> object
+    """Return a Qt horizontal-center alignment flag compatible with Qt5 and Qt6 APIs."""
+    if hasattr(Qt, "AlignmentFlag"):
+        return Qt.AlignmentFlag.AlignHCenter
+    return Qt.AlignHCenter
 
 
 def _classifier_available(code, deps):
@@ -1087,6 +1107,7 @@ class DataInputPage(QWizardPage):
         algo_layout.addWidget(self.classifierCombo)
 
         self.depStatusLabel = QLabel()
+        self.depStatusLabel.setVisible(False)
         algo_layout.addWidget(self.depStatusLabel)
         self.classifierCombo.currentIndexChanged.connect(self._update_dep_status)
         self._update_dep_status(0)
@@ -1274,7 +1295,6 @@ class DataInputPage(QWizardPage):
         # type: (int) -> None
         """Show required and optional dependency status for the selected classifier."""
         code = _CLASSIFIER_META[index][0]
-        available = _classifier_available(code, self._deps)
         missing_required = []  # type: List[str]
         _code, _name, needs_sk, needs_xgb, needs_lgb, needs_cb = _CLASSIFIER_META[index]
         if needs_sk and not self._deps.get("sklearn", False):
@@ -1293,20 +1313,7 @@ class DataInputPage(QWizardPage):
             missing_optional.append("shap")
         if not self._deps.get("imblearn", False):
             missing_optional.append("imblearn (SMOTE)")
-
-        lines = []
-        if available:
-            lines.append("<span style='color:#166534;'>Required: OK</span>")
-        else:
-            req = ", ".join(missing_required) if missing_required else "Unknown"
-            lines.append(f"<span style='color:#b91c1c;'>Missing: {req}</span>")
-        if missing_optional:
-            opt = ", ".join(missing_optional)
-            lines.append(f"<span style='color:#92400e;'>Optional missing: {opt}</span>")
-        else:
-            lines.append("<span style='color:#166534;'>Optional: OK</span>")
-
-        self.depStatusLabel.setText("<br>".join(lines))
+        self.depStatusLabel.clear()
         self._maybe_prompt_install(missing_required, missing_optional)
 
     def _maybe_prompt_install(self, missing_required, missing_optional):
@@ -2189,34 +2196,36 @@ class QuickClassificationPanel(QWidget):
 
     classificationRequested = pyqtSignal(dict)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, installer=None):
         super(QuickClassificationPanel, self).__init__(parent)
         self._deps = check_dependency_availability()
+        self._installer = installer
+        self._last_prompt_signature = None  # type: Optional[tuple]
         self._setup_ui()
 
     def _setup_ui(self):
         # type: () -> None
         root = QVBoxLayout()
+        root.setContentsMargins(4, 4, 4, 4)
+        root.setSpacing(3)
+        root.setAlignment(_qt_align_top())
 
-        intro = QLabel(
-            "Quick run uses the standard workflow with essential options only. "
-            "Switch to Advanced setup for tuning and expert controls."
-        )
-        intro.setWordWrap(True)
-        root.addWidget(intro)
-
-        input_group = QGroupBox("Input")
-        input_layout = QVBoxLayout()
-
-        input_layout.addWidget(QLabel("Raster to classify:"))
         raster_row = QHBoxLayout()
+        raster_row.setSpacing(3)
+        raster_row.addWidget(
+            self._icon_label(
+                "modern/ux_raster.png",
+                "Raster to classify",
+                fallback_resource=":/plugins/dzetsaka/img/raster.svg",
+            )
+        )
         self.rasterLineEdit = QLineEdit()
         self.rasterLineEdit.setPlaceholderText("Path to raster file…")
         raster_row.addWidget(self.rasterLineEdit)
         self.rasterBrowse = QPushButton("Browse…")
         self.rasterBrowse.clicked.connect(self._browse_raster)
         raster_row.addWidget(self.rasterBrowse)
-        input_layout.addLayout(raster_row)
+        root.addLayout(raster_row)
 
         self._raster_combo = None
         try:
@@ -2228,36 +2237,28 @@ class QuickClassificationPanel(QWidget):
             if "gdal" in exclude:
                 exclude.remove("gdal")
             self._raster_combo.setExcludedProviders(exclude)
-            input_layout.addWidget(self._raster_combo)
+            raster_row.addWidget(self._raster_combo)
             self.rasterLineEdit.setVisible(False)
             self.rasterBrowse.setVisible(False)
         except (ImportError, AttributeError):
             pass
 
-        self.loadModelCheck = QCheckBox("Use existing model")
-        self.loadModelCheck.toggled.connect(self._toggle_model_mode)
-        input_layout.addWidget(self.loadModelCheck)
-
-        model_row = QHBoxLayout()
-        self.modelLineEdit = QLineEdit()
-        self.modelLineEdit.setPlaceholderText("Model file path…")
-        self.modelLineEdit.setEnabled(False)
-        model_row.addWidget(self.modelLineEdit)
-        self.modelBrowse = QPushButton("Browse…")
-        self.modelBrowse.setEnabled(False)
-        self.modelBrowse.clicked.connect(self._browse_model)
-        model_row.addWidget(self.modelBrowse)
-        input_layout.addLayout(model_row)
-
-        input_layout.addWidget(QLabel("Training data (vector):"))
         vector_row = QHBoxLayout()
+        vector_row.setSpacing(3)
+        vector_row.addWidget(
+            self._icon_label(
+                "modern/ux_vector.png",
+                "Training vector layer",
+                fallback_resource=":/plugins/dzetsaka/img/vector.svg",
+            )
+        )
         self.vectorLineEdit = QLineEdit()
         self.vectorLineEdit.setPlaceholderText("Path to vector file…")
         vector_row.addWidget(self.vectorLineEdit)
         self.vectorBrowse = QPushButton("Browse…")
         self.vectorBrowse.clicked.connect(self._browse_vector)
         vector_row.addWidget(self.vectorBrowse)
-        input_layout.addLayout(vector_row)
+        root.addLayout(vector_row)
 
         self._vector_combo = None
         try:
@@ -2272,79 +2273,84 @@ class QuickClassificationPanel(QWidget):
             self._vector_combo.currentIndexChanged.connect(self._on_vector_changed)
             if hasattr(self._vector_combo, "layerChanged"):
                 self._vector_combo.layerChanged.connect(self._on_vector_changed)
-            input_layout.addWidget(self._vector_combo)
+            vector_row.addWidget(self._vector_combo)
             self.vectorLineEdit.setVisible(False)
             self.vectorBrowse.setVisible(False)
         except (ImportError, AttributeError):
             pass
 
-        input_layout.addWidget(QLabel("Label field:"))
+        field_row = QHBoxLayout()
+        field_row.setSpacing(3)
+        field_row.addWidget(
+            self._icon_label(
+                "modern/ux_label.png",
+                "Class label field",
+                fallback_resource=":/plugins/dzetsaka/img/column.svg",
+            )
+        )
         self.classFieldCombo = QComboBox()
-        input_layout.addWidget(self.classFieldCombo)
+        field_row.addWidget(self.classFieldCombo)
+        root.addLayout(field_row)
+
         self.fieldStatusLabel = QLabel("")
-        input_layout.addWidget(self.fieldStatusLabel)
+        self.fieldStatusLabel.setVisible(False)
+        root.addWidget(self.fieldStatusLabel)
         self.vectorLineEdit.editingFinished.connect(self._on_vector_path_edited)
         self._on_vector_changed()
 
-        input_layout.addWidget(QLabel("Classifier:"))
+        classifier_row = QHBoxLayout()
+        classifier_row.setSpacing(3)
+        classifier_row.addWidget(
+            self._icon_label(
+                "modern/ux_classifier.png",
+                "Classifier algorithm",
+                fallback_resource=":/plugins/dzetsaka/img/filter.png",
+            )
+        )
         self.classifierCombo = QComboBox()
         for _code, name, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
             self.classifierCombo.addItem(name)
-        input_layout.addWidget(self.classifierCombo)
+        classifier_row.addWidget(self.classifierCombo)
+        root.addLayout(classifier_row)
 
-        input_group.setLayout(input_layout)
-        root.addWidget(input_group)
-
-        output_group = QGroupBox("Output")
-        output_layout = QGridLayout()
-        output_layout.addWidget(QLabel("Classification map (optional):"), 0, 0)
-        self.outRasterEdit = QLineEdit()
-        self.outRasterEdit.setPlaceholderText("<temporary file>")
-        output_layout.addWidget(self.outRasterEdit, 0, 1)
-        self.outRasterBrowse = QPushButton("Browse…")
-        self.outRasterBrowse.clicked.connect(self._browse_out_raster)
-        output_layout.addWidget(self.outRasterBrowse, 0, 2)
-
-        self.confidenceCheck = QCheckBox("Generate confidence map")
-        self.confidenceCheck.toggled.connect(self._toggle_confidence)
-        output_layout.addWidget(self.confidenceCheck, 1, 0, 1, 3)
-
-        output_layout.addWidget(QLabel("Confidence map path:"), 2, 0)
-        self.confMapEdit = QLineEdit()
-        self.confMapEdit.setEnabled(False)
-        self.confMapEdit.setPlaceholderText("Path to confidence map…")
-        output_layout.addWidget(self.confMapEdit, 2, 1)
-        self.confMapBrowse = QPushButton("Browse…")
-        self.confMapBrowse.setEnabled(False)
-        self.confMapBrowse.clicked.connect(self._browse_conf_map)
-        output_layout.addWidget(self.confMapBrowse, 2, 2)
-
-        output_group.setLayout(output_layout)
-        root.addWidget(output_group)
+        self.depStatusLabel = QLabel()
+        self.depStatusLabel.setVisible(False)
+        root.addWidget(self.depStatusLabel)
+        self.classifierCombo.currentIndexChanged.connect(self._update_dep_status)
+        self._update_dep_status(0)
 
         run_row = QHBoxLayout()
+        run_row.setSpacing(3)
         run_row.addStretch()
         self.runButton = QPushButton("Run classification")
+        run_icon_path = self._icon_asset_path("modern/ux_run.png")
+        run_icon = QIcon(run_icon_path)
+        if run_icon.isNull():
+            run_icon = QIcon(":/plugins/dzetsaka/img/icon.png")
+        self.runButton.setIcon(run_icon)
         self.runButton.clicked.connect(self._emit_config)
         run_row.addWidget(self.runButton)
         root.addLayout(run_row)
 
-        root.addStretch()
         self.setLayout(root)
 
-    def _toggle_model_mode(self, checked):
-        # type: (bool) -> None
-        self.modelLineEdit.setEnabled(checked)
-        self.modelBrowse.setEnabled(checked)
-        self.vectorLineEdit.setEnabled(not checked)
-        self.classFieldCombo.setEnabled(not checked)
-        if self._vector_combo is not None:
-            self._vector_combo.setEnabled(not checked)
+    def _icon_asset_path(self, icon_path):
+        # type: (str) -> str
+        if icon_path.startswith(":/"):
+            return icon_path
+        return os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "img", icon_path))
 
-    def _toggle_confidence(self, checked):
-        # type: (bool) -> None
-        self.confMapEdit.setEnabled(checked)
-        self.confMapBrowse.setEnabled(checked)
+    def _icon_label(self, icon_path, tooltip, fallback_resource=None):
+        # type: (str, str, Optional[str]) -> QLabel
+        icon_label = QLabel()
+        icon_label.setFixedSize(15, 15)
+        icon_label.setToolTip(tooltip)
+        pix = QPixmap(self._icon_asset_path(icon_path))
+        if pix.isNull() and fallback_resource:
+            pix = QPixmap(fallback_resource)
+        icon_label.setPixmap(pix)
+        icon_label.setScaledContents(True)
+        return icon_label
 
     def _browse_raster(self):
         # type: () -> None
@@ -2361,33 +2367,17 @@ class QuickClassificationPanel(QWidget):
             self.vectorLineEdit.setText(path)
             self._populate_fields_from_path(path)
 
-    def _browse_model(self):
-        # type: () -> None
-        path, _f = QFileDialog.getOpenFileName(self, "Select model", "", "Model files (*)")
-        if path:
-            self.modelLineEdit.setText(path)
-
-    def _browse_out_raster(self):
-        # type: () -> None
-        path, _f = QFileDialog.getSaveFileName(self, "Classification map", "", "GeoTIFF (*.tif)")
-        if path:
-            self.outRasterEdit.setText(path)
-
-    def _browse_conf_map(self):
-        # type: () -> None
-        path, _f = QFileDialog.getSaveFileName(self, "Confidence map", "", "GeoTIFF (*.tif)")
-        if path:
-            self.confMapEdit.setText(path)
-
     def _on_vector_changed(self):
         # type: () -> None
         self.classFieldCombo.clear()
         self.fieldStatusLabel.setText("")
+        self.fieldStatusLabel.setVisible(False)
         if self._vector_combo is None:
             return
         layer = self._vector_combo.currentLayer()
         if layer is None:
             self.fieldStatusLabel.setText("Select a vector layer to list its fields.")
+            self.fieldStatusLabel.setVisible(True)
             return
         try:
             fields = layer.dataProvider().fields()
@@ -2395,10 +2385,13 @@ class QuickClassificationPanel(QWidget):
             if names:
                 self.classFieldCombo.addItems(names)
                 self.fieldStatusLabel.setText("")
+                self.fieldStatusLabel.setVisible(False)
             else:
                 self.fieldStatusLabel.setText("No fields found in selected layer.")
+                self.fieldStatusLabel.setVisible(True)
         except (AttributeError, TypeError):
             self.fieldStatusLabel.setText("Unable to read fields from selected layer.")
+            self.fieldStatusLabel.setVisible(True)
 
     def _on_vector_path_edited(self):
         # type: () -> None
@@ -2406,6 +2399,7 @@ class QuickClassificationPanel(QWidget):
         if not path:
             self.classFieldCombo.clear()
             self.fieldStatusLabel.setText("")
+            self.fieldStatusLabel.setVisible(False)
             return
         self._populate_fields_from_path(path)
 
@@ -2413,8 +2407,10 @@ class QuickClassificationPanel(QWidget):
         # type: (str) -> None
         self.classFieldCombo.clear()
         self.fieldStatusLabel.setText("")
+        self.fieldStatusLabel.setVisible(False)
         if not os.path.exists(path):
             self.fieldStatusLabel.setText("Vector path does not exist.")
+            self.fieldStatusLabel.setVisible(True)
             return
         try:
             from osgeo import ogr
@@ -2423,19 +2419,23 @@ class QuickClassificationPanel(QWidget):
                 import ogr  # type: ignore[no-redef]
             except ImportError:
                 self.fieldStatusLabel.setText("OGR unavailable; cannot list fields.")
+                self.fieldStatusLabel.setVisible(True)
                 return
         ds = ogr.Open(path)
         if ds is None:
             self.fieldStatusLabel.setText("Unable to open vector dataset.")
+            self.fieldStatusLabel.setVisible(True)
             return
         layer = ds.GetLayer()
         if layer is None:
             self.fieldStatusLabel.setText("No layer found in dataset.")
+            self.fieldStatusLabel.setVisible(True)
             return
         dfn = layer.GetLayerDefn()
         count = dfn.GetFieldCount()
         if count == 0:
             self.fieldStatusLabel.setText("No fields found in vector dataset.")
+            self.fieldStatusLabel.setVisible(True)
             return
         for i in range(count):
             self.classFieldCombo.addItem(dfn.GetFieldDefn(i).GetName())
@@ -2459,6 +2459,106 @@ class QuickClassificationPanel(QWidget):
     def _get_classifier_code(self):
         # type: () -> str
         return _CLASSIFIER_META[self.classifierCombo.currentIndex()][0]
+
+    def _get_classifier_name(self):
+        # type: () -> str
+        return _CLASSIFIER_META[self.classifierCombo.currentIndex()][1]
+
+    def _get_missing_dependencies(self, index=None):
+        # type: (Optional[int]) -> tuple[List[str], List[str]]
+        if index is None:
+            index = self.classifierCombo.currentIndex()
+
+        missing_required = []  # type: List[str]
+        _code, _name, needs_sk, needs_xgb, needs_lgb, needs_cb = _CLASSIFIER_META[index]
+        if needs_sk and not self._deps.get("sklearn", False):
+            missing_required.append("scikit-learn")
+        if needs_xgb and not self._deps.get("xgboost", False):
+            missing_required.append("xgboost")
+        if needs_lgb and not self._deps.get("lightgbm", False):
+            missing_required.append("lightgbm")
+        if needs_cb and not self._deps.get("catboost", False):
+            missing_required.append("catboost")
+
+        missing_optional = []
+        if not self._deps.get("optuna", False):
+            missing_optional.append("optuna")
+        if not self._deps.get("shap", False):
+            missing_optional.append("shap")
+        if not self._deps.get("imblearn", False):
+            missing_optional.append("imblearn (SMOTE)")
+        return missing_required, missing_optional
+
+    def _update_dep_status(self, index):
+        # type: (int) -> None
+        code = _CLASSIFIER_META[index][0]
+        missing_required, missing_optional = self._get_missing_dependencies(index)
+        self.depStatusLabel.clear()
+        self._maybe_prompt_install(missing_required, missing_optional)
+
+    def _maybe_prompt_install(self, missing_required, missing_optional):
+        # type: (List[str], List[str]) -> None
+        if not missing_required:
+            return
+
+        signature = (self._get_classifier_code(), tuple(missing_required), tuple(missing_optional))
+        if signature == self._last_prompt_signature:
+            return
+        self._last_prompt_signature = signature
+
+        classifier_name = self._get_classifier_name()
+
+        if self._installer and hasattr(self._installer, "_try_install_dependencies"):
+            req_list = ", ".join(missing_required)
+            optional_line = ""
+            if missing_optional:
+                optional_line = f"Optional missing now: <code>{', '.join(missing_optional)}</code><br>"
+            reply = QMessageBox.question(
+                self,
+                "Dependencies Missing for dzetsaka",
+                (
+                    "The selected classifier needs missing runtime dependencies.<br><br>"
+                    f"Required missing now: <code>{req_list}</code><br>"
+                    f"{optional_line}<br>"
+                    "Install the full dzetsaka dependency bundle now?"
+                ),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                to_install = [
+                    "scikit-learn",
+                    "xgboost",
+                    "lightgbm",
+                    "catboost",
+                    "optuna",
+                    "shap",
+                    "imbalanced-learn",
+                ]
+                if self._installer._try_install_dependencies(to_install):
+                    QMessageBox.information(
+                        self,
+                        "Installation Successful",
+                        "Dependencies installed successfully.\n\nPlease restart QGIS to load new libraries.",
+                    )
+                    self._deps = check_dependency_availability()
+                    self._update_dep_status(self.classifierCombo.currentIndex())
+                else:
+                    self.classifierCombo.setCurrentIndex(0)
+            else:
+                self.classifierCombo.setCurrentIndex(0)
+            return
+
+        QMessageBox.warning(
+            self,
+            "Dependencies Missing",
+            (
+                f"Selected classifier {classifier_name} cannot run right now.\n\n"
+                f"Missing runtime dependencies: {', '.join(missing_required)}\n\n"
+                "Install dependencies from the wizard/settings installer and restart QGIS."
+            ),
+        )
+        self.classifierCombo.setCurrentIndex(0)
 
     def _quick_extra_params(self):
         # type: () -> Dict[str, object]
@@ -2485,15 +2585,27 @@ class QuickClassificationPanel(QWidget):
             QMessageBox.warning(self, "Missing Input", "Please select an input raster.")
             return
 
-        load_model = self.modelLineEdit.text().strip() if self.loadModelCheck.isChecked() else ""
+        missing_required, _missing_optional = self._get_missing_dependencies()
+        if missing_required:
+            QMessageBox.warning(
+                self,
+                "Dependencies Missing",
+                (
+                    f"Selected classifier {self._get_classifier_name()} cannot run right now.\n\n"
+                    f"Missing runtime dependencies: {', '.join(missing_required)}\n\n"
+                    "Install dependencies from the wizard/settings installer and restart QGIS."
+                ),
+            )
+            return
+
         vector = self._get_vector_path()
         class_field = self.classFieldCombo.currentText().strip()
 
-        if not load_model and (not vector or not class_field):
+        if not vector or not class_field:
             QMessageBox.warning(
                 self,
                 "Missing Training Data",
-                "Quick run requires training data and a label field when no model is loaded.",
+                "Quick run requires training data and a label field.",
             )
             return
 
@@ -2501,11 +2613,11 @@ class QuickClassificationPanel(QWidget):
             "raster": raster,
             "vector": vector,
             "class_field": class_field,
-            "load_model": load_model,
+            "load_model": "",
             "classifier": self._get_classifier_code(),
             "extraParam": self._quick_extra_params(),
-            "output_raster": self.outRasterEdit.text().strip(),
-            "confidence_map": self.confMapEdit.text().strip() if self.confidenceCheck.isChecked() else "",
+            "output_raster": "",
+            "confidence_map": "",
             "save_model": "",
             "confusion_matrix": "",
             "split_percent": 100,
@@ -2521,38 +2633,65 @@ class ClassificationDashboardDock(QDockWidget):
 
     def __init__(self, parent=None, installer=None):
         super(ClassificationDashboardDock, self).__init__(parent)
-        self.setWindowTitle("dzetsaka: Classification")
+        self.setWindowTitle("dzetsaka Dashboard")
         self.setObjectName("DzetsakaClassificationDashboardDock")
-        self.setMinimumWidth(430)
-        self.setMinimumHeight(520)
-        self.setMaximumWidth(700)
+        self.setMinimumWidth(280)
+        self.setMinimumHeight(260)
+        self.setMaximumWidth(360)
+        self.resize(305, 315)
 
         container = QWidget()
         layout = QVBoxLayout(container)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(4)
+
+        self.banner = QLabel()
+        self.banner.setMinimumHeight(34)
+        self.banner.setMaximumHeight(40)
+        self.banner.setMinimumWidth(220)
+        self.banner.setMaximumWidth(220)
+        self.banner.setAlignment(_qt_align_hcenter())
+        if hasattr(QSizePolicy, "Policy"):
+            self.banner.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        else:
+            self.banner.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        banner_pixmap = QPixmap(":/plugins/dzetsaka/img/parcguyane.jpg")
+        if not banner_pixmap.isNull():
+            self.banner.setPixmap(banner_pixmap)
+            self.banner.setScaledContents(True)
+            self.banner.setToolTip("dzetsaka")
+            layout.addWidget(self.banner, alignment=_qt_align_hcenter())
 
         header = QHBoxLayout()
+        header.addStretch()
         header.addWidget(QLabel("Mode:"))
         self.modeCombo = QComboBox()
         self.modeCombo.addItems(["Quick run", "Advanced setup"])
+        self.modeCombo.setToolTip(
+            "Quick run: essential inputs and one-click run.\n"
+            "Advanced setup: full workflow with detailed optimization and outputs."
+        )
         header.addWidget(self.modeCombo)
-        header.addStretch()
         layout.addLayout(header)
 
-        self.modeHint = QLabel("Quick run: essential inputs and one-click run.")
-        layout.addWidget(self.modeHint)
-
         self.stack = QStackedWidget()
-        self.quickPanel = QuickClassificationPanel()
+        self.quickPanel = QuickClassificationPanel(installer=installer)
+        self.quickPanel.setToolTip("Quick run: essential inputs and one-click run.")
         self.quickPanel.classificationRequested.connect(self.classificationRequested)
+        self.quickScroll = QScrollArea()
+        self.quickScroll.setWidgetResizable(True)
+        self.quickScroll.setAlignment(_qt_align_top())
+        self.quickScroll.setWidget(self.quickPanel)
 
         self.advancedWizard = ClassificationWizard(
             parent=container,
             installer=installer,
             close_on_accept=False,
         )
+        self.advancedWizard.setToolTip("Advanced setup: full workflow with detailed optimization and outputs.")
         self.advancedWizard.classificationRequested.connect(self.classificationRequested)
 
-        self.stack.addWidget(self.quickPanel)
+        self.stack.addWidget(self.quickScroll)
         self.stack.addWidget(self.advancedWizard)
         layout.addWidget(self.stack)
 
@@ -2564,10 +2703,6 @@ class ClassificationDashboardDock(QDockWidget):
     def _on_mode_changed(self, index):
         # type: (int) -> None
         self.stack.setCurrentIndex(index)
-        if index == 0:
-            self.modeHint.setText("Quick run: essential inputs and one-click run.")
-        else:
-            self.modeHint.setText("Advanced setup: full workflow with detailed optimization and outputs.")
 
     def closeEvent(self, event):
         self.closingPlugin.emit()

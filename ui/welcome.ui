@@ -36,7 +36,7 @@
        <string/>
       </property>
       <property name="pixmap">
-       <pixmap resource="../resources.qrc">:/img/parcguyane.jpg</pixmap>
+       <pixmap resource="../resources.qrc">:/plugins/dzetsaka/img/parcguyane.jpg</pixmap>
       </property>
       <property name="scaledContents">
        <bool>false</bool>
@@ -68,7 +68,7 @@
        <bool>true</bool>
       </property>
       <property name="text">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Thanks for installing dzetsaka.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;It looks like it is your first time using this plugin, so let me suggest you to take a look at the &lt;a href=&quot;https://github.com/lennepkade/dzetsaka&quot;&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline; color:#046c08;&quot;&gt;documentation&lt;/span&gt;&lt;/a&gt; and to &lt;a href=&quot;https://github.com/lennepkade/dzetsaka/archive/docs.zip&quot;&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline; color:#046c08;&quot;&gt;download our demonstration dataset&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;p&gt;If you want to install Random Forest or Support Vector Machine algorithms, take a look at &lt;a href=&quot;https://github.com/lennepkade/dzetsaka#installation-of-scikit-learn&quot;&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline; color:#046c08;&quot;&gt;how to install scikit-learn library in Qgis&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;p&gt;Have fun,&lt;/p&gt;&lt;p&gt;Nicolas Karasiak (&lt;a href=&quot;http://www.karasiak.net&quot;&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline; color:#046c08;&quot;&gt;www.karasiak.net&lt;/span&gt;&lt;/a&gt;)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Thanks for installing dzetsaka.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;For documentation and updates, visit &lt;a href=&quot;https://github.com/nkarasiak/dzetsaka&quot;&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline; color:#046c08;&quot;&gt;https://github.com/nkarasiak/dzetsaka&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;p&gt;You can also download a sample dataset to test and understand how dzetsaka works: &lt;a href=&quot;https://github.com/lennepkade/dzetsaka/archive/docs.zip&quot;&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline; color:#046c08;&quot;&gt;https://github.com/lennepkade/dzetsaka/archive/docs.zip&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;p&gt;Have fun,&lt;br/&gt;Nicolas Karasiak&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
       <property name="wordWrap">
        <bool>true</bool>

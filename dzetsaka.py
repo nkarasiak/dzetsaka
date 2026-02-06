@@ -53,6 +53,7 @@ DOI: 10.5281/zenodo.2552284
 """
 
 # import basics
+import configparser
 import os.path
 from typing import Any, Callable, Optional
 
@@ -63,7 +64,7 @@ import tempfile
 from qgis.core import QgsApplication, QgsTask
 
 # Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
-from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
+from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTimer
 from qgis.PyQt.QtGui import QAction, QIcon
 from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox
 
@@ -322,9 +323,11 @@ class DzetsakaGUI(QDialog):
         self.provider = DzetsakaProvider(self.providerType)
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
-
-        if self.firstInstallation is True:
-            self.showWelcomeWidget()
+        self.plugin_version = self._read_plugin_version()
+        shown_version = self.settings.value("/dzetsaka/onboardingShownVersion", "", str) or ""
+        should_show_onboarding = shown_version != self.plugin_version
+        self._open_welcome_on_init = bool(self.firstInstallation or should_show_onboarding)
+        self._open_dashboard_on_init = bool(self.firstInstallation or should_show_onboarding)
 
         # initialize locale
         """
@@ -515,7 +518,7 @@ class DzetsakaGUI(QDialog):
         self.add_action(
             icon_path,
             text=self.tr("classification dock"),
-            callback=self.run,
+            callback=self.run_wizard,
             parent=self.iface.mainWindow(),
         )
 
@@ -524,7 +527,7 @@ class DzetsakaGUI(QDialog):
             icon_settings_path,
             text=self.tr("settings"),
             callback=self.loadSettings,
-            add_to_toolbar=True,
+            add_to_toolbar=False,
             parent=self.iface.mainWindow(),
         )
 
@@ -533,28 +536,30 @@ class DzetsakaGUI(QDialog):
             "dzetsaka classification dock",
             self.iface.mainWindow(),
         )
-        self.dockIcon.triggered.connect(self.run)
+        self.dockIcon.triggered.connect(self.run_wizard)
         self.iface.addToolBarIcon(self.dockIcon)
         self.actions.append(self.dockIcon)
 
-        self.settingsIcon = QAction(
-            QIcon(self.get_icon_path("dzetsaka_settings.png")),
-            "dzetsaka settings",
-            self.iface.mainWindow(),
-        )
-        self.settingsIcon.triggered.connect(self.loadSettings)
-        self.iface.addToolBarIcon(self.settingsIcon)
-        self.actions.append(self.settingsIcon)
+        if self._open_welcome_on_init:
+            self._open_welcome_on_init = False
+            self.settings.setValue("/dzetsaka/onboardingShownVersion", self.plugin_version)
+            QTimer.singleShot(400, self.showWelcomeWidget)
+        if self._open_dashboard_on_init:
+            self._open_dashboard_on_init = False
+            QTimer.singleShot(800, self.run_wizard)
 
-        # Classification dashboard (Quick run + Advanced setup) — menu only, no toolbar icon
-        icon_path = self.get_icon_path("icon.png")
-        self.add_action(
-            icon_path,
-            text=self.tr("Classification (Quick run / Advanced setup)"),
-            callback=self.run_wizard,
-            add_to_toolbar=False,
-            parent=self.iface.mainWindow(),
-        )
+    def _read_plugin_version(self):
+        # type: () -> str
+        """Read plugin version from metadata.txt, fallback to 'unknown'."""
+        metadata_path = os.path.join(os.path.dirname(__file__), "metadata.txt")
+        parser = configparser.ConfigParser()
+        try:
+            if parser.read(metadata_path, encoding="utf-8") and parser.has_section("general"):
+                version = parser.get("general", "version", fallback="unknown").strip()
+                return version or "unknown"
+        except Exception as exc:
+            self.log.warning(f"Unable to read plugin version from metadata.txt: {exc}")
+        return "unknown"
 
     # --------------------------------------------------------------------------
 
@@ -776,10 +781,14 @@ class DzetsakaGUI(QDialog):
             self.maskSuffix = self.DEFAULT_MASK_SUFFIX
             self.providerType = self.DEFAULT_PROVIDER_TYPE
 
-            self.firstInstallation = self.settings.value("/dzetsaka/firstInstallation", "None", bool)
-            if self.firstInstallation is None:
+            first_install_raw = self.settings.value("/dzetsaka/firstInstallation", None)
+            if first_install_raw is None:
                 self.firstInstallation = True
                 self.settings.setValue("/dzetsaka/firstInstallation", True)
+            elif isinstance(first_install_raw, bool):
+                self.firstInstallation = first_install_raw
+            else:
+                self.firstInstallation = str(first_install_raw).strip().lower() in ("1", "true", "yes", "on")
 
         except BaseException:
             self.log.error("Failed to open config file " + self.configFile)
@@ -1752,6 +1761,45 @@ Available Libraries:
             # Show custom progress dialog with live output
             progress = InstallProgressDialog(parent=self, total_packages=len(missing_deps))
             progress.show()
+
+            # Fast path: install full dependency bundle in one pip command.
+            # If this fails (or verification fails), we fall back to per-package install.
+            bundle_packages = []
+            for dep in missing_deps:
+                dep_key = dep.strip()
+                package_name = pip_packages.get(dep_key, pip_packages.get(dep_key.lower(), dep_key.lower()))
+                package_name = pip_packages.get(package_name, package_name)
+                if package_name not in bundle_packages:
+                    bundle_packages.append(package_name)
+
+            if bundle_packages:
+                progress.set_current_package("Full dependency bundle", 0)
+                progress.append_output(
+                    "Attempting bulk installation with one pip command:\n"
+                    f"  {' '.join(bundle_packages)}\n"
+                )
+                bulk_primary = bundle_packages[0]
+                bulk_extra = bundle_packages[1:]
+                bulk_installed = install_package(bulk_primary, progress, extra_args=bulk_extra)
+                if bulk_installed:
+                    import importlib
+
+                    importlib.invalidate_caches()
+                    missing_after_bulk = [pkg for pkg in bundle_packages if not _is_dependency_usable(pkg)]
+                    if not missing_after_bulk:
+                        progress.append_output("\n✓ Bulk dependency installation succeeded for all packages.\n")
+                        progress.mark_complete(success=True)
+                        progress.close()
+                        return True
+                    progress.append_output(
+                        "\n⚠ Bulk install command succeeded but some packages are still unusable:\n"
+                        f"  {', '.join(missing_after_bulk)}\n"
+                        "Falling back to per-package installation...\n"
+                    )
+                else:
+                    progress.append_output(
+                        "\n⚠ Bulk install failed. Falling back to per-package installation...\n"
+                    )
 
             success_count = 0
 
