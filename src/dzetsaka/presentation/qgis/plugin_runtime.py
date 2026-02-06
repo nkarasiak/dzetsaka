@@ -69,9 +69,9 @@ from qgis.PyQt.QtWidgets import QDialog
 # import local libraries
 import contextlib
 
-from dzetsaka import classifier_config, ui
+from dzetsaka import ui
 from dzetsaka.dzetsaka_provider import DzetsakaProvider
-from dzetsaka.logging_utils import QgisLogger, show_error_dialog
+from dzetsaka.logging_utils import QgisLogger
 from dzetsaka.presentation.qgis.task_runner import TaskFeedbackAdapter
 
 # Import resources for icons
@@ -385,52 +385,9 @@ class DzetsakaGUI(QDialog):
 
     def loadConfig(self):
         """!@brief Class that loads all saved settings from config.txt."""
-        try:
-            """
-            dzetsakaRoot = os.path.dirname(os.path.realpath(__file__))
-            self.Config = configparser.ConfigParser()
-            self.configFile = os.path.join(dzetsakaRoot,'config.txt')
-            self.Config.read(self.configFile)
+        from dzetsaka.presentation.qgis.config_runtime import load_config
 
-
-            self.classifier = self.Config.get('Classification','classifier')
-
-
-            self.classSuffix = self.Config.get('Classification','suffix')
-            self.classPrefix = self.Config.get('Classification','prefix')
-
-            self.maskSuffix = self.Config.get('Classification','maskSuffix')
-
-            self.providerType = self.Config.get('Providers','provider')
-            """
-            self.classifiers = classifier_config.CLASSIFIER_NAMES
-
-            self.classifier = self.settings.value("/dzetsaka/classifier", "", str)
-            if not self.classifier:
-                self.classifier = self.classifiers[0]
-                self.settings.setValue("/dzetsaka/classifier", self.classifier)
-
-            # Legacy customizable naming/provider settings have been removed.
-            # Keep deterministic defaults for behavior.
-            self.maskSuffix = self.DEFAULT_MASK_SUFFIX
-            self.providerType = self.DEFAULT_PROVIDER_TYPE
-
-            first_install_raw = self.settings.value("/dzetsaka/firstInstallation", None)
-            if first_install_raw is None:
-                self.firstInstallation = True
-                self.settings.setValue("/dzetsaka/firstInstallation", True)
-            elif isinstance(first_install_raw, bool):
-                self.firstInstallation = first_install_raw
-            else:
-                self.firstInstallation = str(first_install_raw).strip().lower() in ("1", "true", "yes", "on")
-
-        except BaseException:
-            self.log.error("Failed to open config file " + self.configFile)
-            show_error_dialog(
-                "dzetsaka Configuration Error",
-                "Failed to load configuration. Check the QGIS log for details.",
-                parent=self.iface.mainWindow(),
-            )
+        load_config(self)
 
     def loadSettings(self):
         """Legacy entry point retained for compatibility: open dashboard."""
