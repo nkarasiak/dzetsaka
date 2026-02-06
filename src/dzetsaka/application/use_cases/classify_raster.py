@@ -1,6 +1,8 @@
-"""Raster classification use case (Phase 1 compatibility wrapper)."""
+"""Raster classification use case."""
 
 from __future__ import annotations
+
+from dzetsaka.infrastructure.ml.legacy_mainfunction import classify_image
 
 
 def run_classification(
@@ -13,18 +15,13 @@ def run_classification(
     nodata,
     feedback,
 ):
-    """Execute model inference via legacy runtime implementation."""
-    from dzetsaka.scripts import mainfunction
-
-    classifier_worker = mainfunction.ClassifyImage()
-    return classifier_worker.initPredict(
+    """Execute model inference via infrastructure adapter."""
+    return classify_image(
         raster_path=raster_path,
         model_path=model_path,
         output_path=output_path,
         mask_path=mask_path,
-        confidenceMap=confidence_map,
-        confidenceMapPerClass=None,
-        NODATA=nodata,
+        confidence_map=confidence_map,
+        nodata=nodata,
         feedback=feedback,
     )
-

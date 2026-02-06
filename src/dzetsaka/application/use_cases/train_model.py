@@ -1,6 +1,8 @@
-"""Train model use case (Phase 1 compatibility wrapper)."""
+"""Train model use case."""
 
 from __future__ import annotations
+
+from dzetsaka.infrastructure.ml.legacy_mainfunction import learn_model
 
 
 def run_training(
@@ -16,10 +18,8 @@ def run_training(
     extra_params,
     feedback,
 ):
-    """Execute model training via legacy runtime implementation."""
-    from dzetsaka.scripts import mainfunction
-
-    return mainfunction.LearnModel(
+    """Execute model training via infrastructure adapter."""
+    return learn_model(
         raster_path=raster_path,
         vector_path=vector_path,
         class_field=class_field,
@@ -28,7 +28,6 @@ def run_training(
         random_seed=random_seed,
         matrix_path=matrix_path,
         classifier=classifier,
-        extraParam=extra_params,
+        extra_params=extra_params,
         feedback=feedback,
     )
-
