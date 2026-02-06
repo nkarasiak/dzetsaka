@@ -1114,19 +1114,15 @@ class DzetsakaGUI(QDialog):
 
     def run_wizard(self):
         """Open the dockable classification dashboard (Quick/Advanced)."""
-        if self.wizarddock is None:
-            self.wizarddock = ui.ClassificationDashboardDock(self.iface.mainWindow(), installer=self)
-            self.wizarddock.classificationRequested.connect(self.execute_wizard_config)
-            self.wizarddock.closingPlugin.connect(self.onCloseWizardDock)
-            self.iface.addDockWidget(_LEFT_DOCK_AREA, self.wizarddock)
+        from dzetsaka.presentation.qgis.wizard_dock import open_wizard_dock
 
-        self.wizarddock.show()
-        self.wizarddock.raise_()
+        open_wizard_dock(self, _LEFT_DOCK_AREA)
 
     def onCloseWizardDock(self):
         """Track dashboard dock closing state."""
-        if self.wizarddock is not None:
-            self.wizarddock.hide()
+        from dzetsaka.presentation.qgis.wizard_dock import close_wizard_dock
+
+        close_wizard_dock(self)
 
     def _validate_classification_request(
         self,

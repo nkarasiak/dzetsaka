@@ -126,6 +126,7 @@ dzetsaka/
 - 2026-02-06: Extracted wizard-driven execution flow to `src/dzetsaka/presentation/qgis/wizard_execution.py`.
 - 2026-02-06: Extracted plugin metadata version read helper to `src/dzetsaka/presentation/qgis/metadata_utils.py`.
 - 2026-02-06: Extracted scikit-learn runtime health check to `src/dzetsaka/presentation/qgis/runtime_checks.py`.
+- 2026-02-06: Extracted wizard dock lifecycle helpers to `src/dzetsaka/presentation/qgis/wizard_dock.py`.
 
 ### Phase 0: Baseline and Guardrails
 
