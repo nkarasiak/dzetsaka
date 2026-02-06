@@ -121,13 +121,7 @@ ci: quality test
 # QGIS plugin packaging (create zip for plugin repository)
 plugin-package:
 	@echo "Creating QGIS plugin package..."
-	rm -f dzetsaka.zip
-	zip -r dzetsaka.zip . \
-		-x "*.git*" "*.venv*" "*__pycache__*" "*.pytest_cache*" \
-		"*.ruff_cache*" "*.mypy_cache*" "*htmlcov*" "*build*" \
-		"*dist*" "*.egg-info*" "*docs*" "*tests*" \
-		"Makefile" "pyproject.toml" ".pre-commit-config.yaml" \
-		"*.md" "*.txt" -x "readme.md" "metadata.txt"
+	python tools/build_plugin.py --output dzetsaka.zip
 	@echo "Plugin package created: dzetsaka.zip"
 
 # Development workflow shortcuts
