@@ -132,6 +132,12 @@ dzetsaka/
 - 2026-02-06: Extracted translation helper to `src/dzetsaka/presentation/qgis/localization.py`.
 - 2026-02-06: Extracted QGIS GUI init wiring (`initGui`) to `src/dzetsaka/presentation/qgis/ui_init.py`.
 - 2026-02-06: Extracted plugin unload cleanup routine to `src/dzetsaka/presentation/qgis/unload_utils.py`.
+- 2026-02-06: Extracted remaining major `plugin_runtime.py` UI/workflow methods into helper modules (`main_dock_runtime.py`, `file_form_handlers.py`, `settings_handlers.py`, `main_panel_execution.py`, `config_runtime.py`).
+- 2026-02-06: Removed `services/use_case_bridge.py`; QGIS task/processing flows now call application use-cases directly.
+- 2026-02-06: Migrated active processing algorithms to `src/dzetsaka/presentation/qgis/processing/algorithms/` (`train`, `classify`, `split_train_validation`, `nested_cv_algorithm`, `explain_model`) with root compatibility shims.
+- 2026-02-06: Dropped unused experimental processing registration and removed obsolete legacy processing modules (`closing_filter`, `median_filter`, `shannon_entropy`, `domain_adaptation`, `learn_with_spatial_sampling`, `learn_with_stand_cv`, `resample_image_same_date`, `sieve_area`).
+- 2026-02-06: Added `tools/build_plugin.py` and wired `make plugin-package` to use it for reproducible plugin zip builds.
+- 2026-02-06: Converted root `zip_file.py` into a compatibility wrapper delegating packaging to `tools/build_plugin.py`.
 
 ### Phase 0: Baseline and Guardrails
 
