@@ -130,6 +130,7 @@ dzetsaka/
 - 2026-02-06: Extracted small UI helpers (`rememberLastSaveDir`, welcome widget) to `src/dzetsaka/presentation/qgis/ui_utils.py`.
 - 2026-02-06: Extracted action/icon helpers to `src/dzetsaka/presentation/qgis/actions_utils.py`.
 - 2026-02-06: Extracted translation helper to `src/dzetsaka/presentation/qgis/localization.py`.
+- 2026-02-06: Extracted QGIS GUI init wiring (`initGui`) to `src/dzetsaka/presentation/qgis/ui_init.py`.
 
 ### Phase 0: Baseline and Guardrails
 

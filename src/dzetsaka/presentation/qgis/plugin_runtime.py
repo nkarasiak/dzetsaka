@@ -64,8 +64,7 @@ import tempfile
 from qgis.core import QgsApplication
 
 # Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
-from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTimer
-from qgis.PyQt.QtGui import QAction, QIcon
+from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
 from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox
 
 try:
@@ -337,41 +336,9 @@ class DzetsakaGUI(QDialog):
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
-        QgsApplication.processingRegistry().addProvider(self.provider)
+        from dzetsaka.presentation.qgis.ui_init import init_gui
 
-        icon_path = self.get_icon_path("icon.png")
-        self.add_action(
-            icon_path,
-            text=self.tr("welcome message"),
-            callback=self.showWelcomeWidget,
-            add_to_toolbar=False,
-            parent=self.iface.mainWindow(),
-        )
-
-        icon_path = self.get_icon_path("icon.png")
-        self.add_action(
-            icon_path,
-            text=self.tr("classifier dashboard"),
-            callback=self.run_wizard,
-            parent=self.iface.mainWindow(),
-        )
-
-        self.dockIcon = QAction(
-            QIcon(self.get_icon_path("icon.png")),
-            "dzetsaka classifier dashboard",
-            self.iface.mainWindow(),
-        )
-        self.dockIcon.triggered.connect(self.run_wizard)
-        self.iface.addToolBarIcon(self.dockIcon)
-        self.actions.append(self.dockIcon)
-
-        if self._open_welcome_on_init:
-            self._open_welcome_on_init = False
-            self.settings.setValue("/dzetsaka/onboardingShownVersion", self.plugin_version)
-            QTimer.singleShot(400, self.showWelcomeWidget)
-        if self._open_dashboard_on_init:
-            self._open_dashboard_on_init = False
-            QTimer.singleShot(800, self.run_wizard)
+        init_gui(self)
 
     def _read_plugin_version(self):
         # type: () -> str
