@@ -129,6 +129,7 @@ dzetsaka/
 - 2026-02-06: Extracted wizard dock lifecycle helpers to `src/dzetsaka/presentation/qgis/wizard_dock.py`.
 - 2026-02-06: Extracted small UI helpers (`rememberLastSaveDir`, welcome widget) to `src/dzetsaka/presentation/qgis/ui_utils.py`.
 - 2026-02-06: Extracted action/icon helpers to `src/dzetsaka/presentation/qgis/actions_utils.py`.
+- 2026-02-06: Extracted translation helper to `src/dzetsaka/presentation/qgis/localization.py`.
 
 ### Phase 0: Baseline and Guardrails
 

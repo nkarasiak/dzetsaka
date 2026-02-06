@@ -260,8 +260,9 @@ class DzetsakaGUI(QDialog):
         :returns: Translated version of message.
         :rtype: QString
         """
-        # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate("dzetsaka", message)
+        from dzetsaka.presentation.qgis.localization import tr
+
+        return tr(message)
 
     def add_action(
         self,
