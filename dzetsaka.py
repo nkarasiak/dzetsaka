@@ -1040,6 +1040,10 @@ class DzetsakaGUI(QDialog):
                 source_label="Main Panel",
             ):
                 return
+            if not self._ensure_classifier_runtime_ready(
+                inClassifier, source_label="Main Panel", fallback_to_gmm=True
+            ):
+                return
             self.log.info(
                 f"Starting {'training and ' if do_training else ''}classification with {inClassifier} classifier"
             )
@@ -1983,6 +1987,71 @@ Settings:
             return False
         return True
 
+    def _is_module_importable(self, module_name):
+        # type: (str) -> bool
+        """Return True if a module can be imported in current runtime."""
+        try:
+            import importlib
+
+            importlib.import_module(module_name)
+            return True
+        except Exception:
+            return False
+
+    def _missing_classifier_dependencies(self, classifier_code):
+        # type: (str) -> list[str]
+        """Return missing runtime dependencies for a classifier code."""
+        code = str(classifier_code or "").strip().upper()
+        missing = []
+
+        sklearn_ok, _sklearn_details = self._check_sklearn_usable()
+        # XGB/LGB/CB wrappers also require sklearn runtime for label encoding.
+        needs_sklearn_runtime = classifier_config.requires_sklearn(code) or code in {"XGB", "LGB", "CB"}
+        if needs_sklearn_runtime and not sklearn_ok:
+            missing.append("scikit-learn")
+
+        if classifier_config.requires_xgboost(code) and not self._is_module_importable("xgboost"):
+            missing.append("xgboost")
+        if classifier_config.requires_lightgbm(code) and not self._is_module_importable("lightgbm"):
+            missing.append("lightgbm")
+        if classifier_config.requires_catboost(code) and not self._is_module_importable("catboost"):
+            missing.append("catboost")
+
+        # De-duplicate while preserving order.
+        seen = set()
+        return [d for d in missing if not (d in seen or seen.add(d))]
+
+    def _ensure_classifier_runtime_ready(self, classifier_code, source_label="Classification", fallback_to_gmm=False):
+        # type: (str, str, bool) -> bool
+        """Validate runtime dependencies for selected classifier before launching task."""
+        missing = self._missing_classifier_dependencies(classifier_code)
+        if not missing:
+            return True
+
+        classifier_name = classifier_config.get_classifier_name(str(classifier_code or "").upper())
+        missing_list = ", ".join(missing)
+        QMessageBox.warning(
+            self.iface.mainWindow(),
+            "Dependencies Missing for dzetsaka",
+            (
+                f"{source_label}: selected classifier <b>{classifier_name}</b> cannot run right now.<br><br>"
+                f"Missing runtime dependencies: <code>{missing_list}</code><br><br>"
+                "Please install dependencies from the wizard/settings installer and restart QGIS."
+            ),
+            QMessageBox.StandardButton.Ok,
+        )
+        self.log.warning(
+            f"{source_label} blocked: classifier {classifier_code} missing runtime deps: {missing_list}"
+        )
+
+        if fallback_to_gmm:
+            self.settings.setValue("/dzetsaka/classifier", "Gaussian Mixture Model")
+            self.classifier = "Gaussian Mixture Model"
+            with contextlib.suppress(Exception):
+                if hasattr(self, "settingsdock") and self.settingsdock is not None:
+                    self.settingsdock.selectClassifier.setCurrentIndex(0)
+        return False
+
     def _start_classification_task(
         self,
         *,
@@ -2114,6 +2183,10 @@ Settings:
             class_field=inField if do_training else None,
             model_path=model if not do_training else None,
             source_label="Wizard",
+        ):
+            return
+        if not self._ensure_classifier_runtime_ready(
+            inClassifier, source_label="Wizard", fallback_to_gmm=False
         ):
             return
 
