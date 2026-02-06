@@ -121,7 +121,6 @@ class DzetsakaGUI(QDialog):
     """
 
     DEFAULT_MASK_SUFFIX = "_mask"
-    DEFAULT_PROVIDER_TYPE = "Standard"
 
     def __init__(self, iface):
         """Initialize the dzetsaka plugin.
@@ -155,7 +154,7 @@ class DzetsakaGUI(QDialog):
         self.settings = QSettings()
         self.loadConfig()
 
-        self.provider = DzetsakaProvider(self.providerType)
+        self.provider = DzetsakaProvider()
         # initialize plugin directory
         self.plugin_dir = str(Path(__file__).resolve().parents[4])
         self.plugin_version = self._read_plugin_version()

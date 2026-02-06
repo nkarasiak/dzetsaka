@@ -33,9 +33,8 @@ except ImportError:
 class DzetsakaProvider(QgsProcessingProvider):
     """Processing provider for dzetsaka algorithms."""
 
-    def __init__(self, providerType="Standard"):
+    def __init__(self):
         super().__init__()
-        self.providerType = providerType
 
     def icon(self):
         """Add provider icon."""

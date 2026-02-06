@@ -17,8 +17,6 @@ def load_config(gui) -> None:
             gui.settings.setValue("/dzetsaka/classifier", gui.classifier)
 
         gui.maskSuffix = gui.DEFAULT_MASK_SUFFIX
-        gui.providerType = gui.DEFAULT_PROVIDER_TYPE
-
         first_install_raw = gui.settings.value("/dzetsaka/firstInstallation", None)
         if first_install_raw is None:
             gui.firstInstallation = True
