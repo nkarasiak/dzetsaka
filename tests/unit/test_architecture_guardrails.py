@@ -5,7 +5,6 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DOMAIN_ROOT = REPO_ROOT / "src" / "dzetsaka" / "domain"
 PRESENTATION_QGIS_ROOT = REPO_ROOT / "src" / "dzetsaka" / "presentation" / "qgis"
@@ -77,8 +76,8 @@ def test_provider_shim_has_no_eager_qgis_import() -> None:
     assert "qgis" not in roots, f"{shim_path.relative_to(REPO_ROOT)} imports qgis eagerly"
 
 
-def test_presentation_helpers_do_not_import_legacy_mainfunction() -> None:
-    """New presentation helper modules should not couple back to legacy monolith."""
+def test_presentation_helpers_do_not_import_pipeline_monolith() -> None:
+    """Presentation helper modules must not couple to the scripts pipeline monolith."""
     assert PRESENTATION_QGIS_ROOT.exists(), "Expected presentation/qgis layer scaffold"
 
     helper_files = [
@@ -90,12 +89,12 @@ def test_presentation_helpers_do_not_import_legacy_mainfunction() -> None:
     for file_path in helper_files:
         roots = _import_roots_from_file(file_path)
         text = file_path.read_text(encoding="utf-8")
-        if "scripts.mainfunction" in text or "from dzetsaka.scripts import mainfunction" in text:
+        if "scripts.classification_pipeline" in text or "from dzetsaka.scripts import classification_pipeline" in text:
             violations.append(str(file_path.relative_to(REPO_ROOT)))
-        if "scripts" in roots and "mainfunction" in text:
+        if "scripts" in roots and "classification_pipeline" in text:
             violations.append(str(file_path.relative_to(REPO_ROOT)))
 
-    assert not violations, "Presentation helper leaked legacy mainfunction dependency:\n" + "\n".join(violations)
+    assert not violations, "Presentation helper leaked scripts pipeline dependency:\n" + "\n".join(violations)
 
 
 def test_use_case_bridge_module_removed() -> None:

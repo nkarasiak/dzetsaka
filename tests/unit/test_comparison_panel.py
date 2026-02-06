@@ -12,7 +12,7 @@ import pytest
 
 # ---------------------------------------------------------------------------
 # Load comparison_panel directly, bypassing ui/__init__.py which pulls qgis.PyQt.
-# We first ensure wizard_widget is available as a sibling stub (comparison_panel
+# We first ensure guided_workflow_widget is available as a sibling stub (comparison_panel
 # imports check_dependency_availability from it).
 # ---------------------------------------------------------------------------
 
@@ -23,7 +23,7 @@ try:
     # polluting sys.modules for tests that run later in the same session.
     _STUB_KEYS = (
         "qgis", "qgis.PyQt", "qgis.PyQt.QtCore", "qgis.PyQt.QtWidgets", "qgis.PyQt.QtGui",
-        "ui", "ui.wizard_widget", "ui.comparison_panel",
+        "ui", "ui.guided_workflow_widget", "ui.comparison_panel",
     )
     _inserted_keys = [k for k in _STUB_KEYS if k not in sys.modules]
 
@@ -67,20 +67,20 @@ try:
 
     _UI_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "ui"))
 
-    # --- Load wizard_widget with __package__ = 'ui' so relative imports work ---
-    _wizard_spec = importlib.util.spec_from_file_location(
-        "ui.wizard_widget", os.path.join(_UI_DIR, "wizard_widget.py")
+    # --- Load guided_workflow_widget with __package__ = 'ui' so relative imports work ---
+    _workflow_spec = importlib.util.spec_from_file_location(
+        "ui.guided_workflow_widget", os.path.join(_UI_DIR, "guided_workflow_widget.py")
     )
-    _wizard_mod = importlib.util.module_from_spec(_wizard_spec)
-    _wizard_mod.__package__ = "ui"
-    sys.modules["ui.wizard_widget"] = _wizard_mod
-    _wizard_spec.loader.exec_module(_wizard_mod)
+    _workflow_mod = importlib.util.module_from_spec(_workflow_spec)
+    _workflow_mod.__package__ = "ui"
+    sys.modules["ui.guided_workflow_widget"] = _workflow_mod
+    _workflow_spec.loader.exec_module(_workflow_mod)
 
     # --- Create the fake 'ui' package so relative imports in comparison_panel resolve ---
     _fake_ui_pkg = type(sys)("ui")
     _fake_ui_pkg.__path__ = [_UI_DIR]
     _fake_ui_pkg.__package__ = "ui"
-    _fake_ui_pkg.wizard_widget = _wizard_mod
+    _fake_ui_pkg.guided_workflow_widget = _workflow_mod
     sys.modules["ui"] = _fake_ui_pkg
 
     # --- Load comparison_panel ---
@@ -101,7 +101,7 @@ try:
     # Clean up: remove stubs we injected so they don't leak to other tests
     for _k in _inserted_keys:
         sys.modules.pop(_k, None)
-    del _wizard_mod, _panel_mod, _wizard_spec, _panel_spec, _fake_ui_pkg
+    del _workflow_mod, _panel_mod, _workflow_spec, _panel_spec, _fake_ui_pkg
 except Exception:
     pass
 
@@ -272,3 +272,4 @@ class TestBuildComparisonData:
         assert speed_map["MLP"] == "Slow"
         assert speed_map["LGB"] == "Fast"
         assert speed_map["XGB"] == "Medium"
+

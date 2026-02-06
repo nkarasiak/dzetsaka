@@ -1,7 +1,7 @@
-"""Unit tests for the Classification Wizard helper functions.
+"""Unit tests for guided workflow helper functions.
 
 All tests in this module exercise pure-Python helpers that do NOT require
-Qt or QGIS.  The wizard widget classes themselves (DataInputPage, etc.) are
+Qt or QGIS.  The guided workflow classes themselves (DataInputPage, etc.) are
 only imported when Qt is available; those integration paths are tested
 manually inside QGIS.
 """
@@ -15,14 +15,14 @@ import pytest
 
 # ---------------------------------------------------------------------------
 # Import the module under test.  The helpers are defined before any Qt class
-# in wizard_widget.py, so we load the file directly via importlib to avoid
+# in guided_workflow_widget.py, so we load the file directly via importlib to avoid
 # triggering ui/__init__.py (which pulls in qgis.PyQt).
 # ---------------------------------------------------------------------------
 
-_WIZARD_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "ui", "wizard_widget.py")
-_WIZARD_PATH = os.path.abspath(_WIZARD_PATH)
+_WORKFLOW_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "ui", "guided_workflow_widget.py")
+_WORKFLOW_PATH = os.path.abspath(_WORKFLOW_PATH)
 
-WIZARD_MODULE_AVAILABLE = False
+WORKFLOW_MODULE_AVAILABLE = False
 try:
     # Inject a minimal stub for qgis.PyQt so the module-level Qt imports resolve
     # without actually needing QGIS installed.  We track which keys we add
@@ -61,27 +61,27 @@ try:
     sys.modules.setdefault("qgis.PyQt.QtCore", _pyqt_core)
     sys.modules.setdefault("qgis.PyQt.QtWidgets", _pyqt_widgets)
 
-    spec = importlib.util.spec_from_file_location("_wizard_widget_test", _WIZARD_PATH)
-    _wizard_mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(_wizard_mod)
+    spec = importlib.util.spec_from_file_location("_guided_workflow_widget_test", _WORKFLOW_PATH)
+    _workflow_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(_workflow_mod)
 
     # Extract the pure helpers we actually need
-    check_dependency_availability = _wizard_mod.check_dependency_availability
-    build_smart_defaults = _wizard_mod.build_smart_defaults
-    build_review_summary = _wizard_mod.build_review_summary
-    _CLASSIFIER_META = _wizard_mod._CLASSIFIER_META
-    _classifier_available = _wizard_mod._classifier_available
+    check_dependency_availability = _workflow_mod.check_dependency_availability
+    build_smart_defaults = _workflow_mod.build_smart_defaults
+    build_review_summary = _workflow_mod.build_review_summary
+    _CLASSIFIER_META = _workflow_mod._CLASSIFIER_META
+    _classifier_available = _workflow_mod._classifier_available
 
-    WIZARD_MODULE_AVAILABLE = True
+    WORKFLOW_MODULE_AVAILABLE = True
 
     # Clean up: remove stubs we injected so they don't leak to other tests
     for _k in _inserted_keys:
         sys.modules.pop(_k, None)
-    del _wizard_mod, spec
+    del _workflow_mod, spec
 except Exception:
     pass
 
-pytestmark = pytest.mark.skipif(not WIZARD_MODULE_AVAILABLE, reason="wizard_widget helpers not importable")
+pytestmark = pytest.mark.skipif(not WORKFLOW_MODULE_AVAILABLE, reason="guided_workflow_widget helpers not importable")
 
 
 # ===========================================================================
@@ -599,3 +599,4 @@ class TestOutputPageLogic:
         cfg = self._make_output_config(confusion_matrix="/data/mat.csv", split_percent=70)
         assert cfg["split_percent"] == 70
         assert cfg["confusion_matrix"] == "/data/mat.csv"
+

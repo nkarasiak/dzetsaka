@@ -43,13 +43,13 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 # Uncomment the following line and add your changelog:
 changelog=
     5.0.0
-      * NEW: Classification Wizard - step-by-step QWizard interface (Input, Algorithm, Advanced Options, Output, Review)
+      * NEW: Guided Classification Dialog - step-by-step QWizard interface (Input, Algorithm, Advanced Options, Output, Review)
       * NEW: Algorithm Comparison Panel - colour-coded table of all 12 classifiers with feature and dependency status
       * NEW: Smart Defaults button auto-enables Optuna/SHAP/SMOTE when packages are available
-      * NEW: Wizard-driven classification with full extraParam support (Optuna, SHAP, SMOTE, class weights, nested CV)
-      * ENHANCED: Menu-accessible wizard keeps toolbar clean while adding powerful guided workflow
+      * NEW: Guided workflow classification with full extraParam support (Optuna, SHAP, SMOTE, class weights, nested CV)
+      * ENHANCED: Menu-accessible guided workflow keeps toolbar clean while adding powerful defaults
     4.6.0
-      * NEW: ui/wizard_widget.py - 5-page QWizard with DataInput, Algorithm, AdvancedOptions, OutputConfig, Review pages
+      * NEW: ui/guided_workflow_widget.py - 5-page QWizard with DataInput, Algorithm, AdvancedOptions, OutputConfig, Review pages
       * NEW: ui/comparison_panel.py - AlgorithmComparisonPanel QDialog with dependency-aware colouring
       * NEW: Standalone helper functions (check_dependency_availability, build_smart_defaults, build_review_summary)
     4.5.0
@@ -117,15 +117,15 @@ changelog=
       * 📈 ENHANCED: Real-time pip installation progress with detailed logging
       * 📝 ENHANCED: Comprehensive error handling with specific exception types and user guidance
     4.1.0
-      * Major code refactoring and optimization of scripts/mainfunction.py
-      * Remove Hungarian notation prefixes (in/out) from parameter names with full backward compatibility
+      * Major code refactoring and optimization of scripts/classification_pipeline.py
+      * Replaced Hungarian notation prefixes (in/out) with descriptive parameter names
       * Significant memory optimizations for large multi-band image processing
       * Enhanced error handling with specific exception types and detailed error messages
       * Added comprehensive type hints and improved documentation
       * Broke down 1279-line method into focused, maintainable helper methods
       * Added configuration constants for better maintainability
-      * Created parameter migration guide for smooth transition
-      * All old parameter names remain functional with deprecation warnings
+      * Created parameter migration guide for transition support
+      * Standardized APIs on descriptive parameter names
     4.0.0
       * Major version with comprehensive improvements
     3.70

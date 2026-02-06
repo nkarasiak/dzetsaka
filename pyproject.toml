@@ -220,7 +220,6 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 # Allow print in main execution blocks
 "__main__.py" = ["T201"]
-"**/mainfunction.py" = ["T201"]
 
 # Qt UI files are generated, ignore styling issues
 "ui/*.py" = ["ALL"]
