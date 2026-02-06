@@ -1104,71 +1104,9 @@ class DzetsakaGUI(QDialog):
 
     def _get_debug_info(self):
         """Generate debug information for GitHub issue reporting."""
-        try:
-            import platform
+        from dzetsaka.presentation.qgis.debug_info import build_debug_info
 
-            # Get QGIS version
-            qgis_version = QgsApplication.applicationVersion()
-
-            # Get Python version
-            python_version = platform.python_version()
-
-            # Get OS info
-            os_info = f"{platform.system()} {platform.release()}"
-
-            # Get classifier and settings
-            classifier_code = classifier_config.get_classifier_code(self.classifier)
-
-            # Check library availability
-            sklearn_available = "No"
-            sklearn_ok, sklearn_details = self._check_sklearn_usable()
-            if sklearn_ok:
-                sklearn_available = f"Yes ({sklearn_details})"
-            else:
-                sklearn_available = f"No ({sklearn_details})"
-
-            xgboost_available = "No"
-            try:
-                import xgboost
-
-                xgboost_available = f"Yes ({xgboost.__version__})"
-            except ImportError:
-                pass
-
-            lightgbm_available = "No"
-            try:
-                import lightgbm
-
-                lightgbm_available = f"Yes ({lightgbm.__version__})"
-            except ImportError:
-                pass
-
-            catboost_available = "No"
-            try:
-                import catboost
-
-                catboost_available = f"Yes ({catboost.__version__})"
-            except ImportError:
-                pass
-
-            debug_info = f"""
-=== DZETSAKA DEBUG INFO ===
-Plugin Version: 4.1.2
-QGIS Version: {qgis_version}
-Python Version: {python_version}
-Operating System: {os_info}
-
-Current Classifier: {self.classifier} ({classifier_code})
-Available Libraries:
-- Scikit-learn: {sklearn_available}
-- XGBoost: {xgboost_available}
-- LightGBM: {lightgbm_available}
-- CatBoost: {catboost_available}
-=== END DEBUG INFO ===
-"""
-            return debug_info.strip()
-        except Exception as e:
-            return f"Error generating debug info: {e!s}"
+        return build_debug_info(self)
 
     def _default_output_name(self, in_raster_path, classifier_code):
         """Build deterministic default output filename for temporary classifications."""
