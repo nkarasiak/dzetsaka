@@ -52,6 +52,7 @@ from qgis.PyQt.QtWidgets import (
     QWizard,
     QWizardPage,
 )
+from .advanced_compact_panel import AdvancedCompactPanel
 
 # ---------------------------------------------------------------------------
 # Dependency availability helpers (importable without Qt for unit tests)
@@ -2733,6 +2734,7 @@ class ClassificationDashboardDock(QDockWidget):
         self.quickScroll.setAlignment(_qt_align_top())
         self.quickScroll.setWidget(self.quickPanel)
 
+        self.advancedPanel = None
         self.advancedWizard = None
         self.advancedPlaceholder = QWidget()
 
@@ -2747,7 +2749,27 @@ class ClassificationDashboardDock(QDockWidget):
 
     def _on_mode_changed(self, index):
         # type: (int) -> None
-        if index == 1 and self.advancedWizard is None:
+        if index == 1 and self.advancedPanel is None:
+            self.advancedPanel = AdvancedCompactPanel(
+                parent=self.widget(),
+                deps=check_dependency_availability(),
+                classifier_meta=_CLASSIFIER_META,
+            )
+            self.advancedPanel.setToolTip(
+                "Advanced setup: compact intent-driven workflow.\n"
+                "Use Full wizard for all controls."
+            )
+            self.advancedPanel.classificationRequested.connect(self.classificationRequested)
+            self.advancedPanel.openFullWizardRequested.connect(self._open_full_wizard)
+            self.stack.removeWidget(self.advancedPlaceholder)
+            self.advancedPlaceholder.deleteLater()
+            self.advancedPlaceholder = None
+            self.stack.addWidget(self.advancedPanel)
+        self.stack.setCurrentIndex(index)
+
+    def _open_full_wizard(self):
+        # type: () -> None
+        if self.advancedWizard is None:
             self.advancedWizard = ClassificationWizard(
                 parent=self.widget(),
                 installer=self._installer,
@@ -2755,11 +2777,9 @@ class ClassificationDashboardDock(QDockWidget):
             )
             self.advancedWizard.setToolTip("Advanced setup: full workflow with detailed optimization and outputs.")
             self.advancedWizard.classificationRequested.connect(self.classificationRequested)
-            self.stack.removeWidget(self.advancedPlaceholder)
-            self.advancedPlaceholder.deleteLater()
-            self.advancedPlaceholder = None
             self.stack.addWidget(self.advancedWizard)
-        self.stack.setCurrentIndex(index)
+        self.modeCombo.setCurrentIndex(1)
+        self.stack.setCurrentWidget(self.advancedWizard)
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
