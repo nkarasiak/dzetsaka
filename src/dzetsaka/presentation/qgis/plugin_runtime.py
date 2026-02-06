@@ -313,38 +313,26 @@ class DzetsakaGUI(QDialog):
             added to self.actions list.
         :rtype: QAction
         """
-        icon = QIcon(icon_path)
-        action = QAction(icon, text, parent)
-        action.triggered.connect(callback)
-        action.setEnabled(enabled_flag)
+        from dzetsaka.presentation.qgis.actions_utils import add_action
 
-        if status_tip is not None:
-            action.setStatusTip(status_tip)
-
-        if whats_this is not None:
-            action.setWhatsThis(whats_this)
-
-        #        if add_to_toolbar:
-        #            self.toolbar.addAction(action)
-        #
-        if add_to_menu:
-            self.iface.addPluginToMenu(self.menu, action)
-
-        self.actions.append(action)
-
-        return action
+        return add_action(
+            self,
+            icon_path=icon_path,
+            text=text,
+            callback=callback,
+            enabled_flag=enabled_flag,
+            add_to_menu=add_to_menu,
+            add_to_toolbar=add_to_toolbar,
+            status_tip=status_tip,
+            whats_this=whats_this,
+            parent=parent,
+        )
 
     def get_icon_path(self, icon_name):
         """Get icon path, trying resource first, then fallback to file path."""
-        resource_path = f":/plugins/dzetsaka/img/{icon_name}"
-        file_path = os.path.join(self.plugin_dir, "img", icon_name)
+        from dzetsaka.presentation.qgis.actions_utils import get_icon_path
 
-        # Try to create QIcon with resource path first
-        icon = QIcon(resource_path)
-        if not icon.isNull():
-            return resource_path
-        # Fallback to file path
-        return file_path
+        return get_icon_path(self.plugin_dir, icon_name)
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
