@@ -59,20 +59,12 @@ from pathlib import Path
 
 # import outside libraries
 # import configparser
-import tempfile
 
 from qgis.core import QgsApplication
 
 # Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
-from qgis.PyQt.QtWidgets import QDialog, QMessageBox
-
-try:
-    from osgeo import gdal, ogr, osr
-except ImportError:
-    import gdal
-    import ogr
-    import osr
+from qgis.PyQt.QtWidgets import QDialog
 
 # import local libraries
 import contextlib
@@ -81,7 +73,6 @@ from dzetsaka import classifier_config, ui
 from dzetsaka.dzetsaka_provider import DzetsakaProvider
 from dzetsaka.logging_utils import QgisLogger, show_error_dialog
 from dzetsaka.presentation.qgis.task_runner import TaskFeedbackAdapter
-from dzetsaka.scripts.function_dataraster import get_layer_source_path
 
 # Import resources for icons
 with contextlib.suppress(ImportError):
@@ -447,222 +438,9 @@ class DzetsakaGUI(QDialog):
 
     def runMagic(self):
         """!@brief Perform training and classification for dzetsaka."""
-        """
-        VERIFICATION STEP
-        """
-        # Mandatory checks should stop immediately (no "continue anyway").
-        message = " "
-        inRaster = ""
-        inShape = ""
-        inRasterOp = None
-        inShapeProj = None
-        inRasterProj = None
-        model_path = self.dockwidget.inModel.text().strip()
+        from dzetsaka.presentation.qgis.main_panel_execution import run_magic
 
-        inRasterLayer = self.dockwidget.inRaster.currentLayer()
-        if inRasterLayer is None:
-            QMessageBox.warning(
-                self.iface.mainWindow(),
-                "Missing Input",
-                "Please select an input raster before running classification.",
-                QMessageBox.StandardButton.Ok,
-            )
-            return
-
-        try:
-            inRaster = get_layer_source_path(inRasterLayer)
-        except Exception:
-            inRaster = ""
-        if not inRaster:
-            QMessageBox.warning(
-                self.iface.mainWindow(),
-                "Invalid Raster",
-                "Could not read the selected raster source. Please select a valid raster layer.",
-                QMessageBox.StandardButton.Ok,
-            )
-            return
-
-        # Vector is mandatory only when a model is not provided.
-        if model_path == "":
-            inShapeLayer = self.dockwidget.inShape.currentLayer()
-            if inShapeLayer is None:
-                QMessageBox.warning(
-                    self.iface.mainWindow(),
-                    "Missing Input",
-                    "If you don't use an existing model, please select training data (vector).",
-                    QMessageBox.StandardButton.Ok,
-                )
-                return
-            try:
-                inShape = get_layer_source_path(inShapeLayer)
-            except Exception:
-                inShape = ""
-            if not inShape:
-                QMessageBox.warning(
-                    self.iface.mainWindow(),
-                    "Invalid Vector",
-                    "Could not read the selected training vector source. Please select a valid vector layer.",
-                    QMessageBox.StandardButton.Ok,
-                )
-                return
-
-        try:
-            # get raster proj
-            inRasterOp = gdal.Open(inRaster)
-            inRasterProj = osr.SpatialReference(inRasterOp.GetProjection()) if inRasterOp is not None else None
-
-            if model_path == "":
-                # verif srs only when training vector is used
-                inShapeOp = ogr.Open(inShape)
-                inShapeLyr = inShapeOp.GetLayer() if inShapeOp is not None else None
-                inShapeProj = inShapeLyr.GetSpatialRef() if inShapeLyr is not None else None
-
-                # check IsSame Projection
-                if inShapeProj is not None and inRasterProj is not None and inShapeProj.IsSameGeogCS(inRasterProj) == 0:
-                    message = message + "\n - Raster and ROI do not have the same projection."
-        except Exception as exc:
-            self.log.error(f"Projection validation error: {exc}")
-            if inShape:
-                self.log.error("inShape is : " + inShape)
-            if inRaster:
-                self.log.error("inRaster is : " + inRaster)
-            message = message + "\n - Can't compare projection between raster and vector."
-
-        try:
-            inMask = self.dockwidget.inMask.text()
-
-            if inMask == "":
-                inMask = None
-            # check if mask with _mask.extension
-            autoMask = os.path.splitext(inRaster)
-            autoMask = autoMask[0] + self.maskSuffix + autoMask[1]
-
-            if os.path.exists(autoMask):
-                inMask = autoMask
-                self.log.info("Mask found : " + str(autoMask))
-
-            if inMask is not None and inRasterOp is not None:
-                mask = gdal.Open(inMask, gdal.GA_ReadOnly)
-                # Check size
-                if (inRasterOp.RasterXSize != mask.RasterXSize) or (inRasterOp.RasterYSize != mask.RasterYSize):
-                    message = message + "\n - Raster image and mask do not have the same size."
-
-        except BaseException:
-            message = message + "\n - Can't compare mask and raster size."
-        """ END OF VERIFICATION STEP """
-
-        if message != " ":
-            reply = QMessageBox.question(
-                self.iface.mainWindow(),
-                "Informations missing or invalid",
-                message + "\n Would you like to continue anyway ?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
-
-            if reply == QMessageBox.StandardButton.Yes:
-                message = " "
-
-        # all is ok, so do the job !
-        if message == " ":
-            # get config
-            self.loadConfig()
-            # Get model if given
-            model = self.dockwidget.inModel.text()
-
-            # ==============================================================================
-            #             # if model not given, perform training
-            #             inRaster=self.dockwidget.inRaster.currentLayer()
-            #             inRaster=inRaster.dataProvider().dataSourceUri()
-            # ==============================================================================
-
-            # Get classifier short code (used by processing and default output naming)
-            inClassifier = classifier_config.get_classifier_code(self.classifier)
-            self.log.info(f"Selected classifier: {self.classifier} (code: {inClassifier})")
-
-            # create temp if not output raster
-            if self.dockwidget.outRaster.text() == "":
-                tempFolder = tempfile.mkdtemp()
-                outRaster = os.path.join(
-                    tempFolder,
-                    self._default_output_name(inRaster, inClassifier),
-                )
-
-            else:
-                outRaster = self.dockwidget.outRaster.text()
-
-            # Confidence map
-
-            if self.dockwidget.checkInConfidence.isChecked():
-                confidenceMap = self.dockwidget.outConfidenceMap.text()
-            else:
-                confidenceMap = None
-
-            # Get Classifier
-            # retrieve shortname classifier
-
-            # Ensure inClassifier is definitely a string
-            inClassifier = str(inClassifier)
-
-            # Check if model, else perform training
-            NODATA = -9999
-
-            if model != "":
-                model = self.dockwidget.inModel.text()
-                self.log.info(f"Using existing model: {model}")
-            else:
-                if self.dockwidget.outModel.text() == "":
-                    model = tempfile.mktemp("." + str(inClassifier))
-                else:
-                    model = self.dockwidget.outModel.text()
-                self.log.info("Training new model (no existing model loaded)")
-
-            inField = self.dockwidget.inField.currentText()
-            inSeed = 0
-            # Perform training & classification
-            if self.dockwidget.checkOutMatrix.isChecked():
-                outMatrix = self.dockwidget.outMatrix.text()
-                inSplit = self.dockwidget.inSplit.value()
-            else:
-                inSplit = 100
-                outMatrix = None
-
-            do_training = not self.dockwidget.checkInModel.isChecked()
-            if not self._validate_classification_request(
-                raster_path=inRaster,
-                do_training=do_training,
-                vector_path=inShape if do_training else None,
-                class_field=inField if do_training else None,
-                model_path=model if not do_training else None,
-                source_label="Main Panel",
-            ):
-                return
-            if not self._ensure_classifier_runtime_ready(
-                inClassifier, source_label="Main Panel", fallback_to_gmm=True
-            ):
-                return
-            self.log.info(
-                f"Starting {'training and ' if do_training else ''}classification with {inClassifier} classifier"
-            )
-            self._start_classification_task(
-                description=f"dzetsaka: {inClassifier} classification",
-                do_training=do_training,
-                raster_path=inRaster,
-                vector_path=inShape if do_training else None,
-                class_field=inField if do_training else None,
-                model_path=model,
-                split_config=inSplit,
-                random_seed=inSeed,
-                matrix_path=outMatrix,
-                classifier=inClassifier,
-                output_path=outRaster,
-                mask_path=inMask,
-                confidence_map=confidenceMap,
-                nodata=NODATA,
-                extra_params=None,
-                error_context="Main panel classification workflow",
-                success_prefix="Main",
-            )
+        run_magic(self)
 
     def checkbox_state(self):
         """!@brief Manage checkbox in main dock."""
