@@ -24,7 +24,7 @@ def init_gui(plugin) -> None:
     plugin.add_action(
         icon_path,
         text=plugin.tr("classifier dashboard"),
-        callback=plugin.run_wizard,
+        callback=plugin.open_dashboard,
         parent=plugin.iface.mainWindow(),
     )
 
@@ -33,7 +33,7 @@ def init_gui(plugin) -> None:
         "dzetsaka classifier dashboard",
         plugin.iface.mainWindow(),
     )
-    plugin.dockIcon.triggered.connect(plugin.run_wizard)
+    plugin.dockIcon.triggered.connect(plugin.open_dashboard)
     plugin.iface.addToolBarIcon(plugin.dockIcon)
     plugin.actions.append(plugin.dockIcon)
 
@@ -43,5 +43,5 @@ def init_gui(plugin) -> None:
         QTimer.singleShot(400, plugin.showWelcomeWidget)
     if plugin._open_dashboard_on_init:
         plugin._open_dashboard_on_init = False
-        QTimer.singleShot(800, plugin.run_wizard)
+        QTimer.singleShot(800, plugin.open_dashboard)
 

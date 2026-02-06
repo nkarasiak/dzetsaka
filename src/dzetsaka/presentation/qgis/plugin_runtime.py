@@ -52,12 +52,11 @@ GitHub repository: https://github.com/nkarasiak/dzetsaka
 DOI: 10.5281/zenodo.2552284
 """
 
+import contextlib
+
 # Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QDialog
-
-# import local libraries
-import contextlib
 
 from dzetsaka import ui
 from dzetsaka.presentation.qgis.runtime_bootstrap import initialize_runtime_state
@@ -65,7 +64,7 @@ from dzetsaka.presentation.qgis.task_runner import TaskFeedbackAdapter
 
 # Import resources for icons
 with contextlib.suppress(ImportError):
-    from dzetsaka import resources
+    from dzetsaka import resources  # noqa: F401
 
 
 _TaskFeedbackAdapter = TaskFeedbackAdapter
@@ -92,7 +91,7 @@ class DzetsakaGUI(QDialog):
         Plugin directory path
     settings : QSettings
         Qt settings object for configuration persistence
-    dockwidget : QDockWidget or None
+    dock_widget : QDockWidget or None
         Main plugin dock widget
     classifier : str
         Currently selected classifier name
@@ -276,16 +275,16 @@ class DzetsakaGUI(QDialog):
     # --------------------------------------------------------------------------
 
     def onClosePlugin(self):
-        """Cleanup necessary items here when plugin dockwidget is closed."""
+        """Cleanup necessary items here when plugin dock_widget is closed."""
         # print "** CLOSING DzetsakaGUI"
         # disconnects
-        self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
+        self.dock_widget.closingPlugin.disconnect(self.onClosePlugin)
 
-        # remove this statement if dockwidget is to remain
+        # remove this statement if dock_widget is to remain
         # for reuse if plugin is reopened
         # Commented next statement since it causes QGIS crashe
         # when closing the docked window:
-        # self.dockwidget = None
+        # self.dock_widget = None
 
         self.pluginIsActive = False
 
@@ -325,11 +324,11 @@ class DzetsakaGUI(QDialog):
         load_config(self)
 
     def loadSettings(self):
-        """Legacy entry point retained for compatibility: open dashboard."""
-        self.run_wizard()
+        """Open the dashboard."""
+        self.open_dashboard()
 
-    def runMagic(self):
-        """!@brief Perform training and classification for dzetsaka."""
+    def run_classification(self):
+        """Perform training and classification from the main dock."""
         from dzetsaka.presentation.qgis.main_panel_execution import run_magic
 
         run_magic(self)
@@ -383,17 +382,17 @@ class DzetsakaGUI(QDialog):
 
         return try_install_dependencies(self, missing_deps)
 
-    def run_wizard(self):
+    def open_dashboard(self):
         """Open the dockable classification dashboard (Quick/Advanced)."""
-        from dzetsaka.presentation.qgis.wizard_dock import open_wizard_dock
+        from dzetsaka.presentation.qgis.dashboard_dock import open_dashboard_dock
 
-        open_wizard_dock(self, _LEFT_DOCK_AREA)
+        open_dashboard_dock(self, _LEFT_DOCK_AREA)
 
-    def onCloseWizardDock(self):
+    def on_close_dashboard_dock(self):
         """Track dashboard dock closing state."""
-        from dzetsaka.presentation.qgis.wizard_dock import close_wizard_dock
+        from dzetsaka.presentation.qgis.dashboard_dock import close_dashboard_dock
 
-        close_wizard_dock(self)
+        close_dashboard_dock(self)
 
     def _validate_classification_request(
         self,
@@ -491,21 +490,21 @@ class DzetsakaGUI(QDialog):
             success_prefix=success_prefix,
         )
 
-    def execute_wizard_config(self, config):
-        """Run training and classification driven by the wizard config dict.
+    def execute_dashboard_config(self, config):
+        """Run training and classification driven by the dashboard config dict.
 
         Parameters
         ----------
         config : dict
-            The full configuration dictionary emitted by ClassificationWizard.
+            The full configuration dictionary emitted by the guided dashboard.
             Keys: raster, vector, class_field, load_model, classifier,
             extraParam, output_raster, confidence_map, save_model,
             confusion_matrix, split_percent.
 
         """
-        from dzetsaka.presentation.qgis.wizard_execution import execute_wizard_config
+        from dzetsaka.presentation.qgis.dashboard_execution import execute_dashboard_config
 
-        execute_wizard_config(self, config)
+        execute_dashboard_config(self, config)
 
     def modifyConfig(self, section, option, value):
         """Modify configuration file with new section/option/value.
@@ -528,5 +527,8 @@ try:
     _LEFT_DOCK_AREA = Qt.LeftDockWidgetArea
 except AttributeError:
     _LEFT_DOCK_AREA = Qt.DockWidgetArea.LeftDockWidgetArea
+
+
+
 
 

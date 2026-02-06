@@ -24,7 +24,7 @@ class AdvancedCompactPanel(QWidget):
     """Compact intent-driven advanced panel for small QGIS dock usage."""
 
     classificationRequested = pyqtSignal(dict)
-    openFullWizardRequested = pyqtSignal()
+    openExpertModeRequested = pyqtSignal()
 
     def __init__(self, parent=None, deps=None, classifier_meta=None):
         super(AdvancedCompactPanel, self).__init__(parent)
@@ -220,9 +220,9 @@ class AdvancedCompactPanel(QWidget):
         bar_row.addWidget(self.statusLabel)
         bar_row.addStretch()
 
-        self.fullWizardButton = QPushButton("Expert wizard...")
-        self.fullWizardButton.clicked.connect(self.openFullWizardRequested)
-        bar_row.addWidget(self.fullWizardButton)
+        self.expertModeButton = QPushButton("Expert mode...")
+        self.expertModeButton.clicked.connect(self.openExpertModeRequested)
+        bar_row.addWidget(self.expertModeButton)
 
         self.runButton = QPushButton("Run")
         self.runButton.clicked.connect(self._emit_config)

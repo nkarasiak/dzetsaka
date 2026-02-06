@@ -15,11 +15,12 @@ class dzetsakaDockWidget(QtWidgets.QDockWidget, dzetsaka_dock.Ui_DockWidget):
     def __init__(self, parent=None):
         super(dzetsakaDockWidget, self).__init__(parent)
         self.setupUi(self)
-        # Emphasize the wizard call-to-action inside the dock.
+
+        # Emphasize the dashboard call-to-action inside the dock.
         if hasattr(self, "messageBanner"):
             self.messageBanner.setText(
                 "<b>New dashboard available.</b><br>"
-                "<a href=\"open_wizard\">Open Express / Guided classifier →</a>"
+                "<a href=\"open_dashboard\">Open Express / Guided classifier →</a>"
             )
 
     def closeEvent(self, event):
@@ -62,10 +63,11 @@ class welcomeWidget(QtWidgets.QDockWidget, welcome.Ui_DockWidget):
         event.accept()
 
 
-# Wizard UI (Phase 4)
-from .wizard_widget import ClassificationWizard
-from .wizard_widget import ClassificationDashboardDock
+# Dashboard UI
+from .dashboard_widget import ClassificationDashboardDock
+from .dashboard_widget import GuidedClassificationDialog
 from .comparison_panel import AlgorithmComparisonPanel
 
 # Installation progress dialog
 from .install_progress_dialog import InstallProgressDialog
+

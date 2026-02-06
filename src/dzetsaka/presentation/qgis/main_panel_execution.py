@@ -20,14 +20,15 @@ from dzetsaka.scripts.function_dataraster import get_layer_source_path
 
 def run_magic(gui) -> None:
     """Perform training and classification from the main dock panel."""
-    message = " "
-    inRaster = ""
-    inShape = ""
-    inRasterOp = None
-    model_path = gui.dockwidget.inModel.text().strip()
+    validation_message = " "
+    raster_path = ""
+    vector_path = ""
+    raster_dataset = None
+    dock = gui.dock_widget
+    model_path = dock.inModel.text().strip()
 
-    inRasterLayer = gui.dockwidget.inRaster.currentLayer()
-    if inRasterLayer is None:
+    raster_layer = dock.inRaster.currentLayer()
+    if raster_layer is None:
         QMessageBox.warning(
             gui.iface.mainWindow(),
             "Missing Input",
@@ -37,10 +38,10 @@ def run_magic(gui) -> None:
         return
 
     try:
-        inRaster = get_layer_source_path(inRasterLayer)
+        raster_path = get_layer_source_path(raster_layer)
     except Exception:
-        inRaster = ""
-    if not inRaster:
+        raster_path = ""
+    if not raster_path:
         QMessageBox.warning(
             gui.iface.mainWindow(),
             "Invalid Raster",
@@ -50,8 +51,8 @@ def run_magic(gui) -> None:
         return
 
     if model_path == "":
-        inShapeLayer = gui.dockwidget.inShape.currentLayer()
-        if inShapeLayer is None:
+        vector_layer = dock.inShape.currentLayer()
+        if vector_layer is None:
             QMessageBox.warning(
                 gui.iface.mainWindow(),
                 "Missing Input",
@@ -60,10 +61,10 @@ def run_magic(gui) -> None:
             )
             return
         try:
-            inShape = get_layer_source_path(inShapeLayer)
+            vector_path = get_layer_source_path(vector_layer)
         except Exception:
-            inShape = ""
-        if not inShape:
+            vector_path = ""
+        if not vector_path:
             QMessageBox.warning(
                 gui.iface.mainWindow(),
                 "Invalid Vector",
@@ -73,130 +74,137 @@ def run_magic(gui) -> None:
             return
 
     try:
-        inRasterOp = gdal.Open(inRaster)
-        inRasterProj = osr.SpatialReference(inRasterOp.GetProjection()) if inRasterOp is not None else None
+        raster_dataset = gdal.Open(raster_path)
+        raster_projection = osr.SpatialReference(raster_dataset.GetProjection()) if raster_dataset is not None else None
 
         if model_path == "":
-            inShapeOp = ogr.Open(inShape)
-            inShapeLyr = inShapeOp.GetLayer() if inShapeOp is not None else None
-            inShapeProj = inShapeLyr.GetSpatialRef() if inShapeLyr is not None else None
+            vector_dataset = ogr.Open(vector_path)
+            vector_layer = vector_dataset.GetLayer() if vector_dataset is not None else None
+            vector_projection = vector_layer.GetSpatialRef() if vector_layer is not None else None
 
-            if inShapeProj is not None and inRasterProj is not None and inShapeProj.IsSameGeogCS(inRasterProj) == 0:
-                message = message + "\n - Raster and ROI do not have the same projection."
+            if (
+                vector_projection is not None
+                and raster_projection is not None
+                and vector_projection.IsSameGeogCS(raster_projection) == 0
+            ):
+                validation_message = validation_message + "\n - Raster and ROI do not have the same projection."
     except Exception as exc:
         gui.log.error(f"Projection validation error: {exc}")
-        if inShape:
-            gui.log.error("inShape is : " + inShape)
-        if inRaster:
-            gui.log.error("inRaster is : " + inRaster)
-        message = message + "\n - Can't compare projection between raster and vector."
+        if vector_path:
+            gui.log.error("vector_path is : " + vector_path)
+        if raster_path:
+            gui.log.error("raster_path is : " + raster_path)
+        validation_message = validation_message + "\n - Can't compare projection between raster and vector."
 
     try:
-        inMask = gui.dockwidget.inMask.text()
+        mask_path = dock.maskPathEdit.text()
 
-        if inMask == "":
-            inMask = None
-        autoMask = os.path.splitext(inRaster)
-        autoMask = autoMask[0] + gui.maskSuffix + autoMask[1]
+        if mask_path == "":
+            mask_path = None
+        auto_mask_path = os.path.splitext(raster_path)
+        auto_mask_path = auto_mask_path[0] + gui.maskSuffix + auto_mask_path[1]
 
-        if os.path.exists(autoMask):
-            inMask = autoMask
-            gui.log.info("Mask found : " + str(autoMask))
+        if os.path.exists(auto_mask_path):
+            mask_path = auto_mask_path
+            gui.log.info("Mask found : " + str(auto_mask_path))
 
-        if inMask is not None and inRasterOp is not None:
-            mask = gdal.Open(inMask, gdal.GA_ReadOnly)
-            if (inRasterOp.RasterXSize != mask.RasterXSize) or (inRasterOp.RasterYSize != mask.RasterYSize):
-                message = message + "\n - Raster image and mask do not have the same size."
+        if mask_path is not None and raster_dataset is not None:
+            mask_dataset = gdal.Open(mask_path, gdal.GA_ReadOnly)
+            if (raster_dataset.RasterXSize != mask_dataset.RasterXSize) or (
+                raster_dataset.RasterYSize != mask_dataset.RasterYSize
+            ):
+                validation_message = validation_message + "\n - Raster image and mask do not have the same size."
 
     except BaseException:
-        message = message + "\n - Can't compare mask and raster size."
+        mask_path = None
+        validation_message = validation_message + "\n - Can't compare mask and raster size."
 
-    if message != " ":
+    if validation_message != " ":
         reply = QMessageBox.question(
             gui.iface.mainWindow(),
             "Informations missing or invalid",
-            message + "\n Would you like to continue anyway ?",
+            validation_message + "\n Would you like to continue anyway ?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            message = " "
+            validation_message = " "
 
-    if message == " ":
+    if validation_message == " ":
         gui.loadConfig()
-        model = gui.dockwidget.inModel.text()
+        model_path = dock.inModel.text()
 
-        inClassifier = classifier_config.get_classifier_code(gui.classifier)
-        gui.log.info(f"Selected classifier: {gui.classifier} (code: {inClassifier})")
+        classifier_code = classifier_config.get_classifier_code(gui.classifier)
+        gui.log.info(f"Selected classifier: {gui.classifier} (code: {classifier_code})")
 
-        if gui.dockwidget.outRaster.text() == "":
-            tempFolder = tempfile.mkdtemp()
-            outRaster = os.path.join(
-                tempFolder,
-                gui._default_output_name(inRaster, inClassifier),
+        if dock.outRaster.text() == "":
+            temp_folder = tempfile.mkdtemp()
+            output_raster_path = os.path.join(
+                temp_folder,
+                gui._default_output_name(raster_path, classifier_code),
             )
         else:
-            outRaster = gui.dockwidget.outRaster.text()
+            output_raster_path = dock.outRaster.text()
 
-        if gui.dockwidget.checkInConfidence.isChecked():
-            confidenceMap = gui.dockwidget.outConfidenceMap.text()
+        confidence_map_path = dock.confidenceMapPathEdit.text() if dock.confidenceMapCheckBox.isChecked() else None
+
+        classifier_code = str(classifier_code)
+        nodata_value = -9999
+
+        if model_path != "":
+            model_path = dock.inModel.text()
+            gui.log.info(f"Using existing model: {model_path}")
         else:
-            confidenceMap = None
-
-        inClassifier = str(inClassifier)
-        NODATA = -9999
-
-        if model != "":
-            model = gui.dockwidget.inModel.text()
-            gui.log.info(f"Using existing model: {model}")
-        else:
-            if gui.dockwidget.outModel.text() == "":
-                model = tempfile.mktemp("." + str(inClassifier))
+            if dock.outModel.text() == "":
+                model_path = tempfile.mktemp("." + str(classifier_code))
             else:
-                model = gui.dockwidget.outModel.text()
+                model_path = dock.outModel.text()
             gui.log.info("Training new model (no existing model loaded)")
 
-        inField = gui.dockwidget.inField.currentText()
-        inSeed = 0
-        if gui.dockwidget.checkOutMatrix.isChecked():
-            outMatrix = gui.dockwidget.outMatrix.text()
-            inSplit = gui.dockwidget.inSplit.value()
+        class_field = dock.inField.currentText()
+        random_seed = 0
+        if dock.checkOutMatrix.isChecked():
+            matrix_path = dock.confusionMatrixPathEdit.text()
+            split_percent = dock.validationSplitPercentSpin.value()
         else:
-            inSplit = 100
-            outMatrix = None
+            split_percent = 100
+            matrix_path = None
 
-        do_training = not gui.dockwidget.checkInModel.isChecked()
+        do_training = not dock.checkInModel.isChecked()
         if not gui._validate_classification_request(
-            raster_path=inRaster,
+            raster_path=raster_path,
             do_training=do_training,
-            vector_path=inShape if do_training else None,
-            class_field=inField if do_training else None,
-            model_path=model if not do_training else None,
+            vector_path=vector_path if do_training else None,
+            class_field=class_field if do_training else None,
+            model_path=model_path if not do_training else None,
             source_label="Main Panel",
         ):
             return
-        if not gui._ensure_classifier_runtime_ready(inClassifier, source_label="Main Panel", fallback_to_gmm=True):
+        if not gui._ensure_classifier_runtime_ready(classifier_code, source_label="Main Panel", fallback_to_gmm=True):
             return
         gui.log.info(
-            f"Starting {'training and ' if do_training else ''}classification with {inClassifier} classifier"
+            f"Starting {'training and ' if do_training else ''}classification with {classifier_code} classifier"
         )
         gui._start_classification_task(
-            description=f"dzetsaka: {inClassifier} classification",
+            description=f"dzetsaka: {classifier_code} classification",
             do_training=do_training,
-            raster_path=inRaster,
-            vector_path=inShape if do_training else None,
-            class_field=inField if do_training else None,
-            model_path=model,
-            split_config=inSplit,
-            random_seed=inSeed,
-            matrix_path=outMatrix,
-            classifier=inClassifier,
-            output_path=outRaster,
-            mask_path=inMask,
-            confidence_map=confidenceMap,
-            nodata=NODATA,
+            raster_path=raster_path,
+            vector_path=vector_path if do_training else None,
+            class_field=class_field if do_training else None,
+            model_path=model_path,
+            split_config=split_percent,
+            random_seed=random_seed,
+            matrix_path=matrix_path,
+            classifier=classifier_code,
+            output_path=output_raster_path,
+            mask_path=mask_path,
+            confidence_map=confidence_map_path,
+            nodata=nodata_value,
             extra_params=None,
             error_context="Main panel classification workflow",
             success_prefix="Main",
         )
+
+
+

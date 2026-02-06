@@ -5,92 +5,99 @@ from __future__ import annotations
 
 def _on_changed_layer(gui) -> None:
     """Update class field options when selected vector layer changes."""
-    gui.dockwidget.inField.clear()
+    dock = gui.dock_widget
+    dock.inField.clear()
     if (
-        gui.dockwidget.inField.currentText() == ""
-        and gui.dockwidget.inShape.currentLayer()
-        and gui.dockwidget.inShape.currentLayer() != "NoneType"
+        dock.inField.currentText() == ""
+        and dock.inShape.currentLayer()
+        and dock.inShape.currentLayer() != "NoneType"
     ):
         try:
-            active_layer = gui.dockwidget.inShape.currentLayer()
+            active_layer = dock.inShape.currentLayer()
             provider = active_layer.dataProvider()
             fields = provider.fields()
             field_names = [field.name() for field in fields]
-            gui.dockwidget.inField.addItems(field_names)
+            dock.inField.addItems(field_names)
         except BaseException:
             gui.log.warning("dzetsaka cannot change active layer. Maybe you opened an OSM/Online background ?")
 
 
 def _update_optional_title(gui) -> None:
-    title = "Optional ▼" if gui.dockwidget.mGroupBox.isCollapsed() else "Optional ▲"
-    gui.dockwidget.mGroupBox.setTitle(title)
+    dock = gui.dock_widget
+    title = "Optional ▼" if dock.mGroupBox.isCollapsed() else "Optional ▲"
+    dock.mGroupBox.setTitle(title)
 
 
 def resize_dock(gui) -> None:
     """Resize dock widget based on group box collapse state."""
-    if gui.dockwidget.mGroupBox.isCollapsed():
-        gui.dockwidget.mGroupBox.setFixedHeight(20)
-        gui.dockwidget.setFixedHeight(390)
+    dock = gui.dock_widget
+    if dock.mGroupBox.isCollapsed():
+        dock.mGroupBox.setFixedHeight(20)
+        dock.setFixedHeight(390)
     else:
-        gui.dockwidget.setMinimumHeight(520)
-        gui.dockwidget.mGroupBox.setMinimumHeight(160)
+        dock.setMinimumHeight(520)
+        dock.mGroupBox.setMinimumHeight(160)
 
 
 def run_plugin_ui(gui, *, dock_area, ui_module) -> None:
     """Run method that loads and starts the main plugin dock."""
-    if not gui.pluginIsActive or gui.dockwidget is None:
+    if not gui.pluginIsActive or gui.dock_widget is None:
         gui.pluginIsActive = True
 
-        if gui.dockwidget is None:
-            gui.dockwidget = ui_module.dzetsakaDockWidget()
+        if gui.dock_widget is None:
+            gui.dock_widget = ui_module.dzetsakaDockWidget()
 
-        gui.dockwidget.closingPlugin.connect(gui.onClosePlugin)
+        dock = gui.dock_widget
+        dock.closingPlugin.connect(gui.onClosePlugin)
 
         from qgis.core import QgsProviderRegistry
 
         except_raster = QgsProviderRegistry.instance().providerList()
         except_raster.remove("gdal")
-        gui.dockwidget.inRaster.setExcludedProviders(except_raster)
+        dock.inRaster.setExcludedProviders(except_raster)
 
         except_vector = QgsProviderRegistry.instance().providerList()
         except_vector.remove("ogr")
-        gui.dockwidget.inShape.setExcludedProviders(except_vector)
+        dock.inShape.setExcludedProviders(except_vector)
 
-        gui.dockwidget.outRaster.clear()
-        gui.dockwidget.outRasterButton.clicked.connect(gui.select_output_file)
+        dock.outRaster.clear()
+        dock.outRasterButton.clicked.connect(gui.select_output_file)
 
-        gui.dockwidget.outModel.clear()
-        gui.dockwidget.checkOutModel.clicked.connect(gui.checkbox_state)
+        dock.outModel.clear()
+        dock.checkOutModel.clicked.connect(gui.checkbox_state)
 
-        gui.dockwidget.inModel.clear()
-        gui.dockwidget.checkInModel.clicked.connect(gui.checkbox_state)
+        dock.inModel.clear()
+        dock.checkInModel.clicked.connect(gui.checkbox_state)
 
-        gui.dockwidget.inMask.clear()
-        gui.dockwidget.checkInMask.clicked.connect(gui.checkbox_state)
+        dock.maskPathEdit.clear()
+        dock.checkInMask.clicked.connect(gui.checkbox_state)
 
-        gui.dockwidget.outMatrix.clear()
-        gui.dockwidget.checkOutMatrix.clicked.connect(gui.checkbox_state)
+        dock.confusionMatrixPathEdit.clear()
+        dock.checkOutMatrix.clicked.connect(gui.checkbox_state)
 
-        gui.dockwidget.outConfidenceMap.clear()
-        gui.dockwidget.checkInConfidence.clicked.connect(gui.checkbox_state)
+        dock.confidenceMapPathEdit.clear()
+        dock.confidenceMapCheckBox.clicked.connect(gui.checkbox_state)
 
-        gui.dockwidget.inField.clear()
+        dock.inField.clear()
 
-        if hasattr(gui.dockwidget, "messageBanner"):
-            gui.dockwidget.messageBanner.linkActivated.connect(lambda _=None: gui.run_wizard())
+        if hasattr(dock, "messageBanner"):
+            dock.messageBanner.linkActivated.connect(lambda _=None: gui.open_dashboard())
 
-        gui.iface.addDockWidget(dock_area, gui.dockwidget)
-        gui.dockwidget.show()
+        gui.iface.addDockWidget(dock_area, dock)
+        dock.show()
 
         _on_changed_layer(gui)
-        gui.dockwidget.inShape.currentIndexChanged[int].connect(lambda _index: _on_changed_layer(gui))
+        dock.inShape.currentIndexChanged[int].connect(lambda _index: _on_changed_layer(gui))
 
-        gui.dockwidget.settingsButton.clicked.connect(gui.run_wizard)
-        gui.dockwidget.performMagic.clicked.connect(gui.runMagic)
+        dock.settingsButton.clicked.connect(gui.open_dashboard)
+        dock.runClassificationButton.clicked.connect(gui.run_classification)
 
-        gui.dockwidget.mGroupBox.setSaveCollapsedState(False)
-        gui.dockwidget.mGroupBox.setCollapsed(True)
+        dock.mGroupBox.setSaveCollapsedState(False)
+        dock.mGroupBox.setCollapsed(True)
         resize_dock(gui)
         _update_optional_title(gui)
-        gui.dockwidget.mGroupBox.collapsedStateChanged.connect(gui.resizeDock)
-        gui.dockwidget.mGroupBox.collapsedStateChanged.connect(lambda _state: _update_optional_title(gui))
+        dock.mGroupBox.collapsedStateChanged.connect(gui.resizeDock)
+        dock.mGroupBox.collapsedStateChanged.connect(lambda _state: _update_optional_title(gui))
+
+
+

@@ -79,7 +79,7 @@
        </size>
       </property>
       <property name="text">
-           <string>&lt;b&gt;New dashboard available.&lt;/b&gt;&lt;br&gt;&lt;a href=&quot;open_wizard&quot;&gt;Open Express / Guided classifier →&lt;/a&gt;</string>
+           <string>&lt;b&gt;New dashboard available.&lt;/b&gt;&lt;br&gt;&lt;a href=&quot;open_dashboard&quot;&gt;Open Express / Guided classifier →&lt;/a&gt;</string>
       </property>
       <property name="textFormat">
        <enum>Qt::RichText</enum>
@@ -327,7 +327,7 @@
          </spacer>
         </item>
         <item row="1" column="1">
-         <widget class="QToolButton" name="performMagic">
+         <widget class="QToolButton" name="runClassificationButton">
           <property name="minimumSize">
            <size>
             <width>220</width>
@@ -492,7 +492,7 @@
         </widget>
        </item>
        <item row="0" column="4" colspan="2">
-        <widget class="QLineEdit" name="inMask">
+        <widget class="QLineEdit" name="maskPathEdit">
          <property name="enabled">
           <bool>false</bool>
          </property>
@@ -530,7 +530,7 @@
         </widget>
        </item>
        <item row="1" column="1" colspan="3">
-        <widget class="QCheckBox" name="checkInConfidence">
+        <widget class="QCheckBox" name="confidenceMapCheckBox">
          <property name="minimumSize">
           <size>
            <width>140</width>
@@ -552,7 +552,7 @@
         </widget>
        </item>
        <item row="1" column="4" colspan="2">
-        <widget class="QLineEdit" name="outConfidenceMap">
+        <widget class="QLineEdit" name="confidenceMapPathEdit">
          <property name="enabled">
           <bool>false</bool>
          </property>
@@ -654,7 +654,7 @@
         </widget>
        </item>
        <item row="3" column="4" colspan="2">
-        <widget class="QLineEdit" name="outMatrix">
+        <widget class="QLineEdit" name="confusionMatrixPathEdit">
          <property name="enabled">
           <bool>false</bool>
          </property>
@@ -670,7 +670,7 @@
         </widget>
        </item>
        <item row="4" column="4">
-        <widget class="QSpinBox" name="inSplit">
+        <widget class="QSpinBox" name="validationSplitPercentSpin">
          <property name="enabled">
           <bool>false</bool>
          </property>
@@ -765,18 +765,21 @@
   <tabstop>checkInModel</tabstop>
   <tabstop>inModel</tabstop>
   <tabstop>outRaster</tabstop>
-  <tabstop>performMagic</tabstop>
+  <tabstop>runClassificationButton</tabstop>
   <tabstop>mGroupBox</tabstop>
-  <tabstop>checkInConfidence</tabstop>
-  <tabstop>outConfidenceMap</tabstop>
+  <tabstop>confidenceMapCheckBox</tabstop>
+  <tabstop>confidenceMapPathEdit</tabstop>
   <tabstop>checkOutModel</tabstop>
   <tabstop>outModel</tabstop>
   <tabstop>checkOutMatrix</tabstop>
-  <tabstop>outMatrix</tabstop>
-  <tabstop>inSplit</tabstop>
+  <tabstop>confusionMatrixPathEdit</tabstop>
+  <tabstop>validationSplitPercentSpin</tabstop>
  </tabstops>
  <resources>
   <include location="../resources.qrc"/>
  </resources>
  <connections/>
 </ui>
+
+
+

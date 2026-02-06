@@ -3,7 +3,7 @@
 A modal QDialog that displays all 12 supported classifiers in a
 colour-coded table.  Rows whose hard dependencies are missing are
 shown in red.  The user can select an algorithm and click
-"Use Selected" to propagate the choice back to the wizard's
+"Use Selected" to propagate the choice back to the guided workflow's
 Input & Algorithm page via the ``algorithmSelected`` signal.
 
 The table data is built by ``build_comparison_data``, a module-level
@@ -28,7 +28,7 @@ from qgis.PyQt.QtWidgets import (
     QVBoxLayout,
 )
 
-from .wizard_widget import check_dependency_availability
+from .dashboard_widget import check_dependency_availability
 
 # ---------------------------------------------------------------------------
 # Static table data
@@ -80,7 +80,7 @@ def build_comparison_data(deps):
     Parameters
     ----------
     deps : dict[str, bool]
-        Output of :func:`~wizard_widget.check_dependency_availability`.
+        Output of :func:`~guided_workflow_widget.check_dependency_availability`.
 
     Returns
     -------

@@ -9,11 +9,17 @@ from dzetsaka import classifier_config
 
 def save_settings(gui) -> None:
     """Save modified settings from the settings dock."""
-    if not hasattr(gui, "settingsdock") or gui.settingsdock is None:
+    settings_dock = getattr(gui, "settings_dock", None)
+    if settings_dock is None:
+        settings_dock = getattr(gui, "settingsdock", None)
+    if settings_dock is None:
+        return
+    classifier_selector = getattr(settings_dock, "classifierSelector", None)
+    if classifier_selector is None:
         return
 
-    if gui.sender() == gui.settingsdock.selectClassifier:
-        selected_classifier = gui.settingsdock.selectClassifier.currentText()
+    if gui.sender() == classifier_selector:
+        selected_classifier = classifier_selector.currentText()
         classifier_code = classifier_config.get_classifier_code(selected_classifier)
 
         missing_required = []
@@ -93,14 +99,17 @@ def save_settings(gui) -> None:
                         QMessageBox.StandardButton.Ok,
                     )
                 else:
-                    gui.settingsdock.selectClassifier.setCurrentIndex(0)
+                    classifier_selector.setCurrentIndex(0)
                     gui.settings.setValue("/dzetsaka/classifier", "Gaussian Mixture Model")
                     gui.classifier = "Gaussian Mixture Model"
             elif reply == QMessageBox.StandardButton.No:
-                gui.settingsdock.selectClassifier.setCurrentIndex(0)
+                classifier_selector.setCurrentIndex(0)
                 gui.settings.setValue("/dzetsaka/classifier", "Gaussian Mixture Model")
                 gui.classifier = "Gaussian Mixture Model"
         else:
             if gui.classifier != selected_classifier:
                 gui.settings.setValue("/dzetsaka/classifier", selected_classifier)
                 gui.classifier = selected_classifier
+
+
+

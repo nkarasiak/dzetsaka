@@ -31,7 +31,10 @@ def initialize_runtime_state(gui, iface) -> None:
     gui.actions = []
     gui.menu = gui.tr("&dzetsaka")
     gui.pluginIsActive = False
-    gui.dockwidget = None
-    gui.wizarddock = None
+    gui.dock_widget = None
+    gui.dashboard_dock = None
     gui._active_classification_task = None
     gui.lastSaveDir = ""
+
+
+

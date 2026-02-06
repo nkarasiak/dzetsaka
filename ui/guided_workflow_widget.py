@@ -1,7 +1,7 @@
-"""Classification Wizard for dzetsaka.
+"""Guided classification workflow for dzetsaka.
 
 A QWizard-based step-by-step interface for configuring and launching
-remote-sensing image classification. The wizard guides the user through
+remote-sensing image classification. The guided workflow leads users through
 input data selection, algorithm choice, advanced options, output paths,
 and a final review before execution.
 
@@ -39,7 +39,6 @@ from qgis.PyQt.QtWidgets import (
     QListWidgetItem,
     QMessageBox,
     QPushButton,
-    QScrollArea,
     QSizePolicy,
     QSpinBox,
     QStackedLayout,
@@ -204,12 +203,12 @@ def build_smart_defaults(deps):
 
 def build_review_summary(config):
     # type: (Dict[str, object]) -> str
-    """Produce a human-readable summary of the wizard configuration.
+    """Produce a human-readable summary of the guided workflow configuration.
 
     Parameters
     ----------
     config : dict
-        The full config dict that the wizard would emit.
+        The full config dict that the guided workflow would emit.
 
     Returns
     -------
@@ -285,7 +284,7 @@ _RECIPE_SCHEMA_TEXT = (
     "  - classifier: { code: one of GMM, RF, SVM, KNN, XGB, LGB, CB, ET, GBC, LR, NB, MLP }\n"
     "  - postprocess: { confidence_map: bool, save_model: bool, confusion_matrix: bool }\n"
     "  - validation: { split_percent: 10-100, nested_cv: bool, nested_inner_cv: 2-10, nested_outer_cv: 2-10 }\n"
-    "  - extraParam: (optional) wizard extra parameters\n"
+    "  - extraParam: (optional) extra parameters\n"
 )
 
 
@@ -485,7 +484,7 @@ def save_recipes(settings, recipes):
 
 def recipe_from_config(config, name, description=""):
     # type: (Dict[str, object], str, str) -> Dict[str, object]
-    """Create a recipe dict from the current wizard config."""
+    """Create a recipe dict from the current guided workflow config."""
     extra = config.get("extraParam", {}) or {}
     recipe = _recipe_template()
     recipe.update(
@@ -511,7 +510,7 @@ def recipe_from_config(config, name, description=""):
 
 
 # ---------------------------------------------------------------------------
-# Classifier metadata used by the wizard (mirrors classifier_config)
+# Classifier metadata used by the guided workflow (mirrors classifier_config)
 # ---------------------------------------------------------------------------
 
 # (code, full name, requires_sklearn, requires_xgboost, requires_lightgbm, requires_catboost)
@@ -1005,7 +1004,7 @@ def _collect_vector_insight(vector_path, class_field, layer=None):
 
 
 class DataInputPage(QWizardPage):
-    """Wizard page for selecting input data and classifier."""
+    """Workflow page for selecting input data and classifier."""
 
     def __init__(self, parent=None, deps=None, installer=None):
         """Initialise DataInputPage."""
@@ -1166,7 +1165,7 @@ class DataInputPage(QWizardPage):
 
         layout.addStretch()
 
-        # Register wizard fields
+        # Register guided workflow fields
         self.registerField("raster", self.rasterLineEdit)
         self.registerField("vector", self.vectorLineEdit)
         self.registerField("loadModel", self.modelLineEdit)
@@ -1430,7 +1429,7 @@ class DataInputPage(QWizardPage):
                             "Dependency Installation Failed",
                             "Dependency Installation Error",
                             f"Automatic installation failed for: {', '.join(to_install)}",
-                            f"Wizard classifier selection: {classifier_name}",
+                            f"Guided classifier selection: {classifier_name}",
                         )
                     self.classifierCombo.setCurrentIndex(0)
             elif reply == QMessageBox.StandardButton.No:
@@ -1481,28 +1480,28 @@ class DataInputPage(QWizardPage):
 
     def _apply_selected_recipe(self):
         # type: () -> None
-        wizard = self.wizard()  # type: Optional[ClassificationWizard]
-        if wizard is None or not self._recipes:
+        parent_dialog = self.window()
+        if not isinstance(parent_dialog, GuidedClassificationDialog) or not self._recipes:
             return
         name = self.recipeCombo.currentText()
         for recipe in self._recipes:
             if recipe.get("name") == name:
-                wizard.apply_recipe(recipe)
+                parent_dialog.apply_recipe(recipe)
                 break
 
     def _save_current_recipe(self):
         # type: () -> None
-        wizard = self.wizard()  # type: Optional[ClassificationWizard]
-        if wizard is None:
+        parent_dialog = self.window()
+        if not isinstance(parent_dialog, GuidedClassificationDialog):
             return
-        wizard.save_current_recipe()
+        parent_dialog.save_current_recipe()
 
     def _open_recipe_gallery(self):
         # type: () -> None
-        wizard = self.wizard()  # type: Optional[ClassificationWizard]
-        if wizard is None:
+        parent_dialog = self.window()
+        if not isinstance(parent_dialog, GuidedClassificationDialog):
             return
-        wizard.open_recipe_gallery()
+        parent_dialog.open_recipe_gallery()
 
     def _open_geometry_explorer(self):
         # type: () -> None
@@ -1542,7 +1541,7 @@ class DataInputPage(QWizardPage):
 
 
 class AdvancedOptionsPage(QWizardPage):
-    """Wizard page for Optuna, imbalance, explainability and validation."""
+    """Workflow page for Optuna, imbalance, explainability and validation."""
 
     def __init__(self, parent=None, deps=None):
         """Initialise AdvancedOptionsPage."""
@@ -1760,7 +1759,7 @@ class AdvancedOptionsPage(QWizardPage):
 
 
 class OutputConfigPage(QWizardPage):
-    """Wizard page for specifying output paths and optional outputs."""
+    """Workflow page for specifying output paths and optional outputs."""
 
     def __init__(self, parent=None):
         """Initialise OutputConfigPage."""
@@ -1928,11 +1927,11 @@ class OutputConfigPage(QWizardPage):
 
     def _refresh_review(self):
         # type: () -> None
-        """Refresh the review summary based on current wizard state."""
-        wizard = self.wizard()  # type: Optional[ClassificationWizard]
-        if wizard is None:
+        """Refresh the review summary based on current guided workflow state."""
+        parent_dialog = self.window()
+        if not isinstance(parent_dialog, GuidedClassificationDialog):
             return
-        config = wizard.collect_config()
+        config = parent_dialog.collect_config()
         self.reviewEdit.setPlainText(build_review_summary(config))
 
     def initializePage(self):
@@ -1979,12 +1978,12 @@ class OutputConfigPage(QWizardPage):
 
 
 # ---------------------------------------------------------------------------
-# Main Wizard
+# Main Guided Dialog
 # ---------------------------------------------------------------------------
 
 
-class ClassificationWizard(QWizard):
-    """Step-by-step classification wizard for dzetsaka.
+class GuidedClassificationDialog(QWizard):
+    """Step-by-step guided classification dialog for dzetsaka.
 
     Emits ``classificationRequested`` with the assembled config dict
     when the user clicks Finish (labelled "Run Classification").
@@ -1993,8 +1992,8 @@ class ClassificationWizard(QWizard):
     classificationRequested = pyqtSignal(dict)
 
     def __init__(self, parent=None, installer=None, close_on_accept=True):
-        """Initialise ClassificationWizard with all 3 pages."""
-        super(ClassificationWizard, self).__init__(parent)
+        """Initialise GuidedClassificationDialog with all 3 pages."""
+        super(GuidedClassificationDialog, self).__init__(parent)
         self.setWindowTitle("dzetsaka Classification")
         self._settings = QSettings()
         self._deps = check_dependency_availability()
@@ -2022,10 +2021,10 @@ class ClassificationWizard(QWizard):
         self.setButtonText(finish_button, "Run Classification")
 
         try:
-            wizard_style = QWizard.ModernStyle
+            dialog_style = QWizard.ModernStyle
         except AttributeError:
-            wizard_style = QWizard.WizardStyle.ModernStyle
-        self.setWizardStyle(wizard_style)
+            dialog_style = QWizard.WizardStyle.ModernStyle
+        self.setWizardStyle(dialog_style)
 
     # --- page-transition hook ---------------------------------------------
 
@@ -2039,7 +2038,7 @@ class ClassificationWizard(QWizard):
             self.advPage.apply_smart_defaults(defaults)
             # Reset flag so it fires only once
             self.dataPage._smart_defaults_applied = False
-        return super(ClassificationWizard, self).validateCurrentPage()
+        return super(GuidedClassificationDialog, self).validateCurrentPage()
 
     # --- recipe helpers ---------------------------------------------------
 
@@ -2051,7 +2050,7 @@ class ClassificationWizard(QWizard):
 
     def apply_recipe(self, recipe):
         # type: (Dict[str, object]) -> None
-        """Apply a recipe to the wizard UI with dependency validation."""
+        """Apply a recipe to the guided workflow UI with dependency validation."""
         recipe = normalize_recipe(dict(recipe))
 
         # Validate recipe dependencies
@@ -2152,7 +2151,7 @@ class ClassificationWizard(QWizard):
 
     def save_current_recipe(self):
         # type: () -> None
-        """Save the current wizard configuration as a recipe."""
+        """Save the current guided workflow configuration as a recipe."""
         name, ok = QInputDialog.getText(self, "Save Recipe", "Recipe name:")
         if not ok or not name.strip():
             return
@@ -2196,7 +2195,7 @@ class ClassificationWizard(QWizard):
 
     def collect_config(self):
         # type: () -> Dict[str, object]
-        """Assemble the full config dict from all wizard pages."""
+        """Assemble the full config dict from all guided workflow pages."""
         config = {}  # type: Dict[str, object]
 
         # Input data
@@ -2220,11 +2219,11 @@ class ClassificationWizard(QWizard):
 
     def accept(self):
         # type: () -> None
-        """Emit the config signal and close the wizard."""
+        """Emit the config signal and close the dialog."""
         config = self.collect_config()
         self.classificationRequested.emit(config)
         if self._close_on_accept:
-            super(ClassificationWizard, self).accept()
+            super(GuidedClassificationDialog, self).accept()
 
 
 class QuickClassificationPanel(QWidget):
@@ -2673,7 +2672,7 @@ class ClassificationDashboardDock(QDockWidget):
         self.setObjectName("DzetsakaClassificationDashboardDock")
         self.setMinimumWidth(220)
         self.setMinimumHeight(260)
-        self.resize(260, 315)
+        self.resize(260, 320)
         self._installer = installer
 
         container = QWidget()
@@ -2729,16 +2728,14 @@ class ClassificationDashboardDock(QDockWidget):
         self.quickPanel = QuickClassificationPanel(installer=installer)
         self.quickPanel.setToolTip("Express: essential inputs and one-click run.")
         self.quickPanel.classificationRequested.connect(self.classificationRequested)
-        self.quickScroll = QScrollArea()
-        self.quickScroll.setWidgetResizable(True)
-        self.quickScroll.setAlignment(_qt_align_top())
-        self.quickScroll.setWidget(self.quickPanel)
 
         self.advancedPanel = None
-        self.advancedWizard = None
+        self.advancedDialog = None
         self.advancedPlaceholder = QWidget()
 
-        self.stack.addWidget(self.quickScroll)
+        # Use the panel directly (no scroll area wrapper) to avoid oversized
+        # internal scrollbars when dock geometry is stretched by QGIS.
+        self.stack.addWidget(self.quickPanel)
         self.stack.addWidget(self.advancedPlaceholder)
         layout.addWidget(self.stack)
 
@@ -2757,30 +2754,32 @@ class ClassificationDashboardDock(QDockWidget):
             )
             self.advancedPanel.setToolTip(
                 "Guided: compact intent-driven workflow.\n"
-                "Use Expert wizard for all controls."
+                "Use Expert mode for all controls."
             )
             self.advancedPanel.classificationRequested.connect(self.classificationRequested)
-            self.advancedPanel.openFullWizardRequested.connect(self._open_full_wizard)
+            self.advancedPanel.openExpertModeRequested.connect(self._open_expert_mode)
             self.stack.removeWidget(self.advancedPlaceholder)
             self.advancedPlaceholder.deleteLater()
             self.advancedPlaceholder = None
             self.stack.addWidget(self.advancedPanel)
         self.stack.setCurrentIndex(index)
 
-    def _open_full_wizard(self):
+    def _open_expert_mode(self):
         # type: () -> None
-        if self.advancedWizard is None:
-            self.advancedWizard = ClassificationWizard(
+        if self.advancedDialog is None:
+            self.advancedDialog = GuidedClassificationDialog(
                 parent=self.widget(),
                 installer=self._installer,
                 close_on_accept=False,
             )
-            self.advancedWizard.setToolTip("Expert wizard: full workflow with detailed controls.")
-            self.advancedWizard.classificationRequested.connect(self.classificationRequested)
-            self.stack.addWidget(self.advancedWizard)
+            self.advancedDialog.setToolTip("Expert mode: full workflow with detailed controls.")
+            self.advancedDialog.classificationRequested.connect(self.classificationRequested)
+            self.stack.addWidget(self.advancedDialog)
         self.modeCombo.setCurrentIndex(1)
-        self.stack.setCurrentWidget(self.advancedWizard)
+        self.stack.setCurrentWidget(self.advancedDialog)
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
         event.accept()
+
+

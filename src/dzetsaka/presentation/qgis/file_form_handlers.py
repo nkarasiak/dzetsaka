@@ -10,9 +10,10 @@ from qgis.PyQt.QtWidgets import QFileDialog
 def select_output_file(gui) -> None:
     """Select output file and enforce expected file extension."""
     sender = gui.sender()
+    dock = gui.dock_widget
 
     file_name, _filter = QFileDialog.getSaveFileName(
-        gui.dockwidget, "Select output file", gui.lastSaveDir, "TIF (*.tif)"
+        dock, "Select output file", gui.lastSaveDir, "TIF (*.tif)"
     )
     gui.rememberLastSaveDir(file_name)
 
@@ -21,11 +22,11 @@ def select_output_file(gui) -> None:
 
     file_name, file_extension = os.path.splitext(file_name)
 
-    if sender == gui.dockwidget.outRasterButton:
+    if sender == dock.outRasterButton:
         if file_extension != ".tif":
-            gui.dockwidget.outRaster.setText(file_name + ".tif")
+            dock.outRaster.setText(file_name + ".tif")
         else:
-            gui.dockwidget.outRaster.setText(file_name + file_extension)
+            dock.outRaster.setText(file_name + file_extension)
 
     if "self.historicalmap" in locals():
         if sender == gui.historicalmap.outRasterButton:
@@ -50,86 +51,87 @@ def select_output_file(gui) -> None:
 def checkbox_state(gui) -> None:
     """Handle checkbox-driven file inputs/outputs in the main dock."""
     sender = gui.sender()
+    dock = gui.dock_widget
 
-    if sender == gui.dockwidget.checkInModel and gui.dockwidget.checkInModel.isChecked():
-        file_name, _filter = QFileDialog.getOpenFileName(gui.dockwidget, "Select your file", gui.lastSaveDir)
+    if sender == dock.checkInModel and dock.checkInModel.isChecked():
+        file_name, _filter = QFileDialog.getOpenFileName(dock, "Select your file", gui.lastSaveDir)
         gui.rememberLastSaveDir(file_name)
         if file_name != "":
-            gui.dockwidget.inModel.setText(file_name)
-            gui.dockwidget.inModel.setEnabled(True)
-            gui.dockwidget.inShape.setEnabled(False)
-            gui.dockwidget.inField.setEnabled(False)
+            dock.inModel.setText(file_name)
+            dock.inModel.setEnabled(True)
+            dock.inShape.setEnabled(False)
+            dock.inField.setEnabled(False)
         else:
-            gui.dockwidget.checkInModel.setChecked(False)
-            gui.dockwidget.inModel.setEnabled(False)
-            gui.dockwidget.inShape.setEnabled(True)
-            gui.dockwidget.inField.setEnabled(True)
-    elif sender == gui.dockwidget.checkInModel:
-        gui.dockwidget.inModel.clear()
-        gui.dockwidget.inModel.setEnabled(False)
-        gui.dockwidget.inShape.setEnabled(True)
-        gui.dockwidget.inField.setEnabled(True)
+            dock.checkInModel.setChecked(False)
+            dock.inModel.setEnabled(False)
+            dock.inShape.setEnabled(True)
+            dock.inField.setEnabled(True)
+    elif sender == dock.checkInModel:
+        dock.inModel.clear()
+        dock.inModel.setEnabled(False)
+        dock.inShape.setEnabled(True)
+        dock.inField.setEnabled(True)
 
-    if sender == gui.dockwidget.checkOutModel and gui.dockwidget.checkOutModel.isChecked():
-        file_name, _filter = QFileDialog.getSaveFileName(gui.dockwidget, "Select output file", gui.lastSaveDir)
+    if sender == dock.checkOutModel and dock.checkOutModel.isChecked():
+        file_name, _filter = QFileDialog.getSaveFileName(dock, "Select output file", gui.lastSaveDir)
         gui.rememberLastSaveDir(file_name)
         if file_name != "":
-            gui.dockwidget.outModel.setText(file_name)
-            gui.dockwidget.outModel.setEnabled(True)
+            dock.outModel.setText(file_name)
+            dock.outModel.setEnabled(True)
         else:
-            gui.dockwidget.checkOutModel.setChecked(False)
-            gui.dockwidget.outModel.setEnabled(False)
-    elif sender == gui.dockwidget.checkOutModel:
-        gui.dockwidget.outModel.clear()
-        gui.dockwidget.outModel.setEnabled(False)
+            dock.checkOutModel.setChecked(False)
+            dock.outModel.setEnabled(False)
+    elif sender == dock.checkOutModel:
+        dock.outModel.clear()
+        dock.outModel.setEnabled(False)
 
-    if sender == gui.dockwidget.checkInMask and gui.dockwidget.checkInMask.isChecked():
+    if sender == dock.checkInMask and dock.checkInMask.isChecked():
         file_name, _filter = QFileDialog.getOpenFileName(
-            gui.dockwidget,
+            dock,
             "Select your mask raster",
             gui.lastSaveDir,
             "TIF (*.tif)",
         )
         gui.rememberLastSaveDir(file_name)
         if file_name != "":
-            gui.dockwidget.inMask.setText(file_name)
-            gui.dockwidget.inMask.setEnabled(True)
+            dock.maskPathEdit.setText(file_name)
+            dock.maskPathEdit.setEnabled(True)
         else:
-            gui.dockwidget.checkInMask.setChecked(False)
-            gui.dockwidget.inMask.setEnabled(False)
-    elif sender == gui.dockwidget.checkInMask:
-        gui.dockwidget.inMask.clear()
-        gui.dockwidget.inMask.setEnabled(False)
+            dock.checkInMask.setChecked(False)
+            dock.maskPathEdit.setEnabled(False)
+    elif sender == dock.checkInMask:
+        dock.maskPathEdit.clear()
+        dock.maskPathEdit.setEnabled(False)
 
-    if sender == gui.dockwidget.checkOutMatrix and gui.dockwidget.checkOutMatrix.isChecked():
+    if sender == dock.checkOutMatrix and dock.checkOutMatrix.isChecked():
         file_name, _filter = QFileDialog.getSaveFileName(
-            gui.dockwidget, "Save to a *.csv file", gui.lastSaveDir, "CSV (*.csv)"
+            dock, "Save to a *.csv file", gui.lastSaveDir, "CSV (*.csv)"
         )
         gui.rememberLastSaveDir(file_name)
         if file_name != "":
             file_name, _file_extension = os.path.splitext(file_name)
             file_name = file_name + ".csv"
-            gui.dockwidget.outMatrix.setText(file_name)
-            gui.dockwidget.outMatrix.setEnabled(True)
-            gui.dockwidget.inSplit.setEnabled(True)
-            gui.dockwidget.inSplit.setValue(50)
+            dock.confusionMatrixPathEdit.setText(file_name)
+            dock.confusionMatrixPathEdit.setEnabled(True)
+            dock.validationSplitPercentSpin.setEnabled(True)
+            dock.validationSplitPercentSpin.setValue(50)
         else:
-            gui.dockwidget.checkOutMatrix.setChecked(False)
-            gui.dockwidget.outMatrix.setEnabled(False)
-            gui.dockwidget.outMatrix.setEnabled(False)
-            gui.dockwidget.inSplit.setEnabled(False)
-            gui.dockwidget.inSplit.setValue(100)
-    elif sender == gui.dockwidget.checkOutMatrix:
-        gui.dockwidget.outMatrix.clear()
-        gui.dockwidget.checkOutMatrix.setChecked(False)
-        gui.dockwidget.outMatrix.setEnabled(False)
-        gui.dockwidget.outMatrix.setEnabled(False)
-        gui.dockwidget.inSplit.setEnabled(False)
-        gui.dockwidget.inSplit.setValue(100)
+            dock.checkOutMatrix.setChecked(False)
+            dock.confusionMatrixPathEdit.setEnabled(False)
+            dock.confusionMatrixPathEdit.setEnabled(False)
+            dock.validationSplitPercentSpin.setEnabled(False)
+            dock.validationSplitPercentSpin.setValue(100)
+    elif sender == dock.checkOutMatrix:
+        dock.confusionMatrixPathEdit.clear()
+        dock.checkOutMatrix.setChecked(False)
+        dock.confusionMatrixPathEdit.setEnabled(False)
+        dock.confusionMatrixPathEdit.setEnabled(False)
+        dock.validationSplitPercentSpin.setEnabled(False)
+        dock.validationSplitPercentSpin.setValue(100)
 
-    if sender == gui.dockwidget.checkInConfidence and gui.dockwidget.checkInConfidence.isChecked():
+    if sender == dock.confidenceMapCheckBox and dock.confidenceMapCheckBox.isChecked():
         file_name, _filter = QFileDialog.getSaveFileName(
-            gui.dockwidget,
+            dock,
             "Select output file (*.tif)",
             gui.lastSaveDir,
             "TIF (*.tif)",
@@ -138,12 +140,15 @@ def checkbox_state(gui) -> None:
         if file_name != "":
             file_name, _file_extension = os.path.splitext(file_name)
             file_name = file_name + ".tif"
-            gui.dockwidget.outConfidenceMap.setText(file_name)
-            gui.dockwidget.outConfidenceMap.setEnabled(True)
+            dock.confidenceMapPathEdit.setText(file_name)
+            dock.confidenceMapPathEdit.setEnabled(True)
         else:
-            gui.dockwidget.checkInConfidence.setChecked(False)
-            gui.dockwidget.outConfidenceMap.setEnabled(False)
-    elif sender == gui.dockwidget.checkInConfidence:
-        gui.dockwidget.outConfidenceMap.clear()
-        gui.dockwidget.checkInConfidence.setChecked(False)
-        gui.dockwidget.outConfidenceMap.setEnabled(False)
+            dock.confidenceMapCheckBox.setChecked(False)
+            dock.confidenceMapPathEdit.setEnabled(False)
+    elif sender == dock.confidenceMapCheckBox:
+        dock.confidenceMapPathEdit.clear()
+        dock.confidenceMapCheckBox.setChecked(False)
+        dock.confidenceMapPathEdit.setEnabled(False)
+
+
+
