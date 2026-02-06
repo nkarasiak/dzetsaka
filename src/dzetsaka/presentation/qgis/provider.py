@@ -16,7 +16,7 @@ from dzetsaka.presentation.qgis.processing.algorithms.split_train_validation imp
 from dzetsaka.presentation.qgis.processing.algorithms.train import TrainAlgorithm
 
 try:
-    from dzetsaka.processing.explain_model import ExplainModelAlgorithm
+    from dzetsaka.presentation.qgis.processing.algorithms.explain_model import ExplainModelAlgorithm
 
     EXPLAIN_MODEL_AVAILABLE = True
 except ImportError:
@@ -61,7 +61,7 @@ class DzetsakaProvider(QgsProcessingProvider):
             self.addAlgorithm(NestedCVAlgorithm())
 
         if self.providerType == "Experimental":
-            from dzetsaka.processing.closing_filter import ClosingFilterAlgorithm
+            from dzetsaka.presentation.qgis.processing.algorithms.closing_filter import ClosingFilterAlgorithm
             from dzetsaka.processing.domain_adaptation import DomainAdaptation
             from dzetsaka.processing.median_filter import MedianFilterAlgorithm
             from dzetsaka.processing.shannon_entropy import ShannonAlgorithm
