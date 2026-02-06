@@ -45,6 +45,7 @@ from qgis.PyQt.QtWidgets import (
     QTabWidget,
     QTextEdit,
     QToolButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
     QWizard,
@@ -843,6 +844,30 @@ def _classifier_available(code, deps):
     return False
 
 
+class PresetCardButton(QPushButton):
+    hoveredPreset = pyqtSignal(dict)
+    leftPreset = pyqtSignal()
+
+    def __init__(self, preset, parent=None):
+        super(PresetCardButton, self).__init__(parent)
+        self.preset = preset or {}
+        self.setText(str(self.preset.get("name", "Preset")))
+        self.setCheckable(True)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setStyleSheet(
+            "QPushButton { border: 1px solid #888; border-radius: 5px; padding: 4px 10px; }"
+            "QPushButton:checked { border-color: #2a8dd4; background: rgba(42,141,212,0.1); }"
+        )
+
+    def enterEvent(self, event):
+        self.hoveredPreset.emit(self.preset)
+        super(PresetCardButton, self).enterEvent(event)
+
+    def leaveEvent(self, event):
+        self.leftPreset.emit()
+        super(PresetCardButton, self).leaveEvent(event)
+
+
 # ---------------------------------------------------------------------------
 # Recipe authoring and gallery dialogs
 # ---------------------------------------------------------------------------
@@ -1019,20 +1044,45 @@ class RecipeShopDialog(QDialog):
         name_row.addWidget(self.nameEdit)
         root.addLayout(name_row)
 
-        preset_row = QHBoxLayout()
-        preset_row.addWidget(QLabel("Preset:"))
-        self.presetCombo = QComboBox()
-        self.presetCombo.addItem("Pick a preset...")
+        preset_row = QVBoxLayout()
+        header = QLabel("Preset:")
+        header.setStyleSheet("font-weight: 600;")
+        preset_row.addWidget(header)
+
+        self._presetButtons = []
+        card_container = QWidget()
+        card_layout = QHBoxLayout()
+        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.setSpacing(6)
+        card_container.setLayout(card_layout)
+        card_scroll = QScrollArea()
+        card_scroll.setWidgetResizable(True)
+        card_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        card_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        card_scroll.setFrameShape(QScrollArea.NoFrame)
+        card_scroll.setWidget(card_container)
+        card_scroll.setFixedHeight(60)
+
         for preset in self._PRESETS:
-            self.presetCombo.addItem(preset["name"], preset)
-        self.presetCombo.currentIndexChanged.connect(self._apply_preset)
-        preset_row.addWidget(self.presetCombo)
+            btn = PresetCardButton(preset)
+            btn.hoveredPreset.connect(self._update_preset_info)
+            btn.leftPreset.connect(lambda: self._update_preset_info(self._active_preset))
+            btn.clicked.connect(lambda checked, p=preset, b=btn: self._on_preset_card_clicked(p, b))
+            self._presetButtons.append(btn)
+            card_layout.addWidget(btn)
+
+        preset_row.addWidget(card_scroll)
         root.addLayout(preset_row)
 
         self.presetDescription = QLabel("")
         self.presetDescription.setWordWrap(True)
         self.presetDescription.setStyleSheet("color: #555;")
         root.addWidget(self.presetDescription)
+
+        self.presetMethodsLabel = QLabel("")
+        self.presetMethodsLabel.setWordWrap(True)
+        self.presetMethodsLabel.setStyleSheet("color: #777; font-size: 11px;")
+        root.addWidget(self.presetMethodsLabel)
 
         classifier_row = QHBoxLayout()
         classifier_row.addWidget(QLabel("Core model:"))
@@ -1449,13 +1499,12 @@ class RecipeShopDialog(QDialog):
         self._update_summary()
         return True
 
-    def _apply_preset(self, index):
-        # type: (int) -> None
-        if index <= 0:
-            self._update_preset_description(None)
-            return
-        preset = self.presetCombo.itemData(index)
+    def _apply_preset(self, preset):
+        # type: (Optional[Dict[str, object]]) -> None
         if not isinstance(preset, dict):
+            self._active_preset = None
+            self._active_preset_label = "Custom"
+            self._update_preset_info(None)
             return
         classifier_code = preset.get("classifier")
         if classifier_code:
@@ -1465,6 +1514,8 @@ class RecipeShopDialog(QDialog):
                 self.classifierCombo.setCurrentIndex(target_idx)
                 self._previous_classifier_index = target_idx
                 self.classifierCombo.blockSignals(False)
+        self._active_preset = preset
+        self._active_preset_label = preset.get("name", "Preset")
         self._set_checkbox(self.optunaCheck, preset.get("optuna", False))
         self.optunaTrialsSpin.setValue(int(preset.get("optuna_trials", self.optunaTrialsSpin.value())))
         self._set_checkbox(self.shapCheck, preset.get("shap", False))
@@ -1487,7 +1538,51 @@ class RecipeShopDialog(QDialog):
         self._set_checkbox(self.reportBundleCheck, preset.get("report_bundle", False))
         self._set_checkbox(self.openReportCheck, preset.get("open_report", False))
         self._update_dynamic_state()
-        self._update_preset_description(preset)
+        self._update_preset_info(preset)
+
+    def _on_preset_card_clicked(self, preset, button):
+        # type: (Dict[str, object], PresetCardButton) -> None
+        self._highlight_preset_button(button)
+        self._apply_preset(preset)
+
+    def _highlight_preset_button(self, button):
+        # type: (PresetCardButton) -> None
+        for b in self._presetButtons:
+            b.setChecked(b is button)
+
+    def _update_preset_info(self, preset):
+        # type: (Optional[Dict[str, object]]) -> None
+        description = ""
+        if isinstance(preset, dict):
+            description = str(preset.get("description", "")).strip()
+        self.presetDescription.setText(description)
+        methods_summary = self._preset_methods_summary(preset)
+        self.presetMethodsLabel.setText(methods_summary)
+
+    def _preset_methods_summary(self, preset):
+        # type: (Optional[Dict[str, object]]) -> str
+        if not isinstance(preset, dict):
+            return "Hover a preset to preview what it enables."
+        features = []
+        if preset.get("optuna") or preset.get("optuna_trials"):
+            features.append("Optuna")
+        if preset.get("shap"):
+            features.append("SHAP")
+        if preset.get("smote"):
+            features.append("SMOTE")
+        if preset.get("class_weights"):
+            features.append("Class weights")
+        if preset.get("nested_cv"):
+            features.append("Nested CV")
+        if preset.get("report_bundle"):
+            features.append("Report bundle")
+        cv = preset.get("cv_mode", "Random split").replace("_", " ").capitalize()
+        split = preset.get("split", "")
+        if split:
+            features.append(f"{split}% split")
+        if cv:
+            features.append(cv)
+        return " · ".join(features) if features else "Core model only."
 
     def _set_checkbox(self, checkbox, value):
         # type: (QCheckBox, bool) -> None
@@ -1517,7 +1612,7 @@ class RecipeShopDialog(QDialog):
     def _build_auto_name(self):
         # type: () -> str
         classifier_name = self._current_classifier_name()
-        preset_label = self.presetCombo.currentText() if self.presetCombo.currentIndex() > 0 else "Custom"
+        preset_label = self._active_preset_label or "Custom"
         tags = []
         if self.optunaCheck.isChecked():
             tags.append("Optuna")
