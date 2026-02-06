@@ -1,135 +1,105 @@
-"""Dzetsaka Processing Provider for QGIS Processing Framework.
+"""Compatibility bridge for Dzetsaka QGIS processing provider.
 
-This module provides the processing provider that registers dzetsaka algorithms
-with QGIS Processing framework, making them available in the Processing Toolbox.
+This module is kept for backward compatibility while provider implementation is
+migrated to `src/dzetsaka/presentation/qgis/provider.py`.
 """
 
-__author__ = "Nicolas Karasiak"
-__date__ = "2018-02-24"
-__copyright__ = "(C) 2018 by Nicolas Karasiak"
+from __future__ import annotations
 
-# This will get replaced with a git SHA1 when you do a git archive
-
-__revision__ = "$Format:%H$"
+import importlib.util
 import os
-
-from qgis.core import QgsProcessingProvider
-from qgis.PyQt.QtGui import QIcon
-
-from .processing.classify import ClassifyAlgorithm
-from .processing.split_train_validation import SplitTrain
-
-# from .moduleName_algorithm import classNameAlgorithm
-# from .processing.moduleName_algorithm import classNameAlgorithm
-from .processing.train import TrainAlgorithm
-
-# Try to import SHAP explainer algorithm (optional)
-try:
-    from .processing.explain_model import ExplainModelAlgorithm
-
-    EXPLAIN_MODEL_AVAILABLE = True
-except ImportError:
-    EXPLAIN_MODEL_AVAILABLE = False
-
-# Try to import Nested CV algorithm (optional)
-try:
-    from .processing.nested_cv_algorithm import NestedCVAlgorithm
-
-    NESTED_CV_ALGORITHM_AVAILABLE = True
-except ImportError:
-    NESTED_CV_ALGORITHM_AVAILABLE = False
-
-plugin_path = os.path.dirname(__file__)
-
-"""
-import sys
-sys.setrecursionlimit(10000) # 10000 is an example, try with different values
-"""
+from pathlib import Path
 
 
-class DzetsakaProvider(QgsProcessingProvider):
-    """Processing provider for dzetsaka algorithms.
+def _load_new_provider_class():
+    """Load DzetsakaProvider from new architecture path, if available."""
+    root_dir = Path(__file__).resolve().parent
+    provider_path = root_dir / "src" / "dzetsaka" / "presentation" / "qgis" / "provider.py"
+    if not provider_path.exists():
+        return None
 
-    This class registers dzetsaka's machine learning algorithms with the
-    QGIS Processing framework, making them available in the Processing Toolbox.
-    """
+    spec = importlib.util.spec_from_file_location("_dzetsaka_new_provider", provider_path)
+    if spec is None or spec.loader is None:
+        return None
 
-    def __init__(self, providerType="Standard"):
-        """Initialize the dzetsaka processing provider.
+    try:
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    except Exception:
+        return None
+    return getattr(module, "DzetsakaProvider", None)
 
-        Parameters
-        ----------
-        providerType : str
-            Type of provider (default: "Standard")
 
-        """
-        QgsProcessingProvider.__init__(self)
+DzetsakaProvider = _load_new_provider_class()
 
-        # Load algorithms
-        # ,learnWithSpatialSampling()]#,ClassifyAlgorithm(),SplitTrain()]
-        self.providerType = providerType
+if DzetsakaProvider is None:
+    from qgis.core import QgsProcessingProvider
+    from qgis.PyQt.QtGui import QIcon
 
-    def icon(self):
-        """Add icon."""
-        iconPath = os.path.join(plugin_path, "icon.png")
+    from .processing.classify import ClassifyAlgorithm
+    from .processing.split_train_validation import SplitTrain
+    from .processing.train import TrainAlgorithm
 
-        return QIcon(os.path.join(iconPath))
+    try:
+        from .processing.explain_model import ExplainModelAlgorithm
 
-    def unload(self):
-        """Unload the provider.
+        EXPLAIN_MODEL_AVAILABLE = True
+    except ImportError:
+        EXPLAIN_MODEL_AVAILABLE = False
 
-        Any tear-down steps required by the provider should be implemented here.
-        """
+    try:
+        from .processing.nested_cv_algorithm import NestedCVAlgorithm
 
-    def loadAlgorithms(self):
-        """Loads all algorithms belonging to this provider."""
-        self.addAlgorithm(TrainAlgorithm())
-        self.addAlgorithm(ClassifyAlgorithm())
-        self.addAlgorithm(SplitTrain())
-        # self.addAlgorithm(TrainSTANDAlgorithm())
+        NESTED_CV_ALGORITHM_AVAILABLE = True
+    except ImportError:
+        NESTED_CV_ALGORITHM_AVAILABLE = False
 
-        # Add SHAP explainer algorithm if available
-        if EXPLAIN_MODEL_AVAILABLE:
-            self.addAlgorithm(ExplainModelAlgorithm())
+    plugin_path = os.path.dirname(__file__)
 
-        # Add Nested CV algorithm if available
-        if NESTED_CV_ALGORITHM_AVAILABLE:
-            self.addAlgorithm(NestedCVAlgorithm())
+    class DzetsakaProvider(QgsProcessingProvider):
+        """Processing provider for dzetsaka algorithms."""
 
-        if self.providerType == "Experimental":
-            from .processing.closing_filter import ClosingFilterAlgorithm
-            from .processing.median_filter import MedianFilterAlgorithm
+        def __init__(self, providerType="Standard"):
+            super().__init__()
+            self.providerType = providerType
 
-            self.addAlgorithm(ClosingFilterAlgorithm())
-            self.addAlgorithm(MedianFilterAlgorithm())
+        def icon(self):
+            iconPath = os.path.join(plugin_path, "icon.png")
+            return QIcon(os.path.join(iconPath))
 
-            from .processing.domain_adaptation import DomainAdaptation
-            from .processing.shannon_entropy import ShannonAlgorithm
+        def unload(self):
+            """Unload provider."""
 
-            self.addAlgorithm(DomainAdaptation())
-            self.addAlgorithm(ShannonAlgorithm())
+        def loadAlgorithms(self):
+            self.addAlgorithm(TrainAlgorithm())
+            self.addAlgorithm(ClassifyAlgorithm())
+            self.addAlgorithm(SplitTrain())
 
-    def id(self):
-        """Return the unique provider id.
+            if EXPLAIN_MODEL_AVAILABLE:
+                self.addAlgorithm(ExplainModelAlgorithm())
 
-        Used for identifying the provider. This string should be a unique, short,
-        character only string, eg "qgis" or "gdal". This string should not be localised.
-        """
-        return "dzetsaka"
+            if NESTED_CV_ALGORITHM_AVAILABLE:
+                self.addAlgorithm(NestedCVAlgorithm())
 
-    def name(self):
-        """Return the provider name.
+            if self.providerType == "Experimental":
+                from .processing.closing_filter import ClosingFilterAlgorithm
+                from .processing.median_filter import MedianFilterAlgorithm
 
-        Used to describe the provider within the GUI.
-        This string should be short (e.g. "Lastools") and localised.
-        """
-        return self.tr("dzetsaka")
+                self.addAlgorithm(ClosingFilterAlgorithm())
+                self.addAlgorithm(MedianFilterAlgorithm())
 
-    def longName(self):
-        """Return the longer version of the provider name.
+                from .processing.domain_adaptation import DomainAdaptation
+                from .processing.shannon_entropy import ShannonAlgorithm
 
-        Can include extra details such as version numbers. E.g. "Lastools LIDAR tools
-        (version 2.2.1)". This string should be localised. The default
-        implementation returns the same string as name().
-        """
-        return self.name()
+                self.addAlgorithm(DomainAdaptation())
+                self.addAlgorithm(ShannonAlgorithm())
+
+        def id(self):
+            return "dzetsaka"
+
+        def name(self):
+            return self.tr("dzetsaka")
+
+        def longName(self):
+            return self.name()
+
