@@ -8,6 +8,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DOMAIN_ROOT = REPO_ROOT / "src" / "dzetsaka" / "domain"
+PRESENTATION_QGIS_ROOT = REPO_ROOT / "src" / "dzetsaka" / "presentation" / "qgis"
 
 FORBIDDEN_ROOT_IMPORTS = {"qgis", "osgeo", "PyQt6", "PyQt5", "PySide6", "PySide2"}
 
@@ -56,3 +57,24 @@ def test_provider_shim_has_no_eager_qgis_import() -> None:
     shim_path = REPO_ROOT / "dzetsaka_provider.py"
     roots = _import_roots_from_file(shim_path)
     assert "qgis" not in roots, f"{shim_path.relative_to(REPO_ROOT)} imports qgis eagerly"
+
+
+def test_presentation_helpers_do_not_import_legacy_mainfunction() -> None:
+    """New presentation helper modules should not couple back to legacy monolith."""
+    assert PRESENTATION_QGIS_ROOT.exists(), "Expected presentation/qgis layer scaffold"
+
+    helper_files = [
+        p
+        for p in PRESENTATION_QGIS_ROOT.glob("*.py")
+        if p.name not in {"plugin_runtime.py", "__init__.py", "plugin.py", "provider.py"}
+    ]
+    violations: list[str] = []
+    for file_path in helper_files:
+        roots = _import_roots_from_file(file_path)
+        text = file_path.read_text(encoding="utf-8")
+        if "scripts.mainfunction" in text or "from dzetsaka.scripts import mainfunction" in text:
+            violations.append(str(file_path.relative_to(REPO_ROOT)))
+        if "scripts" in roots and "mainfunction" in text:
+            violations.append(str(file_path.relative_to(REPO_ROOT)))
+
+    assert not violations, "Presentation helper leaked legacy mainfunction dependency:\n" + "\n".join(violations)
