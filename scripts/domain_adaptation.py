@@ -6,9 +6,9 @@
 
 try:
     # if use in Qgis 3
-    from .mainfunction import pushFeedback
+    from ..logging_utils import Reporter
 except BaseException:
-    from mainfunction import pushFeedback
+    from logging_utils import Reporter
 
 
 try:
@@ -60,6 +60,7 @@ class RasterOT:
 
         self.transportAlgorithm = transportAlgorithm
         self.feedback = feedback
+        self.report = Reporter.from_feedback(feedback, tag="Dzetsaka/DomainAdapt")
 
         self.params_ = params
 
@@ -97,10 +98,9 @@ class RasterOT:
         self.params = self.params_
 
         if self.feedback:
-            pushFeedback(10, feedback=self.feedback)
-            pushFeedback(
-                "Learning Optimal Transport with " + str(self.transportAlgorithm) + " algorithm.",
-                feedback=self.feedback,
+            self.report.progress(10)
+            self.report.info(
+                "Learning Optimal Transport with " + str(self.transportAlgorithm) + " algorithm."
             )
 
         # check if label is 1d
@@ -139,7 +139,7 @@ class RasterOT:
         self.transportModel.fit(Xs, ys=ys, Xt=Xt, yt=yt)
 
         if self.feedback:
-            pushFeedback(20, feedback=self.feedback)
+            self.report.progress(20)
 
         return self.transportModel
 
@@ -170,7 +170,7 @@ class RasterOT:
 
         """
         if self.feedback:
-            pushFeedback("Now transporting " + str(os.path.basename(imageSource)))
+            self.report.info("Now transporting " + str(os.path.basename(imageSource)))
 
         dataSrc = gdal.Open(imageSource)
         # Get the size of the image
@@ -208,7 +208,7 @@ class RasterOT:
         for i in range(0, nl, y_block_size):
             # feedback for Qgis
             if self.feedback:
-                pushFeedback(int(i * total) + 20, feedback=self.feedback)
+                self.report.progress(int(i * total) + 20)
                 try:
                     if self.feedback.isCanceled():
                         break
@@ -237,11 +237,7 @@ class RasterOT:
                 # transform array, default has nodata value
                 yp = np.empty((cols * lines, d))
                 yp[:, :] = NODATA
-                # yp = np.nan((cols*lines,d))
-                # K = np.zeros((cols*lines,))
 
-                # TODO: Change this part accorindgly ...
-                # if t.size > 0:
                 if t.size > 0:
                     tempOT = X[t, :]
                     yp[t, :] = self.transportModel.transform(tempOT)
@@ -298,7 +294,7 @@ class RasterOT:
             transp_Xt = BaseTransport.inverse_transform(self.transportModel, Xs=Xs, ys=ys, Xt=Xt, yt=yt)
 
             if self.feedback:
-                pushFeedback("Testing params : " + str(gridOT), feedback=self.feedback)
+                self.report.info("Testing params : " + str(gridOT))
             """
             #score = mean_squared_error(Xs,XsPredict)
 
@@ -330,7 +326,7 @@ class RasterOT:
 
 
             if self.feedback:
-                pushFeedback('Kappa is : '+str(currentScore.get('Kappa')))
+                self.report.info("Kappa is : " + str(currentScore.get("Kappa")))
 
             if self.bestScore is None or self.bestScore.get('Kappa') < currentScore.get('Kappa'):
                 self.bestScore = currentScore.copy()
@@ -340,7 +336,7 @@ class RasterOT:
             currentScore = mean_squared_error(Xs, transp_Xt)
 
             if self.feedback:
-                pushFeedback("RMSE is : " + str(currentScore), feedback=self.feedback)
+                self.report.info("RMSE is : " + str(currentScore))
 
             if self.bestScore is None or self.bestScore > currentScore:
                 self.bestScore = currentScore
@@ -350,8 +346,8 @@ class RasterOT:
             del self.transportModel,yp
             """
         if self.feedback:
-            pushFeedback("Best grid is " + str(self.bestParam), feedback=self.feedback)
-            pushFeedback("Best score is " + str(self.bestScore), feedback=self.feedback)
+            self.report.info("Best grid is " + str(self.bestParam))
+            self.report.info("Best score is " + str(self.bestScore))
 
     """
     def gridSearchCV(self):

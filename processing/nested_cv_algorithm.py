@@ -21,6 +21,7 @@ from qgis.PyQt.QtGui import QIcon
 
 from .. import classifier_config
 from ..logging_utils import show_error_dialog
+from . import metadata_helpers
 
 # Try to import nested CV
 try:
@@ -277,4 +278,14 @@ CSV file with:
 
     def groupId(self):
         """Returns the unique ID of the group this algorithm belongs to."""
-        return "Classification tool"
+        return metadata_helpers.get_group_id()
+
+    def helpUrl(self):
+        """Returns a URL to the algorithm's help/documentation."""
+        return metadata_helpers.get_help_url("nested_cv")
+
+    def tags(self):
+        """Returns tags for the algorithm for better searchability."""
+        common = metadata_helpers.get_common_tags()
+        specific = metadata_helpers.get_algorithm_specific_tags("validation")
+        return common + specific

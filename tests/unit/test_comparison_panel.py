@@ -117,8 +117,8 @@ class TestAlgoTableDataStructure:
     """Verify the static _ALGO_TABLE_DATA list is well-formed."""
 
     def test_eleven_classifiers(self):
-        """Exactly 11 classifiers in the table data."""
-        assert len(_ALGO_TABLE_DATA) == 11
+        """Exactly 12 classifiers in the table data."""
+        assert len(_ALGO_TABLE_DATA) == 12
 
     def test_codes_unique(self):
         """All classifier codes are unique."""
@@ -128,7 +128,7 @@ class TestAlgoTableDataStructure:
     def test_expected_codes_present(self):
         """All expected codes are present."""
         codes = {row[0] for row in _ALGO_TABLE_DATA}
-        expected = {"GMM", "RF", "SVM", "KNN", "XGB", "LGB", "ET", "GBC", "LR", "NB", "MLP"}
+        expected = {"GMM", "RF", "SVM", "KNN", "XGB", "LGB", "CB", "ET", "GBC", "LR", "NB", "MLP"}
         assert codes == expected
 
     def test_speed_values_valid(self):
@@ -184,16 +184,26 @@ class TestBuildComparisonData:
 
     def _all_deps(self):
         """Return deps dict with everything available."""
-        return {"sklearn": True, "xgboost": True, "lightgbm": True, "optuna": True, "shap": True, "imblearn": True}
+        return {
+            "sklearn": True,
+            "xgboost": True,
+            "lightgbm": True,
+            "catboost": True,
+            "optuna": True,
+            "shap": True,
+            "imblearn": True,
+        }
 
     def _no_deps(self):
         """Return deps dict with nothing available."""
-        return dict.fromkeys(("sklearn", "xgboost", "lightgbm", "optuna", "shap", "imblearn"), False)
+        return dict.fromkeys(
+            ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False
+        )
 
     def test_returns_eleven_rows(self):
-        """Always returns 11 rows."""
+        """Always returns 12 rows."""
         rows = build_comparison_data(self._all_deps())
-        assert len(rows) == 11
+        assert len(rows) == 12
 
     def test_all_available_when_all_deps(self):
         """When all deps are present every row is marked available."""
@@ -231,6 +241,14 @@ class TestBuildComparisonData:
         rows = build_comparison_data(deps)
         lgb_row = next(r for r in rows if r[0] == "LGB")
         assert lgb_row[4] is True
+
+    def test_cb_available_with_catboost(self):
+        """CB becomes available when catboost dep is True."""
+        deps = self._no_deps()
+        deps["catboost"] = True
+        rows = build_comparison_data(deps)
+        cb_row = next(r for r in rows if r[0] == "CB")
+        assert cb_row[4] is True
 
     def test_feature_columns_are_yes_no_strings(self):
         """Optuna, SHAP, SMOTE, class_weights columns are 'Yes' or 'No'."""

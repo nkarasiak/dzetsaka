@@ -303,7 +303,7 @@ class SMOTESampler:
 
         """
         ratio = self.compute_imbalance_ratio(y)
-        return ratio > threshold
+        return bool(ratio > threshold)
 
 
 def check_imblearn_available() -> Tuple[bool, Optional[str]]:

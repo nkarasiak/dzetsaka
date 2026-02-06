@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "dzetsaka"
 version = "5.0.0"
-description = "A powerful and fast classification plugin for QGIS supporting 11 machine learning algorithms with Optuna optimization, SHAP explainability, and class imbalance handling"
+description = "A powerful and fast classification plugin for QGIS supporting 12 machine learning algorithms with Optuna optimization, SHAP explainability, and class imbalance handling"
 readme = "readme.md"
 license = {text = "GPL-2.0-or-later"}
 authors = [
@@ -23,6 +23,7 @@ keywords = [
     "image-classification",
     "xgboost",
     "lightgbm",
+    "catboost",
     "random-forest",
 ]
 classifiers = [
@@ -44,7 +45,7 @@ requires-python = ">=3.8"
 dependencies = [
     "numpy>=1.19.0",
     "gdal>=3.0.0",
-    "PyQt5>=5.12.0",
+    "PyQt6>=6.2.0",
 ]
 
 [project.optional-dependencies]
@@ -58,6 +59,7 @@ sklearn = [
 advanced = [
     "xgboost>=1.5.0",
     "lightgbm>=3.2.0",
+    "catboost>=1.2.0",
 ]
 
 # Hyperparameter optimization (Optuna)
@@ -87,6 +89,7 @@ full = [
     "joblib>=1.0.0",
     "xgboost>=1.5.0",
     "lightgbm>=3.2.0",
+    "catboost>=1.2.0",
     "optuna>=3.0.0",
     "shap>=0.41.0",
     "imbalanced-learn>=0.10.0",
@@ -229,7 +232,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.lint.isort]
 known-first-party = ["dzetsaka"]
-known-third-party = ["qgis", "osgeo", "PyQt5", "numpy", "sklearn", "xgboost", "lightgbm"]
+known-third-party = ["qgis", "osgeo", "PyQt6", "numpy", "sklearn", "xgboost", "lightgbm", "catboost"]
 
 [tool.ruff.format]
 # Like Black, use double quotes for strings
@@ -294,10 +297,11 @@ strict_equality = true
 module = [
     "qgis.*",
     "osgeo.*",
-    "PyQt5.*",
+    "PyQt6.*",
     "sklearn.*",
     "xgboost.*",
     "lightgbm.*",
+    "catboost.*",
     "optuna.*",
     "shap.*"
 ]
@@ -326,6 +330,7 @@ markers = [
     "sklearn: marks tests that require scikit-learn",
     "xgboost: marks tests that require XGBoost",
     "lightgbm: marks tests that require LightGBM",
+    "catboost: marks tests that require CatBoost",
 ]
 
 # Coverage configuration

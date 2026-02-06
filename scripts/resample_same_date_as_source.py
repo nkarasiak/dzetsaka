@@ -19,10 +19,10 @@ import numpy as np
 
 try:
     import function_dataraster as dataraster
-    from mainfunction import pushFeedback
+    from logging_utils import Reporter
 except BaseException:
     from . import function_dataraster as dataraster
-    from .mainfunction import pushFeedback
+    from ..logging_utils import Reporter
 
 
 def convertToDateTime(dates, strp="%Y%m%d", DOY=False):
@@ -113,7 +113,8 @@ def resampleWithSameDateAsSource(
         Feedback object for progress reporting
 
     """
-    pushFeedback(1, feedback=feedback)
+    report = Reporter.from_feedback(feedback, tag="Dzetsaka/Resample")
+    report.progress(1)
 
     tempDir = os.path.dirname(resampledImage) + "/tmp"
     if not os.path.exists(tempDir):
@@ -233,7 +234,7 @@ def resampleWithSameDateAsSource(
             os.system(bashCommand)
             os.system(bashCommandMask)
 
-    pushFeedback(10, feedback=feedback)
+    report.progress(10)
     """
     for i in convertToDateTime(createEmptyMaskDates):
         date = i.strftime('%Y%m%d')
@@ -301,11 +302,8 @@ def resampleWithSameDateAsSource(
                 break
         except BaseException:
             pass
-        pushFeedback(10 + total * (spectral + 1), feedback=feedback)
-        pushFeedback(
-            "Gap-filling timeseries (" + str(spectral + 1) + "/" + str(nSpectralBands) + ")",
-            feedback=feedback,
-        )
+        report.progress(10 + total * (spectral + 1))
+        report.info("Gap-filling timeseries (" + str(spectral + 1) + "/" + str(nSpectralBands) + ")")
 
         toGapFill = glob.glob(tempDir + "/*_" + str(spectral + 1) + "_*[0-9].tif")
         toGapFillMask = glob.glob(tempDir + "/*_" + str(spectral + 1) + "_*[0-9]_mask.tif")
@@ -324,7 +322,7 @@ def resampleWithSameDateAsSource(
             tempDir + "/sampleTime.csv",
         )
 
-        pushFeedback("Executing gap filling : " + bashCommand, feedback=feedback)
+        report.info("Executing gap filling : " + bashCommand)
 
         os.system(bashCommand)
 
@@ -347,8 +345,8 @@ def resampleWithSameDateAsSource(
 
     conca = f"otbcli_ConcatenateImages -il {listToStr(bandList)} -out {resampledImage} {targetDataType}"
 
-    pushFeedback(80, feedback=feedback)
-    pushFeedback("Executing image concatenation : " + conca, feedback=feedback)
+    report.progress(80)
+    report.info("Executing image concatenation : " + conca)
 
     os.system(conca)
 

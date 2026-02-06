@@ -9,16 +9,17 @@
 [general]
 name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
-description=Fast and Easy Classification plugin for Qgis with 11 ML algorithms + Optuna Optimization + SHAP Explainability + Class Imbalance Handling
+supportsQt6=True
+description=Fast and Easy Classification plugin for Qgis with 12 ML algorithms + Optuna Optimization + SHAP Explainability + Class Imbalance Handling
 version=5.0.0
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
 about=
-      🎯 Powerful classification plugin supporting 11 machine learning algorithms:
+      🎯 Powerful classification plugin supporting 12 machine learning algorithms:
 
       CORE: GMM, Random Forest, SVM, KNN
-      ADVANCED: XGBoost, LightGBM, Extra Trees, Gradient Boosting, Logistic Regression, Naive Bayes, MLP
+      ADVANCED: XGBoost, LightGBM, CatBoost, Extra Trees, Gradient Boosting, Logistic Regression, Naive Bayes, MLP
 
       ⚖️ NEW in v4.5.0: Class imbalance handling - SMOTE, class weights, and nested cross-validation!
       ⚡ NEW in v4.4.0: SHAP explainability - understand which features drive your model's predictions!
@@ -40,7 +41,7 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 changelog=
     5.0.0
       * NEW: Classification Wizard - step-by-step QWizard interface (Input, Algorithm, Advanced Options, Output, Review)
-      * NEW: Algorithm Comparison Panel - colour-coded table of all 11 classifiers with feature and dependency status
+      * NEW: Algorithm Comparison Panel - colour-coded table of all 12 classifiers with feature and dependency status
       * NEW: Smart Defaults button auto-enables Optuna/SHAP/SMOTE when packages are available
       * NEW: Wizard-driven classification with full extraParam support (Optuna, SHAP, SMOTE, class weights, nested CV)
       * ENHANCED: Menu-accessible wizard keeps toolbar clean while adding powerful guided workflow
@@ -141,7 +142,7 @@ changelog=
       * Move dzetsaka icons to extension toolbar
 
 # Tags are comma separated with spaces allowed
-tags=classification,machine learning,xgboost,lightgbm,random forest,svm,knn,neural network,auto-install,processing,optuna,hyperparameter optimization,bayesian optimization,shap,explainability,feature importance,interpretability,smote,class imbalance,nested cross-validation,cost-sensitive learning
+tags=classification,machine learning,xgboost,lightgbm,catboost,random forest,svm,knn,neural network,auto-install,processing,optuna,hyperparameter optimization,bayesian optimization,shap,explainability,feature importance,interpretability,smote,class imbalance,nested cross-validation,cost-sensitive learning
 
 homepage=http://www.github.com/nkarasiak/dzetsaka
 category=Raster

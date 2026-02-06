@@ -98,9 +98,9 @@ class TestCheckDependencyAvailability:
         assert isinstance(result, dict)
 
     def test_has_all_expected_keys(self):
-        """All six dependency keys are present."""
+        """All dependency keys are present."""
         result = check_dependency_availability()
-        expected_keys = {"sklearn", "xgboost", "lightgbm", "optuna", "shap", "imblearn"}
+        expected_keys = {"sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"}
         assert set(result.keys()) == expected_keys
 
     def test_values_are_bool(self):
@@ -111,7 +111,10 @@ class TestCheckDependencyAvailability:
 
     def test_mock_all_available(self):
         """When all imports succeed the dict is all-True."""
-        mods = {k: type(sys)("fake_" + k) for k in ("sklearn", "xgboost", "lightgbm", "optuna", "shap", "imblearn")}
+        mods = {
+            k: type(sys)("fake_" + k)
+            for k in ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn")
+        }
         with patch.dict("sys.modules", mods):
             result = check_dependency_availability()
         for key in result:
@@ -122,7 +125,7 @@ class TestCheckDependencyAvailability:
         original_import = __builtins__["__import__"] if isinstance(__builtins__, dict) else __builtins__.__import__
 
         def _fail_import(name, *args, **kwargs):
-            if name in ("sklearn", "xgboost", "lightgbm", "optuna", "shap", "imblearn"):
+            if name in ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"):
                 raise ImportError(f"mocked missing {name}")
             return original_import(name, *args, **kwargs)
 
@@ -142,7 +145,15 @@ class TestBuildSmartDefaults:
 
     def test_all_available_enables_features(self):
         """All optional features enabled when every dep is present."""
-        deps = {"sklearn": True, "xgboost": True, "lightgbm": True, "optuna": True, "shap": True, "imblearn": True}
+        deps = {
+            "sklearn": True,
+            "xgboost": True,
+            "lightgbm": True,
+            "catboost": True,
+            "optuna": True,
+            "shap": True,
+            "imblearn": True,
+        }
         result = build_smart_defaults(deps)
         assert result["USE_OPTUNA"] is True
         assert result["COMPUTE_SHAP"] is True
@@ -151,7 +162,15 @@ class TestBuildSmartDefaults:
 
     def test_none_available_disables_features(self):
         """All optional features disabled when no dep is available."""
-        deps = {"sklearn": False, "xgboost": False, "lightgbm": False, "optuna": False, "shap": False, "imblearn": False}
+        deps = {
+            "sklearn": False,
+            "xgboost": False,
+            "lightgbm": False,
+            "catboost": False,
+            "optuna": False,
+            "shap": False,
+            "imblearn": False,
+        }
         result = build_smart_defaults(deps)
         assert result["USE_OPTUNA"] is False
         assert result["COMPUTE_SHAP"] is False
@@ -160,7 +179,15 @@ class TestBuildSmartDefaults:
 
     def test_optuna_only(self):
         """Only Optuna enabled when only optuna is importable."""
-        deps = {"sklearn": False, "xgboost": False, "lightgbm": False, "optuna": True, "shap": False, "imblearn": False}
+        deps = {
+            "sklearn": False,
+            "xgboost": False,
+            "lightgbm": False,
+            "catboost": False,
+            "optuna": True,
+            "shap": False,
+            "imblearn": False,
+        }
         result = build_smart_defaults(deps)
         assert result["USE_OPTUNA"] is True
         assert result["COMPUTE_SHAP"] is False
@@ -168,13 +195,21 @@ class TestBuildSmartDefaults:
 
     def test_sklearn_enables_class_weights(self):
         """Class weights follow sklearn availability."""
-        deps = {"sklearn": True, "xgboost": False, "lightgbm": False, "optuna": False, "shap": False, "imblearn": False}
+        deps = {
+            "sklearn": True,
+            "xgboost": False,
+            "lightgbm": False,
+            "catboost": False,
+            "optuna": False,
+            "shap": False,
+            "imblearn": False,
+        }
         result = build_smart_defaults(deps)
         assert result["USE_CLASS_WEIGHTS"] is True
 
     def test_default_numeric_values(self):
         """Numeric defaults are sensible regardless of deps."""
-        deps = dict.fromkeys(("sklearn", "xgboost", "lightgbm", "optuna", "shap", "imblearn"), False)
+        deps = dict.fromkeys(("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False)
         result = build_smart_defaults(deps)
         assert result["OPTUNA_TRIALS"] == 100
         assert result["SHAP_SAMPLE_SIZE"] == 1000
@@ -312,57 +347,73 @@ class TestBuildReviewSummary:
 
 
 class TestAlgorithmPageLogic:
-    """Verify classifier code and dependency mapping for all 11 classifiers."""
+    """Verify classifier code and dependency mapping for all classifiers."""
 
-    def test_eleven_classifiers_defined(self):
-        """Exactly 11 classifiers are in _CLASSIFIER_META."""
-        assert len(_CLASSIFIER_META) == 11
+    def test_twelve_classifiers_defined(self):
+        """Exactly 12 classifiers are in _CLASSIFIER_META."""
+        assert len(_CLASSIFIER_META) == 12
 
     def test_all_codes_are_strings(self):
         """Every code is a non-empty string."""
-        for code, _name, _sk, _xgb, _lgb in _CLASSIFIER_META:
+        for code, _name, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
             assert isinstance(code, str)
             assert len(code) > 0
 
     def test_gmm_needs_no_deps(self):
         """GMM requires no external packages."""
-        for code, _name, needs_sk, needs_xgb, needs_lgb in _CLASSIFIER_META:
+        for code, _name, needs_sk, needs_xgb, needs_lgb, needs_cb in _CLASSIFIER_META:
             if code == "GMM":
                 assert needs_sk is False
                 assert needs_xgb is False
                 assert needs_lgb is False
+                assert needs_cb is False
 
     def test_xgb_needs_xgboost_only(self):
         """XGB requires only xgboost."""
-        for code, _name, needs_sk, needs_xgb, needs_lgb in _CLASSIFIER_META:
+        for code, _name, needs_sk, needs_xgb, needs_lgb, needs_cb in _CLASSIFIER_META:
             if code == "XGB":
                 assert needs_sk is False
                 assert needs_xgb is True
                 assert needs_lgb is False
+                assert needs_cb is False
 
     def test_lgb_needs_lightgbm_only(self):
         """LGB requires only lightgbm."""
-        for code, _name, needs_sk, needs_xgb, needs_lgb in _CLASSIFIER_META:
+        for code, _name, needs_sk, needs_xgb, needs_lgb, needs_cb in _CLASSIFIER_META:
             if code == "LGB":
                 assert needs_sk is False
                 assert needs_xgb is False
                 assert needs_lgb is True
+                assert needs_cb is False
+
+    def test_cb_needs_catboost_only(self):
+        """CB requires only catboost."""
+        for code, _name, needs_sk, needs_xgb, needs_lgb, needs_cb in _CLASSIFIER_META:
+            if code == "CB":
+                assert needs_sk is False
+                assert needs_xgb is False
+                assert needs_lgb is False
+                assert needs_cb is True
 
     def test_sklearn_classifiers_need_sklearn(self):
         """RF, SVM, KNN, ET, GBC, LR, NB, MLP all require sklearn."""
         sklearn_codes = {"RF", "SVM", "KNN", "ET", "GBC", "LR", "NB", "MLP"}
-        for code, _name, needs_sk, _xgb, _lgb in _CLASSIFIER_META:
+        for code, _name, needs_sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
             if code in sklearn_codes:
                 assert needs_sk is True, f"{code} should require sklearn"
 
     def test_classifier_available_gmm_always(self):
         """GMM is always available regardless of deps."""
-        no_deps = dict.fromkeys(("sklearn", "xgboost", "lightgbm", "optuna", "shap", "imblearn"), False)
+        no_deps = dict.fromkeys(
+            ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False
+        )
         assert _classifier_available("GMM", no_deps) is True
 
     def test_classifier_available_rf_needs_sklearn(self):
         """RF is available only when sklearn is True."""
-        deps_no = dict.fromkeys(("sklearn", "xgboost", "lightgbm", "optuna", "shap", "imblearn"), False)
+        deps_no = dict.fromkeys(
+            ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False
+        )
         assert _classifier_available("RF", deps_no) is False
         deps_yes = dict(deps_no)
         deps_yes["sklearn"] = True
@@ -370,21 +421,36 @@ class TestAlgorithmPageLogic:
 
     def test_classifier_available_xgb_needs_xgboost(self):
         """XGB is available only when xgboost is True."""
-        deps = dict.fromkeys(("sklearn", "xgboost", "lightgbm", "optuna", "shap", "imblearn"), False)
+        deps = dict.fromkeys(
+            ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False
+        )
         assert _classifier_available("XGB", deps) is False
         deps["xgboost"] = True
         assert _classifier_available("XGB", deps) is True
 
     def test_classifier_available_lgb_needs_lightgbm(self):
         """LGB is available only when lightgbm is True."""
-        deps = dict.fromkeys(("sklearn", "xgboost", "lightgbm", "optuna", "shap", "imblearn"), False)
+        deps = dict.fromkeys(
+            ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False
+        )
         assert _classifier_available("LGB", deps) is False
         deps["lightgbm"] = True
         assert _classifier_available("LGB", deps) is True
 
+    def test_classifier_available_cb_needs_catboost(self):
+        """CB is available only when catboost is True."""
+        deps = dict.fromkeys(
+            ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False
+        )
+        assert _classifier_available("CB", deps) is False
+        deps["catboost"] = True
+        assert _classifier_available("CB", deps) is True
+
     def test_unknown_code_returns_false(self):
         """An unknown classifier code is never available."""
-        deps = dict.fromkeys(("sklearn", "xgboost", "lightgbm", "optuna", "shap", "imblearn"), True)
+        deps = dict.fromkeys(
+            ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), True
+        )
         assert _classifier_available("UNKNOWN", deps) is False
 
 

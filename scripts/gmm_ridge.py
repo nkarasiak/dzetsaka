@@ -125,7 +125,10 @@ class GMMR:
             the mean, covariance and proportion of each class, as well as the spectral decomposition of the covariance matrix.
         """
         # Get information from the data
-        C = np.unique(y).shape[0]
+        unique_labels = np.unique(y)
+        if not np.all(np.isfinite(unique_labels)):
+            raise ValueError("Non-finite class labels detected in training data.")
+        C = unique_labels.shape[0]
         # C = int(y.max(0))  # Number of classes
         n = x.shape[0]  # Number of samples
         d = x.shape[1]  # Number of variables
@@ -138,7 +141,7 @@ class GMMR:
         self.cov = np.empty((C, d, d))  # Matrix of covariance
         self.Q = np.empty((C, d, d))  # Matrix of eigenvectors
         self.L = np.empty((C, d))  # Vector of eigenvalues
-        self.classnum = np.empty(C).astype("uint16")
+        self.classnum = unique_labels.astype("uint16")
         self.classes_ = self.classnum
         # Learn the parameter of the model for each class
         for c, cR in enumerate(np.unique(y)):
@@ -195,7 +198,7 @@ class GMMR:
             temp = self.Q[c, :, :] * (1.0 / Lr)
             invCovs[c] = np.dot(temp, self.Q[c, :, :].T)
             logdet = np.sum(np.log(Lr))
-            csts[c] = logdet - 2.0 * np.log(self.prop[c])
+            csts[c] = logdet - 2.0 * np.log(self.prop[c].item())
 
         # Vectorized discriminant computation using einsum
         # xtc shape: (nt, C, d) - centered data for each class
@@ -253,7 +256,7 @@ class GMMR:
             j = np.where(y == (c + 1))[0]
             xi = x[j, :]
             invCov, logdet = self.compute_inverse_logdet(c, TAU)
-            cst = logdet - 2 * np.log(self.prop[c])  # Pre compute the constant
+            cst = logdet - 2 * np.log(self.prop[c].item())  # Pre compute the constant
             xi -= self.mean[c, :]
             temp = np.dot(invCov, xi.T).T
             K = np.sum(xi * temp, axis=1) + cst

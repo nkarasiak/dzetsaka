@@ -62,8 +62,6 @@ except ImportError:
 
 # Try to import from dzetsaka modules
 try:
-    from qgis.core import QgsMessageLog
-
     from .. import function_dataraster as dataraster
     from ..domain.exceptions import ClassificationError, DependencyError, OutputError
 except ImportError:

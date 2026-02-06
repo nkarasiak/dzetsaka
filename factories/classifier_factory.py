@@ -43,6 +43,8 @@ class ClassifierMetadata:
         Whether XGBoost is required
     requires_lightgbm : bool
         Whether LightGBM is required
+    requires_catboost : bool
+        Whether CatBoost is required
     supports_probability : bool
         Whether classifier supports probability estimates
     supports_feature_importance : bool
@@ -56,6 +58,7 @@ class ClassifierMetadata:
     requires_sklearn: bool = False
     requires_xgboost: bool = False
     requires_lightgbm: bool = False
+    requires_catboost: bool = False
     supports_probability: bool = True
     supports_feature_importance: bool = False
 
@@ -261,6 +264,16 @@ class ClassifierFactory:
                     "lightgbm",
                     f"Classifier {metadata.code} requires LightGBM",
                     required_version=">=3.0.0",
+                ) from e
+
+        if getattr(metadata, "requires_catboost", False):
+            try:
+                import catboost  # noqa: F401
+            except ImportError as e:
+                raise DependencyError(
+                    "catboost",
+                    f"Classifier {metadata.code} requires CatBoost",
+                    required_version=">=1.0.0",
                 ) from e
 
     @classmethod
@@ -473,6 +486,29 @@ def initialize_factory() -> None:
                 supports_feature_importance=True,
             ),
             default_params={"random_state": 42, "verbose": -1},
+        )
+    except ImportError:
+        pass
+
+    # CatBoost
+    try:
+        from scripts.mainfunction import CBClassifierWrapper
+
+        if CBClassifierWrapper is None:
+            raise ImportError("CatBoost wrapper unavailable")
+
+        ClassifierFactory.register(
+            code="CB",
+            classifier_class=CBClassifierWrapper,
+            metadata=ClassifierMetadata(
+                code="CB",
+                name="CatBoost",
+                description="Gradient boosting on decision trees with strong defaults",
+                requires_catboost=True,
+                supports_probability=True,
+                supports_feature_importance=True,
+            ),
+            default_params={"random_seed": 42, "verbose": False},
         )
     except ImportError:
         pass

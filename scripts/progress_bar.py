@@ -4,6 +4,11 @@ from qgis.PyQt.QtGui import QCursor
 from qgis.PyQt.QtWidgets import QApplication, QProgressBar
 from qgis.utils import iface
 
+try:
+    _WAIT_CURSOR = Qt.WaitCursor
+except AttributeError:
+    _WAIT_CURSOR = Qt.CursorShape.WaitCursor
+
 
 class ProgressBar:
     """Manage progressBar and loading cursor.
@@ -46,7 +51,7 @@ class ProgressBar:
 
         widget.layout().addWidget(self.prgBar)
         iface.messageBar().pushWidget(widget)
-        QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
+        QApplication.setOverrideCursor(QCursor(_WAIT_CURSOR))
 
         # if Max 0 and value 0, no progressBar, only cursor loading
         prgBar.setValue(0)

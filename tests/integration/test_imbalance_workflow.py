@@ -160,7 +160,13 @@ class TestSMOTEWithModels:
         model = RandomForestClassifier(n_estimators=20, random_state=42)
         model.fit(X_balanced, y_balanced)
 
-        y_pred = model.predict(X_train[:50])
+        # Predict on a balanced sample across classes
+        idx = []
+        for cls in unique:
+            cls_idx = np.where(y_balanced == cls)[0][:10]
+            idx.extend(cls_idx.tolist())
+        X_eval = X_balanced[idx]
+        y_pred = model.predict(X_eval)
         assert len(np.unique(y_pred)) >= 2  # Should predict multiple classes
 
     def test_apply_smote_if_needed_integration(self):

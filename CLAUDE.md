@@ -89,7 +89,7 @@ Both interfaces use the same core classification engine.
 
 **Location:** `classifier_config.py`
 
-Single source of truth for all 11 algorithms containing:
+Single source of truth for all 12 algorithms containing:
 - Algorithm definitions and metadata
 - Dependency mappings (built-in vs. external)
 - Hyperparameter grids for optimization
@@ -113,6 +113,7 @@ This centralized approach eliminates scattered configuration and ensures consist
 **Tier 3: Specialized (Advanced Gradient Boosting)**
 - **XGBoost** - State-of-the-art gradient boosting
 - **LightGBM** - Fast gradient boosting framework
+- **CatBoost** - Gradient boosting with strong defaults
 - Separate package dependencies
 - Custom wrapper classes for label encoding
 
@@ -127,16 +128,17 @@ This centralized approach eliminates scattered configuration and ensures consist
 - Detects missing packages automatically
 - One-click installation via pip subprocess
 - Real-time progress logging in QGIS
-- Handles: scikit-learn, xgboost, lightgbm
+- Handles: scikit-learn, xgboost, lightgbm, catboost
 - Eliminates manual pip commands for users
 
 ### Label Encoding System
 
-**Problem:** XGBoost/LightGBM require continuous class labels (0,1,2,3...) but users often have sparse labels (0,1,3,5...)
+**Problem:** XGBoost/LightGBM/CatBoost require continuous class labels (0,1,2,3...) but users often have sparse labels (0,1,3,5...)
 
 **Solution:** Transparent wrapper classes in `scripts/mainfunction.py`
 - `XGBClassifierWrapper` - Auto-encodes/decodes labels for XGBoost
 - `LGBMClassifierWrapper` - Auto-encodes/decodes labels for LightGBM
+- `CBClassifierWrapper` - Auto-encodes/decodes labels for CatBoost
 - Seamless workflow - users never see the encoding
 - Maintains compatibility with existing code
 - Proper pickling support for model persistence
@@ -200,7 +202,7 @@ dzetsaka automatically handles non-continuous class labels:
 **Scenario:** Training data has classes 0, 1, 3, 5 (missing 2 and 4)
 
 **Scikit-learn algorithms:** Work natively with sparse labels
-**XGBoost/LightGBM:** Transparent encoding/decoding via wrapper classes
+**XGBoost/LightGBM/CatBoost:** Transparent encoding/decoding via wrapper classes
 
 Users never need to manually encode labels or worry about compatibility.
 
@@ -243,7 +245,7 @@ v4.2.0+ includes GitHub issue integration:
 
 - **QGIS 3.0+ minimum:** Python 3.8+ required
 - **Auto-install is a key feature:** Highlight in user-facing changes
-- **11 algorithms supported:** Core differentiator from other QGIS classifiers
+- **12 algorithms supported:** Core differentiator from other QGIS classifiers
 - **Hyperparameter tuning:** Automatic optimization sets dzetsaka apart
 - **Model persistence:** Save trained models for reuse across multiple images
 

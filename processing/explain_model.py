@@ -18,6 +18,7 @@ from qgis.core import (
 from qgis.PyQt.QtGui import QIcon
 
 from ..logging_utils import show_error_dialog
+from . import metadata_helpers
 
 # Try to import SHAP explainer
 try:
@@ -274,4 +275,14 @@ All dzetsaka algorithms are supported:
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Classification tool"
+        return metadata_helpers.get_group_id()
+
+    def helpUrl(self):
+        """Returns a URL to the algorithm's help/documentation."""
+        return metadata_helpers.get_help_url("explain_model")
+
+    def tags(self):
+        """Returns tags for the algorithm for better searchability."""
+        common = metadata_helpers.get_common_tags()
+        specific = metadata_helpers.get_algorithm_specific_tags("explainability")
+        return common + specific

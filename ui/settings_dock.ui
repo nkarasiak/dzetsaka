@@ -71,6 +71,11 @@
       </item>
       <item>
        <property name="text">
+        <string>CatBoost</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
         <string>Extra Trees</string>
        </property>
       </item>

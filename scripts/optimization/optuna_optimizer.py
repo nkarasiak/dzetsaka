@@ -22,7 +22,6 @@ Author:
 
 from __future__ import annotations
 
-import logging
 from typing import Any, Dict, Optional, Union
 
 import numpy as np
@@ -45,8 +44,7 @@ except ImportError:
     SKLEARN_AVAILABLE = False
 
 
-# Configure logging
-logger = logging.getLogger(__name__)
+from ...logging_utils import QgisLogger
 
 
 class OptunaOptimizer:
@@ -57,8 +55,8 @@ class OptunaOptimizer:
 
     Parameters
     ----------
-    classifier_code : str
-        Classifier code (e.g., "RF", "SVM", "XGB")
+        classifier_code : str
+        Classifier code (e.g., "RF", "SVM", "XGB", "CB")
     n_trials : int, default=100
         Number of optimization trials to run
     timeout : Optional[int], default=None
@@ -99,6 +97,7 @@ class OptunaOptimizer:
         self.n_jobs = n_jobs
         self.verbose = verbose
         self.study: Optional[optuna.Study] = None
+        self.log = QgisLogger(tag="Dzetsaka/Optuna")
 
         # Configure Optuna logging
         if not verbose:
@@ -142,7 +141,7 @@ class OptunaOptimizer:
             try:
                 clf = self._create_classifier(self.classifier_code, params)
             except Exception as e:
-                logger.warning(f"Failed to create classifier with params {params}: {e}")
+                self.log.warning(f"Failed to create classifier with params {params}: {e}")
                 raise optuna.TrialPruned() from e
 
             # Evaluate with cross-validation
@@ -160,7 +159,7 @@ class OptunaOptimizer:
                 return mean_score
 
             except Exception as e:
-                logger.warning(f"Trial failed with params {params}: {e}")
+                self.log.warning(f"Trial failed with params {params}: {e}")
                 raise optuna.TrialPruned() from e
 
         # Create study with TPE sampler and median pruner
@@ -171,14 +170,14 @@ class OptunaOptimizer:
         )
 
         # Run optimization
-        logger.info(
+        self.log.info(
             f"Starting Optuna optimization for {self.classifier_code}: "
             f"{self.n_trials} trials, scoring={scoring}"
         )
 
         self.study.optimize(objective, n_trials=self.n_trials, timeout=self.timeout, n_jobs=self.n_jobs, show_progress_bar=self.verbose)
 
-        logger.info(
+        self.log.info(
             f"Optimization complete. Best score: {self.study.best_value:.4f}, "
             f"Best params: {self.study.best_params}"
         )
@@ -253,6 +252,18 @@ class OptunaOptimizer:
                 "min_child_samples": trial.suggest_int("min_child_samples", 5, 50),
                 "random_state": self.random_seed,
                 "verbose": -1,
+            }
+
+        elif classifier_code == "CB":
+            return {
+                "iterations": trial.suggest_int("iterations", 50, 500, step=50),
+                "depth": trial.suggest_int("depth", 4, 10),
+                "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
+                "l2_leaf_reg": trial.suggest_float("l2_leaf_reg", 1.0, 10.0),
+                "loss_function": "MultiClass",
+                "random_seed": self.random_seed,
+                "verbose": False,
+                "allow_writing_files": False,
             }
 
         elif classifier_code == "ET":
@@ -367,6 +378,14 @@ class OptunaOptimizer:
                 return LGBMClassifier(**params)
             except ImportError as e:
                 raise ImportError("LightGBM is not installed. Install it with: pip install lightgbm") from e
+
+        elif classifier_code == "CB":
+            try:
+                from catboost import CatBoostClassifier
+
+                return CatBoostClassifier(**params)
+            except ImportError as e:
+                raise ImportError("CatBoost is not installed. Install it with: pip install catboost") from e
 
         elif classifier_code == "ET":
             from sklearn.ensemble import ExtraTreesClassifier

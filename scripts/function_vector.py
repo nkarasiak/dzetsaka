@@ -749,10 +749,14 @@ def readROIFromVector(vector, roiprefix, *args):
         else:
             return ROIvalues
     else:
-        from mainfunction import pushFeedback
+        try:
+            from ..logging_utils import Reporter
+        except BaseException:
+            from logging_utils import Reporter
 
-        pushFeedback(f'ROI field "{roiprefix}" do not exists. These fields are available : ')
-        pushFeedback(listFields)
+        report = Reporter.from_feedback(None, tag="Dzetsaka/Vector")
+        report.error(f'ROI field "{roiprefix}" do not exists. These fields are available : ')
+        report.info(listFields)
 
 
 if __name__ == "__main__":

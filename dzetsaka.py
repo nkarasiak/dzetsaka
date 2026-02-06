@@ -1427,13 +1427,49 @@ Available Libraries:
         requested_deps = normalized_missing_deps
         missing_deps = FULL_DEPENDENCY_BUNDLE.copy()
         self.log.info(
-            "All-or-nothing dependency mode enabled. "
-            f"Requested={requested_deps!r}, installing full bundle={missing_deps!r}"
+            "All-dependencies install mode enabled (sequential pip commands). "
+            f"Requested={requested_deps!r}, installing full bundle one-by-one={missing_deps!r}"
         )
 
         from qgis.PyQt.QtCore import QEventLoop, QProcess
 
         from .ui.install_progress_dialog import InstallProgressDialog
+
+        # Build conservative constraints from the live runtime to avoid breaking
+        # core scientific stack packages in embedded QGIS envs.
+        runtime_constraints_file = None
+        runtime_constraint_args = []
+        try:
+            try:
+                from importlib import metadata as importlib_metadata
+            except ImportError:
+                import importlib_metadata  # type: ignore
+
+            pinned_packages = []  # type: list[str]
+            for pkg in ("numpy", "scipy", "pandas"):
+                try:
+                    version = importlib_metadata.version(pkg)
+                except importlib_metadata.PackageNotFoundError:
+                    continue
+                if version:
+                    pinned_packages.append(f"{pkg}=={version}")
+
+            if pinned_packages:
+                constraints_text = "\n".join(pinned_packages) + "\n"
+                fd, runtime_constraints_file = tempfile.mkstemp(
+                    prefix="dzetsaka_pip_constraints_",
+                    suffix=".txt",
+                )
+                os.close(fd)
+                with open(runtime_constraints_file, "w", encoding="utf-8") as f:
+                    f.write(constraints_text)
+                runtime_constraint_args = ["-c", runtime_constraints_file]
+                self.log.info(
+                    "Using runtime pip constraints to keep scientific stack stable: "
+                    f"{', '.join(pinned_packages)}"
+                )
+        except Exception as constraints_err:
+            self.log.warning(f"Could not prepare runtime pip constraints: {constraints_err!s}")
 
         # Package installation using QProcess for responsive UI
         def install_package(package, progress_dialog, extra_args=None):
@@ -1632,6 +1668,8 @@ Available Libraries:
                 "--disable-pip-version-check",
                 "--prefer-binary",
             ]
+            if runtime_constraint_args:
+                pip_args.extend(runtime_constraint_args)
             if extra_args:
                 pip_args.extend(extra_args)
 
@@ -1762,44 +1800,10 @@ Available Libraries:
             progress = InstallProgressDialog(parent=self, total_packages=len(missing_deps))
             progress.show()
 
-            # Fast path: install full dependency bundle in one pip command.
-            # If this fails (or verification fails), we fall back to per-package install.
-            bundle_packages = []
-            for dep in missing_deps:
-                dep_key = dep.strip()
-                package_name = pip_packages.get(dep_key, pip_packages.get(dep_key.lower(), dep_key.lower()))
-                package_name = pip_packages.get(package_name, package_name)
-                if package_name not in bundle_packages:
-                    bundle_packages.append(package_name)
-
-            if bundle_packages:
-                progress.set_current_package("Full dependency bundle", 0)
-                progress.append_output(
-                    "Attempting bulk installation with one pip command:\n"
-                    f"  {' '.join(bundle_packages)}\n"
-                )
-                bulk_primary = bundle_packages[0]
-                bulk_extra = bundle_packages[1:]
-                bulk_installed = install_package(bulk_primary, progress, extra_args=bulk_extra)
-                if bulk_installed:
-                    import importlib
-
-                    importlib.invalidate_caches()
-                    missing_after_bulk = [pkg for pkg in bundle_packages if not _is_dependency_usable(pkg)]
-                    if not missing_after_bulk:
-                        progress.append_output("\n✓ Bulk dependency installation succeeded for all packages.\n")
-                        progress.mark_complete(success=True)
-                        progress.close()
-                        return True
-                    progress.append_output(
-                        "\n⚠ Bulk install command succeeded but some packages are still unusable:\n"
-                        f"  {', '.join(missing_after_bulk)}\n"
-                        "Falling back to per-package installation...\n"
-                    )
-                else:
-                    progress.append_output(
-                        "\n⚠ Bulk install failed. Falling back to per-package installation...\n"
-                    )
+            progress.append_output(
+                "Installing full dependency bundle with sequential commands "
+                "(one package per pip invocation).\n"
+            )
 
             success_count = 0
 
@@ -1933,6 +1937,10 @@ Available Libraries:
                 context=f"Dependency installation flow for: {', '.join(missing_deps)}",
             )
             return False
+        finally:
+            if runtime_constraints_file:
+                with contextlib.suppress(Exception):
+                    os.remove(runtime_constraints_file)
 
     def run_wizard(self):
         """Open the dockable classification dashboard (Quick/Advanced)."""

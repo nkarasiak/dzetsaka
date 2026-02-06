@@ -30,8 +30,16 @@ try:
 except ImportError:
     SKLEARN_AVAILABLE = False
 
+try:
+    import catboost  # noqa: F401
+
+    CATBOOST_AVAILABLE = True
+except ImportError:
+    CATBOOST_AVAILABLE = False
+
 skip_if_no_optuna = pytest.mark.skipif(not OPTUNA_AVAILABLE, reason="Optuna not installed")
 skip_if_no_sklearn = pytest.mark.skipif(not SKLEARN_AVAILABLE, reason="scikit-learn not installed")
+skip_if_no_catboost = pytest.mark.skipif(not CATBOOST_AVAILABLE, reason="CatBoost not installed")
 
 
 @skip_if_no_optuna
@@ -76,6 +84,21 @@ class TestOptunaOptimizer:
         assert "kernel" in params
         assert "random_state" in params
 
+    def test_suggest_params_cb(self):
+        """Test parameter suggestion for CatBoost."""
+        from scripts.optimization.optuna_optimizer import OptunaOptimizer
+
+        optimizer = OptunaOptimizer("CB", n_trials=10)
+        study = optuna.create_study()
+        trial = study.ask()
+        params = optimizer._suggest_params(trial, "CB")
+
+        assert "iterations" in params
+        assert "depth" in params
+        assert "learning_rate" in params
+        assert "l2_leaf_reg" in params
+        assert "loss_function" in params
+
     def test_create_classifier_rf(self):
         """Test classifier creation for Random Forest."""
         from scripts.optimization.optuna_optimizer import OptunaOptimizer
@@ -111,6 +134,27 @@ class TestOptunaOptimizer:
         assert isinstance(clf, SVC)
         assert clf.C == 1.0
         assert clf.kernel == "rbf"
+
+    @skip_if_no_catboost
+    def test_create_classifier_cb(self):
+        """Test classifier creation for CatBoost."""
+        from scripts.optimization.optuna_optimizer import OptunaOptimizer
+
+        optimizer = OptunaOptimizer("CB", n_trials=10)
+        params = {
+            "iterations": 100,
+            "depth": 6,
+            "learning_rate": 0.1,
+            "loss_function": "MultiClass",
+            "random_seed": 42,
+            "verbose": False,
+            "allow_writing_files": False,
+        }
+        clf = optimizer._create_classifier("CB", params)
+
+        from catboost import CatBoostClassifier
+
+        assert isinstance(clf, CatBoostClassifier)
 
     def test_optimize_workflow(self):
         """Test full optimization workflow with synthetic data."""

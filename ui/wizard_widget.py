@@ -22,7 +22,7 @@ from collections import Counter
 from typing import Dict, List, Optional
 
 from qgis.PyQt.QtCore import QSettings, Qt, pyqtSignal
-from qgis.PyQt.QtGui import QIcon, QPixmap
+from qgis.PyQt.QtGui import QIcon, QPainter, QPixmap
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -42,6 +42,7 @@ from qgis.PyQt.QtWidgets import (
     QScrollArea,
     QSizePolicy,
     QSpinBox,
+    QStackedLayout,
     QStackedWidget,
     QTabWidget,
     QTextEdit,
@@ -543,6 +544,40 @@ def _qt_align_hcenter():
     if hasattr(Qt, "AlignmentFlag"):
         return Qt.AlignmentFlag.AlignHCenter
     return Qt.AlignHCenter
+
+
+class _CoverPixmapLabel(QLabel):
+    """QLabel that draws a pixmap using cover behavior (center-cropped)."""
+
+    def __init__(self, parent=None):
+        super(_CoverPixmapLabel, self).__init__(parent)
+        self._source_pixmap = QPixmap()
+        self.setScaledContents(False)
+
+    def set_cover_pixmap(self, pixmap):
+        # type: (QPixmap) -> None
+        self._source_pixmap = pixmap or QPixmap()
+        self.update()
+
+    def paintEvent(self, event):
+        # type: (object) -> None
+        if self._source_pixmap.isNull():
+            return super(_CoverPixmapLabel, self).paintEvent(event)
+
+        painter = QPainter(self)
+        target = self.rect()
+        src = self._source_pixmap
+
+        if hasattr(Qt, "AspectRatioMode"):
+            aspect_mode = Qt.AspectRatioMode.KeepAspectRatioByExpanding
+            transform_mode = Qt.TransformationMode.SmoothTransformation
+        else:
+            aspect_mode = Qt.KeepAspectRatioByExpanding
+            transform_mode = Qt.SmoothTransformation
+        scaled = src.scaled(target.size(), aspect_mode, transform_mode)
+        x = (scaled.width() - target.width()) // 2
+        y = (scaled.height() - target.height()) // 2
+        painter.drawPixmap(target, scaled, scaled.rect().adjusted(x, y, -x, -y))
 
 
 def _classifier_available(code, deps):
@@ -2635,44 +2670,59 @@ class ClassificationDashboardDock(QDockWidget):
         super(ClassificationDashboardDock, self).__init__(parent)
         self.setWindowTitle("dzetsaka Dashboard")
         self.setObjectName("DzetsakaClassificationDashboardDock")
-        self.setMinimumWidth(280)
+        self.setMinimumWidth(220)
         self.setMinimumHeight(260)
-        self.setMaximumWidth(360)
-        self.resize(305, 315)
+        self.resize(260, 315)
+        self._installer = installer
 
         container = QWidget()
         layout = QVBoxLayout(container)
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(4)
 
-        self.banner = QLabel()
-        self.banner.setMinimumHeight(34)
-        self.banner.setMaximumHeight(40)
-        self.banner.setMinimumWidth(220)
-        self.banner.setMaximumWidth(220)
+        banner_container = QWidget()
+        banner_container.setMinimumHeight(60)
+        banner_container.setMaximumHeight(60)
+        banner_stack = QStackedLayout(banner_container)
+        if hasattr(QStackedLayout, "StackingMode"):
+            banner_stack.setStackingMode(QStackedLayout.StackingMode.StackAll)
+        else:
+            banner_stack.setStackingMode(QStackedLayout.StackAll)
+
+        self.banner = _CoverPixmapLabel()
+        self.banner.setMinimumHeight(60)
+        self.banner.setMaximumHeight(60)
         self.banner.setAlignment(_qt_align_hcenter())
         if hasattr(QSizePolicy, "Policy"):
-            self.banner.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            self.banner.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         else:
-            self.banner.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            self.banner.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         banner_pixmap = QPixmap(":/plugins/dzetsaka/img/parcguyane.jpg")
         if not banner_pixmap.isNull():
-            self.banner.setPixmap(banner_pixmap)
-            self.banner.setScaledContents(True)
+            self.banner.set_cover_pixmap(banner_pixmap)
             self.banner.setToolTip("dzetsaka")
-            layout.addWidget(self.banner, alignment=_qt_align_hcenter())
+        banner_stack.addWidget(self.banner)
 
-        header = QHBoxLayout()
-        header.addStretch()
-        header.addWidget(QLabel("Mode:"))
+        overlay = QWidget()
+        overlay_root = QVBoxLayout(overlay)
+        overlay_root.setContentsMargins(8, 4, 8, 4)
+        overlay_root.setSpacing(0)
+        overlay_layout = QHBoxLayout()
+        overlay_layout.setContentsMargins(0, 0, 0, 0)
+        overlay_layout.setSpacing(0)
         self.modeCombo = QComboBox()
-        self.modeCombo.addItems(["Quick run", "Advanced setup"])
+        self.modeCombo.addItems(["Quick run", "Advanced"])
         self.modeCombo.setToolTip(
             "Quick run: essential inputs and one-click run.\n"
             "Advanced setup: full workflow with detailed optimization and outputs."
         )
-        header.addWidget(self.modeCombo)
-        layout.addLayout(header)
+        overlay_layout.addWidget(self.modeCombo)
+        overlay_layout.addStretch()
+        overlay_root.addLayout(overlay_layout)
+        overlay_root.addStretch()
+        banner_stack.addWidget(overlay)
+        banner_stack.setCurrentWidget(overlay)
+        layout.addWidget(banner_container)
 
         self.stack = QStackedWidget()
         self.quickPanel = QuickClassificationPanel(installer=installer)
@@ -2683,16 +2733,11 @@ class ClassificationDashboardDock(QDockWidget):
         self.quickScroll.setAlignment(_qt_align_top())
         self.quickScroll.setWidget(self.quickPanel)
 
-        self.advancedWizard = ClassificationWizard(
-            parent=container,
-            installer=installer,
-            close_on_accept=False,
-        )
-        self.advancedWizard.setToolTip("Advanced setup: full workflow with detailed optimization and outputs.")
-        self.advancedWizard.classificationRequested.connect(self.classificationRequested)
+        self.advancedWizard = None
+        self.advancedPlaceholder = QWidget()
 
         self.stack.addWidget(self.quickScroll)
-        self.stack.addWidget(self.advancedWizard)
+        self.stack.addWidget(self.advancedPlaceholder)
         layout.addWidget(self.stack)
 
         self.modeCombo.currentIndexChanged.connect(self._on_mode_changed)
@@ -2702,6 +2747,18 @@ class ClassificationDashboardDock(QDockWidget):
 
     def _on_mode_changed(self, index):
         # type: (int) -> None
+        if index == 1 and self.advancedWizard is None:
+            self.advancedWizard = ClassificationWizard(
+                parent=self.widget(),
+                installer=self._installer,
+                close_on_accept=False,
+            )
+            self.advancedWizard.setToolTip("Advanced setup: full workflow with detailed optimization and outputs.")
+            self.advancedWizard.classificationRequested.connect(self.classificationRequested)
+            self.stack.removeWidget(self.advancedPlaceholder)
+            self.advancedPlaceholder.deleteLater()
+            self.advancedPlaceholder = None
+            self.stack.addWidget(self.advancedWizard)
         self.stack.setCurrentIndex(index)
 
     def closeEvent(self, event):

@@ -62,8 +62,14 @@ def should_exclude(path):
         "tests",
         # Documentation (readme.md whitelisted above)
         "*.md",
+        # Coverage artefacts
+        "htmlcov",
+        "coverage.xml",
+        "coverage.*",
         # Packaging output
         "*.zip",
+        # Windows reserved device names
+        "nul",
     ]
 
     # Exclude any folder or file starting with a dot
