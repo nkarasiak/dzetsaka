@@ -80,7 +80,7 @@ import contextlib
 
 from dzetsaka import classifier_config, ui
 from dzetsaka.dzetsaka_provider import DzetsakaProvider
-from dzetsaka.logging_utils import QgisLogger, show_error_dialog, show_issue_popup
+from dzetsaka.logging_utils import QgisLogger, show_error_dialog
 from dzetsaka.presentation.qgis.task_runner import TaskFeedbackAdapter
 from dzetsaka.scripts.function_dataraster import get_layer_source_path
 
@@ -1110,20 +1110,20 @@ class DzetsakaGUI(QDialog):
 
     def _default_output_name(self, in_raster_path, classifier_code):
         """Build deterministic default output filename for temporary classifications."""
-        base_name = os.path.splitext(os.path.basename(in_raster_path))[0]
-        code = str(classifier_code or "CLASS").strip().upper()
-        if not code:
-            code = "CLASS"
-        return f"{base_name}_{code}.tif"
+        from dzetsaka.presentation.qgis.output_naming import default_output_name
+
+        return default_output_name(in_raster_path, classifier_code)
 
     def _show_github_issue_popup(self, error_title, error_type, error_message, context):
         """Show standardized compact issue popup."""
-        show_issue_popup(
+        from dzetsaka.presentation.qgis.issue_reporting import show_standard_issue_popup
+
+        show_standard_issue_popup(
+            self,
             error_title=error_title,
             error_type=error_type,
             error_message=error_message,
             context=context,
-            parent=self,
         )
 
     def _try_install_dependencies(self, missing_deps):
