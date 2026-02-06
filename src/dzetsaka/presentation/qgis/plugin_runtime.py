@@ -969,23 +969,9 @@ class DzetsakaGUI(QDialog):
     def _check_sklearn_usable(self):
         # type: () -> tuple[bool, str]
         """Return whether scikit-learn is fully usable in the current runtime."""
-        try:
-            import sklearn
+        from dzetsaka.presentation.qgis.runtime_checks import check_sklearn_usable
 
-            # Broken installs can import a namespace package named sklearn but miss core modules.
-            from sklearn.base import BaseEstimator  # noqa: F401
-
-            version = getattr(sklearn, "__version__", None)
-            module_file = getattr(sklearn, "__file__", None)
-            if not version:
-                return False, "sklearn imported but has no __version__ (incomplete install)"
-            if module_file is None:
-                return False, "sklearn imported as namespace package (incomplete install)"
-            return True, f"version {version}"
-        except ImportError as e:
-            return False, f"not importable: {e}"
-        except Exception as e:
-            return False, f"imported but unusable: {e}"
+        return check_sklearn_usable()
 
     def saveSettings(self):
         """!@brief save settings if modifications."""
