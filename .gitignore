@@ -1,1 +1,14 @@
-# Git ignore file for dzetsaka QGIS plugin
+# Python bytecode and cache
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+# Test and coverage artifacts
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Type/check/lint caches
+.mypy_cache/
+.ruff_cache/
