@@ -31,7 +31,9 @@ from qgis.core import (
     QgsProcessingParameterRasterLayer,
 )
 
+from ..logging_utils import QgisLogger, show_error_dialog
 from ..scripts import function_dataraster as dataraster
+from . import metadata_helpers
 
 plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 # EX
@@ -98,56 +100,56 @@ class ClosingFilterAlgorithm(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         """Here is where the processing itself takes place."""
-        INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
-        # INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
-        OUTPUT_RASTER = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
-        CLOSING_SIZE = self.parameterAsInt(parameters, self.CLOSING_SIZE, context)
+        log = QgisLogger(tag="Dzetsaka/Processing/ClosingFilter")
 
-        """
-        MEDIAN_ITER = self.parameterAsInt(parameters, self.MEDIAN_ITER, context)
-        MEDIAN_SIZE = self.parameterAsInt(parameters, self.MEDIAN_SIZE, context)
-        # First we create the output layer. The output value entered by
-        # the user is a string containing a filename, so we can use it
-        # directly
+        try:
+            INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
+            OUTPUT_RASTER = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
+            CLOSING_SIZE = self.parameterAsInt(parameters, self.CLOSING_SIZE, context)
 
-        #from scipy import ndimage
-        #import gdal
-        """
-        INPUT_RASTER_src = INPUT_RASTER.source()
+            INPUT_RASTER_src = INPUT_RASTER.source()
 
-        # feedback.pushInfo(str(OUTPUT_RASTER))
-        # QgsMessageLog.logMessage('output is: '+str(OUTPUT_RASTER))
+            feedback.pushInfo(f"Input raster: {INPUT_RASTER_src}")
+            feedback.pushInfo(f"Closing size: {CLOSING_SIZE}")
+            feedback.pushInfo(f"Output raster: {OUTPUT_RASTER}")
 
-        from scipy.ndimage.morphology import grey_closing
+            try:
+                from scipy.ndimage.morphology import grey_closing
+            except ImportError as e:
+                error_msg = "scipy library is required for closing filter. Please install: pip install scipy"
+                feedback.reportError(error_msg)
+                show_error_dialog("dzetsaka Closing Filter Error", error_msg)
+                return {}
 
-        data, im = dataraster.open_data_band(INPUT_RASTER_src)
+            data, im = dataraster.open_data_band(INPUT_RASTER_src)
 
-        proj = data.GetProjection()
-        geo = data.GetGeoTransform()
-        d = data.RasterCount
+            proj = data.GetProjection()
+            geo = data.GetGeoTransform()
+            d = data.RasterCount
 
-        total = 100 / (d * 1)
+            total = 100 / (d * 1)
 
-        outFile = dataraster.create_empty_tiff(OUTPUT_RASTER, im, d, geo, proj)
+            outFile = dataraster.create_empty_tiff(OUTPUT_RASTER, im, d, geo, proj)
 
-        for i in range(d):
-            # Read data from the right band
-            # pbNow+=1
-            # pb.setValue(pbNow)
+            for i in range(d):
+                tempBand = data.GetRasterBand(i + 1).ReadAsArray()
+                tempBand = grey_closing(tempBand, size=(CLOSING_SIZE, CLOSING_SIZE))
+                feedback.setProgress(int(i * total))
 
-            tempBand = data.GetRasterBand(i + 1).ReadAsArray()
+                # Save band to outFile
+                out = outFile.GetRasterBand(i + 1)
+                out.WriteArray(tempBand)
+                out.FlushCache()
+                tempBand = None
 
-            tempBand = grey_closing(tempBand, size=(CLOSING_SIZE, CLOSING_SIZE))
-            # tempBand = tempBand
-            feedback.setProgress(int(i * total))
+            return {self.OUTPUT_RASTER: OUTPUT_RASTER}
 
-            # Save bandand outFile
-            out = outFile.GetRasterBand(i + 1)
-            out.WriteArray(tempBand)
-            out.FlushCache()
-            tempBand = None
-
-        return {self.OUTPUT_RASTER: OUTPUT_RASTER}
+        except Exception as e:
+            error_msg = f"Closing filter failed: {e!s}"
+            feedback.reportError(error_msg)
+            log.exception("Closing filter algorithm failed", e)
+            show_error_dialog("dzetsaka Closing Filter Error", error_msg)
+            return {}
 
         # return OUTPUT_RASTER
 
@@ -181,4 +183,14 @@ class ClosingFilterAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Raster tool"
+        return metadata_helpers.get_group_id()
+
+    def helpUrl(self):
+        """Returns a URL to the algorithm's help/documentation."""
+        return metadata_helpers.get_help_url("closing_filter")
+
+    def tags(self):
+        """Returns tags for the algorithm for better searchability."""
+        common = metadata_helpers.get_common_tags()
+        specific = metadata_helpers.get_algorithm_specific_tags("postprocessing")
+        return common + specific

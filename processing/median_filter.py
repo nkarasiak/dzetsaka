@@ -31,7 +31,9 @@ from qgis.core import (
     QgsProcessingParameterRasterLayer,
 )
 
+from ..logging_utils import QgisLogger, show_error_dialog
 from ..scripts import function_dataraster as dataraster
+from . import metadata_helpers
 
 plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 # EX
@@ -109,60 +111,64 @@ class MedianFilterAlgorithm(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         """Here is where the processing itself takes place."""
-        INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
-        # INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
-        OUTPUT_RASTER = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
-        MEDIAN_ITER = self.parameterAsInt(parameters, self.MEDIAN_ITER, context)
-        MEDIAN_SIZE = self.parameterAsInt(parameters, self.MEDIAN_SIZE, context)
-        """
-        MEDIAN_ITER = self.parameterAsInt(parameters, self.MEDIAN_ITER, context)
-        MEDIAN_SIZE = self.parameterAsInt(parameters, self.MEDIAN_SIZE, context)
-        # First we create the output layer. The output value entered by
-        # the user is a string containing a filename, so we can use it
-        # directly
+        log = QgisLogger(tag="Dzetsaka/Processing/MedianFilter")
 
-        #from scipy import ndimage
-        #import gdal
-        """
-        INPUT_RASTER_src = INPUT_RASTER.source()
+        try:
+            INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
+            OUTPUT_RASTER = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
+            MEDIAN_ITER = self.parameterAsInt(parameters, self.MEDIAN_ITER, context)
+            MEDIAN_SIZE = self.parameterAsInt(parameters, self.MEDIAN_SIZE, context)
 
-        # feedback.pushInfo(str(OUTPUT_RASTER))
-        # QgsMessageLog.logMessage('output is: '+str(OUTPUT_RASTER))
+            INPUT_RASTER_src = INPUT_RASTER.source()
 
-        from scipy import ndimage
+            feedback.pushInfo(f"Input raster: {INPUT_RASTER_src}")
+            feedback.pushInfo(f"Median iterations: {MEDIAN_ITER}")
+            feedback.pushInfo(f"Median size: {MEDIAN_SIZE}")
+            feedback.pushInfo(f"Output raster: {OUTPUT_RASTER}")
 
-        data, im = dataraster.open_data_band(INPUT_RASTER_src)
+            try:
+                from scipy import ndimage
+            except ImportError as e:
+                error_msg = "scipy library is required for median filter. Please install: pip install scipy"
+                feedback.reportError(error_msg)
+                show_error_dialog("dzetsaka Median Filter Error", error_msg)
+                return {}
 
-        proj = data.GetProjection()
-        geo = data.GetGeoTransform()
-        d = data.RasterCount
+            data, im = dataraster.open_data_band(INPUT_RASTER_src)
 
-        total = 100 / (d * MEDIAN_ITER)
+            proj = data.GetProjection()
+            geo = data.GetGeoTransform()
+            d = data.RasterCount
 
-        outFile = dataraster.create_empty_tiff(OUTPUT_RASTER, im, d, geo, proj)
+            total = 100 / (d * MEDIAN_ITER)
 
-        iterPos = 0
+            outFile = dataraster.create_empty_tiff(OUTPUT_RASTER, im, d, geo, proj)
 
-        for i in range(d):
-            # Read data from the right band
-            # pbNow+=1
-            # pb.setValue(pbNow)
-            iterPos += 1
-            tempBand = data.GetRasterBand(i + 1).ReadAsArray()
+            iterPos = 0
 
-            for j in range(MEDIAN_ITER):
-                tempBand = ndimage.filters.median_filter(tempBand, size=(MEDIAN_SIZE, MEDIAN_SIZE))
-                # tempBand = tempBand
-                iterPos += j
-                feedback.setProgress(int(iterPos * total))
+            for i in range(d):
+                iterPos += 1
+                tempBand = data.GetRasterBand(i + 1).ReadAsArray()
 
-            # Save bandand outFile
-            out = outFile.GetRasterBand(i + 1)
-            out.WriteArray(tempBand)
-            out.FlushCache()
-            tempBand = None
+                for j in range(MEDIAN_ITER):
+                    tempBand = ndimage.filters.median_filter(tempBand, size=(MEDIAN_SIZE, MEDIAN_SIZE))
+                    iterPos += j
+                    feedback.setProgress(int(iterPos * total))
 
-        return {self.OUTPUT_RASTER: OUTPUT_RASTER}
+                # Save band to outFile
+                out = outFile.GetRasterBand(i + 1)
+                out.WriteArray(tempBand)
+                out.FlushCache()
+                tempBand = None
+
+            return {self.OUTPUT_RASTER: OUTPUT_RASTER}
+
+        except Exception as e:
+            error_msg = f"Median filter failed: {e!s}"
+            feedback.reportError(error_msg)
+            log.exception("Median filter algorithm failed", e)
+            show_error_dialog("dzetsaka Median Filter Error", error_msg)
+            return {}
 
         # return OUTPUT_RASTER
 
@@ -196,4 +202,14 @@ class MedianFilterAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Raster tool"
+        return metadata_helpers.get_group_id()
+
+    def helpUrl(self):
+        """Returns a URL to the algorithm's help/documentation."""
+        return metadata_helpers.get_help_url("median_filter")
+
+    def tags(self):
+        """Returns tags for the algorithm for better searchability."""
+        common = metadata_helpers.get_common_tags()
+        specific = metadata_helpers.get_algorithm_specific_tags("postprocessing")
+        return common + specific

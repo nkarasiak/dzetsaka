@@ -4,13 +4,13 @@ This module provides the main training algorithm for machine learning model
 training within the dzetsaka QGIS plugin framework.
 """
 
+import ast
 import os
 
 # Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.core import (
-    QgsMessageLog,
     QgsProcessingAlgorithm,
     QgsProcessingParameterEnum,
     QgsProcessingParameterField,
@@ -22,8 +22,10 @@ from qgis.core import (
 )
 
 from .. import classifier_config
+from ..logging_utils import QgisLogger, show_error_dialog
 from ..scripts import mainfunction
 from ..scripts.function_dataraster import get_layer_source_path
+from . import metadata_helpers
 
 plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
@@ -142,45 +144,62 @@ class TrainAlgorithm(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         """Process the algorithm with given parameters."""
-        INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
+        log = QgisLogger(tag="Dzetsaka/Processing/Train")
 
-        INPUT_LAYER = self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
+        try:
+            INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
+            INPUT_LAYER = self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
+            INPUT_COLUMN = self.parameterAsFields(parameters, self.INPUT_COLUMN, context)
+            SPLIT_PERCENT = self.parameterAsInt(parameters, self.SPLIT_PERCENT, context)
 
-        INPUT_COLUMN = self.parameterAsFields(parameters, self.INPUT_COLUMN, context)
-        SPLIT_PERCENT = self.parameterAsInt(parameters, self.SPLIT_PERCENT, context)
+            SPLIT_PERCENT = 100 - SPLIT_PERCENT  # if 30 means 30% of valid per class, 70% of train
 
-        SPLIT_PERCENT = 100 - SPLIT_PERCENT  # if 30 means 30% of valid per class, 70% of train
+            TRAIN = self.parameterAsEnums(parameters, self.TRAIN, context)
+            OUTPUT_MODEL = self.parameterAsFileOutput(parameters, self.OUTPUT_MODEL, context)
+            OUTPUT_MATRIX = self.parameterAsFileOutput(parameters, self.OUTPUT_MATRIX, context)
 
-        TRAIN = self.parameterAsEnums(parameters, self.TRAIN, context)
-        # INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
-        OUTPUT_MODEL = self.parameterAsFileOutput(parameters, self.OUTPUT_MODEL, context)
-        OUTPUT_MATRIX = self.parameterAsFileOutput(parameters, self.OUTPUT_MATRIX, context)
+            # Retrieve algo from code
+            SELECTED_ALGORITHM = self.TRAIN_ALGORITHMS_CODE[TRAIN[0]]
+            log.info(str(SELECTED_ALGORITHM))
 
-        # Retrieve algo from code
-        SELECTED_ALGORITHM = self.TRAIN_ALGORITHMS_CODE[TRAIN[0]]
-        QgsMessageLog.logMessage(str(SELECTED_ALGORITHM))
+            libOk = True
+            PARAMGRID = self.parameterAsString(parameters, self.PARAMGRID, context)
+            if PARAMGRID != "":
+                extraParam = {}
+                try:
+                    # Use ast.literal_eval() for safe evaluation of parameter grid
+                    # Only supports Python literals (dict, list, str, int, float, bool, None)
+                    extraParam["param_grid"] = ast.literal_eval(PARAMGRID)
+                except (ValueError, SyntaxError) as e:
+                    error_msg = (
+                        f"Invalid parameter grid syntax: {e}\n"
+                        f"Expected a Python dictionary literal, e.g.: "
+                        f"{{'n_estimators': [10, 50, 100], 'max_depth': [3, 5, 7]}}"
+                    )
+                    feedback.reportError(error_msg)
+                    show_error_dialog("dzetsaka Train Error", error_msg)
+                    return {}
+            else:
+                extraParam = None
 
-        libOk = True
-        PARAMGRID = self.parameterAsString(parameters, self.PARAMGRID, context)
-        if PARAMGRID != "":
-            extraParam = {}
-            extraParam["param_grid"] = eval(PARAMGRID)
-        else:
-            extraParam = None
+            if SELECTED_ALGORITHM == "RF" or SELECTED_ALGORITHM == "SVM" or SELECTED_ALGORITHM == "KNN":
+                import importlib.util
 
-        if SELECTED_ALGORITHM == "RF" or SELECTED_ALGORITHM == "SVM" or SELECTED_ALGORITHM == "KNN":
-            import importlib.util
+                if importlib.util.find_spec("joblib") is None:
+                    error_msg = (
+                        "Missing dependency: joblib. "
+                        "Please install joblib package (e.g., pip install joblib or your system's package manager)"
+                    )
+                    feedback.reportError(error_msg)
+                    show_error_dialog("dzetsaka Train Error", error_msg)
+                    return {}
+                if importlib.util.find_spec("sklearn") is None:
+                    error_msg = "You need to install scikit-learn library and its dependencies"
+                    feedback.reportError(error_msg)
+                    show_error_dialog("dzetsaka Train Error", error_msg)
+                    return {}
 
-            if importlib.util.find_spec("joblib") is None:
-                raise ImportError(
-                    "Missing dependency: joblib. Please install joblib package (e.g., pip install joblib or your system's package manager)"
-                )
-            if importlib.util.find_spec("sklearn") is None:
-                raise ImportError("You need to install scikit-learn library and its dependencies")
-                libOk = False
-
-        # learn model
-        if libOk:
+            # learn model
             mainfunction.LearnModel(
                 INPUT_RASTER.source(),
                 get_layer_source_path(INPUT_LAYER),
@@ -195,9 +214,12 @@ class TrainAlgorithm(QgsProcessingAlgorithm):
             )
             return {self.OUTPUT_MATRIX: OUTPUT_MATRIX, self.OUTPUT_MODEL: OUTPUT_MODEL}
 
-        else:
-            return {"Missing library": str(OUTPUT_MATRIX)}
-            # QMessageBox.about(None, "Missing library", "Please install scikit-learn library to use"+str(SELECTED_ALGORITHM))
+        except Exception as e:
+            error_msg = f"Training failed: {e!s}"
+            feedback.reportError(error_msg)
+            log.exception("Training algorithm failed", e)
+            show_error_dialog("dzetsaka Train Error", error_msg)
+            return {}
 
     def tr(self, string):
         """Translate string using Qt's translation system."""
@@ -229,4 +251,14 @@ class TrainAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Classification tool"
+        return metadata_helpers.get_group_id()
+
+    def helpUrl(self):
+        """Returns a URL to the algorithm's help/documentation."""
+        return metadata_helpers.get_help_url("train")
+
+    def tags(self):
+        """Returns tags for the algorithm for better searchability."""
+        common = metadata_helpers.get_common_tags()
+        specific = metadata_helpers.get_algorithm_specific_tags("training")
+        return common + specific

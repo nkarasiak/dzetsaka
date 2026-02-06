@@ -33,7 +33,9 @@ from qgis.core import (
 )
 
 # from ..scripts import function_dataraster as dataraster
+from ..logging_utils import QgisLogger, show_error_dialog
 from ..scripts.resample_same_date_as_source import resampleWithSameDateAsSource
+from . import metadata_helpers
 
 plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 # EX
@@ -113,43 +115,56 @@ class ResampleImageSameDateAsSource(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         """Here is where the processing itself takes place."""
-        SOURCE_RASTER = self.parameterAsRasterLayer(parameters, self.SOURCE_RASTER, context)
-        TARGET_RASTER = self.parameterAsRasterLayer(parameters, self.TARGET_RASTER, context)
+        log = QgisLogger(tag="Dzetsaka/Processing/ResampleSameDateAsSource")
 
-        N_SPECTRAL_BAND = self.parameterAsInt(parameters, self.N_SPECTRAL_BAND, context)
+        try:
+            SOURCE_RASTER = self.parameterAsRasterLayer(parameters, self.SOURCE_RASTER, context)
+            TARGET_RASTER = self.parameterAsRasterLayer(parameters, self.TARGET_RASTER, context)
 
-        SOURCE_DATES = self.parameterAsFile(parameters, self.SOURCE_DATES, context)
-        TARGET_DATES = self.parameterAsFile(parameters, self.TARGET_DATES, context)
+            N_SPECTRAL_BAND = self.parameterAsInt(parameters, self.N_SPECTRAL_BAND, context)
 
-        OUTPUT_RASTER = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
+            SOURCE_DATES = self.parameterAsFile(parameters, self.SOURCE_DATES, context)
+            TARGET_DATES = self.parameterAsFile(parameters, self.TARGET_DATES, context)
 
-        SOURCE_RASTER_src = SOURCE_RASTER.source()
-        TARGET_RASTER_src = TARGET_RASTER.source()
+            OUTPUT_RASTER = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
 
-        libOk = True
-        libErrors = []
-        commandBashToTest = ["otbcli_BandMath", "gdalbuildvrt"]
-        for command in commandBashToTest:
-            if os.system(command) != 256:
-                libOk = False
-                libErrors.append(command)
+            SOURCE_RASTER_src = SOURCE_RASTER.source()
+            TARGET_RASTER_src = TARGET_RASTER.source()
 
-        # learn model
-        if libOk:
-            resampleWithSameDateAsSource(
-                SOURCE_RASTER_src,
-                TARGET_RASTER_src,
-                SOURCE_DATES,
-                TARGET_DATES,
-                N_SPECTRAL_BAND,
-                OUTPUT_RASTER,
-                feedback,
-            )
-            return {self.OUTPUT_RASTER: OUTPUT_RASTER}
+            libOk = True
+            libErrors = []
+            commandBashToTest = ["otbcli_BandMath", "gdalbuildvrt"]
+            for command in commandBashToTest:
+                if os.system(command) != 256:
+                    libOk = False
+                    libErrors.append(command)
 
-        else:
-            return {"Missing library": f"Error importing {libErrors}"}
-            # QMessageBox.about(None, "Missing library", "Please install scikit-learn library to use"+str(SELECTED_ALGORITHM))
+            # learn model
+            if libOk:
+                resampleWithSameDateAsSource(
+                    SOURCE_RASTER_src,
+                    TARGET_RASTER_src,
+                    SOURCE_DATES,
+                    TARGET_DATES,
+                    N_SPECTRAL_BAND,
+                    OUTPUT_RASTER,
+                    feedback,
+                )
+                return {self.OUTPUT_RASTER: OUTPUT_RASTER}
+
+            else:
+                error_msg = f"Missing required libraries: {libErrors}"
+                feedback.reportError(error_msg)
+                log.error(error_msg)
+                show_error_dialog("dzetsaka Resample SITS Error", error_msg)
+                return {}
+
+        except Exception as e:
+            error_msg = f"Resample SITS dates failed: {e!s}"
+            feedback.reportError(error_msg)
+            log.exception("Resample SITS dates algorithm failed", e)
+            show_error_dialog("dzetsaka Resample SITS Error", error_msg)
+            return {}
 
         # return OUTPUT_RASTER
 
@@ -183,4 +198,14 @@ class ResampleImageSameDateAsSource(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Raster tool"
+        return metadata_helpers.get_group_id()
+
+    def helpUrl(self):
+        """Returns a URL to the algorithm's help/documentation."""
+        return metadata_helpers.get_help_url("resample_sits")
+
+    def tags(self):
+        """Returns tags for the algorithm for better searchability."""
+        common = metadata_helpers.get_common_tags()
+        specific = metadata_helpers.get_algorithm_specific_tags("preprocessing")
+        return common + specific

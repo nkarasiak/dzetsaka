@@ -11,7 +11,6 @@ from typing import ClassVar
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.core import (
-    QgsMessageLog,
     QgsProcessingAlgorithm,
     QgsProcessingParameterEnum,
     QgsProcessingParameterField,
@@ -20,8 +19,10 @@ from qgis.core import (
     QgsProcessingParameterVectorLayer,
 )
 
+from ..logging_utils import QgisLogger, show_error_dialog
 from ..scripts import function_vector
 from ..scripts.function_dataraster import get_layer_source_path
+from . import metadata_helpers
 
 plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
@@ -105,42 +106,53 @@ class SplitTrain(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         """Process the algorithm with given parameters."""
-        INPUT_LAYER = self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
-        INPUT_COLUMN = self.parameterAsFields(parameters, self.INPUT_COLUMN, context)
-        METHOD = self.parameterAsEnums(parameters, self.METHOD, context)
-
-        OUTPUT_TRAIN = self.parameterAsOutputLayer(parameters, self.OUTPUT_TRAIN, context)
-        OUTPUT_VALIDATION = self.parameterAsOutputLayer(parameters, self.OUTPUT_VALIDATION, context)
-
-        VALUE = self.parameterAsInt(parameters, self.VALUE, context)
-        # Retrieve algo from code
-        selectedMETHOD = self.METHOD_VALUES[METHOD[0]]
-
-        percent = selectedMETHOD == "Percent"
-
-        libOk = True
+        log = QgisLogger(tag="Dzetsaka/Processing/SplitTrainValidation")
 
         try:
-            pass
-        except BaseException:
-            libOk = False
+            INPUT_LAYER = self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
+            INPUT_COLUMN = self.parameterAsFields(parameters, self.INPUT_COLUMN, context)
+            METHOD = self.parameterAsEnums(parameters, self.METHOD, context)
 
-        if libOk:
-            function_vector.RandomInSubset(
-                get_layer_source_path(INPUT_LAYER),
-                str(INPUT_COLUMN[0]),
-                OUTPUT_VALIDATION,
-                OUTPUT_TRAIN,
-                VALUE,
-                percent,
-            )
-            return {
-                self.OUTPUT_TRAIN: OUTPUT_TRAIN,
-                self.OUTPUT_VALIDATION: OUTPUT_VALIDATION,
-            }
-        else:
-            # QMessageBox(None, "Please install scikit-learn library")
-            QgsMessageLog.logMessage("Please install scikit-learn library")
+            OUTPUT_TRAIN = self.parameterAsOutputLayer(parameters, self.OUTPUT_TRAIN, context)
+            OUTPUT_VALIDATION = self.parameterAsOutputLayer(parameters, self.OUTPUT_VALIDATION, context)
+
+            VALUE = self.parameterAsInt(parameters, self.VALUE, context)
+            # Retrieve algo from code
+            selectedMETHOD = self.METHOD_VALUES[METHOD[0]]
+
+            percent = selectedMETHOD == "Percent"
+
+            libOk = True
+
+            try:
+                pass
+            except BaseException:
+                libOk = False
+
+            if libOk:
+                function_vector.RandomInSubset(
+                    get_layer_source_path(INPUT_LAYER),
+                    str(INPUT_COLUMN[0]),
+                    OUTPUT_VALIDATION,
+                    OUTPUT_TRAIN,
+                    VALUE,
+                    percent,
+                )
+                return {
+                    self.OUTPUT_TRAIN: OUTPUT_TRAIN,
+                    self.OUTPUT_VALIDATION: OUTPUT_VALIDATION,
+                }
+            else:
+                # QMessageBox(None, "Please install scikit-learn library")
+                log.warning("Please install scikit-learn library")
+                return {}
+
+        except Exception as e:
+            error_msg = f"Split train/validation failed: {e!s}"
+            feedback.reportError(error_msg)
+            log.exception("Split train/validation algorithm failed", e)
+            show_error_dialog("dzetsaka Split Train/Validation Error", error_msg)
+            return {}
 
     def tr(self, string):
         """Translate string using Qt's translation system."""
@@ -172,4 +184,14 @@ class SplitTrain(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Vector manipulation"
+        return metadata_helpers.get_group_id()
+
+    def helpUrl(self):
+        """Returns a URL to the algorithm's help/documentation."""
+        return metadata_helpers.get_help_url("split_train_validation")
+
+    def tags(self):
+        """Returns tags for the algorithm for better searchability."""
+        common = metadata_helpers.get_common_tags()
+        specific = metadata_helpers.get_algorithm_specific_tags("preprocessing")
+        return common + specific

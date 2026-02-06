@@ -38,6 +38,9 @@ import math
 
 import numpy as np
 
+from ..logging_utils import QgisLogger, show_error_dialog
+from . import metadata_helpers
+
 plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 # EX
 """
@@ -95,40 +98,50 @@ class ShannonAlgorithm(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         """Here is where the processing itself takes place."""
-        INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
-        # INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
-        OUTPUT_RASTER = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
+        log = QgisLogger(tag="Dzetsaka/Processing/ShannonEntropy")
 
-        """
-        MEDIAN_ITER = self.parameterAsInt(parameters, self.MEDIAN_ITER, context)
-        MEDIAN_SIZE = self.parameterAsInt(parameters, self.MEDIAN_SIZE, context)
-        # First we create the output layer. The output value entered by
-        # the user is a string containing a filename, so we can use it
-        # directly
+        try:
+            INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
+            # INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
+            OUTPUT_RASTER = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
 
-        #from scipy import ndimage
-        #import gdal
-        """
-        INPUT_RASTER_src = INPUT_RASTER.source()
+            """
+            MEDIAN_ITER = self.parameterAsInt(parameters, self.MEDIAN_ITER, context)
+            MEDIAN_SIZE = self.parameterAsInt(parameters, self.MEDIAN_SIZE, context)
+            # First we create the output layer. The output value entered by
+            # the user is a string containing a filename, so we can use it
+            # directly
 
-        # feedback.pushInfo(str(OUTPUT_RASTER))
-        # QgsMessageLog.logMessage('output is: '+str(OUTPUT_RASTER))
+            #from scipy import ndimage
+            #import gdal
+            """
+            INPUT_RASTER_src = INPUT_RASTER.source()
 
-        # on importe l'image
-        im = openRaster(INPUT_RASTER_src)
-        # on crée notre image à 6 bandes
-        im2 = calcul_shannon(im)
+            # feedback.pushInfo(str(OUTPUT_RASTER))
+            # QgsMessageLog.logMessage('output is: '+str(OUTPUT_RASTER))
 
-        # data pour l'écriture
-        data = gdal.Open(INPUT_RASTER_src)
-        GeoTransform = data.GetGeoTransform()
-        Projection = data.GetProjection()
+            # on importe l'image
+            im = openRaster(INPUT_RASTER_src)
+            # on crée notre image à 6 bandes
+            im2 = calcul_shannon(im)
 
-        # on l'enregistre
+            # data pour l'écriture
+            data = gdal.Open(INPUT_RASTER_src)
+            GeoTransform = data.GetGeoTransform()
+            Projection = data.GetProjection()
 
-        saveRaster(OUTPUT_RASTER, im2, GeoTransform, Projection)
+            # on l'enregistre
 
-        return {self.OUTPUT_RASTER: OUTPUT_RASTER}
+            saveRaster(OUTPUT_RASTER, im2, GeoTransform, Projection)
+
+            return {self.OUTPUT_RASTER: OUTPUT_RASTER}
+
+        except Exception as e:
+            error_msg = f"Shannon entropy calculation failed: {e!s}"
+            feedback.reportError(error_msg)
+            log.exception("Shannon entropy algorithm failed", e)
+            show_error_dialog("dzetsaka Shannon Entropy Error", error_msg)
+            return {}
 
         # return OUTPUT_RASTER
 
@@ -162,7 +175,17 @@ class ShannonAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Raster tool"
+        return metadata_helpers.get_group_id()
+
+    def helpUrl(self):
+        """Returns a URL to the algorithm's help/documentation."""
+        return metadata_helpers.get_help_url("shannon_entropy")
+
+    def tags(self):
+        """Returns tags for the algorithm for better searchability."""
+        common = metadata_helpers.get_common_tags()
+        specific = metadata_helpers.get_algorithm_specific_tags("preprocessing")
+        return common + specific
 
 
 def calcul_shannon(image):

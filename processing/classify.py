@@ -16,7 +16,9 @@ from qgis.core import (
     QgsProcessingParameterRasterLayer,
 )
 
+from ..logging_utils import QgisLogger, show_error_dialog
 from ..scripts.mainfunction import ClassifyImage
+from . import metadata_helpers
 
 plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
@@ -68,26 +70,57 @@ class ClassifyAlgorithm(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         """Process the classification algorithm."""
-        INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
-        INPUT_MASK = self.parameterAsRasterLayer(parameters, self.INPUT_MASK, context)
-        INPUT_MODEL = self.parameterAsFile(parameters, self.INPUT_MODEL, context)
+        log = QgisLogger(tag="Dzetsaka/Processing/Classify")
 
-        OUTPUT_RASTER = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
-        CONFIDENCE_RASTER = self.parameterAsOutputLayer(parameters, self.CONFIDENCE_RASTER, context)
-        # Retrieve algo from code
-        worker = ClassifyImage()
-        # classify
-        mask = None if INPUT_MASK is None else INPUT_MASK.source()
-        worker.initPredict(
-            INPUT_RASTER.source(),
-            INPUT_MODEL,
-            OUTPUT_RASTER,
-            mask,
-            confidenceMap=CONFIDENCE_RASTER,
-            feedback=feedback,
-        )
+        try:
+            INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
+            INPUT_MASK = self.parameterAsRasterLayer(parameters, self.INPUT_MASK, context)
+            INPUT_MODEL = self.parameterAsFile(parameters, self.INPUT_MODEL, context)
 
-        return {self.OUTPUT_RASTER: OUTPUT_RASTER}
+            OUTPUT_RASTER = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
+            CONFIDENCE_RASTER = self.parameterAsOutputLayer(parameters, self.CONFIDENCE_RASTER, context)
+
+            # Validate model file exists
+            if not os.path.exists(INPUT_MODEL):
+                error_msg = f"Model file not found: {INPUT_MODEL}"
+                feedback.reportError(error_msg)
+                show_error_dialog("dzetsaka Classify Error", error_msg)
+                return {}
+
+            # Log classification parameters
+            feedback.pushInfo(f"Input raster: {INPUT_RASTER.source()}")
+            feedback.pushInfo(f"Model file: {INPUT_MODEL}")
+            feedback.pushInfo(f"Output raster: {OUTPUT_RASTER}")
+            if CONFIDENCE_RASTER:
+                feedback.pushInfo(f"Confidence raster: {CONFIDENCE_RASTER}")
+
+            # Retrieve algo from code
+            worker = ClassifyImage()
+            # classify
+            mask = None if INPUT_MASK is None else INPUT_MASK.source()
+            worker.initPredict(
+                INPUT_RASTER.source(),
+                INPUT_MODEL,
+                OUTPUT_RASTER,
+                mask,
+                confidenceMap=CONFIDENCE_RASTER,
+                feedback=feedback,
+            )
+
+            return {self.OUTPUT_RASTER: OUTPUT_RASTER}
+
+        except FileNotFoundError as e:
+            error_msg = f"File not found: {e!s}"
+            feedback.reportError(error_msg)
+            log.exception("Classification failed - file not found", e)
+            show_error_dialog("dzetsaka Classify Error", error_msg)
+            return {}
+        except Exception as e:
+            error_msg = f"Classification failed: {e!s}"
+            feedback.reportError(error_msg)
+            log.exception("Classification algorithm failed", e)
+            show_error_dialog("dzetsaka Classify Error", error_msg)
+            return {}
 
     def tr(self, string):
         """Translate string using Qt translation API."""
@@ -119,4 +152,14 @@ class ClassifyAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Classification tool"
+        return metadata_helpers.get_group_id()
+
+    def helpUrl(self):
+        """Returns a URL to the algorithm's help/documentation."""
+        return metadata_helpers.get_help_url("classify")
+
+    def tags(self):
+        """Returns tags for the algorithm for better searchability."""
+        common = metadata_helpers.get_common_tags()
+        specific = metadata_helpers.get_algorithm_specific_tags("classification")
+        return common + specific

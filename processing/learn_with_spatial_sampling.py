@@ -22,7 +22,9 @@ from qgis.core import (
 )
 
 from .. import classifier_config
+from ..logging_utils import QgisLogger, show_error_dialog
 from ..scripts import mainfunction
+from . import metadata_helpers
 
 plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
@@ -167,62 +169,72 @@ class TrainSLOOAlgorithm(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         """Process the spatial leave-one-out training algorithm."""
-        INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
-        INPUT_LAYER = self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
+        log = QgisLogger(tag="Dzetsaka/Processing/TrainSLOO")
 
-        INPUT_COLUMN = self.parameterAsFields(parameters, self.INPUT_COLUMN, context)
-        # SPLIT_PERCENT = self.parameterAsInt(parameters, self.SPLIT_PERCENT, context)
-        # TRAIN = self.parameterAsEnums(parameters, self.TRAIN, context)
-        # INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
-        OUTPUT_MODEL = self.parameterAsFileOutput(parameters, self.OUTPUT_MODEL, context)
-        # OUTPUT_MATRIX = self.parameterAsFileOutput(parameters, self.OUTPUT_MATRIX, context)
+        try:
+            INPUT_RASTER = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
+            INPUT_LAYER = self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
 
-        SAVEDIR = self.parameterAsFileOutput(parameters, self.SAVEDIR, context)
-        # Retrieve algo from code
-        extraParam = {}
-        # extraParam['maxIter']=False
-        # extraParam['param_grid'] = dict(n_estimators=2**np.arange(4,10),max_features=[5,10,20,30,40],min_samples_split=range(2,6))
+            INPUT_COLUMN = self.parameterAsFields(parameters, self.INPUT_COLUMN, context)
+            # SPLIT_PERCENT = self.parameterAsInt(parameters, self.SPLIT_PERCENT, context)
+            # TRAIN = self.parameterAsEnums(parameters, self.TRAIN, context)
+            # INPUT_RASTER = self.getParameterValue(self.INPUT_RASTER)
+            OUTPUT_MODEL = self.parameterAsFileOutput(parameters, self.OUTPUT_MODEL, context)
+            # OUTPUT_MATRIX = self.parameterAsFileOutput(parameters, self.OUTPUT_MATRIX, context)
 
-        MAXITER = self.parameterAsInt(parameters, self.MAXITER, context)
-        DISTANCE = self.parameterAsInt(parameters, self.DISTANCE, context)
+            SAVEDIR = self.parameterAsFileOutput(parameters, self.SAVEDIR, context)
+            # Retrieve algo from code
+            extraParam = {}
+            # extraParam['maxIter']=False
+            # extraParam['param_grid'] = dict(n_estimators=2**np.arange(4,10),max_features=[5,10,20,30,40],min_samples_split=range(2,6))
 
-        extraParam["distance"] = DISTANCE
+            MAXITER = self.parameterAsInt(parameters, self.MAXITER, context)
+            DISTANCE = self.parameterAsInt(parameters, self.DISTANCE, context)
 
-        if MAXITER == 0:
-            MAXITER = False
-        extraParam["maxIter"] = MAXITER
+            extraParam["distance"] = DISTANCE
 
-        PARAMGRID = self.parameterAsString(parameters, self.PARAMGRID, context)
-        if PARAMGRID != "":
-            extraParam["param_grid"] = eval(PARAMGRID)
+            if MAXITER == 0:
+                MAXITER = False
+            extraParam["maxIter"] = MAXITER
 
-        if not SAVEDIR.endswith("/"):
-            SAVEDIR += "/"
+            PARAMGRID = self.parameterAsString(parameters, self.PARAMGRID, context)
+            if PARAMGRID != "":
+                extraParam["param_grid"] = eval(PARAMGRID)
 
-        extraParam["saveDir"] = SAVEDIR
+            if not SAVEDIR.endswith("/"):
+                SAVEDIR += "/"
 
-        TRAIN = self.parameterAsEnums(parameters, self.TRAIN, context)
+            extraParam["saveDir"] = SAVEDIR
 
-        # Retrieve algo from code
-        SELECTED_ALGORITHM = self.TRAIN_ALGORITHMS_CODE[TRAIN[0]]
+            TRAIN = self.parameterAsEnums(parameters, self.TRAIN, context)
 
-        # eval(PARAM_GRID)
+            # Retrieve algo from code
+            SELECTED_ALGORITHM = self.TRAIN_ALGORITHMS_CODE[TRAIN[0]]
 
-        # QgsMessageLog.logMessage(str(eval(PARAMGRID)))
+            # eval(PARAM_GRID)
 
-        mainfunction.LearnModel(
-            INPUT_RASTER.source(),
-            INPUT_LAYER.source(),
-            INPUT_COLUMN[0],
-            OUTPUT_MODEL,
-            "SLOO",
-            0,
-            None,
-            SELECTED_ALGORITHM,
-            feedback=feedback,
-            extraParam=extraParam,
-        )
-        return {self.SAVEDIR: SAVEDIR, self.OUTPUT_MODEL: OUTPUT_MODEL}
+            # QgsMessageLog.logMessage(str(eval(PARAMGRID)))
+
+            mainfunction.LearnModel(
+                INPUT_RASTER.source(),
+                INPUT_LAYER.source(),
+                INPUT_COLUMN[0],
+                OUTPUT_MODEL,
+                "SLOO",
+                0,
+                None,
+                SELECTED_ALGORITHM,
+                feedback=feedback,
+                extraParam=extraParam,
+            )
+            return {self.SAVEDIR: SAVEDIR, self.OUTPUT_MODEL: OUTPUT_MODEL}
+
+        except Exception as e:
+            error_msg = f"Spatial Leave-One-Out training failed: {e!s}"
+            feedback.reportError(error_msg)
+            log.exception("Spatial Leave-One-Out training algorithm failed", e)
+            show_error_dialog("dzetsaka Train SLOO Error", error_msg)
+            return {}
 
     def tr(self, string):
         """Translate string using Qt translation API."""
@@ -254,4 +266,14 @@ class TrainSLOOAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Classification tool"
+        return metadata_helpers.get_group_id()
+
+    def helpUrl(self):
+        """Returns a URL to the algorithm's help/documentation."""
+        return metadata_helpers.get_help_url("sloo")
+
+    def tags(self):
+        """Returns tags for the algorithm for better searchability."""
+        common = metadata_helpers.get_common_tags()
+        specific = metadata_helpers.get_algorithm_specific_tags("training")
+        return common + specific
