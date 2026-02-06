@@ -350,6 +350,7 @@ class DzetsakaGUI(QDialog):
         #        self.toolbar.setObjectName(u'dzetsaka')
         self.pluginIsActive = False
         self.dockwidget = None
+        self.wizarddock = None
         self._active_classification_task = None
         #
 
@@ -545,11 +546,11 @@ class DzetsakaGUI(QDialog):
         self.iface.addToolBarIcon(self.settingsIcon)
         self.actions.append(self.settingsIcon)
 
-        # Classification Wizard — menu only, no toolbar icon
+        # Classification Dashboard (Quick + Advanced) — menu only, no toolbar icon
         icon_path = self.get_icon_path("icon.png")
         self.add_action(
             icon_path,
-            text=self.tr("Classification Wizard"),
+            text=self.tr("Classification Dashboard"),
             callback=self.run_wizard,
             add_to_toolbar=False,
             parent=self.iface.mainWindow(),
@@ -577,6 +578,8 @@ class DzetsakaGUI(QDialog):
         self.pluginIsActive = False
         if self.dockwidget is not None:
             self.dockwidget.close()
+        if self.wizarddock is not None:
+            self.wizarddock.close()
 
         # Remove processing algorithms
         QgsApplication.processingRegistry().removeProvider(self.provider)
@@ -1884,10 +1887,20 @@ Available Libraries:
             return False
 
     def run_wizard(self):
-        """Open the Classification Wizard dialog."""
-        self._wizard = ui.ClassificationWizard(self.iface.mainWindow(), installer=self)
-        self._wizard.classificationRequested.connect(self.execute_wizard_config)
-        self._wizard.show()
+        """Open the dockable classification dashboard (Quick/Advanced)."""
+        if self.wizarddock is None:
+            self.wizarddock = ui.ClassificationDashboardDock(self.iface.mainWindow(), installer=self)
+            self.wizarddock.classificationRequested.connect(self.execute_wizard_config)
+            self.wizarddock.closingPlugin.connect(self.onCloseWizardDock)
+            self.iface.addDockWidget(_LEFT_DOCK_AREA, self.wizarddock)
+
+        self.wizarddock.show()
+        self.wizarddock.raise_()
+
+    def onCloseWizardDock(self):
+        """Track dashboard dock closing state."""
+        if self.wizarddock is not None:
+            self.wizarddock.hide()
 
     def _validate_classification_request(
         self,

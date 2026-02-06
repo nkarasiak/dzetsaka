@@ -26,6 +26,7 @@ from qgis.PyQt.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
+    QDockWidget,
     QFileDialog,
     QGroupBox,
     QGridLayout,
@@ -38,6 +39,7 @@ from qgis.PyQt.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSpinBox,
+    QStackedWidget,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
@@ -1947,13 +1949,14 @@ class ClassificationWizard(QWizard):
 
     classificationRequested = pyqtSignal(dict)
 
-    def __init__(self, parent=None, installer=None):
+    def __init__(self, parent=None, installer=None, close_on_accept=True):
         """Initialise ClassificationWizard with all 3 pages."""
         super(ClassificationWizard, self).__init__(parent)
         self.setWindowTitle("dzetsaka Classification Wizard")
         self._settings = QSettings()
         self._deps = check_dependency_availability()
         self._installer = installer
+        self._close_on_accept = bool(close_on_accept)
         self._recipes = load_recipes(self._settings)
         self._remote_recipe_url = self._settings.value("/dzetsaka/recipesRemoteUrl", "", str)
 
@@ -2177,4 +2180,395 @@ class ClassificationWizard(QWizard):
         """Emit the config signal and close the wizard."""
         config = self.collect_config()
         self.classificationRequested.emit(config)
-        super(ClassificationWizard, self).accept()
+        if self._close_on_accept:
+            super(ClassificationWizard, self).accept()
+
+
+class QuickClassificationPanel(QWidget):
+    """Compact dashboard for common classification tasks."""
+
+    classificationRequested = pyqtSignal(dict)
+
+    def __init__(self, parent=None):
+        super(QuickClassificationPanel, self).__init__(parent)
+        self._deps = check_dependency_availability()
+        self._setup_ui()
+
+    def _setup_ui(self):
+        # type: () -> None
+        root = QVBoxLayout()
+
+        intro = QLabel(
+            "Quick mode runs the standard workflow with essential options only. "
+            "Switch to Advanced mode for tuning and expert controls."
+        )
+        intro.setWordWrap(True)
+        root.addWidget(intro)
+
+        input_group = QGroupBox("Input")
+        input_layout = QVBoxLayout()
+
+        input_layout.addWidget(QLabel("Input raster:"))
+        raster_row = QHBoxLayout()
+        self.rasterLineEdit = QLineEdit()
+        self.rasterLineEdit.setPlaceholderText("Path to raster file…")
+        raster_row.addWidget(self.rasterLineEdit)
+        self.rasterBrowse = QPushButton("Browse…")
+        self.rasterBrowse.clicked.connect(self._browse_raster)
+        raster_row.addWidget(self.rasterBrowse)
+        input_layout.addLayout(raster_row)
+
+        self._raster_combo = None
+        try:
+            from qgis.core import QgsProviderRegistry
+            from qgis.gui import QgsMapLayerComboBox
+
+            self._raster_combo = QgsMapLayerComboBox()
+            exclude = QgsProviderRegistry.instance().providerList()
+            if "gdal" in exclude:
+                exclude.remove("gdal")
+            self._raster_combo.setExcludedProviders(exclude)
+            input_layout.addWidget(self._raster_combo)
+            self.rasterLineEdit.setVisible(False)
+            self.rasterBrowse.setVisible(False)
+        except (ImportError, AttributeError):
+            pass
+
+        self.loadModelCheck = QCheckBox("Load existing model (skip training)")
+        self.loadModelCheck.toggled.connect(self._toggle_model_mode)
+        input_layout.addWidget(self.loadModelCheck)
+
+        model_row = QHBoxLayout()
+        self.modelLineEdit = QLineEdit()
+        self.modelLineEdit.setPlaceholderText("Path to saved model…")
+        self.modelLineEdit.setEnabled(False)
+        model_row.addWidget(self.modelLineEdit)
+        self.modelBrowse = QPushButton("Browse…")
+        self.modelBrowse.setEnabled(False)
+        self.modelBrowse.clicked.connect(self._browse_model)
+        model_row.addWidget(self.modelBrowse)
+        input_layout.addLayout(model_row)
+
+        input_layout.addWidget(QLabel("Training vector:"))
+        vector_row = QHBoxLayout()
+        self.vectorLineEdit = QLineEdit()
+        self.vectorLineEdit.setPlaceholderText("Path to vector file…")
+        vector_row.addWidget(self.vectorLineEdit)
+        self.vectorBrowse = QPushButton("Browse…")
+        self.vectorBrowse.clicked.connect(self._browse_vector)
+        vector_row.addWidget(self.vectorBrowse)
+        input_layout.addLayout(vector_row)
+
+        self._vector_combo = None
+        try:
+            from qgis.core import QgsProviderRegistry
+            from qgis.gui import QgsMapLayerComboBox
+
+            self._vector_combo = QgsMapLayerComboBox()
+            exclude = QgsProviderRegistry.instance().providerList()
+            if "ogr" in exclude:
+                exclude.remove("ogr")
+            self._vector_combo.setExcludedProviders(exclude)
+            self._vector_combo.currentIndexChanged.connect(self._on_vector_changed)
+            if hasattr(self._vector_combo, "layerChanged"):
+                self._vector_combo.layerChanged.connect(self._on_vector_changed)
+            input_layout.addWidget(self._vector_combo)
+            self.vectorLineEdit.setVisible(False)
+            self.vectorBrowse.setVisible(False)
+        except (ImportError, AttributeError):
+            pass
+
+        input_layout.addWidget(QLabel("Class field:"))
+        self.classFieldCombo = QComboBox()
+        input_layout.addWidget(self.classFieldCombo)
+        self.fieldStatusLabel = QLabel("")
+        input_layout.addWidget(self.fieldStatusLabel)
+        self.vectorLineEdit.editingFinished.connect(self._on_vector_path_edited)
+        self._on_vector_changed()
+
+        input_layout.addWidget(QLabel("Classifier:"))
+        self.classifierCombo = QComboBox()
+        for _code, name, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
+            self.classifierCombo.addItem(name)
+        input_layout.addWidget(self.classifierCombo)
+
+        input_group.setLayout(input_layout)
+        root.addWidget(input_group)
+
+        output_group = QGroupBox("Output")
+        output_layout = QGridLayout()
+        output_layout.addWidget(QLabel("Output raster (optional):"), 0, 0)
+        self.outRasterEdit = QLineEdit()
+        self.outRasterEdit.setPlaceholderText("<temporary file>")
+        output_layout.addWidget(self.outRasterEdit, 0, 1)
+        self.outRasterBrowse = QPushButton("Browse…")
+        self.outRasterBrowse.clicked.connect(self._browse_out_raster)
+        output_layout.addWidget(self.outRasterBrowse, 0, 2)
+
+        self.confidenceCheck = QCheckBox("Generate confidence map")
+        self.confidenceCheck.toggled.connect(self._toggle_confidence)
+        output_layout.addWidget(self.confidenceCheck, 1, 0, 1, 3)
+
+        output_layout.addWidget(QLabel("Confidence map path:"), 2, 0)
+        self.confMapEdit = QLineEdit()
+        self.confMapEdit.setEnabled(False)
+        self.confMapEdit.setPlaceholderText("Path to confidence map…")
+        output_layout.addWidget(self.confMapEdit, 2, 1)
+        self.confMapBrowse = QPushButton("Browse…")
+        self.confMapBrowse.setEnabled(False)
+        self.confMapBrowse.clicked.connect(self._browse_conf_map)
+        output_layout.addWidget(self.confMapBrowse, 2, 2)
+
+        output_group.setLayout(output_layout)
+        root.addWidget(output_group)
+
+        run_row = QHBoxLayout()
+        run_row.addStretch()
+        self.runButton = QPushButton("Run Quick Classification")
+        self.runButton.clicked.connect(self._emit_config)
+        run_row.addWidget(self.runButton)
+        root.addLayout(run_row)
+
+        root.addStretch()
+        self.setLayout(root)
+
+    def _toggle_model_mode(self, checked):
+        # type: (bool) -> None
+        self.modelLineEdit.setEnabled(checked)
+        self.modelBrowse.setEnabled(checked)
+        self.vectorLineEdit.setEnabled(not checked)
+        self.classFieldCombo.setEnabled(not checked)
+        if self._vector_combo is not None:
+            self._vector_combo.setEnabled(not checked)
+
+    def _toggle_confidence(self, checked):
+        # type: (bool) -> None
+        self.confMapEdit.setEnabled(checked)
+        self.confMapBrowse.setEnabled(checked)
+
+    def _browse_raster(self):
+        # type: () -> None
+        path, _f = QFileDialog.getOpenFileName(self, "Select raster", "", "GeoTIFF (*.tif *.tiff)")
+        if path:
+            self.rasterLineEdit.setText(path)
+
+    def _browse_vector(self):
+        # type: () -> None
+        path, _f = QFileDialog.getOpenFileName(
+            self, "Select vector", "", "Shapefile (*.shp);;GeoPackage (*.gpkg);;All (*)"
+        )
+        if path:
+            self.vectorLineEdit.setText(path)
+            self._populate_fields_from_path(path)
+
+    def _browse_model(self):
+        # type: () -> None
+        path, _f = QFileDialog.getOpenFileName(self, "Select model", "", "Model files (*)")
+        if path:
+            self.modelLineEdit.setText(path)
+
+    def _browse_out_raster(self):
+        # type: () -> None
+        path, _f = QFileDialog.getSaveFileName(self, "Output raster", "", "GeoTIFF (*.tif)")
+        if path:
+            self.outRasterEdit.setText(path)
+
+    def _browse_conf_map(self):
+        # type: () -> None
+        path, _f = QFileDialog.getSaveFileName(self, "Confidence map", "", "GeoTIFF (*.tif)")
+        if path:
+            self.confMapEdit.setText(path)
+
+    def _on_vector_changed(self):
+        # type: () -> None
+        self.classFieldCombo.clear()
+        self.fieldStatusLabel.setText("")
+        if self._vector_combo is None:
+            return
+        layer = self._vector_combo.currentLayer()
+        if layer is None:
+            self.fieldStatusLabel.setText("Select a vector layer to list its fields.")
+            return
+        try:
+            fields = layer.dataProvider().fields()
+            names = [fields.at(i).name() for i in range(fields.count())]
+            if names:
+                self.classFieldCombo.addItems(names)
+                self.fieldStatusLabel.setText("")
+            else:
+                self.fieldStatusLabel.setText("No fields found in selected layer.")
+        except (AttributeError, TypeError):
+            self.fieldStatusLabel.setText("Unable to read fields from selected layer.")
+
+    def _on_vector_path_edited(self):
+        # type: () -> None
+        path = self.vectorLineEdit.text().strip()
+        if not path:
+            self.classFieldCombo.clear()
+            self.fieldStatusLabel.setText("")
+            return
+        self._populate_fields_from_path(path)
+
+    def _populate_fields_from_path(self, path):
+        # type: (str) -> None
+        self.classFieldCombo.clear()
+        self.fieldStatusLabel.setText("")
+        if not os.path.exists(path):
+            self.fieldStatusLabel.setText("Vector path does not exist.")
+            return
+        try:
+            from osgeo import ogr
+        except ImportError:
+            try:
+                import ogr  # type: ignore[no-redef]
+            except ImportError:
+                self.fieldStatusLabel.setText("OGR unavailable; cannot list fields.")
+                return
+        ds = ogr.Open(path)
+        if ds is None:
+            self.fieldStatusLabel.setText("Unable to open vector dataset.")
+            return
+        layer = ds.GetLayer()
+        if layer is None:
+            self.fieldStatusLabel.setText("No layer found in dataset.")
+            return
+        dfn = layer.GetLayerDefn()
+        count = dfn.GetFieldCount()
+        if count == 0:
+            self.fieldStatusLabel.setText("No fields found in vector dataset.")
+            return
+        for i in range(count):
+            self.classFieldCombo.addItem(dfn.GetFieldDefn(i).GetName())
+
+    def _get_raster_path(self):
+        # type: () -> str
+        if self._raster_combo is not None:
+            layer = self._raster_combo.currentLayer()
+            if layer is not None:
+                return layer.dataProvider().dataSourceUri()
+        return self.rasterLineEdit.text().strip()
+
+    def _get_vector_path(self):
+        # type: () -> str
+        if self._vector_combo is not None:
+            layer = self._vector_combo.currentLayer()
+            if layer is not None:
+                return layer.dataProvider().dataSourceUri().split("|")[0]
+        return self.vectorLineEdit.text().strip()
+
+    def _get_classifier_code(self):
+        # type: () -> str
+        return _CLASSIFIER_META[self.classifierCombo.currentIndex()][0]
+
+    def _quick_extra_params(self):
+        # type: () -> Dict[str, object]
+        return {
+            "USE_OPTUNA": False,
+            "OPTUNA_TRIALS": 100,
+            "COMPUTE_SHAP": False,
+            "SHAP_OUTPUT": "",
+            "SHAP_SAMPLE_SIZE": 1000,
+            "USE_SMOTE": False,
+            "SMOTE_K_NEIGHBORS": 5,
+            "USE_CLASS_WEIGHTS": False,
+            "CLASS_WEIGHT_STRATEGY": "balanced",
+            "CUSTOM_CLASS_WEIGHTS": {},
+            "USE_NESTED_CV": False,
+            "NESTED_INNER_CV": 3,
+            "NESTED_OUTER_CV": 5,
+        }
+
+    def _emit_config(self):
+        # type: () -> None
+        raster = self._get_raster_path()
+        if not raster:
+            QMessageBox.warning(self, "Missing Input", "Please select an input raster.")
+            return
+
+        load_model = self.modelLineEdit.text().strip() if self.loadModelCheck.isChecked() else ""
+        vector = self._get_vector_path()
+        class_field = self.classFieldCombo.currentText().strip()
+
+        if not load_model and (not vector or not class_field):
+            QMessageBox.warning(
+                self,
+                "Missing Training Data",
+                "Quick mode requires a training vector and class field when no model is loaded.",
+            )
+            return
+
+        config = {
+            "raster": raster,
+            "vector": vector,
+            "class_field": class_field,
+            "load_model": load_model,
+            "classifier": self._get_classifier_code(),
+            "extraParam": self._quick_extra_params(),
+            "output_raster": self.outRasterEdit.text().strip(),
+            "confidence_map": self.confMapEdit.text().strip() if self.confidenceCheck.isChecked() else "",
+            "save_model": "",
+            "confusion_matrix": "",
+            "split_percent": 100,
+        }
+        self.classificationRequested.emit(config)
+
+
+class ClassificationDashboardDock(QDockWidget):
+    """Dockable dashboard with Quick and Advanced classification modes."""
+
+    closingPlugin = pyqtSignal()
+    classificationRequested = pyqtSignal(dict)
+
+    def __init__(self, parent=None, installer=None):
+        super(ClassificationDashboardDock, self).__init__(parent)
+        self.setWindowTitle("dzetsaka: Classification Dashboard")
+        self.setObjectName("DzetsakaClassificationDashboardDock")
+        self.setMinimumWidth(430)
+        self.setMinimumHeight(520)
+        self.setMaximumWidth(700)
+
+        container = QWidget()
+        layout = QVBoxLayout(container)
+
+        header = QHBoxLayout()
+        header.addWidget(QLabel("Mode:"))
+        self.modeCombo = QComboBox()
+        self.modeCombo.addItems(["Quick", "Advanced"])
+        header.addWidget(self.modeCombo)
+        header.addStretch()
+        layout.addLayout(header)
+
+        self.modeHint = QLabel("Quick: essential inputs and one-click run.")
+        layout.addWidget(self.modeHint)
+
+        self.stack = QStackedWidget()
+        self.quickPanel = QuickClassificationPanel()
+        self.quickPanel.classificationRequested.connect(self.classificationRequested)
+
+        self.advancedWizard = ClassificationWizard(
+            parent=container,
+            installer=installer,
+            close_on_accept=False,
+        )
+        self.advancedWizard.classificationRequested.connect(self.classificationRequested)
+
+        self.stack.addWidget(self.quickPanel)
+        self.stack.addWidget(self.advancedWizard)
+        layout.addWidget(self.stack)
+
+        self.modeCombo.currentIndexChanged.connect(self._on_mode_changed)
+        self._on_mode_changed(0)
+
+        self.setWidget(container)
+
+    def _on_mode_changed(self, index):
+        # type: (int) -> None
+        self.stack.setCurrentIndex(index)
+        if index == 0:
+            self.modeHint.setText("Quick: essential inputs and one-click run.")
+        else:
+            self.modeHint.setText("Advanced: full wizard with detailed optimization and outputs.")
+
+    def closeEvent(self, event):
+        self.closingPlugin.emit()
+        event.accept()
