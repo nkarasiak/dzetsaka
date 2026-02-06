@@ -81,7 +81,7 @@ import contextlib
 from dzetsaka import classifier_config, ui
 from dzetsaka.dzetsaka_provider import DzetsakaProvider
 from dzetsaka.logging_utils import QgisLogger, show_error_dialog, show_issue_popup
-from dzetsaka.presentation.qgis.task_runner import ClassificationTask, TaskFeedbackAdapter
+from dzetsaka.presentation.qgis.task_runner import TaskFeedbackAdapter
 from dzetsaka.scripts.function_dataraster import get_layer_source_path
 
 # Import resources for icons
@@ -1225,50 +1225,11 @@ class DzetsakaGUI(QDialog):
     ):
         # type: (...) -> None
         """Submit a background classification task to the QGIS task manager."""
-        if self._active_classification_task is not None:
-            task_active = False
-            try:
-                status = self._active_classification_task.status()
-                try:
-                    done_statuses = {QgsTask.TaskStatus.Complete, QgsTask.TaskStatus.Terminated}
-                except AttributeError:
-                    done_statuses = {QgsTask.Complete, QgsTask.Terminated}
-                task_active = status not in done_statuses
-            except Exception:
-                task_active = False
+        from dzetsaka.presentation.qgis.task_launcher import start_classification_task
 
-            if task_active:
-                QMessageBox.information(
-                    self.iface.mainWindow(),
-                    "Task Already Running",
-                    "A dzetsaka classification task is already running in the QGIS Task Manager. "
-                    "Please wait for it to finish before starting a new one.",
-                    QMessageBox.StandardButton.Ok,
-                )
-                return
-
-        def on_task_error(title, message):
-            self._active_classification_task = None
-            config_info = self._get_debug_info()
-            self.log.error(f"{title}: {message}")
-            self.log.info("Configuration for issue reporting:")
-            self.log.info(config_info)
-            self._show_github_issue_popup(
-                error_title=title,
-                error_type="Runtime Error",
-                error_message=message,
-                context=error_context,
-            )
-
-        def on_task_success(out_raster, out_confidence):
-            self._active_classification_task = None
-            self.log.info(f"[{success_prefix}] Classification completed successfully")
-            self.iface.addRasterLayer(out_raster)
-            if out_confidence:
-                self.iface.addRasterLayer(out_confidence)
-
-        task = ClassificationTask(
-            description,
+        start_classification_task(
+            self,
+            description=description,
             do_training=do_training,
             raster_path=raster_path,
             vector_path=vector_path,
@@ -1283,12 +1244,9 @@ class DzetsakaGUI(QDialog):
             confidence_map=confidence_map,
             nodata=nodata,
             extra_params=extra_params,
-            on_success=on_task_success,
-            on_error=on_task_error,
+            error_context=error_context,
+            success_prefix=success_prefix,
         )
-        self._active_classification_task = task
-        QgsApplication.taskManager().addTask(task)
-        self.log.info(f"Task submitted to QGIS task manager: {description}")
 
     def execute_wizard_config(self, config):
         """Run training and classification driven by the wizard config dict.
