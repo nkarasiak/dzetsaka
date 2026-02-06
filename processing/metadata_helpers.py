@@ -25,16 +25,8 @@ def get_help_url(algorithm_name):
     doc_map = {
         "train": "USER_GUIDE.md#2-train-a-model",
         "classify": "USER_GUIDE.md#3-classify-new-images",
-        "sieve": "USER_GUIDE.md#advanced-features",
-        "median_filter": "USER_GUIDE.md#advanced-features",
-        "closing_filter": "USER_GUIDE.md#advanced-features",
-        "shannon_entropy": "USER_GUIDE.md#advanced-features",
         "split_train_validation": "USER_GUIDE.md#2-train-a-model",
-        "resample_sits": "USER_GUIDE.md#basic-workflow",
         "nested_cv": "USER_GUIDE.md#spatial-cross-validation",
-        "stand_cv": "USER_GUIDE.md#spatial-cross-validation",
-        "sloo": "USER_GUIDE.md#spatial-cross-validation",
-        "domain_adaptation": "USER_GUIDE.md#advanced-features",
         "explain_model": "USER_GUIDE.md#shap-explainability",
     }
 
