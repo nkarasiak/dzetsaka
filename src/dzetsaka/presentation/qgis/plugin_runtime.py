@@ -1256,73 +1256,9 @@ class DzetsakaGUI(QDialog):
             confusion_matrix, split_percent.
 
         """
-        inRaster = config.get("raster", "")
-        inShape = config.get("vector", "")
-        inField = config.get("class_field", "")
-        inClassifier = str(config.get("classifier", "GMM"))
-        extraParam = config.get("extraParam", None)
+        from dzetsaka.presentation.qgis.wizard_execution import execute_wizard_config
 
-        # --- model path ---
-        loadModel = config.get("load_model", "")
-        if loadModel:
-            model = loadModel
-        else:
-            saveModel = config.get("save_model", "")
-            model = saveModel if saveModel else tempfile.mktemp("." + inClassifier)
-
-        # --- confusion matrix / split ---
-        outMatrix = config.get("confusion_matrix", "") or None
-        inSplit = config.get("split_percent", 100)
-        if not outMatrix:
-            inSplit = 100
-
-        NODATA = -9999
-        inSeed = 0
-
-        do_training = not loadModel
-        if not self._validate_classification_request(
-            raster_path=inRaster,
-            do_training=do_training,
-            vector_path=inShape if do_training else None,
-            class_field=inField if do_training else None,
-            model_path=model if not do_training else None,
-            source_label="Wizard",
-        ):
-            return
-        if not self._ensure_classifier_runtime_ready(
-            inClassifier, source_label="Wizard", fallback_to_gmm=False
-        ):
-            return
-
-        # --- output raster (temp if blank) ---
-        outRaster = config.get("output_raster", "")
-        if not outRaster:
-            tempFolder = tempfile.mkdtemp()
-            outRaster = os.path.join(tempFolder, self._default_output_name(inRaster, inClassifier))
-
-        # --- confidence map ---
-        confidenceMap = config.get("confidence_map", "") or None
-
-        self.log.info(f"[Wizard] Starting {'training and ' if do_training else ''}classification with {inClassifier}")
-        self._start_classification_task(
-            description=f"dzetsaka Wizard: {inClassifier} classification",
-            do_training=do_training,
-            raster_path=inRaster,
-            vector_path=inShape if do_training else None,
-            class_field=inField if do_training else None,
-            model_path=model,
-            split_config=inSplit,
-            random_seed=inSeed,
-            matrix_path=outMatrix,
-            classifier=inClassifier,
-            output_path=outRaster,
-            mask_path=None,
-            confidence_map=confidenceMap,
-            nodata=NODATA,
-            extra_params=extraParam,
-            error_context="Wizard classification workflow",
-            success_prefix="Wizard",
-        )
+        execute_wizard_config(self, config)
 
     def modifyConfig(self, section, option, value):
         """Modify configuration file with new section/option/value.
