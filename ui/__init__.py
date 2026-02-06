@@ -5,7 +5,6 @@ from qgis.PyQt import QtGui, QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
 
 from . import dzetsaka_dock
-from . import settings_dock
 
 from . import welcome
 
@@ -20,20 +19,8 @@ class dzetsakaDockWidget(QtWidgets.QDockWidget, dzetsaka_dock.Ui_DockWidget):
         if hasattr(self, "messageBanner"):
             self.messageBanner.setText(
                 "<b>New dashboard available.</b><br>"
-                "<a href=\"open_wizard\">Open Quick run / Advanced setup →</a>"
+                "<a href=\"open_wizard\">Open Express / Guided classifier →</a>"
             )
-
-    def closeEvent(self, event):
-        self.closingPlugin.emit()
-        event.accept()
-
-
-class settings_dock(QtWidgets.QDockWidget, settings_dock.Ui_settingsDock):
-    closingPlugin = pyqtSignal()
-
-    def __init__(self, parent=None):
-        super(settings_dock, self).__init__(parent)
-        self.setupUi(self)
 
     def closeEvent(self, event):
         self.closingPlugin.emit()

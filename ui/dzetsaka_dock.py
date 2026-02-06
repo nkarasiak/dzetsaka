@@ -135,7 +135,7 @@ class Ui_DockWidget(object):
         self.settingsButton = QtWidgets.QToolButton(parent=self.dockWidgetContents)
         self.settingsButton.setMinimumSize(QtCore.QSize(24, 24))
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/plugins/dzetsaka/img/settings.png"), _ICON_NORMAL, _ICON_OFF)
+        icon.addPixmap(QtGui.QPixmap(":/plugins/dzetsaka/img/icon.png"), _ICON_NORMAL, _ICON_OFF)
         self.settingsButton.setIcon(icon)
         self.settingsButton.setObjectName("settingsButton")
         self.gridLayout_5.addWidget(self.settingsButton, 1, 3, 1, 1)
@@ -266,7 +266,7 @@ class Ui_DockWidget(object):
     def retranslateUi(self, DockWidget):
         _translate = QtCore.QCoreApplication.translate
         DockWidget.setWindowTitle(_translate("DockWidget", "dzetsaka : classification"))
-        self.messageBanner.setText(_translate("DockWidget", "<b>New dashboard available.</b><br><a href=\"open_wizard\">Open Quick run / Advanced setup →</a>"))
+        self.messageBanner.setText(_translate("DockWidget", "<b>New dashboard available.</b><br><a href=\"open_wizard\">Open Express / Guided classifier →</a>"))
         self.label_2.setToolTip(_translate("DockWidget", "<html><head/><body><p>The image to classify</p></body></html>"))
         self.label_3.setToolTip(_translate("DockWidget", "<html><head/><body><p>Your ROI</p></body></html>"))
         self.label.setText(_translate("DockWidget", "or"))
@@ -279,7 +279,7 @@ class Ui_DockWidget(object):
         self.gridLayout_5.setColumnStretch(3, 0)
         self.outRaster.setPlaceholderText(_translate("DockWidget", "Classification. Leave empty for temporary file"))
         self.performMagic.setText(_translate("DockWidget", "Run classification"))
-        self.settingsButton.setText(_translate("DockWidget", "..."))
+        self.settingsButton.setText(_translate("DockWidget", "UI"))
         self.outRasterButton.setText(_translate("DockWidget", "..."))
         self.mGroupBox.setTitle(_translate("DockWidget", "Optional ▼"))
         self.label_7.setToolTip(_translate("DockWidget", "<html><head/><body><p>Mask where 0 are the pixels to ignore and 1 to classify</p></body></html>"))

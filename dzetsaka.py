@@ -281,7 +281,7 @@ class DzetsakaGUI(QDialog):
 
     >>> plugin = DzetsakaGUI(iface)
     >>> plugin.initGui()  # Called by QGIS
-    >>> plugin.run()  # Opens the classification dock
+    >>> plugin.run()  # Opens the classifier UI
 
     """
 
@@ -517,23 +517,14 @@ class DzetsakaGUI(QDialog):
         icon_path = self.get_icon_path("icon.png")
         self.add_action(
             icon_path,
-            text=self.tr("classification dock"),
+            text=self.tr("classifier dashboard"),
             callback=self.run_wizard,
-            parent=self.iface.mainWindow(),
-        )
-
-        icon_settings_path = self.get_icon_path("dzetsaka_settings.png")
-        self.add_action(
-            icon_settings_path,
-            text=self.tr("settings"),
-            callback=self.loadSettings,
-            add_to_toolbar=False,
             parent=self.iface.mainWindow(),
         )
 
         self.dockIcon = QAction(
             QIcon(self.get_icon_path("icon.png")),
-            "dzetsaka classification dock",
+            "dzetsaka classifier dashboard",
             self.iface.mainWindow(),
         )
         self.dockIcon.triggered.connect(self.run_wizard)
@@ -680,7 +671,7 @@ class DzetsakaGUI(QDialog):
             onChangedLayer()
             self.dockwidget.inShape.currentIndexChanged[int].connect(onChangedLayer)
 
-            self.dockwidget.settingsButton.clicked.connect(self.loadSettings)
+            self.dockwidget.settingsButton.clicked.connect(self.run_wizard)
 
             # let's run the classification !
             self.dockwidget.performMagic.clicked.connect(self.runMagic)
@@ -799,43 +790,8 @@ class DzetsakaGUI(QDialog):
             )
 
     def loadSettings(self):
-        """!@brief load settings dock."""
-        self.settingsdock = ui.settings_dock()
-        self.settingsdock.show()
-
-        try:
-            # Reload config
-            self.loadConfig()
-            # Classification settings
-
-            # classifier
-
-            for i, cls in enumerate(self.classifiers):
-                if self.classifier == cls:
-                    self.settingsdock.selectClassifier.setCurrentIndex(i)
-
-            self.settingsdock.selectClassifier.currentIndexChanged[int].connect(self.saveSettings)
-
-            self.settings.setValue("/dzetsaka/classifier", self.classifier)
-            # Hide legacy advanced settings kept in UI for backward compatibility.
-            self.settingsdock.label_2.hide()
-            self.settingsdock.classSuffix.hide()
-            self.settingsdock.label_3.hide()
-            self.settingsdock.classPrefix.hide()
-            self.settingsdock.label_4.hide()
-            self.settingsdock.maskSuffix.hide()
-            self.settingsdock.label_5.hide()
-            self.settingsdock.selectProviders.hide()
-            # Reload config for further use
-            self.loadConfig()
-
-        except BaseException:
-            self.log.error("Failed to load settings...")
-            show_error_dialog(
-                "dzetsaka Settings Error",
-                "Failed to load settings. Check the QGIS log for details.",
-                parent=self.iface.mainWindow(),
-            )
+        """Legacy entry point retained for compatibility: open dashboard."""
+        self.run_wizard()
 
     def runMagic(self):
         """!@brief Perform training and classification for dzetsaka."""
@@ -1194,6 +1150,8 @@ class DzetsakaGUI(QDialog):
 
     def saveSettings(self):
         """!@brief save settings if modifications."""
+        if not hasattr(self, "settingsdock") or self.settingsdock is None:
+            return
         # Change classifier
         if self.sender() == self.settingsdock.selectClassifier:
             selected_classifier = self.settingsdock.selectClassifier.currentText()
@@ -2060,7 +2018,7 @@ Available Libraries:
             (
                 f"{source_label}: selected classifier <b>{classifier_name}</b> cannot run right now.<br><br>"
                 f"Missing runtime dependencies: <code>{missing_list}</code><br><br>"
-                "Please install dependencies from the wizard/settings installer and restart QGIS."
+                "Please install dependencies from the dashboard installer and restart QGIS."
             ),
             QMessageBox.StandardButton.Ok,
         )
@@ -2071,9 +2029,6 @@ Available Libraries:
         if fallback_to_gmm:
             self.settings.setValue("/dzetsaka/classifier", "Gaussian Mixture Model")
             self.classifier = "Gaussian Mixture Model"
-            with contextlib.suppress(Exception):
-                if hasattr(self, "settingsdock") and self.settingsdock is not None:
-                    self.settingsdock.selectClassifier.setCurrentIndex(0)
         return False
 
     def _start_classification_task(

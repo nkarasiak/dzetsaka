@@ -2588,12 +2588,12 @@ class QuickClassificationPanel(QWidget):
         QMessageBox.warning(
             self,
             "Dependencies Missing",
-            (
-                f"Selected classifier {classifier_name} cannot run right now.\n\n"
-                f"Missing runtime dependencies: {', '.join(missing_required)}\n\n"
-                "Install dependencies from the wizard/settings installer and restart QGIS."
-            ),
-        )
+                (
+                    f"Selected classifier {classifier_name} cannot run right now.\n\n"
+                    f"Missing runtime dependencies: {', '.join(missing_required)}\n\n"
+                    "Install dependencies from the dashboard installer and restart QGIS."
+                ),
+            )
         self.classifierCombo.setCurrentIndex(0)
 
     def _quick_extra_params(self):
@@ -2629,7 +2629,7 @@ class QuickClassificationPanel(QWidget):
                 (
                     f"Selected classifier {self._get_classifier_name()} cannot run right now.\n\n"
                     f"Missing runtime dependencies: {', '.join(missing_required)}\n\n"
-                    "Install dependencies from the wizard/settings installer and restart QGIS."
+                    "Install dependencies from the dashboard installer and restart QGIS."
                 ),
             )
             return
@@ -2641,7 +2641,7 @@ class QuickClassificationPanel(QWidget):
             QMessageBox.warning(
                 self,
                 "Missing Training Data",
-                "Quick run requires training data and a label field.",
+                "Express mode requires training data and a label field.",
             )
             return
 
@@ -2669,7 +2669,7 @@ class ClassificationDashboardDock(QDockWidget):
 
     def __init__(self, parent=None, installer=None):
         super(ClassificationDashboardDock, self).__init__(parent)
-        self.setWindowTitle("dzetsaka Dashboard")
+        self.setWindowTitle("dzetsaka Classifier")
         self.setObjectName("DzetsakaClassificationDashboardDock")
         self.setMinimumWidth(220)
         self.setMinimumHeight(260)
@@ -2712,10 +2712,10 @@ class ClassificationDashboardDock(QDockWidget):
         overlay_layout.setContentsMargins(0, 0, 0, 0)
         overlay_layout.setSpacing(0)
         self.modeCombo = QComboBox()
-        self.modeCombo.addItems(["Quick run", "Advanced"])
+        self.modeCombo.addItems(["Express", "Guided"])
         self.modeCombo.setToolTip(
-            "Quick run: essential inputs and one-click run.\n"
-            "Advanced setup: full workflow with detailed optimization and outputs."
+            "Express: essential inputs and one-click run.\n"
+            "Guided: compact intent-driven setup with expert fallback."
         )
         overlay_layout.addWidget(self.modeCombo)
         overlay_layout.addStretch()
@@ -2727,7 +2727,7 @@ class ClassificationDashboardDock(QDockWidget):
 
         self.stack = QStackedWidget()
         self.quickPanel = QuickClassificationPanel(installer=installer)
-        self.quickPanel.setToolTip("Quick run: essential inputs and one-click run.")
+        self.quickPanel.setToolTip("Express: essential inputs and one-click run.")
         self.quickPanel.classificationRequested.connect(self.classificationRequested)
         self.quickScroll = QScrollArea()
         self.quickScroll.setWidgetResizable(True)
@@ -2756,8 +2756,8 @@ class ClassificationDashboardDock(QDockWidget):
                 classifier_meta=_CLASSIFIER_META,
             )
             self.advancedPanel.setToolTip(
-                "Advanced setup: compact intent-driven workflow.\n"
-                "Use Full wizard for all controls."
+                "Guided: compact intent-driven workflow.\n"
+                "Use Expert wizard for all controls."
             )
             self.advancedPanel.classificationRequested.connect(self.classificationRequested)
             self.advancedPanel.openFullWizardRequested.connect(self._open_full_wizard)
@@ -2775,7 +2775,7 @@ class ClassificationDashboardDock(QDockWidget):
                 installer=self._installer,
                 close_on_accept=False,
             )
-            self.advancedWizard.setToolTip("Advanced setup: full workflow with detailed optimization and outputs.")
+            self.advancedWizard.setToolTip("Expert wizard: full workflow with detailed controls.")
             self.advancedWizard.classificationRequested.connect(self.classificationRequested)
             self.stack.addWidget(self.advancedWizard)
         self.modeCombo.setCurrentIndex(1)

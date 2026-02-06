@@ -220,7 +220,7 @@ class AdvancedCompactPanel(QWidget):
         bar_row.addWidget(self.statusLabel)
         bar_row.addStretch()
 
-        self.fullWizardButton = QPushButton("Full wizard...")
+        self.fullWizardButton = QPushButton("Expert wizard...")
         self.fullWizardButton.clicked.connect(self.openFullWizardRequested)
         bar_row.addWidget(self.fullWizardButton)
 
