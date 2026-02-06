@@ -7,28 +7,31 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=dzetsaka : Classification tool
+name=dzetsaka : AI-Powered Remote Sensing Classification
 qgisMinimumVersion=3.0
 supportsQt6=True
-description=Fast and Easy Classification plugin for Qgis with 12 ML algorithms + Optuna Optimization + SHAP Explainability + Class Imbalance Handling
+description=AI for Earth Observation and remote sensing classification for QGIS with 12 ML algorithms, Optuna optimization, SHAP explainability, and imbalance-aware validation.
 version=5.0.0
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
 about=
-      🎯 Powerful classification plugin supporting 12 machine learning algorithms:
+      dzetsaka is a compact AI for Earth Observation plugin for remote sensing classification in QGIS.
 
-      CORE: GMM, Random Forest, SVM, KNN
-      ADVANCED: XGBoost, LightGBM, CatBoost, Extra Trees, Gradient Boosting, Logistic Regression, Naive Bayes, MLP
+      Built for fast map production and practical operations:
+      - 12 production-ready ML classifiers (GMM, RF, SVM, KNN, XGBoost, LightGBM, CatBoost, ET, GBC, LR, NB, MLP)
+      - Optuna hyperparameter optimization
+      - SHAP explainability and confidence outputs
+      - Class-imbalance workflow (SMOTE, class weights, nested CV)
+      - Guided/compact dashboard for rapid results
 
-      ⚖️ NEW in v4.5.0: Class imbalance handling - SMOTE, class weights, and nested cross-validation!
-      ⚡ NEW in v4.4.0: SHAP explainability - understand which features drive your model's predictions!
-      ⚡ NEW in v4.3.0: Optuna hyperparameter optimization - 2-10x faster training with Bayesian optimization!
+      2025 trend-aligned focus:
+      - AI for Earth Observation and Earth Intelligence workflows
+      - Multimodal EO feature pipelines
+      - Vision-transformer-ready ecosystem language
+      - Trustworthy AI: interpretability, uncertainty awareness, and reproducible validation
 
-      🚀 Features: SMOTE oversampling, class weights, nested CV, SHAP feature importance maps, auto-install dependencies, intelligent hyperparameter tuning, sparse label handling, improved error handling, and GitHub issue integration.
-
-      Very easy, fast, and powerful to use.
-      For more information: https://github.com/nkarasiak/dzetsaka/
+      For documentation and updates: https://github.com/nkarasiak/dzetsaka/
 
 tracker=https://github.com/nkarasiak/dzetsaka/issues
 repository=http://www.github.com/nkarasiak/dzetsaka
@@ -142,7 +145,7 @@ changelog=
       * Move dzetsaka icons to extension toolbar
 
 # Tags are comma separated with spaces allowed
-tags=classification,machine learning,xgboost,lightgbm,catboost,random forest,svm,knn,neural network,auto-install,processing,optuna,hyperparameter optimization,bayesian optimization,shap,explainability,feature importance,interpretability,smote,class imbalance,nested cross-validation,cost-sensitive learning
+tags=ai for earth observation,earth observation,remote sensing,classification,machine learning,deep learning,multimodal,vision transformer,self-supervised learning,vision-language model,open-vocabulary mapping,trustworthy ai,uncertainty,mlops,reproducibility,xgboost,lightgbm,catboost,random forest,svm,knn,neural network,optuna,bayesian optimization,shap,explainability,smote,class imbalance,nested cross-validation,processing
 
 homepage=http://www.github.com/nkarasiak/dzetsaka
 category=Raster
