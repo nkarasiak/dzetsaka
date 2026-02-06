@@ -2,20 +2,16 @@
 
 from __future__ import annotations
 
-import importlib.util
 from pathlib import Path
+
+from dzetsaka.services.runtime_loader import load_module_from_path
 
 
 def _load_provider_class():
     provider_path = (
         Path(__file__).resolve().parent / "src" / "dzetsaka" / "presentation" / "qgis" / "provider.py"
     )
-    spec = importlib.util.spec_from_file_location("_dzetsaka_provider_runtime", provider_path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Unable to load dzetsaka provider module from {provider_path}")
-
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    module = load_module_from_path("_dzetsaka_provider_runtime", provider_path)
     runtime_cls = getattr(module, "DzetsakaProvider", None)
     if runtime_cls is None:
         raise ImportError("DzetsakaProvider class not found in migrated provider runtime")
@@ -46,4 +42,3 @@ class DzetsakaProvider:
     def __new__(cls, *args, **kwargs):
         runtime_cls = _get_provider_class()
         return runtime_cls(*args, **kwargs)
-

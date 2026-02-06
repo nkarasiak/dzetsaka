@@ -114,6 +114,7 @@ dzetsaka/
 - 2026-02-06: Extracted task orchestration from plugin runtime into `src/dzetsaka/presentation/qgis/task_runner.py` and wired runtime to import it.
 - 2026-02-06: Converted `dzetsaka_provider.py` into a lazy shim that proxies to `src/dzetsaka/presentation/qgis/provider.py`.
 - 2026-02-06: Refactored `services/use_case_bridge.py` to lazy-load migrated use cases and legacy `mainfunction` fallback at call-time.
+- 2026-02-06: Added shared runtime module loader utility (`services/runtime_loader.py`) and reused it across plugin/provider bridges.
 
 ### Phase 0: Baseline and Guardrails
 

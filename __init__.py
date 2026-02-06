@@ -7,8 +7,9 @@ architecture entrypoint when present, while preserving a fallback to the legacy
 
 from __future__ import annotations
 
-import importlib.util
 from pathlib import Path
+
+from .services.runtime_loader import load_module_from_path
 
 
 def _load_new_entrypoint():
@@ -18,14 +19,8 @@ def _load_new_entrypoint():
     if not entrypoint.exists():
         return None
 
-    spec = importlib.util.spec_from_file_location("_dzetsaka_new_entrypoint", entrypoint)
-    if spec is None or spec.loader is None:
-        return None
-
     try:
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
+        return load_module_from_path("_dzetsaka_new_entrypoint", entrypoint)
     except Exception:
         return None
 
