@@ -5,9 +5,6 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-from dzetsaka.scripts import mainfunction
-
-
 def _load_callable(file_name: str, function_name: str):
     root_dir = Path(__file__).resolve().parents[1]
     module_path = root_dir / "src" / "dzetsaka" / "application" / "use_cases" / file_name
@@ -24,14 +21,31 @@ def _load_callable(file_name: str, function_name: str):
     return getattr(module, function_name, None)
 
 
-_RUN_TRAINING = _load_callable("train_model.py", "run_training")
-_RUN_CLASSIFICATION = _load_callable("classify_raster.py", "run_classification")
+_RUN_TRAINING = None
+_RUN_CLASSIFICATION = None
+
+
+def _get_training_callable():
+    global _RUN_TRAINING
+    if _RUN_TRAINING is None:
+        _RUN_TRAINING = _load_callable("train_model.py", "run_training")
+    return _RUN_TRAINING
+
+
+def _get_classification_callable():
+    global _RUN_CLASSIFICATION
+    if _RUN_CLASSIFICATION is None:
+        _RUN_CLASSIFICATION = _load_callable("classify_raster.py", "run_classification")
+    return _RUN_CLASSIFICATION
 
 
 def run_training(**kwargs):
     """Execute training using migrated use-case implementation when available."""
-    if callable(_RUN_TRAINING):
-        return _RUN_TRAINING(**kwargs)
+    run_training_impl = _get_training_callable()
+    if callable(run_training_impl):
+        return run_training_impl(**kwargs)
+    from dzetsaka.scripts import mainfunction
+
     return mainfunction.LearnModel(
         raster_path=kwargs.get("raster_path"),
         vector_path=kwargs.get("vector_path"),
@@ -48,8 +62,10 @@ def run_training(**kwargs):
 
 def run_classification(**kwargs):
     """Execute inference using migrated use-case implementation when available."""
-    if callable(_RUN_CLASSIFICATION):
-        return _RUN_CLASSIFICATION(**kwargs)
+    run_classification_impl = _get_classification_callable()
+    if callable(run_classification_impl):
+        return run_classification_impl(**kwargs)
+    from dzetsaka.scripts import mainfunction
 
     classifier_worker = mainfunction.ClassifyImage()
     return classifier_worker.initPredict(
@@ -62,4 +78,3 @@ def run_classification(**kwargs):
         NODATA=kwargs.get("nodata"),
         feedback=kwargs.get("feedback"),
     )
-
