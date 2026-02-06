@@ -127,6 +127,7 @@ dzetsaka/
 - 2026-02-06: Extracted plugin metadata version read helper to `src/dzetsaka/presentation/qgis/metadata_utils.py`.
 - 2026-02-06: Extracted scikit-learn runtime health check to `src/dzetsaka/presentation/qgis/runtime_checks.py`.
 - 2026-02-06: Extracted wizard dock lifecycle helpers to `src/dzetsaka/presentation/qgis/wizard_dock.py`.
+- 2026-02-06: Extracted small UI helpers (`rememberLastSaveDir`, welcome widget) to `src/dzetsaka/presentation/qgis/ui_utils.py`.
 
 ### Phase 0: Baseline and Guardrails
 

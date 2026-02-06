@@ -227,9 +227,9 @@ class DzetsakaGUI(QDialog):
         and will persist between QGIS sessions.
 
         """
-        if fileName != "":
-            self.lastSaveDir = fileName
-            self.settings.setValue("/dzetsaka/lastSaveDir", self.lastSaveDir)
+        from dzetsaka.presentation.qgis.ui_utils import remember_last_save_dir
+
+        remember_last_save_dir(self, fileName)
 
     # noinspection PyMethodMayBeStatic
     def showWelcomeWidget(self):
@@ -245,9 +245,9 @@ class DzetsakaGUI(QDialog):
         is set to False to prevent showing it again.
 
         """
-        self.welcomeWidget = ui.welcomeWidget()
-        self.welcomeWidget.show()
-        self.settings.setValue("/dzetsaka/firstInstallation", False)
+        from dzetsaka.presentation.qgis.ui_utils import show_welcome_widget
+
+        show_welcome_widget(self)
 
     def tr(self, message):
         """Get the translation for a string using Qt translation API.
