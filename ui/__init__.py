@@ -20,7 +20,7 @@ class dzetsakaDockWidget(QtWidgets.QDockWidget, dzetsaka_dock.Ui_DockWidget):
         if hasattr(self, "messageBanner"):
             self.messageBanner.setText(
                 "<b>New dashboard available.</b><br>"
-                "<a href=\"open_wizard\">Open Quick/Advanced classification dashboard →</a>"
+                "<a href=\"open_wizard\">Open Quick run / Advanced setup →</a>"
             )
 
     def closeEvent(self, event):

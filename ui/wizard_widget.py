@@ -215,13 +215,13 @@ def build_review_summary(config):
     lines.append("")
 
     # --- Input Data ---
-    lines.append("[Input Data]")
+    lines.append("[Input]")
     lines.append("  Raster : " + str(config.get("raster", "<not set>")))
     lines.append("  Vector : " + str(config.get("vector", "<not set>")))
-    lines.append("  Class field : " + str(config.get("class_field", "<not set>")))
+    lines.append("  Label field : " + str(config.get("class_field", "<not set>")))
     model_path = config.get("load_model", "")
     if model_path:
-        lines.append("  Load model : " + str(model_path))
+        lines.append("  Use existing model : " + str(model_path))
     lines.append("")
 
     # --- Algorithm ---
@@ -230,7 +230,7 @@ def build_review_summary(config):
     lines.append("")
 
     # --- Advanced Options ---
-    lines.append("[Advanced Options]")
+    lines.append("[Advanced Setup]")
     extra = config.get("extraParam", {})  # type: dict
     lines.append("  Optuna optimization : " + str(extra.get("USE_OPTUNA", False)))
     if extra.get("USE_OPTUNA", False):
@@ -253,12 +253,12 @@ def build_review_summary(config):
 
     # --- Output ---
     lines.append("[Output]")
-    lines.append("  Output raster : " + str(config.get("output_raster", "<temp file>")))
+    lines.append("  Classification map : " + str(config.get("output_raster", "<temp file>")))
     lines.append("  Confidence map : " + str(config.get("confidence_map", "")))
     lines.append("  Save model : " + str(config.get("save_model", "")))
     lines.append("  Confusion matrix : " + str(config.get("confusion_matrix", "")))
     if config.get("confusion_matrix", ""):
-        lines.append("    Split % : " + str(config.get("split_percent", 50)))
+        lines.append("    Validation split % : " + str(config.get("split_percent", 50)))
     lines.append("")
     lines.append("=== End of Configuration ===")
     return "\n".join(lines)
@@ -441,7 +441,7 @@ def format_recipe_summary(recipe):
     lines.append(f"Class Weights: {extra.get('USE_CLASS_WEIGHTS', False)}")
     lines.append(f"SHAP: {extra.get('COMPUTE_SHAP', False)}")
     lines.append(f"Nested CV: {validation.get('nested_cv', extra.get('USE_NESTED_CV', False))}")
-    lines.append(f"Split %: {validation.get('split_percent', 100)}")
+    lines.append(f"Validation split %: {validation.get('split_percent', 100)}")
     return "\n".join(lines)
 
 
@@ -917,7 +917,7 @@ def _collect_vector_insight(vector_path, class_field, layer=None):
     if fields:
         lines.append(f"Fields: {', '.join(fields[:12])}{'…' if len(fields) > 12 else ''}")
     if class_field:
-        lines.append(f"Class field: {class_field}")
+        lines.append(f"Label field: {class_field}")
     if counts:
         top = counts.most_common(5)
         lines.append("Top classes (sampled): " + ", ".join([f"{k}={v}" for k, v in top]))
@@ -933,9 +933,9 @@ def _collect_vector_insight(vector_path, class_field, layer=None):
                     tips.append("Strong class imbalance detected; consider class weights or SMOTE.")
     else:
         if class_field:
-            tips.append("Class field has no readable values yet; verify field name and data types.")
+            tips.append("Label field has no readable values yet; verify field name and data types.")
         else:
-            tips.append("Pick a class field to see class distribution and imbalance tips.")
+            tips.append("Pick a label field to see class distribution and imbalance tips.")
 
     if total is not None and total > max_samples:
         tips.append(f"Stats are based on the first {max_samples} features.")
@@ -954,8 +954,8 @@ class DataInputPage(QWizardPage):
     def __init__(self, parent=None, deps=None, installer=None):
         """Initialise DataInputPage."""
         super(DataInputPage, self).__init__(parent)
-        self.setTitle("Input & Algorithm")
-        self.setSubTitle("Select training data and choose a classifier.")
+        self.setTitle("Input and Model")
+        self.setSubTitle("Select data, model source, and classifier.")
 
         self._deps = deps if deps is not None else check_dependency_availability()
         self._installer = installer
@@ -989,10 +989,10 @@ class DataInputPage(QWizardPage):
         layout.addWidget(recipe_group)
 
         # --- Input group ---
-        input_group = QGroupBox("Input Data")
+        input_group = QGroupBox("Input")
         input_layout = QVBoxLayout()
 
-        input_layout.addWidget(QLabel("Input raster (GeoTIFF):"))
+        input_layout.addWidget(QLabel("Raster to classify (GeoTIFF):"))
         raster_row = QHBoxLayout()
         self.rasterLineEdit = QLineEdit()
         self.rasterLineEdit.setPlaceholderText("Path to raster file…")
@@ -1019,7 +1019,7 @@ class DataInputPage(QWizardPage):
         except (ImportError, AttributeError):
             pass  # fallback: plain QLineEdit stays visible
 
-        input_layout.addWidget(QLabel("Training vector (Shapefile / GeoPackage):"))
+        input_layout.addWidget(QLabel("Training data (vector):"))
         vector_row = QHBoxLayout()
         self.vectorLineEdit = QLineEdit()
         self.vectorLineEdit.setPlaceholderText("Path to vector file…")
@@ -1048,7 +1048,7 @@ class DataInputPage(QWizardPage):
         except (ImportError, AttributeError):
             pass
 
-        input_layout.addWidget(QLabel("Class field:"))
+        input_layout.addWidget(QLabel("Label field:"))
         self.classFieldCombo = QComboBox()
         input_layout.addWidget(self.classFieldCombo)
         self.fieldStatusLabel = QLabel()
@@ -1057,12 +1057,12 @@ class DataInputPage(QWizardPage):
         self.geometryExplorerBtn.clicked.connect(self._open_geometry_explorer)
         input_layout.addWidget(self.geometryExplorerBtn)
 
-        self.loadModelCheck = QCheckBox("Load an existing model (skip training)")
+        self.loadModelCheck = QCheckBox("Use existing model")
         input_layout.addWidget(self.loadModelCheck)
 
         model_row = QHBoxLayout()
         self.modelLineEdit = QLineEdit()
-        self.modelLineEdit.setPlaceholderText("Path to saved model…")
+        self.modelLineEdit.setPlaceholderText("Model file path…")
         self.modelLineEdit.setEnabled(False)
         model_row.addWidget(self.modelLineEdit)
         self.modelBrowse = QPushButton("Browse…")
@@ -1376,7 +1376,7 @@ class DataInputPage(QWizardPage):
                         f"Dependencies installed successfully!<br><br>"
                         f"<b>Important:</b> Please restart QGIS now.<br>"
                         f"Without restarting, newly installed libraries may not be loaded, "
-                        f"and {classifier_name} training/inference can fail.",
+                        f"and {classifier_name} training/classification can fail.",
                         QMessageBox.StandardButton.Ok,
                     )
                     self._deps = check_dependency_availability()
@@ -1504,8 +1504,8 @@ class AdvancedOptionsPage(QWizardPage):
     def __init__(self, parent=None, deps=None):
         """Initialise AdvancedOptionsPage."""
         super(AdvancedOptionsPage, self).__init__(parent)
-        self.setTitle("Advanced Options")
-        self.setSubTitle("Configure optional enhancements.")
+        self.setTitle("Advanced Setup")
+        self.setSubTitle("Configure optimization, explainability, and validation.")
 
         self._deps = deps if deps is not None else check_dependency_availability()
 
@@ -1722,18 +1722,18 @@ class OutputConfigPage(QWizardPage):
     def __init__(self, parent=None):
         """Initialise OutputConfigPage."""
         super(OutputConfigPage, self).__init__(parent)
-        self.setTitle("Output & Review")
+        self.setTitle("Output and Review")
         self.setSubTitle("Set output paths and confirm settings.")
 
         layout = QVBoxLayout()
 
-        out_group = QGroupBox("Output Files")
+        out_group = QGroupBox("Outputs")
         out_layout = QGridLayout()
         out_layout.setContentsMargins(8, 8, 8, 8)
         out_layout.setHorizontalSpacing(10)
         out_layout.setVerticalSpacing(6)
 
-        out_layout.addWidget(QLabel("Output raster:"), 0, 0)
+        out_layout.addWidget(QLabel("Classification map:"), 0, 0)
         self.outRasterEdit = QLineEdit()
         self.outRasterEdit.setPlaceholderText("<temporary file>")
         out_layout.addWidget(self.outRasterEdit, 0, 1)
@@ -1762,9 +1762,9 @@ class OutputConfigPage(QWizardPage):
 
         self.saveModelCheck = QCheckBox("Save trained model")
         out_layout.addWidget(self.saveModelCheck, 3, 0, 1, 3)
-        out_layout.addWidget(QLabel("Model path:"), 4, 0)
+        out_layout.addWidget(QLabel("Model file:"), 4, 0)
         self.saveModelEdit = QLineEdit()
-        self.saveModelEdit.setPlaceholderText("Path to save model…")
+        self.saveModelEdit.setPlaceholderText("Model file path…")
         self.saveModelEdit.setEnabled(False)
         out_layout.addWidget(self.saveModelEdit, 4, 1)
         self.saveModelBrowse = QPushButton("Browse…")
@@ -1791,7 +1791,7 @@ class OutputConfigPage(QWizardPage):
         self.matrixBrowse.clicked.connect(self._browse_matrix)
         out_layout.addWidget(self.matrixBrowse, 6, 2)
 
-        out_layout.addWidget(QLabel("Train/test split %:"), 7, 0)
+        out_layout.addWidget(QLabel("Validation split (%):"), 7, 0)
         self.splitSpinBox = QSpinBox()
         self.splitSpinBox.setRange(10, 90)
         self.splitSpinBox.setValue(50)
@@ -1858,7 +1858,7 @@ class OutputConfigPage(QWizardPage):
     def _browse_out_raster(self):
         # type: () -> None
         """Browse for the output raster path."""
-        path, _f = QFileDialog.getSaveFileName(self, "Output raster", "", "GeoTIFF (*.tif)")
+        path, _f = QFileDialog.getSaveFileName(self, "Classification map", "", "GeoTIFF (*.tif)")
         if path:
             self.outRasterEdit.setText(path)
 
@@ -1952,7 +1952,7 @@ class ClassificationWizard(QWizard):
     def __init__(self, parent=None, installer=None, close_on_accept=True):
         """Initialise ClassificationWizard with all 3 pages."""
         super(ClassificationWizard, self).__init__(parent)
-        self.setWindowTitle("dzetsaka Classification Wizard")
+        self.setWindowTitle("dzetsaka Classification")
         self._settings = QSettings()
         self._deps = check_dependency_availability()
         self._installer = installer
@@ -2055,7 +2055,7 @@ class ClassificationWizard(QWizard):
                             f"Dependencies installed successfully!<br><br>"
                             "<b>Important:</b> Please restart QGIS now.<br>"
                             "Without restarting, newly installed libraries may not be loaded, "
-                            "and training/inference can fail.",
+                            "and training/classification can fail.",
                             QMessageBox.StandardButton.Ok,
                         )
                         # Re-check after installation
@@ -2199,8 +2199,8 @@ class QuickClassificationPanel(QWidget):
         root = QVBoxLayout()
 
         intro = QLabel(
-            "Quick mode runs the standard workflow with essential options only. "
-            "Switch to Advanced mode for tuning and expert controls."
+            "Quick run uses the standard workflow with essential options only. "
+            "Switch to Advanced setup for tuning and expert controls."
         )
         intro.setWordWrap(True)
         root.addWidget(intro)
@@ -2208,7 +2208,7 @@ class QuickClassificationPanel(QWidget):
         input_group = QGroupBox("Input")
         input_layout = QVBoxLayout()
 
-        input_layout.addWidget(QLabel("Input raster:"))
+        input_layout.addWidget(QLabel("Raster to classify:"))
         raster_row = QHBoxLayout()
         self.rasterLineEdit = QLineEdit()
         self.rasterLineEdit.setPlaceholderText("Path to raster file…")
@@ -2234,13 +2234,13 @@ class QuickClassificationPanel(QWidget):
         except (ImportError, AttributeError):
             pass
 
-        self.loadModelCheck = QCheckBox("Load existing model (skip training)")
+        self.loadModelCheck = QCheckBox("Use existing model")
         self.loadModelCheck.toggled.connect(self._toggle_model_mode)
         input_layout.addWidget(self.loadModelCheck)
 
         model_row = QHBoxLayout()
         self.modelLineEdit = QLineEdit()
-        self.modelLineEdit.setPlaceholderText("Path to saved model…")
+        self.modelLineEdit.setPlaceholderText("Model file path…")
         self.modelLineEdit.setEnabled(False)
         model_row.addWidget(self.modelLineEdit)
         self.modelBrowse = QPushButton("Browse…")
@@ -2249,7 +2249,7 @@ class QuickClassificationPanel(QWidget):
         model_row.addWidget(self.modelBrowse)
         input_layout.addLayout(model_row)
 
-        input_layout.addWidget(QLabel("Training vector:"))
+        input_layout.addWidget(QLabel("Training data (vector):"))
         vector_row = QHBoxLayout()
         self.vectorLineEdit = QLineEdit()
         self.vectorLineEdit.setPlaceholderText("Path to vector file…")
@@ -2278,7 +2278,7 @@ class QuickClassificationPanel(QWidget):
         except (ImportError, AttributeError):
             pass
 
-        input_layout.addWidget(QLabel("Class field:"))
+        input_layout.addWidget(QLabel("Label field:"))
         self.classFieldCombo = QComboBox()
         input_layout.addWidget(self.classFieldCombo)
         self.fieldStatusLabel = QLabel("")
@@ -2297,7 +2297,7 @@ class QuickClassificationPanel(QWidget):
 
         output_group = QGroupBox("Output")
         output_layout = QGridLayout()
-        output_layout.addWidget(QLabel("Output raster (optional):"), 0, 0)
+        output_layout.addWidget(QLabel("Classification map (optional):"), 0, 0)
         self.outRasterEdit = QLineEdit()
         self.outRasterEdit.setPlaceholderText("<temporary file>")
         output_layout.addWidget(self.outRasterEdit, 0, 1)
@@ -2324,7 +2324,7 @@ class QuickClassificationPanel(QWidget):
 
         run_row = QHBoxLayout()
         run_row.addStretch()
-        self.runButton = QPushButton("Run Quick Classification")
+        self.runButton = QPushButton("Run classification")
         self.runButton.clicked.connect(self._emit_config)
         run_row.addWidget(self.runButton)
         root.addLayout(run_row)
@@ -2369,7 +2369,7 @@ class QuickClassificationPanel(QWidget):
 
     def _browse_out_raster(self):
         # type: () -> None
-        path, _f = QFileDialog.getSaveFileName(self, "Output raster", "", "GeoTIFF (*.tif)")
+        path, _f = QFileDialog.getSaveFileName(self, "Classification map", "", "GeoTIFF (*.tif)")
         if path:
             self.outRasterEdit.setText(path)
 
@@ -2493,7 +2493,7 @@ class QuickClassificationPanel(QWidget):
             QMessageBox.warning(
                 self,
                 "Missing Training Data",
-                "Quick mode requires a training vector and class field when no model is loaded.",
+                "Quick run requires training data and a label field when no model is loaded.",
             )
             return
 
@@ -2514,14 +2514,14 @@ class QuickClassificationPanel(QWidget):
 
 
 class ClassificationDashboardDock(QDockWidget):
-    """Dockable dashboard with Quick and Advanced classification modes."""
+    """Dockable dashboard with Quick Run and Advanced Setup modes."""
 
     closingPlugin = pyqtSignal()
     classificationRequested = pyqtSignal(dict)
 
     def __init__(self, parent=None, installer=None):
         super(ClassificationDashboardDock, self).__init__(parent)
-        self.setWindowTitle("dzetsaka: Classification Dashboard")
+        self.setWindowTitle("dzetsaka: Classification")
         self.setObjectName("DzetsakaClassificationDashboardDock")
         self.setMinimumWidth(430)
         self.setMinimumHeight(520)
@@ -2533,12 +2533,12 @@ class ClassificationDashboardDock(QDockWidget):
         header = QHBoxLayout()
         header.addWidget(QLabel("Mode:"))
         self.modeCombo = QComboBox()
-        self.modeCombo.addItems(["Quick", "Advanced"])
+        self.modeCombo.addItems(["Quick run", "Advanced setup"])
         header.addWidget(self.modeCombo)
         header.addStretch()
         layout.addLayout(header)
 
-        self.modeHint = QLabel("Quick: essential inputs and one-click run.")
+        self.modeHint = QLabel("Quick run: essential inputs and one-click run.")
         layout.addWidget(self.modeHint)
 
         self.stack = QStackedWidget()
@@ -2565,9 +2565,9 @@ class ClassificationDashboardDock(QDockWidget):
         # type: (int) -> None
         self.stack.setCurrentIndex(index)
         if index == 0:
-            self.modeHint.setText("Quick: essential inputs and one-click run.")
+            self.modeHint.setText("Quick run: essential inputs and one-click run.")
         else:
-            self.modeHint.setText("Advanced: full wizard with detailed optimization and outputs.")
+            self.modeHint.setText("Advanced setup: full workflow with detailed optimization and outputs.")
 
     def closeEvent(self, event):
         self.closingPlugin.emit()

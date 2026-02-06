@@ -546,11 +546,11 @@ class DzetsakaGUI(QDialog):
         self.iface.addToolBarIcon(self.settingsIcon)
         self.actions.append(self.settingsIcon)
 
-        # Classification Dashboard (Quick + Advanced) — menu only, no toolbar icon
+        # Classification dashboard (Quick run + Advanced setup) — menu only, no toolbar icon
         icon_path = self.get_icon_path("icon.png")
         self.add_action(
             icon_path,
-            text=self.tr("Classification Dashboard"),
+            text=self.tr("Classification (Quick run / Advanced setup)"),
             callback=self.run_wizard,
             add_to_toolbar=False,
             parent=self.iface.mainWindow(),
@@ -872,7 +872,7 @@ class DzetsakaGUI(QDialog):
                 QMessageBox.warning(
                     self.iface.mainWindow(),
                     "Missing Input",
-                    "If you don't use a model, please select a training vector.",
+                    "If you don't use an existing model, please select training data (vector).",
                     QMessageBox.StandardButton.Ok,
                 )
                 return
@@ -1269,7 +1269,7 @@ class DzetsakaGUI(QDialog):
                             f"Dependencies installed successfully!<br><br>"
                             "<b>Important:</b> Please restart QGIS now.<br>"
                             "Without restarting, newly installed libraries may not be loaded, "
-                            f"and {selected_classifier} training/inference can fail.<br><br>"
+                            f"and {selected_classifier} training/classification can fail.<br><br>"
                             f"You can now try using {selected_classifier}.",
                             QMessageBox.StandardButton.Ok,
                         )
@@ -1364,7 +1364,7 @@ Available Libraries:
         code = str(classifier_code or "CLASS").strip().upper()
         if not code:
             code = "CLASS"
-        return f"{base_name}_{code}_map.tif"
+        return f"{base_name}_{code}.tif"
 
     def _show_github_issue_popup(self, error_title, error_type, error_message, context):
         """Show standardized compact issue popup."""
@@ -1922,21 +1922,21 @@ Available Libraries:
         model_path = (model_path or "").strip()
 
         if not raster_path:
-            errors.append("Input raster is required.")
+            errors.append("Raster to classify is required.")
         else:
             raster_fs_path = raster_path.split("|")[0]
             if raster_fs_path and not os.path.exists(raster_fs_path):
-                errors.append(f"Input raster was not found: {raster_fs_path}")
+                errors.append(f"Raster to classify was not found: {raster_fs_path}")
 
         if do_training:
             if not vector_path:
-                errors.append("Training vector is required when no model is loaded.")
+                errors.append("Training data (vector) is required when no model is loaded.")
             else:
                 vector_fs_path = vector_path.split("|")[0]
                 if vector_fs_path and not os.path.exists(vector_fs_path):
-                    errors.append(f"Training vector was not found: {vector_fs_path}")
+                    errors.append(f"Training data (vector) was not found: {vector_fs_path}")
             if not class_field:
-                errors.append("Class field is required when training a new model.")
+                errors.append("Label field is required when training a new model.")
         else:
             if not model_path:
                 errors.append("A model path is required when loading an existing model.")
