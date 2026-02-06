@@ -1,5 +1,17 @@
-#!/usr/bin/env python3
-"""Created on Mon Feb 26 10:46:43 2018.
+"""Root-level compatibility shims for migrated QGIS processing algorithms."""
 
-@author: nkarasiak
-"""
+from __future__ import annotations
+
+from .classify import ClassifyAlgorithm
+from .explain_model import ExplainModelAlgorithm
+from .nested_cv_algorithm import NestedCVAlgorithm
+from .split_train_validation import SplitTrain
+from .train import TrainAlgorithm
+
+__all__ = [
+    "TrainAlgorithm",
+    "ClassifyAlgorithm",
+    "SplitTrain",
+    "NestedCVAlgorithm",
+    "ExplainModelAlgorithm",
+]

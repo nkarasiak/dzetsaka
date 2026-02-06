@@ -138,6 +138,10 @@ dzetsaka/
 - 2026-02-06: Dropped unused experimental processing registration and removed obsolete legacy processing modules (`closing_filter`, `median_filter`, `shannon_entropy`, `domain_adaptation`, `learn_with_spatial_sampling`, `learn_with_stand_cv`, `resample_image_same_date`, `sieve_area`).
 - 2026-02-06: Added `tools/build_plugin.py` and wired `make plugin-package` to use it for reproducible plugin zip builds.
 - 2026-02-06: Converted root `zip_file.py` into a compatibility wrapper delegating packaging to `tools/build_plugin.py`.
+- 2026-02-06: Extracted `DzetsakaGUI` startup/bootstrap wiring from `plugin_runtime.py` to `src/dzetsaka/presentation/qgis/runtime_bootstrap.py` to keep runtime entrypoint thin.
+- 2026-02-06: Finalized root `processing/` compatibility scope to algorithm shim modules only; removed stale `processing/metadata_helpers.py` shim.
+- 2026-02-06: Finalized runtime/use-case coupling: no `services/use_case_bridge.py` dependency remains in runtime or processing flows.
+- 2026-02-06: Added/updated architecture guardrails enforcing removed bridge module, removed experimental processing modules, and canonical packaging flow (`tools/build_plugin.py` + Makefile target).
 
 ### Phase 0: Baseline and Guardrails
 

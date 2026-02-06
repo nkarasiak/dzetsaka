@@ -52,26 +52,15 @@ GitHub repository: https://github.com/nkarasiak/dzetsaka
 DOI: 10.5281/zenodo.2552284
 """
 
-# import basics
-import configparser
-import os.path
-from pathlib import Path
-
-# import outside libraries
-# import configparser
-
-from qgis.core import QgsApplication
-
 # Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
-from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
+from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QDialog
 
 # import local libraries
 import contextlib
 
 from dzetsaka import ui
-from dzetsaka.dzetsaka_provider import DzetsakaProvider
-from dzetsaka.logging_utils import QgisLogger
+from dzetsaka.presentation.qgis.runtime_bootstrap import initialize_runtime_state
 from dzetsaka.presentation.qgis.task_runner import TaskFeedbackAdapter
 
 # Import resources for icons
@@ -142,60 +131,7 @@ class DzetsakaGUI(QDialog):
         5. Sets up plugin actions and menus
 
         """
-        # Save reference to the QGIS interface
-        self.iface = iface
-        self.log = QgisLogger(tag="Dzetsaka/Core")
-
-        # add Processing loadAlgorithms
-
-        # init dialog and dzetsaka dock
-        QDialog.__init__(self)
-        # sender = self.sender()
-        self.settings = QSettings()
-        self.loadConfig()
-
-        self.provider = DzetsakaProvider()
-        # initialize plugin directory
-        self.plugin_dir = str(Path(__file__).resolve().parents[4])
-        self.plugin_version = self._read_plugin_version()
-        shown_version = self.settings.value("/dzetsaka/onboardingShownVersion", "", str) or ""
-        should_show_onboarding = shown_version != self.plugin_version
-        self._open_welcome_on_init = bool(self.firstInstallation or should_show_onboarding)
-        self._open_dashboard_on_init = bool(self.firstInstallation or should_show_onboarding)
-
-        # initialize locale
-        """
-        locale = self.settings.value('locale/userLocale')[0:2]
-        locale_path = os.path.join(
-            self.plugin_dir,
-            'i18n',
-            'dzetsaka_{}.qm'.format(locale))
-
-        if os.path.exists(locale_path):
-            self.translator = QTranslator()
-            self.translator.load(locale_path)
-
-            if qVersion() > '4.3.3':
-                QCoreApplication.installTranslator(self.translator)
-        """
-
-        # Declare instance attributes
-        self.actions = []
-        self.menu = self.tr("&dzetsaka")
-        #        # TODO: We are going to let the user set this up in a future iteration
-        #        self.toolbar = self.iface.addToolBar(u'dzetsaka')
-        #        self.toolbar.setObjectName(u'dzetsaka')
-        self.pluginIsActive = False
-        self.dockwidget = None
-        self.wizarddock = None
-        self._active_classification_task = None
-        #
-
-        # param
-        self.lastSaveDir = ""
-
-        # run dock
-        # self.run()
+        initialize_runtime_state(self, iface)
 
     def rememberLastSaveDir(self, fileName):
         """Remember the last directory used for saving or loading files.

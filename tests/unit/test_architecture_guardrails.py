@@ -11,6 +11,24 @@ DOMAIN_ROOT = REPO_ROOT / "src" / "dzetsaka" / "domain"
 PRESENTATION_QGIS_ROOT = REPO_ROOT / "src" / "dzetsaka" / "presentation" / "qgis"
 
 FORBIDDEN_ROOT_IMPORTS = {"qgis", "osgeo", "PyQt6", "PyQt5", "PySide6", "PySide2"}
+EXPECTED_PROCESSING_SHIMS = {
+    "__init__.py",
+    "classify.py",
+    "explain_model.py",
+    "nested_cv_algorithm.py",
+    "split_train_validation.py",
+    "train.py",
+}
+REMOVED_EXPERIMENTAL_PROCESSING = {
+    "closing_filter.py",
+    "domain_adaptation.py",
+    "learn_with_spatial_sampling.py",
+    "learn_with_stand_cv.py",
+    "median_filter.py",
+    "resample_image_same_date.py",
+    "shannon_entropy.py",
+    "sieve_area.py",
+}
 
 
 def _import_roots_from_file(path: Path) -> set[str]:
@@ -78,3 +96,39 @@ def test_presentation_helpers_do_not_import_legacy_mainfunction() -> None:
             violations.append(str(file_path.relative_to(REPO_ROOT)))
 
     assert not violations, "Presentation helper leaked legacy mainfunction dependency:\n" + "\n".join(violations)
+
+
+def test_use_case_bridge_module_removed() -> None:
+    """Refactor completion: bridge module should remain removed."""
+    bridge_path = REPO_ROOT / "services" / "use_case_bridge.py"
+    assert not bridge_path.exists(), "Unexpected legacy bridge module found at services/use_case_bridge.py"
+
+
+def test_processing_root_contains_only_required_compat_shims() -> None:
+    """Root processing package should keep only compatibility modules still needed for import stability."""
+    processing_root = REPO_ROOT / "processing"
+    assert processing_root.exists(), "Expected root processing compatibility package"
+
+    py_files = {path.name for path in processing_root.glob("*.py")}
+    assert py_files == EXPECTED_PROCESSING_SHIMS, f"Unexpected processing root files: {sorted(py_files)}"
+
+
+def test_removed_experimental_processing_modules_stay_deleted() -> None:
+    """Dropped experimental processing modules must not reappear."""
+    processing_root = REPO_ROOT / "processing"
+    for filename in sorted(REMOVED_EXPERIMENTAL_PROCESSING):
+        assert not (processing_root / filename).exists(), f"Deprecated processing module restored: {filename}"
+
+
+def test_packaging_flow_is_canonicalized() -> None:
+    """Packaging should be driven by tools/build_plugin.py with root zip script as compatibility only."""
+    build_script = REPO_ROOT / "tools" / "build_plugin.py"
+    makefile = REPO_ROOT / "Makefile"
+    zip_wrapper = REPO_ROOT / "zip_file.py"
+
+    assert build_script.exists(), "Missing canonical packaging script tools/build_plugin.py"
+    makefile_text = makefile.read_text(encoding="utf-8")
+    assert "python tools/build_plugin.py --output dzetsaka.zip" in makefile_text
+
+    wrapper_text = zip_wrapper.read_text(encoding="utf-8")
+    assert "from tools.build_plugin import build_plugin_zip" in wrapper_text
