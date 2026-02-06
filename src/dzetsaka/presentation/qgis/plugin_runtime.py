@@ -376,110 +376,15 @@ class DzetsakaGUI(QDialog):
 
     def run(self):
         """Run method that loads and starts the plugin."""
-        if not self.pluginIsActive or self.dockwidget is None:
-            self.pluginIsActive = True
+        from dzetsaka.presentation.qgis.main_dock_runtime import run_plugin_ui
 
-            # print "** STARTING DzetsakaGUI"
-
-            # dockwidget may not exist if:
-            #    first run of plugin
-            #    removed on close (see self.onClosePlugin method)
-            if self.dockwidget is None:
-                # Create the dockwidget (after translation) and keep reference
-                self.dockwidget = ui.dzetsakaDockWidget()
-
-            # connect to provide cleanup on closing of dockwidget
-            self.dockwidget.closingPlugin.connect(self.onClosePlugin)
-
-            from qgis.core import QgsProviderRegistry
-
-            exceptRaster = QgsProviderRegistry.instance().providerList()
-            exceptRaster.remove("gdal")
-            self.dockwidget.inRaster.setExcludedProviders(exceptRaster)
-
-            exceptVector = QgsProviderRegistry.instance().providerList()
-            exceptVector.remove("ogr")
-            self.dockwidget.inShape.setExcludedProviders(exceptVector)
-
-            self.dockwidget.outRaster.clear()
-            self.dockwidget.outRasterButton.clicked.connect(self.select_output_file)
-
-            self.dockwidget.outModel.clear()
-            self.dockwidget.checkOutModel.clicked.connect(self.checkbox_state)
-
-            self.dockwidget.inModel.clear()
-            self.dockwidget.checkInModel.clicked.connect(self.checkbox_state)
-
-            self.dockwidget.inMask.clear()
-            self.dockwidget.checkInMask.clicked.connect(self.checkbox_state)
-
-            self.dockwidget.outMatrix.clear()
-            self.dockwidget.checkOutMatrix.clicked.connect(self.checkbox_state)
-
-            self.dockwidget.outConfidenceMap.clear()
-            self.dockwidget.checkInConfidence.clicked.connect(self.checkbox_state)
-
-            self.dockwidget.inField.clear()
-
-            if hasattr(self.dockwidget, "messageBanner"):
-                self.dockwidget.messageBanner.linkActivated.connect(lambda _=None: self.run_wizard())
-
-            # show the dockwidget
-            # TODO: fix to allow choice of dock location
-            self.iface.addDockWidget(_LEFT_DOCK_AREA, self.dockwidget)
-            self.dockwidget.show()
-
-            def onChangedLayer():
-                """!@brief Update columns if vector changes."""
-                # We clear combobox
-                self.dockwidget.inField.clear()
-                # Then we fill it with new selected Layer
-                if (
-                    self.dockwidget.inField.currentText() == ""
-                    and self.dockwidget.inShape.currentLayer()
-                    and self.dockwidget.inShape.currentLayer() != "NoneType"
-                ):
-                    try:
-                        activeLayer = self.dockwidget.inShape.currentLayer()
-                        provider = activeLayer.dataProvider()
-                        fields = provider.fields()
-                        listFieldNames = [field.name() for field in fields]
-                        self.dockwidget.inField.addItems(listFieldNames)
-                    except BaseException:
-                        self.log.warning(
-                            "dzetsaka cannot change active layer. Maybe you opened an OSM/Online background ?"
-                        )
-
-            onChangedLayer()
-            self.dockwidget.inShape.currentIndexChanged[int].connect(onChangedLayer)
-
-            self.dockwidget.settingsButton.clicked.connect(self.run_wizard)
-
-            # let's run the classification !
-            self.dockwidget.performMagic.clicked.connect(self.runMagic)
-
-            # Force Optional section closed by default (ignore persisted state)
-            self.dockwidget.mGroupBox.setSaveCollapsedState(False)
-            self.dockwidget.mGroupBox.setCollapsed(True)
-            self.resizeDock()
-
-            def update_optional_title():
-                title = "Optional ▼" if self.dockwidget.mGroupBox.isCollapsed() else "Optional ▲"
-                self.dockwidget.mGroupBox.setTitle(title)
-
-            update_optional_title()
-            self.dockwidget.mGroupBox.collapsedStateChanged.connect(self.resizeDock)
-            self.dockwidget.mGroupBox.collapsedStateChanged.connect(update_optional_title)
+        run_plugin_ui(self, dock_area=_LEFT_DOCK_AREA, ui_module=ui)
 
     def resizeDock(self):
         """Resize dock widget based on group box collapse state."""
-        if self.dockwidget.mGroupBox.isCollapsed():
-            self.dockwidget.mGroupBox.setFixedHeight(20)
-            self.dockwidget.setFixedHeight(390)
+        from dzetsaka.presentation.qgis.main_dock_runtime import resize_dock
 
-        else:
-            self.dockwidget.setMinimumHeight(520)
-            self.dockwidget.mGroupBox.setMinimumHeight(160)
+        resize_dock(self)
 
     def select_output_file(self):
         """!@brief Select file to save, and gives the right extension if the user don't put it."""
