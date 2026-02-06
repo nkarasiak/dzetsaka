@@ -60,17 +60,6 @@ class DzetsakaProvider(QgsProcessingProvider):
         if NESTED_CV_ALGORITHM_AVAILABLE:
             self.addAlgorithm(NestedCVAlgorithm())
 
-        if self.providerType == "Experimental":
-            from dzetsaka.presentation.qgis.processing.algorithms.closing_filter import ClosingFilterAlgorithm
-            from dzetsaka.processing.domain_adaptation import DomainAdaptation
-            from dzetsaka.processing.median_filter import MedianFilterAlgorithm
-            from dzetsaka.processing.shannon_entropy import ShannonAlgorithm
-
-            self.addAlgorithm(ClosingFilterAlgorithm())
-            self.addAlgorithm(MedianFilterAlgorithm())
-            self.addAlgorithm(DomainAdaptation())
-            self.addAlgorithm(ShannonAlgorithm())
-
     def id(self):
         """Return the unique provider id."""
         return "dzetsaka"
