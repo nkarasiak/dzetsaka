@@ -20,7 +20,7 @@ from qgis.core import (
 )
 
 from dzetsaka.logging_utils import QgisLogger, show_error_dialog
-from dzetsaka.processing import metadata_helpers
+from dzetsaka.presentation.qgis.processing import metadata_helpers
 from dzetsaka.scripts import function_vector
 from dzetsaka.scripts.function_dataraster import get_layer_source_path
 

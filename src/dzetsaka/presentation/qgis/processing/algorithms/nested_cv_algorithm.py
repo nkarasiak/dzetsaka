@@ -20,7 +20,7 @@ from qgis.PyQt.QtGui import QIcon
 
 from dzetsaka import classifier_config
 from dzetsaka.logging_utils import show_error_dialog
-from dzetsaka.processing import metadata_helpers
+from dzetsaka.presentation.qgis.processing import metadata_helpers
 
 # Try to import nested CV
 try:

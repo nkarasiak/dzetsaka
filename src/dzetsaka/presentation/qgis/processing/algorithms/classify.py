@@ -15,7 +15,7 @@ from qgis.core import (
 
 from dzetsaka.application.use_cases.classify_raster import run_classification
 from dzetsaka.logging_utils import QgisLogger, show_error_dialog
-from dzetsaka.processing import metadata_helpers
+from dzetsaka.presentation.qgis.processing import metadata_helpers
 
 plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), *([".."] * 7)))
 

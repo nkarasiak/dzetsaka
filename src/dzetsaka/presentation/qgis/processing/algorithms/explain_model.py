@@ -18,7 +18,7 @@ from qgis.core import (
 from qgis.PyQt.QtGui import QIcon
 
 from dzetsaka.logging_utils import show_error_dialog
-from dzetsaka.processing import metadata_helpers
+from dzetsaka.presentation.qgis.processing import metadata_helpers
 
 # Try to import SHAP explainer
 try:
