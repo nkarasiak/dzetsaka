@@ -12,8 +12,8 @@ from qgis.core import QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
 from dzetsaka.presentation.qgis.processing.algorithms.classify import ClassifyAlgorithm
+from dzetsaka.presentation.qgis.processing.algorithms.train import TrainAlgorithm
 from dzetsaka.processing.split_train_validation import SplitTrain
-from dzetsaka.processing.train import TrainAlgorithm
 
 try:
     from dzetsaka.processing.explain_model import ExplainModelAlgorithm
