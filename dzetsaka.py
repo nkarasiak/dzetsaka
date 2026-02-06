@@ -284,6 +284,9 @@ class DzetsakaGUI(QDialog):
 
     """
 
+    DEFAULT_MASK_SUFFIX = "_mask"
+    DEFAULT_PROVIDER_TYPE = "Standard"
+
     def __init__(self, iface):
         """Initialize the dzetsaka plugin.
 
@@ -759,32 +762,16 @@ class DzetsakaGUI(QDialog):
             self.providerType = self.Config.get('Providers','provider')
             """
             self.classifiers = classifier_config.CLASSIFIER_NAMES
-            self.providers = ["Standard", "Experimental"]
 
             self.classifier = self.settings.value("/dzetsaka/classifier", "", str)
             if not self.classifier:
                 self.classifier = self.classifiers[0]
                 self.settings.setValue("/dzetsaka/classifier", self.classifier)
 
-            self.classSuffix = self.settings.value("/dzetsaka/classSuffix", "", str)
-            if not self.classSuffix:
-                self.classSuffix = "_class"
-                self.settings.setValue("/dzetsaka/classSuffix", self.classSuffix)
-
-            self.classPrefix = self.settings.value("/dzetsaka/classPrefix", "", str)
-            if not self.classPrefix:
-                self.classPrefix = ""
-                self.settings.setValue("/dzetsaka/classPrefix", self.classPrefix)
-
-            self.maskSuffix = self.settings.value("/dzetsaka/maskSuffix", "", str)
-            if not self.maskSuffix:
-                self.maskSuffix = "_mask"
-                self.settings.setValue("/dzetsaka/maskSuffix", self.maskSuffix)
-
-            self.providerType = self.settings.value("/dzetsaka/providerType", "", str)
-            if not self.providerType:
-                self.providerType = self.providers[0]
-                self.providerType = self.settings.setValue("/dzetsaka/providerType", self.providerType)
+            # Legacy customizable naming/provider settings have been removed.
+            # Keep deterministic defaults for behavior.
+            self.maskSuffix = self.DEFAULT_MASK_SUFFIX
+            self.providerType = self.DEFAULT_PROVIDER_TYPE
 
             self.firstInstallation = self.settings.value("/dzetsaka/firstInstallation", "None", bool)
             if self.firstInstallation is None:
@@ -818,27 +805,15 @@ class DzetsakaGUI(QDialog):
             self.settingsdock.selectClassifier.currentIndexChanged[int].connect(self.saveSettings)
 
             self.settings.setValue("/dzetsaka/classifier", self.classifier)
-
-            # suffix
-            self.settingsdock.classSuffix.setText(self.classSuffix)
-            self.settingsdock.classSuffix.textChanged.connect(self.saveSettings)
-            self.settings.setValue("/dzetsaka/classSuffix", self.classSuffix)
-            # prefix
-            self.settingsdock.classPrefix.setText(self.classPrefix)
-            self.settingsdock.classPrefix.textChanged.connect(self.saveSettings)
-            self.settings.setValue("/dzetsaka/classPrefix", self.classPrefix)
-            # mask suffix
-            self.settingsdock.maskSuffix.setText(self.maskSuffix)
-            self.settingsdock.maskSuffix.textChanged.connect(self.saveSettings)
-            self.settings.setValue("/dzetsaka/maskSuffix", self.maskSuffix)
-            ##
-
-            for i, prvd in enumerate(self.providers):
-                if self.providerType == prvd:
-                    self.settingsdock.selectProviders.setCurrentIndex(i)
-
-            self.settingsdock.selectProviders.currentIndexChanged[int].connect(self.saveSettings)
-            self.settings.setValue("/dzetsaka/providerType", self.providerType)
+            # Hide legacy advanced settings kept in UI for backward compatibility.
+            self.settingsdock.label_2.hide()
+            self.settingsdock.classSuffix.hide()
+            self.settingsdock.label_3.hide()
+            self.settingsdock.classPrefix.hide()
+            self.settingsdock.label_4.hide()
+            self.settingsdock.maskSuffix.hide()
+            self.settingsdock.label_5.hide()
+            self.settingsdock.selectProviders.hide()
             # Reload config for further use
             self.loadConfig()
 
@@ -981,12 +956,16 @@ class DzetsakaGUI(QDialog):
             #             inRaster=inRaster.dataProvider().dataSourceUri()
             # ==============================================================================
 
+            # Get classifier short code (used by processing and default output naming)
+            inClassifier = classifier_config.get_classifier_code(self.classifier)
+            self.log.info(f"Selected classifier: {self.classifier} (code: {inClassifier})")
+
             # create temp if not output raster
             if self.dockwidget.outRaster.text() == "":
                 tempFolder = tempfile.mkdtemp()
                 outRaster = os.path.join(
                     tempFolder,
-                    self.classPrefix + os.path.splitext(os.path.basename(inRaster))[0] + self.classSuffix + ".tif",
+                    self._default_output_name(inRaster, inClassifier),
                 )
 
             else:
@@ -1001,8 +980,6 @@ class DzetsakaGUI(QDialog):
 
             # Get Classifier
             # retrieve shortname classifier
-            inClassifier = classifier_config.get_classifier_code(self.classifier)
-            self.log.info(f"Selected classifier: {self.classifier} (code: {inClassifier})")
 
             # Ensure inClassifier is definitely a string
             inClassifier = str(inClassifier)
@@ -1310,30 +1287,6 @@ class DzetsakaGUI(QDialog):
                     self.settings.setValue("/dzetsaka/classifier", selected_classifier)
                     self.classifier = selected_classifier
 
-        if self.sender() == self.settingsdock.classSuffix and self.classSuffix != self.settingsdock.classSuffix.text():
-            # self.modifyConfig('Classification','suffix',self.settingsdock.classSuffix.text())
-            self.settings.setValue("/dzetsaka/classSuffix", self.settingsdock.classSuffix.text())
-        if self.sender() == self.settingsdock.classPrefix and self.classPrefix != self.settingsdock.classPrefix.text():
-            # self.modifyConfig('Classification','prefix',self.settingsdock.classPrefix.text())
-            self.settings.setValue("/dzetsaka/classPrefix", self.settingsdock.classPrefix.text())
-        if self.sender() == self.settingsdock.maskSuffix and self.maskSuffix != self.settingsdock.maskSuffix.text():
-            # self.modifyConfig('Classification','maskSuffix',self.settingsdock.maskSuffix.text())
-            self.settings.setValue("/dzetsaka/maskSuffix", self.settingsdock.maskSuffix.text())
-        if self.sender() == self.settingsdock.selectProviders:
-            self.providerType = self.settingsdock.selectProviders.currentText()
-
-            # self.modifyConfig('Providers','provider',self.settingsdock.selectProviders.currentText())
-            self.settings.setValue(
-                "/dzetsaka/providerType",
-                self.settingsdock.selectProviders.currentText(),
-            )
-            QgsApplication.processingRegistry().removeProvider(self.provider)
-
-            from .dzetsaka_provider import DzetsakaProvider
-
-            self.provider = DzetsakaProvider(self.providerType)
-            QgsApplication.processingRegistry().addProvider(self.provider)
-
     def _get_debug_info(self):
         """Generate debug information for GitHub issue reporting."""
         try:
@@ -1396,17 +1349,19 @@ Available Libraries:
 - XGBoost: {xgboost_available}
 - LightGBM: {lightgbm_available}
 - CatBoost: {catboost_available}
-
-Settings:
-- Class Suffix: {getattr(self, "classSuffix", "N/A")}
-- Class Prefix: {getattr(self, "classPrefix", "N/A")}
-- Mask Suffix: {getattr(self, "maskSuffix", "N/A")}
-- Provider Type: {getattr(self, "providerType", "N/A")}
 === END DEBUG INFO ===
 """
             return debug_info.strip()
         except Exception as e:
             return f"Error generating debug info: {e!s}"
+
+    def _default_output_name(self, in_raster_path, classifier_code):
+        """Build deterministic default output filename for temporary classifications."""
+        base_name = os.path.splitext(os.path.basename(in_raster_path))[0]
+        code = str(classifier_code or "CLASS").strip().upper()
+        if not code:
+            code = "CLASS"
+        return f"{base_name}_{code}_map.tif"
 
     def _show_github_issue_popup(self, error_title, error_type, error_message, context):
         """Show standardized compact issue popup."""
@@ -2194,7 +2149,7 @@ Settings:
         outRaster = config.get("output_raster", "")
         if not outRaster:
             tempFolder = tempfile.mkdtemp()
-            outRaster = os.path.join(tempFolder, os.path.splitext(os.path.basename(inRaster))[0] + "_class.tif")
+            outRaster = os.path.join(tempFolder, self._default_output_name(inRaster, inClassifier))
 
         # --- confidence map ---
         confidenceMap = config.get("confidence_map", "") or None
