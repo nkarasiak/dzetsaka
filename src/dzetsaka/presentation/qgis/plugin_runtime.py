@@ -1175,13 +1175,9 @@ class DzetsakaGUI(QDialog):
     def _is_module_importable(self, module_name):
         # type: (str) -> bool
         """Return True if a module can be imported in current runtime."""
-        try:
-            import importlib
+        from dzetsaka.presentation.qgis.runtime_utils import is_module_importable
 
-            importlib.import_module(module_name)
-            return True
-        except Exception:
-            return False
+        return is_module_importable(module_name)
 
     def _missing_classifier_dependencies(self, classifier_code):
         # type: (str) -> list[str]
@@ -1341,9 +1337,9 @@ class DzetsakaGUI(QDialog):
             New value to set
 
         """
-        with open(self.configFile, "w") as configFile:
-            self.Config.set(section, option, value)
-            self.Config.write(configFile)
+        from dzetsaka.presentation.qgis.runtime_utils import write_plugin_config
+
+        write_plugin_config(self.configFile, self.Config, section, option, value)
 # Qt6 enum compatibility (QGIS 4 / PyQt6)
 try:
     _LEFT_DOCK_AREA = Qt.LeftDockWidgetArea

@@ -121,6 +121,7 @@ dzetsaka/
 - 2026-02-06: Extracted classifier runtime dependency checks to `src/dzetsaka/presentation/qgis/classifier_runtime.py`.
 - 2026-02-06: Extracted background task launch/lifecycle handling to `src/dzetsaka/presentation/qgis/task_launcher.py`.
 - 2026-02-06: Extracted output naming and issue popup helpers to `src/dzetsaka/presentation/qgis/output_naming.py` and `src/dzetsaka/presentation/qgis/issue_reporting.py`.
+- 2026-02-06: Extracted shared runtime helpers (`is_module_importable`, config write) to `src/dzetsaka/presentation/qgis/runtime_utils.py`.
 
 ### Phase 0: Baseline and Guardrails
 
