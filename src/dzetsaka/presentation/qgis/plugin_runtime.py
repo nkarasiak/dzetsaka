@@ -1160,46 +1160,17 @@ class DzetsakaGUI(QDialog):
     ):
         # type: (...) -> bool
         """Validate required inputs before launching a classification task."""
-        errors = []
+        from dzetsaka.presentation.qgis.input_validation import validate_classification_request
 
-        raster_path = (raster_path or "").strip()
-        vector_path = (vector_path or "").strip()
-        class_field = (class_field or "").strip()
-        model_path = (model_path or "").strip()
-
-        if not raster_path:
-            errors.append("Raster to classify is required.")
-        else:
-            raster_fs_path = raster_path.split("|")[0]
-            if raster_fs_path and not os.path.exists(raster_fs_path):
-                errors.append(f"Raster to classify was not found: {raster_fs_path}")
-
-        if do_training:
-            if not vector_path:
-                errors.append("Training data (vector) is required when no model is loaded.")
-            else:
-                vector_fs_path = vector_path.split("|")[0]
-                if vector_fs_path and not os.path.exists(vector_fs_path):
-                    errors.append(f"Training data (vector) was not found: {vector_fs_path}")
-            if not class_field:
-                errors.append("Label field is required when training a new model.")
-        else:
-            if not model_path:
-                errors.append("A model path is required when loading an existing model.")
-            elif not os.path.exists(model_path):
-                errors.append(f"Model file was not found: {model_path}")
-
-        if errors:
-            details = "<br>".join(f"- {line}" for line in errors)
-            QMessageBox.warning(
-                self.iface.mainWindow(),
-                f"{source_label} Input Error",
-                f"Please fix the following before running:<br><br>{details}",
-                QMessageBox.StandardButton.Ok,
-            )
-            self.log.warning(f"{source_label} validation failed: {' | '.join(errors)}")
-            return False
-        return True
+        return validate_classification_request(
+            self,
+            raster_path=raster_path,
+            do_training=do_training,
+            vector_path=vector_path,
+            class_field=class_field,
+            model_path=model_path,
+            source_label=source_label,
+        )
 
     def _is_module_importable(self, module_name):
         # type: (str) -> bool

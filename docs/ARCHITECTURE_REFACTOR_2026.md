@@ -117,6 +117,7 @@ dzetsaka/
 - 2026-02-06: Added shared runtime module loader utility (`services/runtime_loader.py`) and reused it across plugin/provider bridges.
 - 2026-02-06: Extracted dependency installation flow from plugin runtime to `src/dzetsaka/presentation/qgis/dependency_installer.py`.
 - 2026-02-06: Extracted debug information builder from plugin runtime to `src/dzetsaka/presentation/qgis/debug_info.py`.
+- 2026-02-06: Extracted classification input validation from plugin runtime to `src/dzetsaka/presentation/qgis/input_validation.py`.
 
 ### Phase 0: Baseline and Guardrails
 
