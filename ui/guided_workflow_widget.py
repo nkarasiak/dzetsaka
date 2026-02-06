@@ -844,35 +844,6 @@ def _classifier_available(code, deps):
     return False
 
 
-class PresetCardButton(QPushButton):
-    hoveredPreset = pyqtSignal(dict)
-    leftPreset = pyqtSignal()
-
-    def __init__(self, preset, parent=None):
-        super(PresetCardButton, self).__init__(parent)
-        self.preset = preset or {}
-        self.setText(str(self.preset.get("name", "Preset")))
-        self.setCheckable(True)
-        self.setCursor(Qt.PointingHandCursor)
-        self.setStyleSheet(
-            "QPushButton { border: 1px solid #888; border-radius: 5px; padding: 4px 10px; }"
-            "QPushButton:checked { border-color: #2a8dd4; background: rgba(42,141,212,0.1); }"
-        )
-
-    def enterEvent(self, event):
-        self.hoveredPreset.emit(self.preset)
-        super(PresetCardButton, self).enterEvent(event)
-
-    def leaveEvent(self, event):
-        self.leftPreset.emit()
-        super(PresetCardButton, self).leaveEvent(event)
-
-
-# ---------------------------------------------------------------------------
-# Recipe authoring and gallery dialogs
-# ---------------------------------------------------------------------------
-
-
 class RecipeShopDialog(QDialog):
     """Interactive dialog to compose a new recipe from the current dashboard context."""
 
@@ -1016,6 +987,8 @@ class RecipeShopDialog(QDialog):
         self._run_requested = False
         self._user_edited_name = False
         self._last_auto_name = ""
+        self._active_preset = None
+        self._active_preset_label = "Custom"
         self._build_ui()
         self._load_seed_recipe()
         self._update_summary()
@@ -1044,34 +1017,18 @@ class RecipeShopDialog(QDialog):
         name_row.addWidget(self.nameEdit)
         root.addLayout(name_row)
 
-        preset_row = QVBoxLayout()
+        preset_row = QHBoxLayout()
         header = QLabel("Preset:")
         header.setStyleSheet("font-weight: 600;")
         preset_row.addWidget(header)
 
-        self._presetButtons = []
-        card_container = QWidget()
-        card_layout = QHBoxLayout()
-        card_layout.setContentsMargins(0, 0, 0, 0)
-        card_layout.setSpacing(6)
-        card_container.setLayout(card_layout)
-        card_scroll = QScrollArea()
-        card_scroll.setWidgetResizable(True)
-        card_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        card_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        card_scroll.setFrameShape(QScrollArea.NoFrame)
-        card_scroll.setWidget(card_container)
-        card_scroll.setFixedHeight(60)
-
+        self.presetCombo = QComboBox()
+        self.presetCombo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.presetCombo.addItem("Custom recipe", None)
         for preset in self._PRESETS:
-            btn = PresetCardButton(preset)
-            btn.hoveredPreset.connect(self._update_preset_info)
-            btn.leftPreset.connect(lambda: self._update_preset_info(self._active_preset))
-            btn.clicked.connect(lambda checked, p=preset, b=btn: self._on_preset_card_clicked(p, b))
-            self._presetButtons.append(btn)
-            card_layout.addWidget(btn)
-
-        preset_row.addWidget(card_scroll)
+            self.presetCombo.addItem(preset.get("name", "Preset"), preset)
+        self.presetCombo.currentIndexChanged.connect(self._on_preset_combo_changed)
+        preset_row.addWidget(self.presetCombo)
         root.addLayout(preset_row)
 
         self.presetDescription = QLabel("")
@@ -1083,6 +1040,7 @@ class RecipeShopDialog(QDialog):
         self.presetMethodsLabel.setWordWrap(True)
         self.presetMethodsLabel.setStyleSheet("color: #777; font-size: 11px;")
         root.addWidget(self.presetMethodsLabel)
+        self._update_preset_info(None)
 
         classifier_row = QHBoxLayout()
         classifier_row.addWidget(QLabel("Core model:"))
@@ -1540,16 +1498,6 @@ class RecipeShopDialog(QDialog):
         self._update_dynamic_state()
         self._update_preset_info(preset)
 
-    def _on_preset_card_clicked(self, preset, button):
-        # type: (Dict[str, object], PresetCardButton) -> None
-        self._highlight_preset_button(button)
-        self._apply_preset(preset)
-
-    def _highlight_preset_button(self, button):
-        # type: (PresetCardButton) -> None
-        for b in self._presetButtons:
-            b.setChecked(b is button)
-
     def _update_preset_info(self, preset):
         # type: (Optional[Dict[str, object]]) -> None
         description = ""
@@ -1559,10 +1507,18 @@ class RecipeShopDialog(QDialog):
         methods_summary = self._preset_methods_summary(preset)
         self.presetMethodsLabel.setText(methods_summary)
 
+    def _on_preset_combo_changed(self, index):
+        # type: (int) -> None
+        preset = self.presetCombo.itemData(index)
+        if not isinstance(preset, dict):
+            self._apply_preset(None)
+            return
+        self._apply_preset(preset)
+
     def _preset_methods_summary(self, preset):
         # type: (Optional[Dict[str, object]]) -> str
         if not isinstance(preset, dict):
-            return "Hover a preset to preview what it enables."
+            return "Pick a preset to preview what it enables."
         features = []
         if preset.get("optuna") or preset.get("optuna_trials"):
             features.append("Optuna")

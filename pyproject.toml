@@ -46,6 +46,7 @@ dependencies = [
     "numpy>=1.19.0",
     "gdal>=3.0.0",
     "PyQt6>=6.2.0",
+    "seaborn>=0.11.0",
 ]
 
 [project.optional-dependencies]

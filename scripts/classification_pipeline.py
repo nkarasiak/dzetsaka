@@ -51,9 +51,15 @@ except BaseException:
     import progress_bar
 
 import contextlib
+import base64
+import html
+import json
 import os
 import pickle
 import tempfile
+import webbrowser
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -501,6 +507,450 @@ def _report(report: Reporter, message: Any) -> None:
         report.info(text)
 
 
+def _parse_label_map_text(mapping_text: str) -> Dict[str, str]:
+    """Parse a user mapping like '1:Forest,2:Water' into a dict."""
+    result: Dict[str, str] = {}
+    text = str(mapping_text or "").strip()
+    if not text:
+        return result
+    chunks = []
+    for part in text.replace("\n", ",").replace(";", ",").split(","):
+        token = part.strip()
+        if token:
+            chunks.append(token)
+    for token in chunks:
+        if ":" not in token:
+            continue
+        k, v = token.split(":", 1)
+        key = k.strip()
+        val = v.strip()
+        if key and val:
+            result[key] = val
+    return result
+
+
+def _value_key(value: Any) -> str:
+    """Normalize class value key to match manual mappings."""
+    with contextlib.suppress(Exception):
+        fv = float(value)
+        if float(int(fv)) == fv:
+            return str(int(fv))
+    return str(value)
+
+
+def _build_label_name_map(
+    vector_path: str,
+    class_field: str,
+    label_column: str,
+    manual_map: Dict[str, str],
+) -> Dict[str, str]:
+    """Build class value -> display name map from manual map and optional vector label column."""
+    result = dict(manual_map)
+    if not vector_path or not label_column:
+        return result
+    ds = ogr.Open(vector_path)
+    if ds is None:
+        return result
+    lyr = ds.GetLayer()
+    if lyr is None:
+        return result
+    for feat in lyr:
+        cls_val = feat.GetField(class_field)
+        lbl_val = feat.GetField(label_column)
+        if cls_val in (None, "") or lbl_val in (None, ""):
+            continue
+        key = _value_key(cls_val)
+        if key not in result:
+            result[key] = str(lbl_val)
+    return result
+
+
+def _compute_metrics_from_cm(cm: np.ndarray) -> Dict[str, Any]:
+    """Compute confusion-matrix metrics including F1 without sklearn helpers."""
+    cm = np.asarray(cm, dtype=float)
+    tp = np.diag(cm)
+    support = cm.sum(axis=1)
+    pred_sum = cm.sum(axis=0)
+
+    precision = np.divide(tp, pred_sum, out=np.zeros_like(tp), where=pred_sum != 0)
+    recall = np.divide(tp, support, out=np.zeros_like(tp), where=support != 0)
+    denom = precision + recall
+    f1 = np.divide(2.0 * precision * recall, denom, out=np.zeros_like(tp), where=denom != 0)
+
+    total = float(cm.sum()) if cm.size else 0.0
+    accuracy = float(tp.sum() / total) if total else 0.0
+    macro_f1 = float(np.mean(f1)) if f1.size else 0.0
+    weighted_f1 = float(np.sum(f1 * support) / support.sum()) if support.sum() else 0.0
+    micro_f1 = accuracy  # for multiclass single-label, micro-F1 == accuracy
+
+    return {
+        "accuracy": accuracy,
+        "f1_macro": macro_f1,
+        "f1_weighted": weighted_f1,
+        "f1_micro": micro_f1,
+        "precision_per_class": precision.tolist(),
+        "recall_per_class": recall.tolist(),
+        "f1_per_class": f1.tolist(),
+        "support_per_class": support.astype(int).tolist(),
+    }
+
+
+def _confusion_matrix_from_labels(y_true: np.ndarray, y_pred: np.ndarray, labels: List[Any]) -> np.ndarray:
+    """Compute confusion matrix with fixed label order without relying on sklearn."""
+    if confusion_matrix is not None:
+        return confusion_matrix(y_true, y_pred, labels=labels)
+    index = {lbl: i for i, lbl in enumerate(labels)}
+    cm = np.zeros((len(labels), len(labels)), dtype=int)
+    for t, p in zip(y_true, y_pred):
+        if t in index and p in index:
+            cm[index[t], index[p]] += 1
+    return cm
+
+
+def _labels_to_1d(values: Any) -> np.ndarray:
+    """Normalize labels/predictions to a 1D vector for reporting metrics."""
+    if isinstance(values, tuple) and values:
+        values = values[0]
+    arr = np.asarray(values)
+    if arr.ndim == 0:
+        return arr.reshape(1)
+    if arr.ndim == 1:
+        return arr
+    if arr.ndim == 2:
+        # Common case: (n, 1) or (1, n)
+        if 1 in arr.shape:
+            return arr.reshape(-1)
+        # If matrix-like predictions are provided, use class index by argmax.
+        return np.argmax(arr, axis=1)
+    return arr.reshape(-1)
+
+
+def _write_report_bundle(
+    report_dir: str,
+    cm: np.ndarray,
+    class_values: List[Any],
+    class_names: List[str],
+    summary_metrics: Dict[str, Any],
+    config_meta: Dict[str, Any],
+    y_true: Optional[np.ndarray] = None,
+    y_pred: Optional[np.ndarray] = None,
+) -> None:
+    """Write a detailed classification report bundle to disk."""
+    os.makedirs(report_dir, exist_ok=True)
+
+    def _fmt_metric(value: Any) -> str:
+        try:
+            return f"{float(value):.6f}"
+        except Exception:
+            return str(value)
+
+    def _is_temporary_path(path_value: Any) -> bool:
+        path_text = str(path_value or "").strip()
+        if not path_text:
+            return False
+        with contextlib.suppress(Exception):
+            normalized = os.path.abspath(os.path.expanduser(os.path.expandvars(path_text)))
+            temp_root = os.path.abspath(tempfile.gettempdir())
+            return normalized == temp_root or normalized.startswith(temp_root + os.sep)
+        return False
+
+    def _sanitize_config_for_rerun(raw_config: Dict[str, Any]) -> Dict[str, Any]:
+        sanitized = dict(raw_config)
+        if _is_temporary_path(sanitized.get("matrix_path", "")):
+            sanitized["matrix_path"] = ""
+            sanitized["matrix_path_note"] = (
+                "Temporary matrix path omitted. Set a persistent confusion matrix path in output options."
+            )
+        return sanitized
+
+    def _confusion_matrix_html_table(matrix: np.ndarray, names: List[str]) -> str:
+        header_cells = "".join(f"<th>{html.escape(str(n))}</th>" for n in names)
+        body_rows = []
+        matrix_int = matrix.astype(int)
+        for i, row in enumerate(matrix_int):
+            label = html.escape(str(names[i]))
+            cells = "".join(f"<td>{int(v)}</td>" for v in row)
+            body_rows.append(f"<tr><th>{label}</th>{cells}</tr>")
+        return (
+            "<table class='cm'>"
+            "<thead><tr><th>true/pred</th>"
+            + header_cells
+            + "</tr></thead><tbody>"
+            + "".join(body_rows)
+            + "</tbody></table>"
+        )
+
+    def _per_class_metrics_html_table(values: List[Any], names: List[str], metrics: Dict[str, Any]) -> str:
+        rows = []
+        for i, cls_val in enumerate(values):
+            rows.append(
+                "<tr>"
+                f"<td>{html.escape(str(cls_val))}</td>"
+                f"<td>{html.escape(str(names[i]))}</td>"
+                f"<td>{_fmt_metric(metrics['precision_per_class'][i])}</td>"
+                f"<td>{_fmt_metric(metrics['recall_per_class'][i])}</td>"
+                f"<td>{_fmt_metric(metrics['f1_per_class'][i])}</td>"
+                f"<td>{int(metrics['support_per_class'][i])}</td>"
+                "</tr>"
+            )
+        return (
+            "<table>"
+            "<thead><tr><th>Class value</th><th>Class name</th><th>Precision</th><th>Recall</th><th>F1</th><th>Support</th></tr></thead>"
+            "<tbody>"
+            + "".join(rows)
+            + "</tbody></table>"
+        )
+
+    numeric_csv = os.path.join(report_dir, "confusion_matrix_numeric.csv")
+    np.savetxt(numeric_csv, cm.astype(int), delimiter=",", fmt="%d")
+
+    labeled_csv = os.path.join(report_dir, "confusion_matrix_labeled.csv")
+    with open(labeled_csv, "w", encoding="utf-8") as handle:
+        handle.write("true/pred," + ",".join(class_names) + "\n")
+        for i, row in enumerate(cm.astype(int)):
+            handle.write(class_names[i] + "," + ",".join(str(v) for v in row) + "\n")
+
+    per_class_csv = os.path.join(report_dir, "per_class_metrics.csv")
+    with open(per_class_csv, "w", encoding="utf-8") as handle:
+        handle.write("class_value,class_name,precision,recall,f1,support\n")
+        for i, cls_val in enumerate(class_values):
+            handle.write(
+                f"{cls_val},{class_names[i]},{summary_metrics['precision_per_class'][i]:.6f},"
+                f"{summary_metrics['recall_per_class'][i]:.6f},{summary_metrics['f1_per_class'][i]:.6f},"
+                f"{summary_metrics['support_per_class'][i]}\n"
+            )
+
+    metrics_json = os.path.join(report_dir, "metrics.json")
+    with open(metrics_json, "w", encoding="utf-8") as handle:
+        json.dump(summary_metrics, handle, indent=2)
+
+    rerun_config = _sanitize_config_for_rerun(config_meta)
+    config_json = os.path.join(report_dir, "run_config.json")
+    with open(config_json, "w", encoding="utf-8") as handle:
+        json.dump(rerun_config, handle, indent=2, default=str)
+
+    heatmap_png = os.path.join(report_dir, "confusion_matrix_heatmap.png")
+    clf_heatmap_png = os.path.join(report_dir, "classification_report_heatmap.png")
+    try:
+        import matplotlib.pyplot as plt
+
+        def _apply_text_contrast(ax, values, threshold, light="#f8fafc", dark="#111827"):
+            arr = np.asarray(values, dtype=float)
+            n_cols = arr.shape[1] if arr.ndim == 2 else 0
+            for idx, txt in enumerate(ax.texts):
+                r = idx // max(1, n_cols)
+                c = idx % max(1, n_cols)
+                val = arr[r, c] if r < arr.shape[0] and c < arr.shape[1] else 0.0
+                txt.set_color(light if val >= threshold else dark)
+
+        try:
+            import seaborn as sns
+
+            fig = plt.figure(figsize=(10, 7))
+            ax = fig.add_subplot(111)
+            cm_int = cm.astype(int)
+            try:
+                import pandas as pd
+
+                cm_df = pd.DataFrame(cm_int, index=class_names, columns=class_names)
+                # Real confusion matrix counts (no normalization), as requested.
+                sns.heatmap(cm_df, annot=True, fmt="g", ax=ax)
+            except Exception:
+                sns.heatmap(cm_int, annot=True, fmt="g", ax=ax)
+        except Exception:
+            fig = plt.figure(figsize=(8, 6))
+            ax = fig.add_subplot(111)
+            im = ax.imshow(cm.astype(int), cmap="Blues")
+            fig.colorbar(im, ax=ax)
+            for r in range(cm.shape[0]):
+                for c in range(cm.shape[1]):
+                    ax.text(c, r, str(int(cm[r, c])), ha="center", va="center", fontsize=8)
+        ax.set_xlabel("Predicted")
+        ax.set_ylabel("Reference")
+        ax.set_xticks(range(len(class_names)))
+        ax.set_yticks(range(len(class_names)))
+        ax.set_xticklabels(class_names, rotation=0, ha="center")
+        ax.set_yticklabels(class_names, rotation=0)
+        fig.tight_layout()
+        fig.savefig(heatmap_png, dpi=150)
+        plt.close(fig)
+
+        # Classification-report heatmap (precision/recall/F1)
+        if y_true is not None and y_pred is not None:
+            with contextlib.suppress(Exception):
+                import pandas as pd
+                from sklearn.metrics import classification_report as sk_classification_report
+
+                report_dict = sk_classification_report(
+                    y_true,
+                    y_pred,
+                    labels=class_values,
+                    target_names=[str(n) for n in class_names],
+                    output_dict=True,
+                    zero_division=0,
+                )
+                # Exact style requested:
+                # sns.heatmap(pd.DataFrame(clf_report).iloc[:-1, :].T, annot=True)
+                metric_df = pd.DataFrame(report_dict).iloc[:-1, :].T
+                fig2 = plt.figure(figsize=(10, 7))
+                ax2 = fig2.add_subplot(111)
+                with contextlib.suppress(Exception):
+                    import seaborn as sns  # noqa: F811
+
+                    sns.heatmap(metric_df, annot=True, ax=ax2)
+                ax2.set_title("Classification report heatmap")
+                ax2.set_xlabel("")
+                ax2.set_ylabel("")
+                ax2.set_xticklabels(ax2.get_xticklabels(), rotation=0)
+                ax2.set_yticklabels(ax2.get_yticklabels(), rotation=0)
+                fig2.tight_layout()
+                fig2.savefig(clf_heatmap_png, dpi=160)
+                plt.close(fig2)
+    except Exception:
+        pass
+
+    embedded_heatmap = ""
+    if os.path.exists(heatmap_png):
+        with contextlib.suppress(Exception):
+            with open(heatmap_png, "rb") as handle:
+                encoded = base64.b64encode(handle.read()).decode("ascii")
+            embedded_heatmap = (
+                "<img class='heatmap' alt='Confusion matrix heatmap' "
+                f"src='data:image/png;base64,{encoded}'/>"
+            )
+    embedded_clf_heatmap = ""
+    if os.path.exists(clf_heatmap_png):
+        with contextlib.suppress(Exception):
+            with open(clf_heatmap_png, "rb") as handle:
+                encoded = base64.b64encode(handle.read()).decode("ascii")
+            embedded_clf_heatmap = (
+                "<img class='heatmap' alt='Classification report heatmap' "
+                f"src='data:image/png;base64,{encoded}'/>"
+            )
+
+    summary_md = os.path.join(report_dir, "report_summary.md")
+    with open(summary_md, "w", encoding="utf-8") as handle:
+        handle.write("# dzetsaka Classification Report\n\n")
+        handle.write(
+            f"- Algorithm: `{config_meta.get('classifier_name', config_meta.get('classifier_code', ''))}`\n"
+        )
+        handle.write(f"- Execution date: `{config_meta.get('execution_date', '')}`\n")
+        handle.write(f"- Split/CV mode: `{config_meta.get('split_mode', '')}`\n")
+        handle.write(f"- Train/validation setting: `{config_meta.get('split_config', '')}`\n")
+        handle.write(f"- Class field: `{config_meta.get('class_field', '')}`\n")
+        handle.write(f"- Best hyperparameters: `{config_meta.get('best_hyperparameters', {})}`\n")
+        handle.write("\n## Global metrics\n\n")
+        handle.write(f"- Accuracy: `{summary_metrics['accuracy']:.6f}`\n")
+        handle.write(f"- F1 macro: `{summary_metrics['f1_macro']:.6f}`\n")
+        handle.write(f"- F1 weighted: `{summary_metrics['f1_weighted']:.6f}`\n")
+        handle.write(f"- F1 micro: `{summary_metrics['f1_micro']:.6f}`\n")
+        handle.write("\n## Files\n\n")
+        handle.write("- `confusion_matrix_numeric.csv`\n")
+        handle.write("- `confusion_matrix_labeled.csv`\n")
+        handle.write("- `per_class_metrics.csv`\n")
+        handle.write("- `metrics.json`\n")
+        handle.write("- `run_config.json`\n")
+        if os.path.exists(heatmap_png):
+            handle.write("- `confusion_matrix_heatmap.png`\n")
+        if os.path.exists(clf_heatmap_png):
+            handle.write("- `classification_report_heatmap.png`\n")
+        handle.write("- `classification_report.html`\n")
+
+    html_report = os.path.join(report_dir, "classification_report.html")
+    global_metrics_rows = "".join(
+        [
+            f"<tr><th>Accuracy</th><td>{_fmt_metric(summary_metrics.get('accuracy', 0.0))}</td></tr>",
+            f"<tr><th>F1 macro</th><td>{_fmt_metric(summary_metrics.get('f1_macro', 0.0))}</td></tr>",
+            f"<tr><th>F1 weighted</th><td>{_fmt_metric(summary_metrics.get('f1_weighted', 0.0))}</td></tr>",
+            f"<tr><th>F1 micro</th><td>{_fmt_metric(summary_metrics.get('f1_micro', 0.0))}</td></tr>",
+            f"<tr><th>OA (CONF)</th><td>{_fmt_metric(summary_metrics.get('overall_accuracy_conf', 0.0))}</td></tr>",
+            f"<tr><th>Kappa</th><td>{_fmt_metric(summary_metrics.get('kappa_conf', 0.0))}</td></tr>",
+            f"<tr><th>F1 mean (CONF)</th><td>{_fmt_metric(summary_metrics.get('f1_mean_conf', 0.0))}</td></tr>",
+        ]
+    )
+    run_config_pretty = html.escape(json.dumps(rerun_config, indent=2, default=str))
+    matrix_display = str(rerun_config.get("matrix_path", "")).strip() or "<auto-generated at run time>"
+    with open(html_report, "w", encoding="utf-8") as handle:
+        handle.write(
+            "<!doctype html><html><head><meta charset='utf-8'>"
+            "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+            "<title>dzetsaka Classification Report</title>"
+            "<style>"
+            ":root{--bg:#f6f8fb;--fg:#111827;--muted:#475569;--card:#ffffff;--line:#d7dde8;--head:#eaf0fb;--accent:#0f766e;}"
+            "body{font-family:'Segoe UI',Arial,sans-serif;margin:0;color:var(--fg);"
+            "background:linear-gradient(180deg,#f1f5f9 0%,var(--bg) 60%,#eef2ff 100%);}"
+            ".wrap{max-width:1200px;margin:20px auto;padding:0 14px;}"
+            "h1,h2{margin:0 0 10px;}h2{margin-top:24px;}"
+            ".muted{color:var(--muted);font-size:13px;}"
+            ".hero{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;"
+            "box-shadow:0 8px 22px rgba(15,23,42,.06);}"
+            ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}"
+            ".card{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--card);}"
+            "table{border-collapse:collapse;width:100%;font-size:13px;}"
+            "th,td{border:1px solid var(--line);padding:6px 8px;text-align:center;}"
+            "th{text-align:left;background:var(--head);}"
+            "table.cm th{text-align:center;}"
+            "pre{background:#0b1324;color:#e5e7eb;padding:12px;border-radius:8px;overflow:auto;"
+            "border:1px solid rgba(148,163,184,.35);}"
+            ".heatmap{max-width:100%;height:auto;border:1px solid var(--line);border-radius:6px;background:#fff;}"
+            ".pill{display:inline-block;background:#ecfeff;color:var(--accent);font-size:12px;border:1px solid #99f6e4;"
+            "padding:2px 8px;border-radius:999px;margin-bottom:8px;}"
+            "</style></head><body><div class='wrap'>"
+        )
+        handle.write("<div class='hero'><span class='pill'>dzetsaka report bundle</span>")
+        handle.write("<h1>Classification Report</h1>")
+        handle.write(
+            "<p class='muted'>"
+            f"Algorithm: <b>{html.escape(str(config_meta.get('classifier_name', config_meta.get('classifier_code', ''))))}</b> | "
+            f"Execution date: <b>{html.escape(str(config_meta.get('execution_date', '')))}</b> | "
+            f"Validation mode: <b>{html.escape(str(config_meta.get('split_mode', '')))}</b> | "
+            f"Class field: <b>{html.escape(str(config_meta.get('class_field', '')))}</b>"
+            "</p>"
+        )
+        handle.write("</div>")
+        handle.write("<div class='grid'>")
+        handle.write("<div class='card'><h2>Global Metrics</h2><table><tbody>")
+        handle.write(global_metrics_rows)
+        handle.write("</tbody></table></div>")
+        handle.write("<div class='card'><h2>Run Metadata</h2><table><tbody>")
+        for label, key in [
+            ("Split config", "split_config"),
+            ("Optimization method", "optimization_method"),
+            ("Raster path", "raster_path"),
+            ("Vector path", "vector_path"),
+            ("Execution date", "execution_date"),
+        ]:
+            handle.write(
+                f"<tr><th>{html.escape(label)}</th><td>{html.escape(str(rerun_config.get(key, '')))}</td></tr>"
+            )
+        handle.write(f"<tr><th>Matrix path</th><td>{html.escape(matrix_display)}</td></tr>")
+        handle.write("</tbody></table></div>")
+        handle.write("</div>")
+
+        handle.write("<h2>Confusion Matrix (NxN)</h2>")
+        handle.write(_confusion_matrix_html_table(cm, class_names))
+        if embedded_heatmap:
+            handle.write("<h2>Heatmap</h2>")
+            handle.write(embedded_heatmap)
+        if embedded_clf_heatmap:
+            handle.write("<h2>Classification Report Heatmap</h2>")
+            handle.write(embedded_clf_heatmap)
+
+        handle.write("<h2>Per-class Metrics</h2>")
+        handle.write(_per_class_metrics_html_table(class_values, class_names, summary_metrics))
+
+        handle.write("<h2>Run Configuration (JSON)</h2>")
+        handle.write(
+            "<p class='muted'>Use this JSON as reference for reproducibility. "
+            "In dzetsaka, reruns are managed through Expert mode recipe tools "
+            "(Save Current / Gallery / JSON import), not by pasting this block directly.</p>"
+        )
+        handle.write("<pre>")
+        handle.write(run_config_pretty)
+        handle.write("</pre>")
+        handle.write("</div></body></html>")
+
+
 class LearnModel:
     """Machine learning model training class for dzetsaka classification."""
 
@@ -724,6 +1174,8 @@ class LearnModel:
             progress.prgBar.setValue(20)
 
         classifier_code_input = str(classifier).upper()
+        selected_hyperparameters: Dict[str, Any] = {}
+        optimization_method = "none"
 
         _report(report, "Starting model training process...")
         _report(
@@ -1198,6 +1650,8 @@ class LearnModel:
 
                     # Run optimization
                     best_params = optimizer.optimize(X=x_search, y=y_search, cv=cv_search, scoring="f1_weighted")
+                    selected_hyperparameters = dict(best_params)
+                    optimization_method = "optuna"
 
                     _report(
                         report,
@@ -1315,6 +1769,9 @@ class LearnModel:
                     _report(report, "GridSearchCV completed, fitting final model...")
                     model = grid.best_estimator_
                     model.fit(x, y)
+                    if hasattr(grid, "best_params_"):
+                        selected_hyperparameters = dict(grid.best_params_)
+                    optimization_method = "grid_search"
                 except MemoryError:
                     _report(
                         report,
@@ -1459,6 +1916,64 @@ class LearnModel:
 
             for estim in res:
                 _report(report, estim + " : " + str(res[estim]))
+
+            if extraParam.get("GENERATE_REPORT_BUNDLE", False):
+                report_dir = str(extraParam.get("REPORT_OUTPUT_DIR", "")).strip()
+                if not report_dir:
+                    report_dir = tempfile.mkdtemp(prefix="dzetsaka_report_")
+                yt_report = _labels_to_1d(yt)
+                yp_report = _labels_to_1d(yp)
+                if yt_report.size != yp_report.size:
+                    n = min(int(yt_report.size), int(yp_report.size))
+                    _report(
+                        report,
+                        "Warning: report labels length mismatch; truncating to "
+                        f"{n} samples (y_true={yt_report.size}, y_pred={yp_report.size}).",
+                    )
+                    yt_report = yt_report[:n]
+                    yp_report = yp_report[:n]
+
+                labels_order = np.unique(np.concatenate((yt_report, yp_report))).tolist()
+                cm_report = _confusion_matrix_from_labels(yt_report, yp_report, labels_order)
+                manual_map = _parse_label_map_text(str(extraParam.get("REPORT_LABEL_MAP", "")))
+                label_column = str(extraParam.get("REPORT_LABEL_COLUMN", "")).strip()
+                label_name_map = _build_label_name_map(vector_path, class_field, label_column, manual_map)
+                class_names = [label_name_map.get(_value_key(v), str(v)) for v in labels_order]
+                metrics = _compute_metrics_from_cm(cm_report)
+                metrics["overall_accuracy_conf"] = CONF.OA
+                metrics["kappa_conf"] = CONF.Kappa
+                metrics["f1_mean_conf"] = CONF.F1mean
+                config_meta = {
+                    "classifier_code": classifier_code_input,
+                    "classifier_name": classifier_config.get_classifier_name(classifier_code_input),
+                    "execution_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "split_mode": str(extraParam.get("CV_MODE", "RANDOM_SPLIT")),
+                    "split_config": SPLIT,
+                    "class_field": class_field,
+                    "vector_path": vector_path,
+                    "raster_path": raster_path,
+                    "optimization_method": optimization_method,
+                    "best_hyperparameters": selected_hyperparameters,
+                    "matrix_path": matrix_path,
+                }
+                _write_report_bundle(
+                    report_dir=report_dir,
+                    cm=cm_report,
+                    class_values=labels_order,
+                    class_names=class_names,
+                    summary_metrics=metrics,
+                    config_meta=config_meta,
+                    y_true=yt_report,
+                    y_pred=yp_report,
+                )
+                _report(report, f"Detailed report bundle saved to: {report_dir}")
+                open_report = bool(extraParam.get("OPEN_REPORT_IN_BROWSER", True))
+                if open_report:
+                    report_html = Path(report_dir) / "classification_report.html"
+                    if report_html.exists():
+                        with contextlib.suppress(Exception):
+                            webbrowser.open(report_html.resolve().as_uri())
+                            _report(report, f"Opened report in browser: {report_html}")
 
         # Update progress after model training completion
         if feedback == "gui":

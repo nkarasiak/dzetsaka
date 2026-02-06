@@ -5,6 +5,7 @@ from __future__ import annotations
 from qgis.PyQt.QtWidgets import QMessageBox
 
 from dzetsaka import classifier_config
+from dzetsaka.presentation.qgis.dependency_catalog import FULL_DEPENDENCY_BUNDLE, full_bundle_label
 
 
 def save_settings(gui) -> None:
@@ -69,6 +70,7 @@ def save_settings(gui) -> None:
                     "To fully use dzetsaka capabilities, we recommend installing all dependencies.<br><br>"
                     f"Required missing now: <code>{req_list}</code><br>"
                     f"{optional_line}<br>"
+                    f"Full bundle to install: <code>{full_bundle_label()}</code><br><br>"
                     "Install the full dzetsaka dependency bundle now?"
                 ),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
@@ -76,15 +78,7 @@ def save_settings(gui) -> None:
             )
 
             if reply == QMessageBox.StandardButton.Yes:
-                to_install = [
-                    "scikit-learn",
-                    "xgboost",
-                    "lightgbm",
-                    "catboost",
-                    "optuna",
-                    "shap",
-                    "imbalanced-learn",
-                ]
+                to_install = list(FULL_DEPENDENCY_BUNDLE)
                 if gui._try_install_dependencies(to_install):
                     gui.settings.setValue("/dzetsaka/classifier", selected_classifier)
                     gui.classifier = selected_classifier

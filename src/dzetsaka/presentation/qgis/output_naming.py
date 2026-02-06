@@ -4,6 +4,12 @@ from __future__ import annotations
 
 import os
 
+_CLASSIFIER_CODE_TO_LABEL = {
+    "XGB": "XGBoost",
+    "LGB": "LightGBM",
+    "CB": "CatBoost",
+}
+
 
 def default_output_name(in_raster_path: str, classifier_code: str) -> str:
     """Build deterministic default output filename for temporary classifications."""
@@ -11,5 +17,6 @@ def default_output_name(in_raster_path: str, classifier_code: str) -> str:
     code = str(classifier_code or "CLASS").strip().upper()
     if not code:
         code = "CLASS"
-    return f"{base_name}_{code}.tif"
+    classifier_label = _CLASSIFIER_CODE_TO_LABEL.get(code, code)
+    return f"{base_name}_{classifier_label}.tif"
 
