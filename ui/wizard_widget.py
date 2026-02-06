@@ -1339,14 +1339,17 @@ class DataInputPage(QWizardPage):
 
         if missing_required:
             req_list = ", ".join(missing_required)
-            opt_list = ", ".join(missing_optional) if missing_optional else "none"
+            optional_line = ""
+            if missing_optional:
+                opt_list = ", ".join(missing_optional)
+                optional_line = f"Optional missing now: <code>{opt_list}</code><br>"
             reply = QMessageBox.question(
                 self,
-                f"Dependencies for {classifier_name}",
+                "Dependencies Missing for dzetsaka",
                 (
                     "To fully use dzetsaka capabilities, we recommend installing all dependencies.<br><br>"
                     f"Required missing now: <code>{req_list}</code><br>"
-                    f"Optional missing now: <code>{opt_list}</code><br><br>"
+                    f"{optional_line}<br>"
                     "Install the full dzetsaka dependency bundle now?"
                 ),
                 QMessageBox.StandardButton.Yes
@@ -2017,7 +2020,7 @@ class ClassificationWizard(QWizard):
 
             reply = QMessageBox.question(
                 self,
-                f"Dependencies for {classifier_name}",
+                "Dependencies Missing for dzetsaka",
                 (
                     "To fully use dzetsaka capabilities, we recommend installing all dependencies.<br><br>"
                     f"Recipe: <code>{recipe_name}</code><br>"

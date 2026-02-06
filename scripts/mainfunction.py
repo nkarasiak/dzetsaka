@@ -22,6 +22,7 @@ Supported Algorithms:
 - KNN: K-Nearest Neighbors (sklearn)
 - XGB: XGBoost (requires xgboost package)
 - LGB: LightGBM (requires lightgbm package)
+- CB: CatBoost (requires catboost package)
 - ET: Extra Trees (sklearn)
 - GBC: Gradient Boosting Classifier (sklearn)
 - LR: Logistic Regression (sklearn)
@@ -41,8 +42,6 @@ GNU General Public License v2.0 or later
 
 try:
     # when using it from QGIS 3
-    from qgis.core import QgsMessageLog
-
     from . import accuracy_index as ai
     from . import function_dataraster as dataraster
     from . import progress_bar
@@ -139,6 +138,164 @@ except ImportError:
     SKLEARN_AVAILABLE = False
 
 from .. import classifier_config
+from ..logging_utils import Reporter, show_issue_popup
+from .wrappers.label_encoders import (
+    XGBLabelWrapper,
+    LGBLabelWrapper,
+    CBClassifierWrapper,
+    SKLEARN_AVAILABLE as WRAPPERS_SKLEARN_AVAILABLE,
+)
+
+# Update SKLEARN_AVAILABLE if needed
+if not SKLEARN_AVAILABLE and WRAPPERS_SKLEARN_AVAILABLE:
+    SKLEARN_AVAILABLE = WRAPPERS_SKLEARN_AVAILABLE
+
+
+def _get_catboost_wrapper():
+    """Return a usable CatBoost wrapper, reloading wrapper module if needed."""
+    global CBClassifierWrapper
+    if CBClassifierWrapper is not None:
+        return CBClassifierWrapper
+
+    try:
+        import importlib
+
+        try:
+            from .wrappers import label_encoders as label_encoders_module
+        except ImportError:
+            import wrappers.label_encoders as label_encoders_module
+
+        label_encoders_module = importlib.reload(label_encoders_module)
+        wrapper = getattr(label_encoders_module, "CBClassifierWrapper", None)
+        if wrapper is not None:
+            CBClassifierWrapper = wrapper
+        return wrapper
+    except Exception:
+        return None
+
+
+def _get_xgboost_wrapper():
+    """Return a usable XGBoost wrapper, refreshing runtime state if needed."""
+    global XGBLabelWrapper
+    if XGBLabelWrapper is None:
+        _refresh_runtime_dependency_state()
+    return XGBLabelWrapper
+
+
+def _get_lightgbm_wrapper():
+    """Return a usable LightGBM wrapper, refreshing runtime state if needed."""
+    global LGBLabelWrapper
+    if LGBLabelWrapper is None:
+        _refresh_runtime_dependency_state()
+    return LGBLabelWrapper
+
+
+def _refresh_runtime_dependency_state():
+    """Refresh optional dependency state after in-session installations."""
+    global XGBLabelWrapper, LGBLabelWrapper, CBClassifierWrapper
+    global WRAPPERS_SKLEARN_AVAILABLE, SKLEARN_AVAILABLE
+    global OPTUNA_AVAILABLE, OptunaOptimizer
+    global SHAP_AVAILABLE, ModelExplainer
+    global SAMPLING_AVAILABLE, IMBLEARN_AVAILABLE
+    global SMOTESampler, apply_smote_if_needed, compute_class_weights
+    global apply_class_weights_to_model, compute_sample_weights, recommend_strategy
+    global VALIDATION_AVAILABLE, NestedCrossValidator, perform_nested_cv
+    global ValidationMetrics, create_classification_summary
+
+    import importlib
+
+    # Wrappers (XGB/LGB/CB + sklearn availability in wrapper layer)
+    try:
+        try:
+            from .wrappers import label_encoders as label_encoders_module
+        except ImportError:
+            import wrappers.label_encoders as label_encoders_module
+        label_encoders_module = importlib.reload(label_encoders_module)
+        XGBLabelWrapper = getattr(label_encoders_module, "XGBLabelWrapper", None)
+        LGBLabelWrapper = getattr(label_encoders_module, "LGBLabelWrapper", None)
+        CBClassifierWrapper = getattr(label_encoders_module, "CBClassifierWrapper", None)
+        WRAPPERS_SKLEARN_AVAILABLE = bool(getattr(label_encoders_module, "SKLEARN_AVAILABLE", False))
+        if WRAPPERS_SKLEARN_AVAILABLE:
+            SKLEARN_AVAILABLE = True
+    except Exception:
+        pass
+
+    # Optuna optimizer
+    try:
+        try:
+            from .optimization import optuna_optimizer as optuna_optimizer_module
+        except ImportError:
+            import optimization.optuna_optimizer as optuna_optimizer_module
+        optuna_optimizer_module = importlib.reload(optuna_optimizer_module)
+        OptunaOptimizer = getattr(optuna_optimizer_module, "OptunaOptimizer", None)
+        OPTUNA_AVAILABLE = OptunaOptimizer is not None
+    except Exception:
+        OPTUNA_AVAILABLE = False
+        OptunaOptimizer = None
+
+    # SHAP explainer
+    try:
+        try:
+            from .explainability import shap_explainer as shap_explainer_module
+        except ImportError:
+            import explainability.shap_explainer as shap_explainer_module
+        shap_explainer_module = importlib.reload(shap_explainer_module)
+        ModelExplainer = getattr(shap_explainer_module, "ModelExplainer", None)
+        SHAP_AVAILABLE = bool(getattr(shap_explainer_module, "SHAP_AVAILABLE", False) and ModelExplainer is not None)
+    except Exception:
+        SHAP_AVAILABLE = False
+        ModelExplainer = None
+
+    # Sampling utilities
+    try:
+        try:
+            from .sampling import smote_sampler as smote_sampler_module
+            from .sampling import class_weights as class_weights_module
+        except ImportError:
+            import sampling.smote_sampler as smote_sampler_module
+            import sampling.class_weights as class_weights_module
+        smote_sampler_module = importlib.reload(smote_sampler_module)
+        class_weights_module = importlib.reload(class_weights_module)
+        SMOTESampler = getattr(smote_sampler_module, "SMOTESampler", None)
+        apply_smote_if_needed = getattr(smote_sampler_module, "apply_smote_if_needed", None)
+        IMBLEARN_AVAILABLE = bool(getattr(smote_sampler_module, "IMBLEARN_AVAILABLE", False))
+        compute_class_weights = getattr(class_weights_module, "compute_class_weights", None)
+        apply_class_weights_to_model = getattr(class_weights_module, "apply_class_weights_to_model", None)
+        compute_sample_weights = getattr(class_weights_module, "compute_sample_weights", None)
+        recommend_strategy = getattr(class_weights_module, "recommend_strategy", None)
+        SAMPLING_AVAILABLE = True
+    except Exception:
+        SAMPLING_AVAILABLE = False
+        IMBLEARN_AVAILABLE = False
+        SMOTESampler = None
+        apply_smote_if_needed = None
+        compute_class_weights = None
+        apply_class_weights_to_model = None
+        compute_sample_weights = None
+        recommend_strategy = None
+
+    # Validation utilities
+    try:
+        try:
+            from .validation import nested_cv as nested_cv_module
+            from .validation import metrics as metrics_module
+        except ImportError:
+            import validation.nested_cv as nested_cv_module
+            import validation.metrics as metrics_module
+        nested_cv_module = importlib.reload(nested_cv_module)
+        metrics_module = importlib.reload(metrics_module)
+        NestedCrossValidator = getattr(nested_cv_module, "NestedCrossValidator", None)
+        perform_nested_cv = getattr(nested_cv_module, "perform_nested_cv", None)
+        ValidationMetrics = getattr(metrics_module, "ValidationMetrics", None)
+        create_classification_summary = getattr(metrics_module, "create_classification_summary", None)
+        VALIDATION_AVAILABLE = True
+    except Exception:
+        VALIDATION_AVAILABLE = False
+        NestedCrossValidator = None
+        perform_nested_cv = None
+        ValidationMetrics = None
+        create_classification_summary = None
+
 
 # Backward compatibility decorator
 def backward_compatible(**parameter_mapping):
@@ -187,105 +344,8 @@ def backward_compatible(**parameter_mapping):
     return decorator
 
 
-# Label encoding wrapper for XGBoost and LightGBM
-# Only define these classes if sklearn is available
-XGBLabelWrapper = None
-LGBLabelWrapper = None
-
-if SKLEARN_AVAILABLE:
-
-    class XGBLabelWrapper(BaseEstimator, ClassifierMixin):
-        """Wrapper for XGBoost that handles sparse label encoding/decoding."""
-
-        def __init__(self, **xgb_params):
-            self.xgb_params = xgb_params
-            self.label_encoder = LabelEncoder()
-            self.xgb_classifier = None
-
-        def fit(self, X, y):
-            """Fit the XGBoost classifier with label encoding."""
-            try:
-                from xgboost import XGBClassifier
-            except ImportError:
-                raise ImportError("XGBoost not found. Install with: pip install xgboost") from None
-
-            y_encoded = self.label_encoder.fit_transform(y)
-            self.xgb_classifier = XGBClassifier(**self.xgb_params)
-            self.xgb_classifier.fit(X, y_encoded)
-            return self
-
-        def predict(self, X):
-            """Predict labels using the fitted classifier."""
-            y_encoded = self.xgb_classifier.predict(X)
-            return self.label_encoder.inverse_transform(y_encoded)
-
-        def predict_proba(self, X):
-            """Predict class probabilities using the fitted classifier."""
-            return self.xgb_classifier.predict_proba(X)
-
-        @property
-        def classes_(self):
-            """Get class labels."""
-            return self.label_encoder.classes_
-
-        def get_params(self, deep=True):
-            """Get parameters for this estimator."""
-            # Return XGBoost parameters directly
-            return self.xgb_params.copy()
-
-        def set_params(self, **params):
-            """Set parameters for this estimator."""
-            self.xgb_params.update(params)
-            if self.xgb_classifier is not None:
-                self.xgb_classifier.set_params(**params)
-            return self
-
-    class LGBLabelWrapper(BaseEstimator, ClassifierMixin):
-        """Wrapper for LightGBM that handles sparse label encoding/decoding."""
-
-        def __init__(self, **lgb_params):
-            self.lgb_params = lgb_params
-            self.label_encoder = LabelEncoder()
-            self.lgb_classifier = None
-
-        def fit(self, X, y):
-            """Fit the LightGBM classifier with label encoding."""
-            try:
-                from lightgbm import LGBMClassifier
-            except ImportError:
-                raise ImportError("LightGBM not found. Install with: pip install lightgbm") from None
-
-            y_encoded = self.label_encoder.fit_transform(y)
-            self.lgb_classifier = LGBMClassifier(**self.lgb_params)
-            self.lgb_classifier.fit(X, y_encoded)
-            return self
-
-        def predict(self, X):
-            """Predict class labels for samples."""
-            y_encoded = self.lgb_classifier.predict(X)
-            return self.label_encoder.inverse_transform(y_encoded)
-
-        def predict_proba(self, X):
-            """Predict class probabilities for samples."""
-            return self.lgb_classifier.predict_proba(X)
-
-        @property
-        def classes_(self):
-            """Get class labels."""
-            return self.label_encoder.classes_
-
-        def get_params(self, deep=True):
-            """Get parameters for this estimator."""
-            # Return LightGBM parameters directly
-            return self.lgb_params.copy()
-
-        def set_params(self, **params):
-            """Set parameters for this estimator."""
-            self.lgb_params.update(params)
-            if self.lgb_classifier is not None:
-                self.lgb_classifier.set_params(**params)
-            return self
-
+# Note: Label encoding wrappers (XGBLabelWrapper, LGBLabelWrapper, CBClassifierWrapper)
+# are now imported from .wrappers.label_encoders module (see imports at top)
 
 # Configuration constants
 CLASSIFIER_CONFIGS = {
@@ -314,6 +374,16 @@ CLASSIFIER_CONFIGS = {
             "n_estimators": [50, 200],
             "num_leaves": [31, 100],
             "learning_rate": [0.01, 0.2],
+        },
+        "n_splits": 3,
+    },
+    "CB": {
+        "param_grid": {
+            "iterations": [100, 300],
+            "depth": [4, 6, 8],
+            "learning_rate": [0.01, 0.1, 0.2],
+            "l2_leaf_reg": [1, 3, 5],
+            "loss_function": ["MultiClass"],
         },
         "n_splits": 3,
     },
@@ -355,6 +425,127 @@ CLASSIFIER_CONFIGS = {
 
 MAX_MEMORY_MB = 512
 MIN_CROSS_VALIDATION_SPLITS = 2
+LOG_TAG = "Dzetsaka/Core"
+FAST_MODE_MAX_SAMPLES = 15000
+FAST_MODE_MAX_OPTUNA_TRIALS = 25
+
+
+def _param_grid_size(param_grid: Dict[str, Any]) -> int:
+    """Estimate number of combinations in a parameter grid."""
+    size = 1
+    for values in param_grid.values():
+        if isinstance(values, (list, tuple, np.ndarray)):
+            size *= max(1, len(values))
+        else:
+            size *= 1
+    return int(size)
+
+
+def _reduce_param_grid_for_fast_mode(param_grid: Dict[str, Any], classifier_code: str) -> Dict[str, Any]:
+    """Return a reduced parameter grid for faster default training."""
+    reduced = {}
+    for key, values in param_grid.items():
+        if not isinstance(values, (list, tuple, np.ndarray)):
+            reduced[key] = values
+            continue
+        vals = list(values)
+        if len(vals) <= 2:
+            reduced[key] = vals
+            continue
+
+        # Keep representative values (first and last) for speed.
+        reduced[key] = [vals[0], vals[-1]]
+
+    # Algorithm-specific fast defaults.
+    if classifier_code in {"RF", "ET"} and "n_estimators" in reduced:
+        est_vals = reduced["n_estimators"]
+        if isinstance(est_vals, list):
+            reduced["n_estimators"] = [min(est_vals)]
+    if classifier_code == "MLP":
+        reduced = {
+            "hidden_layer_sizes": [(50,)],
+            "alpha": [0.0001],
+            "learning_rate_init": [0.001],
+        }
+    return reduced
+
+
+def _build_tuning_subset_indices(y: np.ndarray, max_samples: int, random_seed: int) -> np.ndarray:
+    """Build stratified subset indices for faster hyperparameter search."""
+    n = int(y.shape[0])
+    if n <= max_samples:
+        return np.arange(n, dtype=int)
+
+    rng = np.random.RandomState(random_seed)
+    classes, counts = np.unique(y, return_counts=True)
+    counts_by_class = {cls: int(cnt) for cls, cnt in zip(classes, counts)}
+
+    # Initial proportional allocation with at least 1 sample per class.
+    target_per_class = {}
+    total_target = 0
+    for cls, cnt in zip(classes, counts):
+        target = round((cnt / n) * max_samples)
+        target = max(1, min(int(cnt), target))
+        target_per_class[cls] = target
+        total_target += target
+
+    # Trim overflow while preserving at least one sample per class.
+    if total_target > max_samples:
+        overflow = total_target - max_samples
+        sorted_classes = sorted(classes, key=lambda c: target_per_class[c], reverse=True)
+        for cls in sorted_classes:
+            if overflow <= 0:
+                break
+            reducible = max(0, target_per_class[cls] - 1)
+            delta = min(reducible, overflow)
+            target_per_class[cls] -= delta
+            overflow -= delta
+
+    total_target = sum(target_per_class.values())
+
+    # Fill deficit from larger classes if needed.
+    if total_target < max_samples:
+        deficit = max_samples - total_target
+        sorted_classes = sorted(classes, key=lambda cls: counts_by_class[cls], reverse=True)
+        for cls in sorted_classes:
+            if deficit <= 0:
+                break
+            cnt = counts_by_class[cls]
+            available = max(0, cnt - target_per_class[cls])
+            delta = min(available, deficit)
+            target_per_class[cls] += delta
+            deficit -= delta
+
+    chosen = []
+    for cls in classes:
+        cls_idx = np.where(y == cls)[0]
+        k = min(int(target_per_class[cls]), int(cls_idx.size))
+        if k <= 0:
+            continue
+        if k >= cls_idx.size:
+            chosen.append(cls_idx)
+        else:
+            chosen.append(rng.choice(cls_idx, size=k, replace=False))
+
+    if not chosen:
+        return np.arange(min(n, max_samples), dtype=int)
+    return np.concatenate(chosen).astype(int)
+
+
+def _report(report: Reporter, message: Any) -> None:
+    """Send info/warning/error or progress updates to QGIS."""
+    if isinstance(message, (int, float)):
+        report.progress(message)
+        return
+
+    text = str(message)
+    lowered = text.lower()
+    if text.startswith("Warning:"):
+        report.warning(text)
+    elif lowered.startswith("error") or " failed" in lowered or "cannot" in lowered:
+        report.error(text)
+    else:
+        report.info(text)
 
 
 class LearnModel:
@@ -409,6 +600,7 @@ class LearnModel:
             - 'KNN': K-Nearest Neighbors (sklearn)
             - 'XGB': XGBoost (requires: pip install xgboost)
             - 'LGB': LightGBM (requires: pip install lightgbm)
+            - 'CB': CatBoost (requires: pip install catboost)
             - 'ET': Extra Trees (sklearn)
             - 'GBC': Gradient Boosting Classifier (sklearn)
             - 'LR': Logistic Regression (sklearn)
@@ -468,6 +660,12 @@ class LearnModel:
         Old parameter names (inRaster, inVector, etc.) are automatically mapped to new names.
 
         """
+        # Re-evaluate optional backends at runtime so newly installed
+        # dependencies are picked up without restarting the Python process.
+        _refresh_runtime_dependency_state()
+
+        self.report = Reporter.from_feedback(feedback, tag=LOG_TAG)
+        report = self.report
         # Validate required parameters
         if raster_path is None:
             raise ValueError("raster_path is required")
@@ -501,21 +699,35 @@ class LearnModel:
         C = int(Y.max())
         SPLIT = split_config
 
+        # Validate labels before any training
+        finite_mask = np.isfinite(Y)
+        if not np.all(finite_mask):
+            dropped = int(np.size(Y) - np.count_nonzero(finite_mask))
+            _report(
+                report,
+                f"Warning: Non-finite class labels detected. Dropping {dropped} samples before training.",
+            )
+            X = X[finite_mask]
+            Y = Y[finite_mask]
+            if X.size == 0 or Y.size == 0:
+                _report(report, "Error: No valid training labels remain after filtering.")
+                return None
+
         # Cleanup handled in _load_and_prepare_data method
         # os.remove(filename)
         # os.rmdir(temp_folder)
 
         # Phase 3: Class imbalance handling
-        self._handle_class_imbalance(X, Y, classifier, extraParam, feedback)
+        self._handle_class_imbalance(X, Y, classifier, extraParam)
 
         # Apply SMOTE oversampling if enabled
         if extraParam.get("USE_SMOTE", False):
-            X, Y = self._apply_smote(X, Y, extraParam, feedback)
+            X, Y = self._apply_smote(X, Y, extraParam)
 
         # Compute class weights if enabled
         self.class_weights_ = None
         if extraParam.get("USE_CLASS_WEIGHTS", False):
-            self.class_weights_ = self._compute_weights(Y, extraParam, feedback)
+            self.class_weights_ = self._compute_weights(Y, extraParam)
 
         [n, d] = X.shape
         C = int(Y.max())
@@ -523,7 +735,7 @@ class LearnModel:
         # Scale the data
         X, M, m = self.scale(X)
 
-        pushFeedback(int(1 * total), feedback=feedback)
+        _report(report, int(1 * total))
         if feedback == "gui":
             progress.prgBar.setValue(10)
         # Learning process take split of groundthruth pixels for training and
@@ -567,16 +779,18 @@ class LearnModel:
                 self.x = x
                 self.y = y
         except BaseException:
-            pushFeedback("Problem while learning if SPLIT <1", feedback=feedback)
+            _report(report, "Problem while learning if SPLIT <1")
 
-        pushFeedback(int(2 * total), feedback=feedback)
+        _report(report, int(2 * total))
         if feedback == "gui":
             progress.prgBar.setValue(20)
 
-        pushFeedback("Starting model training process...", feedback=feedback)
-        pushFeedback(
+        classifier_code_input = str(classifier).upper()
+
+        _report(report, "Starting model training process...")
+        _report(
+            report,
             "Training phase in progress. This may take several minutes depending on your data size and classifier settings. The progress bar may appear to pause during hyperparameter optimization - this is normal.",
-            feedback=feedback,
         )
 
         if feedback == "gui":
@@ -595,7 +809,7 @@ class LearnModel:
                 # htau,err = model.cross_validation(x,y,tau)
                 # model.tau = htau
             except BaseException:
-                pushFeedback("Cannot train with GMM", feedback=feedback)
+                _report(report, "Cannot train with GMM")
         else:
             # from sklearn import neighbors
             # from sklearn.svm import SVC
@@ -608,15 +822,15 @@ class LearnModel:
                 joblib = __import__("joblib")  # Test for joblib dependency
             except ImportError as e:
                 if "joblib" in str(e):
-                    pushFeedback(
+                    _report(
+                        report,
                         "Missing dependency: joblib. Please install with: pip install joblib",
-                        feedback=feedback,
                     )
                     return None
                 else:
-                    pushFeedback(
+                    _report(
+                        report,
                         "Missing scikit-learn dependency for {classifier}. Please install with: pip install scikit-learn. Error: {e}",
-                        feedback=feedback,
                     )
                     return None
 
@@ -657,7 +871,7 @@ class LearnModel:
                         if "distance" in extraParam:
                             distance = extraParam["distance"]
                         else:
-                            pushFeedback("You need distance in extraParam", feedback=feedback)
+                            _report(report, "You need distance in extraParam")
 
                         minTrain = float(extraParam["minTrain"]) if "minTrain" in extraParam else -1
 
@@ -674,14 +888,11 @@ class LearnModel:
 
                     """
                     # feedback.setProgressText('distance is '+str(extraParam['distance']))
-                    pushFeedback("label is " + str(label.shape), feedback=feedback)
-                    pushFeedback(
-                        "distance array shape is " + str(distanceArray.shape),
-                        feedback=feedback,
-                    )
-                    pushFeedback("minTrain is " + str(minTrain), feedback=feedback)
-                    pushFeedback("SLOO is " + str(SLOO), feedback=feedback)
-                    pushFeedback("maxIter is " + str(maxIter), feedback=feedback)
+                    _report(report, "label is " + str(label.shape))
+                    _report(report, "distance array shape is " + str(distanceArray.shape))
+                    _report(report, "minTrain is " + str(minTrain))
+                    _report(report, "SLOO is " + str(SLOO))
+                    _report(report, "maxIter is " + str(maxIter))
 
                     # Import distanceCV dynamically when needed
                     try:
@@ -699,11 +910,11 @@ class LearnModel:
                         stats=False,
                     )
 
-                    pushFeedback("Computing SLOO Cross Validation", feedback=feedback)
+                    _report(report, "Computing SLOO Cross Validation")
 
                     for tr, vl in rawCV:
-                        pushFeedback("Training size is " + str(tr.shape), feedback=feedback)
-                        pushFeedback("Validation size is " + str(vl.shape), feedback=feedback)
+                        _report(report, "Training size is " + str(tr.shape))
+                        _report(report, "Validation size is " + str(vl.shape))
                         # sts.append(stat)
                         cvDistance.append((tr, vl))
                     """
@@ -724,15 +935,9 @@ class LearnModel:
                             max_features_range = param_grid["max_features"](x.shape[1])
                             # Convert to list to avoid range object issues
                             param_grid["max_features"] = list(max_features_range)
-                            pushFeedback(
-                                f"RF max_features range: {param_grid['max_features']}",
-                                feedback=feedback,
-                            )
+                            _report(report, f"RF max_features range: {param_grid['max_features']}")
                         except Exception as e:
-                            pushFeedback(
-                                f"Error generating max_features range for RF: {e}",
-                                feedback=feedback,
-                            )
+                            _report(report, f"Error generating max_features range for RF: {e}")
                             # Fallback to safe values
                             param_grid["max_features"] = [1, min(x.shape[1], 3)]
 
@@ -771,40 +976,108 @@ class LearnModel:
                     import importlib.util
 
                     if importlib.util.find_spec("xgboost") is None:
-                        pushFeedback(
-                            "XGBoost not found. Install with: pip install xgboost",
-                            feedback=feedback,
+                        _report(report, "XGBoost not found. Install with: pip install xgboost")
+                        return None
+                    xgb_wrapper = _get_xgboost_wrapper()
+                    if xgb_wrapper is None:
+                        _report(
+                            report,
+                            "XGBoost requires a usable scikit-learn runtime for label encoding. "
+                            "Install with: pip install scikit-learn and restart QGIS.",
                         )
                         return None
 
                     config = CLASSIFIER_CONFIGS["XGB"]
                     param_grid = config["param_grid"]
                     if "param_algo" in locals():
-                        classifier = XGBLabelWrapper(
+                        classifier = xgb_wrapper(
                             random_state=random_seed,
                             eval_metric="logloss",
                             **param_algo,
                         )
                     else:
-                        classifier = XGBLabelWrapper(random_state=random_seed, eval_metric="logloss")
+                        classifier = xgb_wrapper(random_state=random_seed, eval_metric="logloss")
                     n_splits = config["n_splits"]
 
                 elif classifier == "LGB":
                     import importlib.util
 
                     if importlib.util.find_spec("lightgbm") is None:
-                        pushFeedback(
-                            "LightGBM not found. Install with: pip install lightgbm",
-                            feedback=feedback,
+                        _report(report, "LightGBM not found. Install with: pip install lightgbm")
+                        return None
+                    lgb_wrapper = _get_lightgbm_wrapper()
+                    if lgb_wrapper is None:
+                        _report(
+                            report,
+                            "LightGBM requires a usable scikit-learn runtime for label encoding. "
+                            "Install with: pip install scikit-learn and restart QGIS.",
                         )
                         return None
 
                     config = CLASSIFIER_CONFIGS["LGB"]
                     param_grid = config["param_grid"]
                     if "param_algo" in locals():
-                        classifier = LGBLabelWrapper(random_state=random_seed, verbose=-1, **param_algo)
+                        classifier = lgb_wrapper(random_state=random_seed, verbose=-1, **param_algo)
                     else:
-                        classifier = LGBLabelWrapper(random_state=random_seed, verbose=-1)
+                        classifier = lgb_wrapper(random_state=random_seed, verbose=-1)
+                    n_splits = config["n_splits"]
+
+                elif classifier == "CB":
+                    import importlib.util
+
+                    if importlib.util.find_spec("catboost") is None:
+                        _report(report, "CatBoost not found. Install with: pip install catboost")
+                        return None
+                    cb_wrapper = _get_catboost_wrapper()
+                    if cb_wrapper is None:
+                        _report(
+                            report,
+                            "CatBoost requires a usable scikit-learn runtime for label encoding. "
+                            "Install with: pip install scikit-learn and restart QGIS.",
+                        )
+                        return None
+
+                    config = CLASSIFIER_CONFIGS["CB"]
+                    param_grid = config["param_grid"].copy()
+
+                    # CatBoost grid search can become very slow on large or severely imbalanced datasets.
+                    # Use a reduced default search space in those situations to keep runtime practical.
+                    try:
+                        class_counts = np.unique(y, return_counts=True)[1]
+                        min_count = int(np.min(class_counts)) if class_counts.size else 0
+                        max_count = int(np.max(class_counts)) if class_counts.size else 0
+                        imbalance_ratio = (max_count / max(min_count, 1)) if max_count > 0 else 0.0
+                        sample_count = int(x.shape[0])
+
+                        if sample_count > 30000 or imbalance_ratio > 100:
+                            param_grid = {
+                                "iterations": [100, 200],
+                                "depth": [4, 6],
+                                "learning_rate": [0.05, 0.1],
+                                "l2_leaf_reg": [3],
+                                "loss_function": ["MultiClass"],
+                            }
+                            _report(
+                                report,
+                                "Using faster CatBoost search space for large/imbalanced data "
+                                f"(samples={sample_count}, imbalance_ratio={imbalance_ratio:.2f}).",
+                            )
+                    except Exception:
+                        pass
+
+                    if "param_algo" in locals():
+                        classifier = cb_wrapper(
+                            random_seed=random_seed,
+                            verbose=False,
+                            allow_writing_files=False,
+                            **param_algo,
+                        )
+                    else:
+                        classifier = cb_wrapper(
+                            random_seed=random_seed,
+                            verbose=False,
+                            allow_writing_files=False,
+                        )
                     n_splits = config["n_splits"]
 
                 elif classifier == "ET":
@@ -818,15 +1091,9 @@ class LearnModel:
                             max_features_range = param_grid["max_features"](x.shape[1])
                             # Convert to list to avoid range object issues
                             param_grid["max_features"] = list(max_features_range)
-                            pushFeedback(
-                                f"ET max_features range: {param_grid['max_features']}",
-                                feedback=feedback,
-                            )
+                            _report(report, f"ET max_features range: {param_grid['max_features']}")
                         except Exception as e:
-                            pushFeedback(
-                                f"Error generating max_features range for ET: {e}",
-                                feedback=feedback,
-                            )
+                            _report(report, f"Error generating max_features range for ET: {e}")
                             # Fallback to safe values
                             param_grid["max_features"] = [1, min(x.shape[1], 3)]
 
@@ -878,18 +1145,12 @@ class LearnModel:
                     n_splits = config["n_splits"]
 
             except ImportError as e:
-                pushFeedback(
-                    "Import error for classifier " + classifier + ": " + str(e),
-                    feedback=feedback,
-                )
+                _report(report, "Import error for classifier " + classifier + ": " + str(e))
                 if feedback == "gui":
                     progress.reset()
                 return None
             except Exception as e:
-                pushFeedback(
-                    "Error initializing classifier " + classifier + ": " + str(e),
-                    feedback=feedback,
-                )
+                _report(report, "Error initializing classifier " + classifier + ": " + str(e))
                 if feedback == "gui":
                     progress.reset()
                 return None
@@ -901,72 +1162,110 @@ class LearnModel:
 
             # Validate training data before proceeding
             if x.shape[0] == 0 or y.shape[0] == 0:
-                pushFeedback(
-                    "Error: No training data found. Check your training samples.",
-                    feedback=feedback,
-                )
+                _report(report, "Error: No training data found. Check your training samples.")
                 if feedback == "gui":
                     progress.reset()
                 return None
 
             if x.shape[0] != y.shape[0]:
-                pushFeedback(
-                    "Error: Mismatch between feature data and labels. Check your training data.",
-                    feedback=feedback,
-                )
+                _report(report, "Error: Mismatch between feature data and labels. Check your training data.")
                 if feedback == "gui":
                     progress.reset()
                 return None
 
             # Check for any NaN or infinite values
             if np.any(np.isnan(x)) or np.any(np.isinf(x)):
-                pushFeedback(
+                _report(
+                    report,
                     "Warning: NaN or infinite values detected in training data. These will be handled automatically.",
-                    feedback=feedback,
                 )
                 x = np.nan_to_num(x, nan=0.0, posinf=1e10, neginf=-1e10)
 
             # Check if all classes have sufficient samples for cross-validation
             unique_classes, class_counts = np.unique(y, return_counts=True)
             min_samples = np.min(class_counts)
-            if min_samples < n_splits:
-                n_splits = max(2, min_samples)
-                pushFeedback(
-                    f"Adjusting cross-validation splits to {n_splits} due to small class sizes",
-                    feedback=feedback,
+            max_samples = np.max(class_counts)
+            sample_count = int(x.shape[0])
+            imbalance_ratio = float(max_samples / max(min_samples, 1))
+            fast_mode_enabled = bool(extraParam.get("FAST_MODE", True))
+            fast_mode_active = fast_mode_enabled and (
+                sample_count > 20000 or imbalance_ratio > 50 or min_samples < 30
+            )
+
+            if fast_mode_active:
+                _report(
+                    report,
+                    "Fast mode enabled for heavy/imbalanced data "
+                    f"(samples={sample_count}, imbalance_ratio={imbalance_ratio:.2f}, min_class={min_samples}).",
                 )
 
+                if n_splits > 2:
+                    n_splits = 2
+                    _report(report, "Fast mode: reduced cross-validation folds to 2.")
+
+            if min_samples < n_splits:
+                n_splits = max(2, min_samples)
+                _report(report, f"Adjusting cross-validation splits to {n_splits} due to small class sizes")
+
             # Initialize cross-validation after validation and potential n_splits adjustment
-            cv = StratifiedKFold(n_splits=n_splits) if isinstance(SPLIT, int) else cvDistance  # .split(x,y)
+            cv = (
+                StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
+                if isinstance(SPLIT, int)
+                else cvDistance
+            )
+
+            x_search = x
+            y_search = y
+            cv_search = cv
+            if fast_mode_active and isinstance(SPLIT, int) and sample_count > FAST_MODE_MAX_SAMPLES:
+                tune_idx = _build_tuning_subset_indices(y, FAST_MODE_MAX_SAMPLES, random_seed)
+                x_search = x[tune_idx, :]
+                y_search = y[tune_idx]
+                cv_search = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_seed + 7)
+                _report(
+                    report,
+                    f"Fast mode: hyperparameter search subset size {x_search.shape[0]} "
+                    f"(from {sample_count}). Final model is still fit on full data.",
+                )
 
             # Check if Optuna should be used for hyperparameter optimization
             use_optuna = extraParam.get("USE_OPTUNA", False) if extraParam else False
             optuna_trials = extraParam.get("OPTUNA_TRIALS", 100) if extraParam else 100
+            if fast_mode_active and use_optuna:
+                if optuna_trials > FAST_MODE_MAX_OPTUNA_TRIALS:
+                    optuna_trials = FAST_MODE_MAX_OPTUNA_TRIALS
+                    _report(
+                        report,
+                        f"Fast mode: reduced Optuna trials to {optuna_trials}.",
+                    )
 
             if use_optuna and OPTUNA_AVAILABLE:
                 # Use Optuna for faster hyperparameter optimization
-                pushFeedback(
+                _report(
+                    report,
                     f"Using Optuna optimization with {optuna_trials} trials (2-10x faster than GridSearchCV)...",
-                    feedback=feedback,
                 )
 
                 try:
                     # Get classifier code from classifier name
-                    classifier_code = str(inClassifier).upper()
+                    classifier_code = classifier_code_input
 
                     # Create Optuna optimizer
                     optimizer = OptunaOptimizer(
-                        classifier_code=classifier_code, n_trials=optuna_trials, random_seed=inSeed, verbose=False
+                        classifier_code=classifier_code,
+                        n_trials=optuna_trials,
+                        random_seed=random_seed,
+                        verbose=False,
                     )
 
                     # Run optimization
-                    best_params = optimizer.optimize(X=x, y=y, cv=cv, scoring="f1_weighted")
+                    best_params = optimizer.optimize(X=x_search, y=y_search, cv=cv_search, scoring="f1_weighted")
 
-                    pushFeedback(
+                    _report(
+                        report,
                         f"Optuna optimization completed. Best score: {optimizer.study.best_value:.4f}",
-                        feedback=feedback,
                     )
-                    pushFeedback(f"Best parameters: {best_params}", feedback=feedback)
+                    _report(report, f"Best parameters: {best_params}")
 
                     # Recreate classifier with best parameters
                     if classifier_code == "GMM":
@@ -986,13 +1285,26 @@ class LearnModel:
 
                         model = KNeighborsClassifier(**best_params)
                     elif classifier_code == "XGB":
-                        from xgboost import XGBClassifier
-
-                        model = XGBClassifierWrapper(**best_params)
+                        xgb_wrapper = _get_xgboost_wrapper()
+                        if xgb_wrapper is None:
+                            raise ImportError(
+                                "XGBoost requires a usable scikit-learn runtime for label encoding"
+                            )
+                        model = xgb_wrapper(**best_params)
                     elif classifier_code == "LGB":
-                        from lightgbm import LGBMClassifier
-
-                        model = LGBMClassifierWrapper(**best_params)
+                        lgb_wrapper = _get_lightgbm_wrapper()
+                        if lgb_wrapper is None:
+                            raise ImportError(
+                                "LightGBM requires a usable scikit-learn runtime for label encoding"
+                            )
+                        model = lgb_wrapper(**best_params)
+                    elif classifier_code == "CB":
+                        cb_wrapper = _get_catboost_wrapper()
+                        if cb_wrapper is None:
+                            raise ImportError(
+                                "CatBoost requires a usable scikit-learn runtime for label encoding"
+                            )
+                        model = cb_wrapper(**best_params)
                     elif classifier_code == "ET":
                         from sklearn.ensemble import ExtraTreesClassifier
 
@@ -1014,75 +1326,77 @@ class LearnModel:
 
                         model = MLPClassifier(**best_params)
                     else:
-                        pushFeedback(
+                        _report(
+                            report,
                             f"Unknown classifier code: {classifier_code}. Falling back to GridSearchCV.",
-                            feedback=feedback,
                         )
                         use_optuna = False
 
                     if use_optuna:
                         # Fit final model with best parameters
                         model.fit(x, y)
-                        pushFeedback("Final model training completed with Optuna parameters", feedback=feedback)
+                        _report(report, "Final model training completed with Optuna parameters")
 
                 except Exception as e:
-                    pushFeedback(
-                        f"Optuna optimization failed: {str(e)}. Falling back to GridSearchCV.", feedback=feedback
-                    )
+                    _report(report, f"Optuna optimization failed: {e!s}. Falling back to GridSearchCV.")
                     use_optuna = False
 
             elif use_optuna and not OPTUNA_AVAILABLE:
-                pushFeedback(
+                _report(
+                    report,
                     "Optuna is not installed. Falling back to GridSearchCV. "
                     "Install Optuna with: pip install optuna",
-                    feedback=feedback,
                 )
                 use_optuna = False
 
             # Use GridSearchCV if Optuna is not used
             if not use_optuna:
+                custom_param_grid = bool(extraParam and "param_grid" in extraParam)
                 if extraParam and "param_grid" in extraParam:
                     param_grid = extraParam["param_grid"]
 
-                    pushFeedback(
-                        "Custom param for Grid Search CV has been found : " + str(param_grid),
-                        feedback=feedback,
-                    )
+                    _report(report, "Custom param for Grid Search CV has been found : " + str(param_grid))
+                elif fast_mode_active:
+                    before = _param_grid_size(param_grid)
+                    param_grid = _reduce_param_grid_for_fast_mode(param_grid, classifier_code_input)
+                    after = _param_grid_size(param_grid)
+                    if after < before:
+                        _report(
+                            report,
+                            f"Fast mode: reduced hyperparameter search from {before} to {after} combinations.",
+                        )
 
                 # Provide feedback about potentially long training time for SVM
                 if classifier == "SVM":
-                    pushFeedback(
-                        "Training SVM with GridSearchCV - this may take several minutes...",
-                        feedback=feedback,
-                    )
+                    _report(report, "Training SVM with GridSearchCV - this may take several minutes...")
 
                 try:
-                    grid = GridSearchCV(classifier, param_grid=param_grid, cv=cv)
-                    grid.fit(x, y)
+                    grid = GridSearchCV(classifier, param_grid=param_grid, cv=cv_search)
+                    grid.fit(x_search, y_search)
 
-                    pushFeedback("GridSearchCV completed, fitting final model...", feedback=feedback)
+                    _report(report, "GridSearchCV completed, fitting final model...")
                     model = grid.best_estimator_
                     model.fit(x, y)
                 except MemoryError:
-                    pushFeedback(
+                    _report(
+                        report,
                         "Memory error during training. Try reducing the image size or using fewer training samples.",
-                        feedback=feedback,
                     )
                     if feedback == "gui":
                         progress.reset()
                     return None
                 except ValueError as e:
-                    pushFeedback(
+                    _report(
+                        report,
                         "Data validation error: "
                         + str(e)
                         + ". Check your training data for issues like empty classes or invalid values.",
-                        feedback=feedback,
                     )
                     if feedback == "gui":
                         progress.reset()
                     return None
                 except Exception as e:
-                    pushFeedback("Training error: " + str(e), feedback=feedback)
+                    _report(report, "Training error: " + str(e))
                     if feedback == "gui":
                         progress.reset()
                     return None
@@ -1163,7 +1477,7 @@ class LearnModel:
                             fmt="%.d",
                         )
 
-        pushFeedback(int(9 * total), feedback=feedback)
+        _report(report, int(9 * total))
 
         # Assess the quality of the model
         if feedback == "gui":
@@ -1192,12 +1506,7 @@ class LearnModel:
             if classifier != "GMM":
                 for key in param_grid:
                     message = "best " + key + " : " + str(grid.best_params_[key])
-                    if feedback == "gui":
-                        QgsMessageLog.logMessage(message)
-                    elif feedback:
-                        feedback.setProgressText(message)
-                    else:
-                        print(message)
+                    _report(report, message)
 
             """
                 self.kappa = cohen_kappa_score(yp,yt)
@@ -1211,7 +1520,7 @@ class LearnModel:
             }
 
             for estim in res:
-                pushFeedback(estim + " : " + str(res[estim]), feedback=feedback)
+                _report(report, estim + " : " + str(res[estim]))
 
         # Update progress after model training completion
         if feedback == "gui":
@@ -1233,19 +1542,15 @@ class LearnModel:
                 feature_names=None,  # Will generate Band_1, Band_2, etc.
                 shap_output_path=extraParam.get("SHAP_OUTPUT"),
                 sample_size=extraParam.get("SHAP_SAMPLE_SIZE", 1000),
-                feedback=feedback,
             )
 
         if model_path is not None:
             # Debug: log what we're saving
-            pushFeedback(
-                f"Saving model with classifier: {classifier} (type: {type(classifier)})",
-                feedback=feedback,
-            )
+            _report(report, f"Saving model with classifier: {classifier} (type: {type(classifier)})")
             with open(model_path, "wb") as output:
                 pickle.dump([model, M, m, str(classifier)], output)  # Ensure classifier is saved as string
 
-        pushFeedback(int(10 * total), feedback=feedback)
+        _report(report, int(10 * total))
         if feedback == "gui":
             progress.reset()
             progress = None
@@ -1302,7 +1607,6 @@ class LearnModel:
         feature_names: Optional[List[str]],
         shap_output_path: Optional[str],
         sample_size: int,
-        feedback,
     ) -> None:
         """Compute SHAP feature importance and optionally create raster output.
 
@@ -1320,19 +1624,14 @@ class LearnModel:
             Path to save importance raster
         sample_size : int
             Number of samples for SHAP computation
-        feedback : object
-            Feedback interface for progress reporting
-
         """
+        report = self.report
         if not SHAP_AVAILABLE:
-            pushFeedback(
-                "SHAP is not installed. Install with: pip install shap>=0.41.0",
-                feedback=feedback,
-            )
+            _report(report, "SHAP is not installed. Install with: pip install shap>=0.41.0")
             return
 
         try:
-            pushFeedback("Computing SHAP feature importance...", feedback=feedback)
+            _report(report, "Computing SHAP feature importance...")
 
             # Generate feature names if not provided
             n_features = X_train.shape[1]
@@ -1354,37 +1653,34 @@ class LearnModel:
             )
 
             # Log importance scores
-            pushFeedback("\nFeature Importance (SHAP values):", feedback=feedback)
+            _report(report, "\nFeature Importance (SHAP values):")
             for feat, score in sorted(importance.items(), key=lambda x: -x[1]):
-                pushFeedback(f"  {feat}: {score:.4f}", feedback=feedback)
+                _report(report, f"  {feat}: {score:.4f}")
 
             # Store importance in model metadata
             self.feature_importance = importance
 
             # Create importance raster if output path provided and raster_path is a file
             if shap_output_path and isinstance(raster_path, str):
-                pushFeedback(f"Generating feature importance raster: {shap_output_path}", feedback=feedback)
+                _report(report, f"Generating feature importance raster: {shap_output_path}")
 
                 # Create progress callback for SHAP raster generation
                 def shap_progress_callback(pct):
-                    if feedback is not None and hasattr(feedback, "setProgress"):
+                    if self.report.feedback is not None and hasattr(self.report.feedback, "setProgress"):
                         # Map SHAP progress (0-100) to remaining progress window
-                        feedback.setProgress(int(95 + pct * 0.05))
+                        self.report.feedback.setProgress(int(95 + pct * 0.05))
 
                 explainer.create_importance_raster(
                     raster_path=raster_path,
                     output_path=shap_output_path,
                     sample_size=sample_size,
-                    progress_callback=shap_progress_callback if feedback else None,
+                    progress_callback=shap_progress_callback if self.report.feedback else None,
                 )
 
-                pushFeedback(f"Feature importance raster saved to: {shap_output_path}", feedback=feedback)
+                _report(report, f"Feature importance raster saved to: {shap_output_path}")
 
         except Exception as e:
-            pushFeedback(
-                f"Warning: SHAP computation failed: {e!s}\nContinuing without SHAP analysis.",
-                feedback=feedback,
-            )
+            _report(report, f"Warning: SHAP computation failed: {e!s}\nContinuing without SHAP analysis.")
             # Don't raise - continue with normal workflow
 
     def _handle_class_imbalance(
@@ -1393,7 +1689,6 @@ class LearnModel:
         Y: np.ndarray,
         classifier: str,
         extraParam: Dict[str, Any],
-        feedback,
     ) -> None:
         """Analyze class imbalance and log recommendations.
 
@@ -1407,10 +1702,8 @@ class LearnModel:
             Classifier code
         extraParam : dict
             Extra parameters
-        feedback : object
-            Feedback interface
-
         """
+        report = self.report
         if not SAMPLING_AVAILABLE:
             return
 
@@ -1422,26 +1715,26 @@ class LearnModel:
         ratio = counts.max() / counts.min()
 
         # Log class distribution
-        pushFeedback("Class distribution:", feedback=feedback)
+        _report(report, "Class distribution:")
         for cls, count in zip(unique, counts):
             pct = (count / len(Y)) * 100
-            pushFeedback(f"  Class {int(cls)}: {int(count)} samples ({pct:.1f}%)", feedback=feedback)
-        pushFeedback(f"  Imbalance ratio: {ratio:.2f}", feedback=feedback)
+            _report(report, f"  Class {int(cls)}: {int(count)} samples ({pct:.1f}%)")
+        _report(report, f"  Imbalance ratio: {ratio:.2f}")
 
         # Recommend strategy if not already configured
         if not extraParam.get("USE_SMOTE", False) and not extraParam.get("USE_CLASS_WEIGHTS", False):
             strategy = recommend_strategy(Y)
             if strategy == "smote":
-                pushFeedback(
+                _report(
+                    report,
                     "Warning: Dataset is severely imbalanced. "
                     "Consider enabling USE_SMOTE=True or USE_CLASS_WEIGHTS=True.",
-                    feedback=feedback,
                 )
             elif strategy == "class_weights":
-                pushFeedback(
+                _report(
+                    report,
                     "Note: Dataset is moderately imbalanced. "
                     "Consider enabling USE_CLASS_WEIGHTS=True for better performance.",
-                    feedback=feedback,
                 )
 
     def _apply_smote(
@@ -1449,7 +1742,6 @@ class LearnModel:
         X: np.ndarray,
         Y: np.ndarray,
         extraParam: Dict[str, Any],
-        feedback,
     ) -> tuple:
         """Apply SMOTE oversampling if conditions are met.
 
@@ -1461,9 +1753,6 @@ class LearnModel:
             Training labels
         extraParam : dict
             Extra parameters
-        feedback : object
-            Feedback interface
-
         Returns
         -------
         X_resampled : np.ndarray
@@ -1472,42 +1761,39 @@ class LearnModel:
             Resampled labels
 
         """
+        report = self.report
         if not SAMPLING_AVAILABLE or not IMBLEARN_AVAILABLE:
-            pushFeedback(
+            _report(
+                report,
                 "Warning: SMOTE requires imbalanced-learn. Install with: pip install imbalanced-learn>=0.10.0",
-                feedback=feedback,
             )
             return X, Y
 
         k_neighbors = extraParam.get("SMOTE_K_NEIGHBORS", 5)
 
         try:
-            pushFeedback("Applying SMOTE oversampling...", feedback=feedback)
+            _report(report, "Applying SMOTE oversampling...")
             original_size = len(Y)
 
             sampler = SMOTESampler(k_neighbors=k_neighbors, random_state=0)
             X_resampled, Y_resampled = sampler.fit_resample(X, Y)
 
             new_size = len(Y_resampled)
-            pushFeedback(
+            _report(
+                report,
                 f"SMOTE complete: {original_size} -> {new_size} samples ({new_size - original_size} synthetic)",
-                feedback=feedback,
             )
 
             return X_resampled, Y_resampled
 
         except Exception as e:
-            pushFeedback(
-                f"Warning: SMOTE failed: {e!s}. Continuing with original data.",
-                feedback=feedback,
-            )
+            _report(report, f"Warning: SMOTE failed: {e!s}. Continuing with original data.")
             return X, Y
 
     def _compute_weights(
         self,
         Y: np.ndarray,
         extraParam: Dict[str, Any],
-        feedback,
     ) -> Optional[Dict[int, float]]:
         """Compute class weights for cost-sensitive learning.
 
@@ -1517,9 +1803,6 @@ class LearnModel:
             Training labels
         extraParam : dict
             Extra parameters
-        feedback : object
-            Feedback interface
-
         Returns
         -------
         weights : dict or None
@@ -1535,17 +1818,17 @@ class LearnModel:
         try:
             weights = compute_class_weights(Y, strategy=strategy, custom_weights=custom_weights)
 
-            pushFeedback("Class weights computed:", feedback=feedback)
+            _report(self.report, "Class weights computed:")
             for cls, weight in sorted(weights.items()):
-                pushFeedback(f"  Class {cls}: {weight:.4f}", feedback=feedback)
+                _report(self.report, f"  Class {cls}: {weight:.4f}")
 
             return weights
 
         except Exception as e:
-            pushFeedback(
+            _report(
+                self.report,
                 f"Warning: Class weight computation failed: {e!s}. "
                 "Continuing without class weights.",
-                feedback=feedback,
             )
             return None
 
@@ -1563,7 +1846,7 @@ class LearnModel:
 
         if isinstance(raster_path, np.ndarray) and not isinstance(vector_path, np.ndarray):
             msg = "You have to give an array for labels when using array for raster"
-            pushFeedback(msg, feedback=feedback)
+            _report(self.report, msg)
             raise ValueError(msg)
 
     def _setup_progress_feedback(self, feedback):
@@ -1599,8 +1882,8 @@ class LearnModel:
         STDs = None
         vector_test_path = None
 
-        pushFeedback("Learning model...", feedback=feedback)
-        pushFeedback(0, feedback=feedback)
+        _report(self.report, "Learning model...")
+        _report(self.report, 0)
 
         # Handle numpy array inputs
         if isinstance(raster_path, np.ndarray):
@@ -1666,7 +1949,7 @@ class LearnModel:
             return readROIFromVector(vector_path, extraParam["readROIFromVector"], class_field)
         except ImportError:
             msg = "Problem when importing readFieldVector from functions in dzetsaka"
-            pushFeedback(msg, feedback=feedback)
+            _report(self.report, msg)
             raise
 
     def _prepare_sloo_data(self, raster_path, ROI, extraParam, feedback):
@@ -1679,7 +1962,7 @@ class LearnModel:
         if extraParam.get("readROIFromVector", False):
             coords = extraParam.get("coords")
             if coords is None:
-                pushFeedback("Can't read coords array", feedback=feedback)
+                _report(self.report, "Can't read coords array")
                 raise ValueError("Coordinates not found in extraParam")
             X, Y = None, None  # Will be set elsewhere
         else:
@@ -1713,7 +1996,7 @@ class LearnModel:
                 "- Memory issues with large datasets"
             )
 
-        pushFeedback(msg, feedback=feedback)
+        _report(self.report, msg)
         if progress and hasattr(progress, "reset"):
             progress.reset()
 
@@ -1729,7 +2012,6 @@ class ClassifyImage:
             inModel : Output name of the filtered file ('training.shp',str)
             outShpFile : Output name of vector files ('sample.shp',str)
             inMinSize : min size in acre for the forest, ex 6 means all polygons below 6000 m2 (int)
-            TODO inMask : Mask size where no classification is done                                     |||| NOT YET IMPLEMENTED
             inField : Column name where are stored class number (str)
             inNODATA : if NODATA (int)
             inClassForest : Classification number of the forest class (int)
@@ -1764,32 +2046,34 @@ class ClassifyImage:
         if not output_path:
             raise ValueError("output_path (or outRaster) is required")
 
+        self.report = Reporter.from_feedback(feedback, tag=LOG_TAG)
+
         # Load model
         try:
-            tree, M, m, classifier = self._load_model(model_path, feedback)
+            tree, M, m, classifier = self._load_model(model_path)
         except FileNotFoundError as e:
-            pushFeedback(
+            _report(
+                self.report,
                 f"Model file not found: {model_path}\n"
                 f"Please check that the file exists and the path is correct.\n"
                 f"Error details: {e}",
-                feedback=feedback,
             )
             return None
         except (pickle.UnpicklingError, pickle.PickleError) as e:
-            pushFeedback(
+            _report(
+                self.report,
                 f"Model file is corrupted or incompatible: {model_path}\n"
                 f"The model file may have been created with a different version of dzetsaka or Python.\n"
                 f"Try retraining your model or use a different model file.\n"
                 f"Error details: {e}",
-                feedback=feedback,
             )
             return None
         except ValueError as e:
-            pushFeedback(
+            _report(
+                self.report,
                 f"Invalid model file format: {model_path}\n"
                 f"The model file structure is not recognized by dzetsaka.\n"
                 f"Error details: {e}",
-                feedback=feedback,
             )
             return None
         except Exception as e:
@@ -1798,7 +2082,7 @@ class ClassifyImage:
             error_details += f"Error details: {e}\n"
             error_details += "Please check the QGIS log for more details and consider reporting this issue."
 
-            pushFeedback(error_details, feedback=feedback)
+            _report(self.report, error_details)
 
             # Show GitHub issue popup for unexpected errors
             if feedback == "gui":
@@ -1815,12 +2099,12 @@ class ClassifyImage:
             temp_folder = tempfile.mkdtemp()
             os.path.join(temp_folder, "temp.tif")
         except Exception as e:
-            pushFeedback(f"Cannot create temp file: {e}", feedback=feedback)
+            _report(self.report, f"Cannot create temp file: {e}")
             return None
             # Process the data
         # Validate model components
         if not all(var is not None for var in [tree, M, m, classifier]):
-            pushFeedback("Model variables not properly loaded", feedback=feedback)
+            _report(self.report, "Model variables not properly loaded")
             return None
         # try:
         predictedImage = self.predict_image(
@@ -1840,16 +2124,13 @@ class ClassifyImage:
 
         return predictedImage
 
-    def _load_model(self, model_path: str, feedback) -> Tuple[Any, np.ndarray, np.ndarray, str]:
+    def _load_model(self, model_path: str) -> Tuple[Any, np.ndarray, np.ndarray, str]:
         """Load pickled model with proper error handling.
 
         Parameters
         ----------
         model_path : str
             Path to the pickled model file
-        feedback : object
-            Feedback interface for error reporting
-
         Returns
         -------
         tuple
@@ -1877,9 +2158,9 @@ class ClassifyImage:
             tree, M, m, classifier = model_data
 
             # Debug: log what we loaded
-            pushFeedback(
+            _report(
+                self.report,
                 f"Loaded model data: tree={type(tree)}, M={type(M)}, m={type(m)}, classifier='{classifier}' (type: {type(classifier)})",
-                feedback=feedback,
             )
 
             # Basic validation of components
@@ -2011,9 +2292,9 @@ class ClassifyImage:
 
         # Provide feedback for multi-band images
         if d > 3:
-            pushFeedback(
+            _report(
+                self.report,
                 f"Processing {d}-band image. This may take longer than standard RGB images.",
-                feedback=feedback,
             )
 
         # Optimize block size for memory efficiency
@@ -2054,9 +2335,9 @@ class ClassifyImage:
         total = nl
 
         if d > 3:
-            pushFeedback(f"Predicting model for {d}-band image...")
+            _report(self.report, f"Predicting model for {d}-band image...")
         else:
-            pushFeedback("Predicting model...")
+            _report(self.report, "Predicting model...")
 
         if feedback == "gui":
             progress_text = f"Predicting model ({d} bands)..." if d > 3 else "Predicting model..."
@@ -2073,7 +2354,7 @@ class ClassifyImage:
             if int(lastBlock / total * 100) != int(i / total * 100):
                 lastBlock = i
                 pct = int(i / total * 100)
-                pushFeedback(pct, feedback=feedback)
+                _report(self.report, pct)
                 if feedback == "gui":
                     progress.prgBar.setValue(pct)
 
@@ -2120,7 +2401,6 @@ class ClassifyImage:
                         K = np.zeros(cols * lines)
                         K = np.negative(K)
 
-                # TODO: Change this part accorindgly ...
                 if t.size > 0:
                     if confidenceMap and classifier == "GMM":
                         yp[t], K[t] = model.predict(self.scale(X[t, :], M=M, m=m), None, confidenceMap)
@@ -2193,9 +2473,9 @@ class ClassifyImage:
                 scale_factor = (max_pixels_per_block / current_block_pixels) ** 0.5
                 x_block_size = max(32, int(x_block_size * scale_factor))
                 y_block_size = max(32, int(y_block_size * scale_factor))
-                pushFeedback(
+                _report(
+                    self.report,
                     f"Adjusted block size to {x_block_size}x{y_block_size} for memory optimization",
-                    feedback=feedback,
                 )
 
         return x_block_size, y_block_size
@@ -2219,7 +2499,7 @@ class ClassifyImage:
             for band_idx in range(num_bands):
                 band_data = raster.GetRasterBand(band_idx + 1).ReadAsArray(x_offset, y_offset, cols, lines)
                 if band_data is None:
-                    pushFeedback(f"Error reading band {band_idx + 1}", feedback=feedback)
+                    _report(self.report, f"Error reading band {band_idx + 1}")
                     return None
                 X[:, band_idx] = band_data.reshape(cols * lines)
 
@@ -2229,139 +2509,27 @@ class ClassifyImage:
             return X
 
         except MemoryError:
-            pushFeedback(
+            _report(
+                self.report,
                 "Memory error loading block data. Consider reducing block size or using fewer bands.",
-                feedback=feedback,
             )
             return None
         except Exception as e:
-            pushFeedback(f"Error loading block data: {e}", feedback=feedback)
+            _report(self.report, f"Error loading block data: {e}")
             return None
 
     def _show_github_issue_popup(self, error_title, error_type, error_message, context):
-        """Show a popup with GitHub issue template for copy/paste."""
+        """Show standardized compact issue popup."""
         try:
-            import platform
-
-            from qgis.PyQt.QtGui import QFont
-            from qgis.PyQt.QtWidgets import (
-                QDialog,
-                QHBoxLayout,
-                QLabel,
-                QPushButton,
-                QTextEdit,
-                QVBoxLayout,
+            show_issue_popup(
+                error_title=error_title,
+                error_type=error_type,
+                error_message=error_message,
+                context=context,
+                parent=None,
             )
-            from qgis.core import QgsApplication
-
-            # Get system information
-            qgis_version = QgsApplication.applicationVersion()
-            python_version = platform.python_version()
-            os_info = f"{platform.system()} {platform.release()}"
-
-            # Create GitHub issue template
-            github_template = f"""## Bug Report: {error_title}
-
-**Error Type:** {error_type}
-
-**Error Message:**
-```
-{error_message}
-```
-
-**Context:**
-{context}
-
-**Environment:**
-- QGIS Version: {qgis_version}
-- Python Version: {python_version}
-- Operating System: {os_info}
-- dzetsaka Version: 4.1.2
-
-**Steps to Reproduce:**
-1. [Please describe the steps that led to this error]
-2.
-3.
-
-**Expected Behavior:**
-[What you expected to happen]
-
-**Additional Information:**
-[Any additional context, screenshots, or logs that might help]
-
-**Log Output:**
-```
-[Please paste relevant log output from QGIS Message Log]
-```
-"""
-
-            # Create dialog
-            dialog = QDialog()
-            dialog.setWindowTitle("GitHub Issue Template - dzetsaka")
-            dialog.setModal(True)
-            dialog.resize(700, 600)
-
-            layout = QVBoxLayout()
-
-            # Title
-            title_label = QLabel("Copy this template to report the issue on GitHub:")
-            title_font = QFont()
-            title_font.setBold(True)
-            title_label.setFont(title_font)
-            layout.addWidget(title_label)
-
-            # Text area with template
-            text_edit = QTextEdit()
-            text_edit.setPlainText(github_template)
-            text_edit.selectAll()  # Pre-select all text for easy copying
-            layout.addWidget(text_edit)
-
-            # Buttons
-            button_layout = QHBoxLayout()
-
-            copy_button = QPushButton("Copy to Clipboard")
-            copy_button.clicked.connect(lambda: self._copy_to_clipboard(github_template))
-
-            github_button = QPushButton("Open GitHub Issues")
-            github_button.clicked.connect(lambda: self._open_github_issues())
-
-            close_button = QPushButton("Close")
-            close_button.clicked.connect(dialog.close)
-
-            button_layout.addWidget(copy_button)
-            button_layout.addWidget(github_button)
-            button_layout.addStretch()
-            button_layout.addWidget(close_button)
-
-            layout.addLayout(button_layout)
-            dialog.setLayout(layout)
-
-            dialog.exec_()
-
         except Exception as e:
-            # Fallback if popup fails
-            pushFeedback(f"Could not show GitHub issue popup: {e}", feedback="gui")
-
-    def _copy_to_clipboard(self, text):
-        """Copy text to clipboard."""
-        try:
-            from qgis.PyQt.QtWidgets import QApplication, QMessageBox
-
-            clipboard = QApplication.clipboard()
-            clipboard.setText(text)
-
-            QMessageBox.information(None, "Copied", "GitHub issue template copied to clipboard!")
-        except Exception as e:
-            pushFeedback(f"Could not copy to clipboard: {e}", feedback="gui")
-
-    def _open_github_issues(self):
-        """Open dzetsaka GitHub issues page."""
-        try:
-            import webbrowser
-
-            webbrowser.open("https://github.com/nkarasiak/dzetsaka/issues")
-        except Exception as e:
-            pushFeedback(f"Could not open GitHub: {e}", feedback="gui")
+            _report(self.report, f"Could not show GitHub issue popup: {e}")
 
 
 class ConfusionMatrix:
@@ -2398,6 +2566,7 @@ class ConfusionMatrix:
         Backward compatibility is maintained through the @backward_compatible decorator.
 
         """
+        report = Reporter.from_feedback(feedback, tag=LOG_TAG)
         if not raster_path:
             raise ValueError("raster_path (or inRaster) is required")
         if not shapefile_path:
@@ -2420,7 +2589,7 @@ class ConfusionMatrix:
 
         except Exception as e:
             error_msg = f"Error during statistics calculation: {e}"
-            pushFeedback(error_msg, feedback=feedback)
+            _report(report, error_msg)
             raise RuntimeError(error_msg) from e
 
 
@@ -2504,39 +2673,6 @@ def rasterize(
         data, dst_ds, shp, lyr = None, None, None, None
 
     return filename
-
-
-def pushFeedback(message, feedback=None) -> None:
-    """Push feedback message to appropriate interface.
-
-    Parameters
-    ----------
-    message : str, int, or float
-        Message to display or progress value
-    feedback : object, optional
-        Feedback interface object
-
-    """
-    isNum = isinstance(message, (float, int))
-
-    if feedback and feedback is not True:
-        if feedback == "gui":
-            if not isNum:
-                QgsMessageLog.logMessage(str(message))
-        else:
-            if isNum:
-                feedback.setProgress(message)
-            else:
-                feedback.setProgressText(message)
-    else:
-        if not isNum:
-            print(str(message))
-        """
-        else:
-            print(52*"=")
-            print(((int(message/2)-3)*'-'+(str(message)+'%')))
-            print(52*"=")
-        """
 
 
 if __name__ == "__main__":

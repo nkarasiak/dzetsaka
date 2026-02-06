@@ -1178,6 +1178,27 @@ class DzetsakaGUI(QDialog):
             self.dockwidget.checkInConfidence.setChecked(False)
             self.dockwidget.outConfidenceMap.setEnabled(False)
 
+    def _check_sklearn_usable(self):
+        # type: () -> tuple[bool, str]
+        """Return whether scikit-learn is fully usable in the current runtime."""
+        try:
+            import sklearn
+
+            # Broken installs can import a namespace package named sklearn but miss core modules.
+            from sklearn.base import BaseEstimator  # noqa: F401
+
+            version = getattr(sklearn, "__version__", None)
+            module_file = getattr(sklearn, "__file__", None)
+            if not version:
+                return False, "sklearn imported but has no __version__ (incomplete install)"
+            if module_file is None:
+                return False, "sklearn imported as namespace package (incomplete install)"
+            return True, f"version {version}"
+        except ImportError as e:
+            return False, f"not importable: {e}"
+        except Exception as e:
+            return False, f"imported but unusable: {e}"
+
     def saveSettings(self):
         """!@brief save settings if modifications."""
         # Change classifier
@@ -1189,19 +1210,13 @@ class DzetsakaGUI(QDialog):
             missing_required = []
 
             if classifier_config.requires_sklearn(classifier_code):
-                # Test sklearn availability directly
-                sklearn_available = False
-                try:
-                    import sklearn
-
-                    sklearn_available = True
-                    self.log.info(
-                        f"Sklearn detected for {selected_classifier}: version {sklearn.__version__}"
+                sklearn_available, sklearn_details = self._check_sklearn_usable()
+                if sklearn_available:
+                    self.log.info(f"Scikit-learn detected for {selected_classifier}: {sklearn_details}")
+                else:
+                    self.log.warning(
+                        f"Scikit-learn check failed for {selected_classifier}: {sklearn_details}"
                     )
-                except ImportError as e:
-                    self.log.warning(f"Sklearn import failed for {selected_classifier}: {e}")
-
-                if not sklearn_available:
                     missing_required.append("scikit-learn")
 
             if classifier_config.requires_xgboost(classifier_code):
@@ -1231,14 +1246,17 @@ class DzetsakaGUI(QDialog):
 
             if missing_required:
                 req_list = ", ".join(missing_required)
-                opt_list = ", ".join(missing_optional) if missing_optional else "none"
+                optional_line = ""
+                if missing_optional:
+                    opt_list = ", ".join(missing_optional)
+                    optional_line = f"Optional missing now: <code>{opt_list}</code><br>"
                 reply = QMessageBox.question(
                     self,
-                    f"Dependencies for {selected_classifier}",
+                    "Dependencies Missing for dzetsaka",
                     (
                         "To fully use dzetsaka capabilities, we recommend installing all dependencies.<br><br>"
                         f"Required missing now: <code>{req_list}</code><br>"
-                        f"Optional missing now: <code>{opt_list}</code><br><br>"
+                        f"{optional_line}<br>"
                         "Install the full dzetsaka dependency bundle now?"
                     ),
                     QMessageBox.StandardButton.Yes
@@ -1331,12 +1349,11 @@ class DzetsakaGUI(QDialog):
 
             # Check library availability
             sklearn_available = "No"
-            try:
-                import sklearn
-
-                sklearn_available = f"Yes ({sklearn.__version__})"
-            except ImportError:
-                pass
+            sklearn_ok, sklearn_details = self._check_sklearn_usable()
+            if sklearn_ok:
+                sklearn_available = f"Yes ({sklearn_details})"
+            else:
+                sklearn_available = f"No ({sklearn_details})"
 
             xgboost_available = "No"
             try:
@@ -1759,6 +1776,16 @@ Settings:
             "imbalanced-learn": "imblearn",
         }
 
+        def _is_dependency_usable(package_name):
+            """Dependency-specific usability check (not just importability)."""
+            if package_name == "scikit-learn":
+                ok, details = self._check_sklearn_usable()
+                if not ok:
+                    self.log.warning(f"scikit-learn present but unusable: {details}")
+                return ok
+            base_import = base_imports.get(package_name, package_name)
+            return _is_importable(base_import)
+
         try:
             # Show custom progress dialog with live output
             progress = InstallProgressDialog(parent=self, total_packages=len(missing_deps))
@@ -1793,8 +1820,7 @@ Settings:
 
                 try:
                     dep_installed = False
-                    base_import = base_imports.get(package_name, package_name)
-                    if _is_importable(base_import):
+                    if _is_dependency_usable(package_name):
                         dep_installed = True
                         success_count += 1
                         self.log.info(f"{package_name} already available; skipping install.")
@@ -1822,7 +1848,20 @@ Settings:
                                 importlib.invalidate_caches()
                                 import_target = base_imports.get(target, target)
                                 imported = importlib.import_module(import_target)
-                                if hasattr(imported, "__version__"):
+                                if target == "scikit-learn":
+                                    sklearn_ok, sklearn_details = self._check_sklearn_usable()
+                                    if not sklearn_ok:
+                                        self.log.warning(
+                                            "scikit-learn install command succeeded but runtime check failed: "
+                                            f"{sklearn_details}"
+                                        )
+                                        progress.append_output(
+                                            "✗ scikit-learn is still unusable after install "
+                                            f"({sklearn_details})\n"
+                                        )
+                                        continue
+                                    progress.append_output(f"  Verified: {sklearn_details}\n")
+                                elif hasattr(imported, "__version__"):
                                     self.log.info(f"Verified {import_target} import: {imported.__version__}")
                                     progress.append_output(f"  Version: {imported.__version__}\n")
                                 else:
