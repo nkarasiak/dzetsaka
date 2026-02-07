@@ -6,6 +6,7 @@ import contextlib
 import os
 import tempfile
 
+from qgis.core import QgsApplication
 from qgis.PyQt.QtWidgets import QMessageBox
 from dzetsaka.presentation.qgis.dependency_catalog import FULL_DEPENDENCY_BUNDLE
 
@@ -861,4 +862,171 @@ def try_install_dependencies(plugin, missing_deps):
         if runtime_constraints_file:
             with contextlib.suppress(Exception):
                 os.remove(runtime_constraints_file)
-
+
+
+def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
+    """Install dependencies using QgsTask (non-blocking, better QGIS integration).
+
+    This is the recommended approach that follows QGIS best practices by running
+    installation in a background task without blocking the UI or using event loops.
+
+    Parameters
+    ----------
+    plugin : DzetsakaGUI
+        Plugin instance
+    missing_deps : list
+        List of missing dependency names
+    on_complete : callable, optional
+        Callback function(success: bool) called when installation finishes
+
+    Returns
+    -------
+    None
+        Installation runs asynchronously, result returned via callback
+    """
+    if not missing_deps:
+        if on_complete:
+            on_complete(True)
+        return
+
+    from dzetsaka.presentation.qgis.dependency_install_task import DependencyInstallTask
+
+    # Normalize and deduplicate dependency names
+    normalized_missing_deps = []
+    seen = set()
+    for dep in missing_deps:
+        dep_norm = str(dep).strip()
+        if not dep_norm:
+            continue
+        dep_key = dep_norm.lower()
+        if dep_key in seen:
+            continue
+        seen.add(dep_key)
+        normalized_missing_deps.append(dep_norm)
+
+    requested_deps = normalized_missing_deps
+    packages = FULL_DEPENDENCY_BUNDLE.copy()
+    plugin.log.info(
+        "All-dependencies install mode enabled (async). "
+        f"Requested={requested_deps!r}, full bundle target={packages!r}"
+    )
+
+    # Build conservative constraints from the live runtime
+    runtime_constraints_file = None
+    try:
+        try:
+            from importlib import metadata as importlib_metadata
+        except ImportError:
+            import importlib_metadata  # type: ignore
+
+        pinned_packages = []
+        for pkg in ("numpy", "scipy", "pandas"):
+            try:
+                version = importlib_metadata.version(pkg)
+            except importlib_metadata.PackageNotFoundError:
+                continue
+            if version:
+                pinned_packages.append(f"{pkg}=={version}")
+
+        if pinned_packages:
+            constraints_text = "\n".join(pinned_packages) + "\n"
+            fd, runtime_constraints_file = tempfile.mkstemp(
+                prefix="dzetsaka_pip_constraints_",
+                suffix=".txt",
+            )
+            os.close(fd)
+            with open(runtime_constraints_file, "w", encoding="utf-8") as f:
+                f.write(constraints_text)
+            plugin.log.info(
+                "Using runtime pip constraints to keep scientific stack stable: "
+                f"{', '.join(pinned_packages)}"
+            )
+    except Exception as constraints_err:
+        plugin.log.warning(f"Could not prepare runtime pip constraints: {constraints_err!s}")
+
+    # Mapping of dependency names to pip packages
+    pip_packages = {
+        "scikit-learn": "scikit-learn",
+        "sklearn": "scikit-learn",
+        "Sklearn": "scikit-learn",
+        "xgboost": "xgboost",
+        "lightgbm": "lightgbm",
+        "catboost": "catboost",
+        "optuna": "optuna",
+        "shap": "shap",
+        "seaborn": "seaborn",
+        "imbalanced-learn": "imbalanced-learn",
+        "imblearn": "imbalanced-learn",
+        "XGBoost": "xgboost",
+        "LightGBM": "lightgbm",
+        "CatBoost": "catboost",
+        "Optuna": "optuna",
+    }
+
+    # Convert to pip package names
+    package_order = []
+    for dep in packages:
+        dep_key = dep.strip()
+        package_name = pip_packages.get(dep_key, pip_packages.get(dep_key.lower(), dep_key.lower()))
+        package_name = pip_packages.get(package_name, package_name)
+        if package_name not in package_order:
+            package_order.append(package_name)
+
+    # Create and submit task
+    task = DependencyInstallTask(
+        description="dzetsaka: Installing Python dependencies",
+        packages=package_order,
+        plugin_logger=plugin.log,
+        runtime_constraints=runtime_constraints_file,
+    )
+
+    def on_task_finished(success: bool):
+        """Handle task completion in main thread."""
+        # Clean up constraints file
+        if runtime_constraints_file:
+            with contextlib.suppress(Exception):
+                os.remove(runtime_constraints_file)
+
+        # Show result to user
+        if success:
+            QMessageBox.information(
+                plugin.iface.mainWindow(),
+                "Installation Successful",
+                "Dependencies installed successfully!\n\n"
+                "<b>Important:</b> Please restart QGIS to load the new libraries.\n\n"
+                "After restarting, you can use all dzetsaka features including "
+                "XGBoost, LightGBM, CatBoost, Optuna optimization, and SHAP explainability.",
+                QMessageBox.StandardButton.Ok,
+            )
+        elif task.isCanceled():
+            QMessageBox.warning(
+                plugin.iface.mainWindow(),
+                "Installation Cancelled",
+                "Dependency installation was cancelled.",
+                QMessageBox.StandardButton.Ok,
+            )
+        else:
+            plugin._show_github_issue_popup(
+                error_title="Installation Incomplete",
+                error_type="Dependency Installation Error",
+                error_message=(
+                    f"Only {task.success_count} of {len(package_order)} dependencies were installed successfully.\n"
+                    "Manual fallback examples:\n"
+                    "  pip install --user scikit-learn\n"
+                    "  pip install --user xgboost lightgbm catboost optuna shap imbalanced-learn\n"
+                ),
+                context=f"Missing dependencies requested: {', '.join(missing_deps)}",
+            )
+
+        # Call user callback
+        if on_complete:
+            on_complete(success)
+
+    # Connect finished signal
+    task.taskCompleted.connect(lambda: on_task_finished(True))
+    task.taskTerminated.connect(lambda: on_task_finished(False))
+
+    # Submit to task manager
+    QgsApplication.taskManager().addTask(task)
+    plugin.log.info(f"Dependency installation task submitted: {len(package_order)} packages")
+

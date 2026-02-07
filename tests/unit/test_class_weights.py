@@ -55,6 +55,24 @@ class TestComputeClassWeights:
         # Weight inversely proportional to class size
         assert weights[2] > weights[1] > weights[0]
 
+    def test_balanced_strategy_with_column_vector_labels(self):
+        """Test balanced strategy with labels shaped (n, 1)."""
+        y = np.array([[0], [0], [0], [1], [1]])
+        weights = compute_class_weights(y, strategy="balanced")
+
+        assert 0 in weights
+        assert 1 in weights
+        assert weights[1] > weights[0]
+
+    def test_balanced_strategy_with_object_array_wrapped_scalars(self):
+        """Test balanced strategy with object labels containing numpy scalar arrays."""
+        y = np.array([np.array([0]), np.array([0]), np.array([1])], dtype=object)
+        weights = compute_class_weights(y, strategy="balanced")
+
+        assert 0 in weights
+        assert 1 in weights
+        assert weights[1] > weights[0]
+
     def test_uniform_strategy(self):
         """Test uniform strategy (all weights = 1.0)."""
         y = np.array([0] * 90 + [1] * 10)
@@ -204,6 +222,17 @@ class TestComputeSampleWeights:
         assert sample_weights[0] == 1.0  # Class 0
         assert sample_weights[1] == 2.0  # Class 1
         assert sample_weights[2] == 5.0  # Class 2
+
+    def test_sample_weights_with_column_vector_labels(self):
+        """Test sample weights with labels shaped (n, 1)."""
+        y = np.array([[0], [1], [0], [1]])
+        class_weights = {0: 0.5, 1: 4.5}
+
+        sample_weights = compute_sample_weights(y, class_weights)
+
+        assert sample_weights.shape == (4,)
+        assert sample_weights[0] == 0.5
+        assert sample_weights[1] == 4.5
 
 
 class TestNormalizeWeights:

@@ -43,5 +43,5 @@ def init_gui(plugin) -> None:
         QTimer.singleShot(400, plugin.showWelcomeWidget)
     if plugin._open_dashboard_on_init:
         plugin._open_dashboard_on_init = False
-        QTimer.singleShot(800, plugin.open_dashboard)
+        QTimer.singleShot(1200, plugin.open_dashboard)
 

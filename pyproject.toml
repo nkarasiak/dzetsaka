@@ -125,6 +125,12 @@ docs = [
     "sphinx-autodoc-typehints>=1.20.0",
 ]
 
+# Geospatial helpers (GeoParquet assets)
+geo = [
+    "pyarrow>=11.0.0",
+    "geopandas>=0.14.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/nkarasiak/dzetsaka"
 Repository = "https://github.com/nkarasiak/dzetsaka.git"

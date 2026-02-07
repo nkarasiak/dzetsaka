@@ -104,7 +104,12 @@ class OptunaOptimizer:
             optuna.logging.set_verbosity(optuna.logging.WARNING)
 
     def optimize(
-        self, X: np.ndarray, y: np.ndarray, cv: Union[int, Any] = 5, scoring: str = "f1_weighted"
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        cv: Union[int, Any] = 5,
+        scoring: str = "f1_weighted",
+        groups: Optional[np.ndarray] = None,
     ) -> Dict[str, Any]:
         """Run Optuna optimization and return best parameters.
 
@@ -118,6 +123,8 @@ class OptunaOptimizer:
             Cross-validation strategy (int or sklearn CV splitter)
         scoring : str, default="f1_weighted"
             Scoring metric for optimization
+        groups : np.ndarray, optional
+            Group labels for GroupKFold or StratifiedGroupKFold CV splitters
 
         Returns
         -------
@@ -146,7 +153,7 @@ class OptunaOptimizer:
 
             # Evaluate with cross-validation
             try:
-                scores = cross_val_score(clf, X, y, cv=cv_splitter, scoring=scoring, n_jobs=1)
+                scores = cross_val_score(clf, X, y, cv=cv_splitter, scoring=scoring, n_jobs=1, groups=groups)
                 mean_score = scores.mean()
 
                 # Report intermediate value for pruning
@@ -171,15 +178,15 @@ class OptunaOptimizer:
 
         # Run optimization
         self.log.info(
-            f"Starting Optuna optimization for {self.classifier_code}: "
-            f"{self.n_trials} trials, scoring={scoring}"
+            f"Starting Optuna optimization for {self.classifier_code}: {self.n_trials} trials, scoring={scoring}"
         )
 
-        self.study.optimize(objective, n_trials=self.n_trials, timeout=self.timeout, n_jobs=self.n_jobs, show_progress_bar=self.verbose)
+        self.study.optimize(
+            objective, n_trials=self.n_trials, timeout=self.timeout, n_jobs=self.n_jobs, show_progress_bar=self.verbose
+        )
 
         self.log.info(
-            f"Optimization complete. Best score: {self.study.best_value:.4f}, "
-            f"Best params: {self.study.best_params}"
+            f"Optimization complete. Best score: {self.study.best_value:.4f}, Best params: {self.study.best_params}"
         )
 
         return self.study.best_params
@@ -298,9 +305,7 @@ class OptunaOptimizer:
 
         elif classifier_code == "MLP":
             n_layers = trial.suggest_int("n_layers", 1, 3)
-            hidden_layer_sizes = tuple(
-                trial.suggest_int(f"layer_{i}_size", 50, 300, step=50) for i in range(n_layers)
-            )
+            hidden_layer_sizes = tuple(trial.suggest_int(f"layer_{i}_size", 50, 300, step=50) for i in range(n_layers))
 
             return {
                 "hidden_layer_sizes": hidden_layer_sizes,

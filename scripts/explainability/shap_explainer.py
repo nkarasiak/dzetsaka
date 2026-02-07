@@ -44,8 +44,10 @@ License:
 GNU General Public License v2.0 or later
 
 """
+import contextlib
 import os
 import pickle
+import sys
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -55,10 +57,39 @@ from osgeo import gdal, gdal_array
 try:
     import shap
 
+    # Fix for QGIS: Ensure sys.stderr/stdout exist for tqdm (used by SHAP)
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w")
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w")
+
     SHAP_AVAILABLE = True
 except ImportError:
     SHAP_AVAILABLE = False
     shap = None
+
+
+@contextlib.contextmanager
+def _safe_tqdm_environment():
+    """Context manager to ensure tqdm has valid file handles in QGIS.
+
+    In QGIS, sys.stderr and sys.stdout can be None, causing tqdm to crash.
+    This context manager temporarily provides valid file handles.
+    """
+    original_stderr = sys.stderr
+    original_stdout = sys.stdout
+
+    try:
+        # Ensure valid file handles for tqdm
+        if sys.stderr is None:
+            sys.stderr = open(os.devnull, "w")
+        if sys.stdout is None:
+            sys.stdout = open(os.devnull, "w")
+        yield
+    finally:
+        # Restore original values (even if they were None)
+        sys.stderr = original_stderr
+        sys.stdout = original_stdout
 
 # Try to import from dzetsaka modules
 try:
@@ -303,8 +334,10 @@ class ModelExplainer:
         if self.explainer is None:
             self._create_explainer(background_data)
 
-        # Compute SHAP values
-        shap_values = self.explainer.shap_values(X_sample)
+        # Compute SHAP values with protection against QGIS sys.stderr/stdout issues
+        with _safe_tqdm_environment():
+            # silent=True disables tqdm progress bar (which needs valid file handles)
+            shap_values = self.explainer.shap_values(X_sample, silent=True)
 
         # Handle multiclass case - shap_values will be a list of arrays
         if isinstance(shap_values, list):
@@ -324,6 +357,11 @@ class ModelExplainer:
         else:
             raise ValueError(f"Unknown aggregate_method: {aggregate_method}. Use 'mean_abs', 'mean', or 'max_abs'")
 
+        importance_values = np.asarray(importance_values)
+        if importance_values.ndim > 1:
+            importance_values = importance_values.mean(axis=0)
+        importance_values = importance_values.astype(float)
+
         # Normalize to sum to 1.0
         total = importance_values.sum()
         if total > 0:
@@ -334,7 +372,11 @@ class ModelExplainer:
             self.feature_names = [f"Feature_{i}" for i in range(len(importance_values))]
 
         # Create dictionary mapping feature names to importance
-        importance_dict = dict(zip(self.feature_names, importance_values))
+        # Convert to native Python floats so sorting/logging works with scalars
+        importance_dict = {
+            name: float(value)
+            for name, value in zip(self.feature_names, importance_values.tolist())
+        }
 
         return importance_dict
 

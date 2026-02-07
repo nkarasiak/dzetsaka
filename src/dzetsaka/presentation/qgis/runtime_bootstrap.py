@@ -14,7 +14,7 @@ from dzetsaka.logging_utils import QgisLogger
 def initialize_runtime_state(gui, iface) -> None:
     """Initialize DzetsakaGUI runtime state without embedding setup details in plugin_runtime."""
     gui.iface = iface
-    gui.log = QgisLogger(tag="Dzetsaka/Core")
+    gui.log = QgisLogger(tag="Dzetsaka")
 
     QDialog.__init__(gui)
     gui.settings = QSettings()
@@ -26,7 +26,8 @@ def initialize_runtime_state(gui, iface) -> None:
     shown_version = gui.settings.value("/dzetsaka/onboardingShownVersion", "", str) or ""
     should_show_onboarding = shown_version != gui.plugin_version
     gui._open_welcome_on_init = bool(gui.firstInstallation or should_show_onboarding)
-    gui._open_dashboard_on_init = bool(gui.firstInstallation or should_show_onboarding)
+    # Always open dashboard when plugin is initialized (every installation/load)
+    gui._open_dashboard_on_init = True
 
     gui.actions = []
     gui.menu = gui.tr("&dzetsaka")
@@ -35,6 +36,5 @@ def initialize_runtime_state(gui, iface) -> None:
     gui.dashboard_dock = None
     gui._active_classification_task = None
     gui.lastSaveDir = ""
-
 
 

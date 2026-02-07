@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import contextlib
 import os
+import traceback
 from typing import Any, Callable, Optional
 
-from qgis.core import QgsTask
+from qgis.core import QgsTask, QgsMessageLog, Qgis
 
 from dzetsaka.application.use_cases.classify_raster import run_classification
 from dzetsaka.application.use_cases.train_model import run_training
@@ -148,7 +149,18 @@ class ClassificationTask(QgsTask):
             self.setProgress(100)
             return True
         except Exception as exc:
-            self._set_error("dzetsaka Error", f"Unexpected error: {exc!s}")
+            # Get full traceback for detailed error reporting
+            tb_str = traceback.format_exc()
+            error_msg = f"Unexpected error: {exc!s}\n\nFull traceback:\n{tb_str}"
+
+            # Log to QGIS message log with full traceback
+            QgsMessageLog.logMessage(
+                f"Classification task error:\n{tb_str}",
+                "Dzetsaka",
+                Qgis.Critical
+            )
+
+            self._set_error("dzetsaka Error", error_msg)
             return False
 
     def finished(self, result: bool) -> None:

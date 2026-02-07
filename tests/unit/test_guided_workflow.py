@@ -100,7 +100,7 @@ class TestCheckDependencyAvailability:
     def test_has_all_expected_keys(self):
         """All dependency keys are present."""
         result = check_dependency_availability()
-        expected_keys = {"sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"}
+        expected_keys = {"sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "seaborn", "imblearn"}
         assert set(result.keys()) == expected_keys
 
     def test_values_are_bool(self):
@@ -113,7 +113,7 @@ class TestCheckDependencyAvailability:
         """When all imports succeed the dict is all-True."""
         mods = {
             k: type(sys)("fake_" + k)
-            for k in ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn")
+            for k in ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "seaborn", "imblearn")
         }
         with patch.dict("sys.modules", mods):
             result = check_dependency_availability()
@@ -125,7 +125,7 @@ class TestCheckDependencyAvailability:
         original_import = __builtins__["__import__"] if isinstance(__builtins__, dict) else __builtins__.__import__
 
         def _fail_import(name, *args, **kwargs):
-            if name in ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"):
+            if name in ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "seaborn", "imblearn"):
                 raise ImportError(f"mocked missing {name}")
             return original_import(name, *args, **kwargs)
 

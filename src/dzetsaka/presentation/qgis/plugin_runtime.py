@@ -377,10 +377,31 @@ class DzetsakaGUI(QDialog):
         )
 
     def _try_install_dependencies(self, missing_deps):
-        """Compatibility wrapper around extracted dependency installer."""
+        """Compatibility wrapper around extracted dependency installer.
+
+        Note: This is the legacy synchronous version using QEventLoop.
+        For new code, prefer _try_install_dependencies_async which uses QgsTask.
+        """
         from dzetsaka.presentation.qgis.dependency_installer import try_install_dependencies
 
         return try_install_dependencies(self, missing_deps)
+
+    def _try_install_dependencies_async(self, missing_deps, on_complete=None):
+        """Install dependencies using QgsTask (recommended - non-blocking).
+
+        This follows QGIS best practices by running installation in a background
+        task without blocking the UI.
+
+        Parameters
+        ----------
+        missing_deps : list
+            List of missing dependency names
+        on_complete : callable, optional
+            Callback function(success: bool) called when installation finishes
+        """
+        from dzetsaka.presentation.qgis.dependency_installer import try_install_dependencies_async
+
+        try_install_dependencies_async(self, missing_deps, on_complete)
 
     def open_dashboard(self):
         """Open the dockable classification dashboard (Quick/Advanced)."""

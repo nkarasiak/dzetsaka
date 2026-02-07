@@ -44,6 +44,32 @@ except ImportError:
     SKLEARN_AVAILABLE = False
 
 
+def _normalize_labels_1d(y: np.ndarray) -> np.ndarray:
+    """Normalize labels to a 1D array of scalar values.
+
+    Handles common upstream shapes like (n, 1) and object arrays containing
+    0-d/1-element numpy arrays, which otherwise break class weight utilities.
+    """
+    arr = np.asarray(y)
+    if arr.ndim == 0:
+        return arr.reshape(1)
+    if arr.ndim > 1:
+        arr = arr.reshape(-1)
+
+    if arr.dtype == object:
+        out = np.empty(arr.shape[0], dtype=object)
+        for i, val in enumerate(arr):
+            if isinstance(val, np.ndarray):
+                if val.size != 1:
+                    raise ValueError("Labels must be scalar values per sample")
+                out[i] = val.item()
+            else:
+                out[i] = val
+        return out
+
+    return arr
+
+
 def compute_class_weights(
     y: np.ndarray,
     strategy: str = "balanced",
@@ -93,6 +119,7 @@ def compute_class_weights(
             raise ValueError("custom_weights must be provided when strategy='custom'")
         return custom_weights
 
+    y = _normalize_labels_1d(y)
     unique_classes = np.unique(y)
 
     if strategy == "uniform":
@@ -210,6 +237,7 @@ def get_imbalance_ratio(y: np.ndarray) -> float:
     >>> print(ratio)  # 9.0 (class 0 is 9x larger)
 
     """
+    y = _normalize_labels_1d(y)
     unique, counts = np.unique(y, return_counts=True)
 
     if len(unique) < 2:
@@ -241,6 +269,7 @@ def get_class_distribution(y: np.ndarray) -> Dict[int, int]:
     ...     print(f"Class {cls}: {count} samples")
 
     """
+    y = _normalize_labels_1d(y)
     unique, counts = np.unique(y, return_counts=True)
     return {int(cls): int(count) for cls, count in zip(unique, counts)}
 
@@ -387,6 +416,7 @@ def compute_sample_weights(
     >>> model.fit(X_train, y_train, sample_weight=sample_weights)
 
     """
+    y = _normalize_labels_1d(y)
     sample_weights = np.zeros(len(y), dtype=np.float32)
 
     for cls, weight in class_weights.items():

@@ -58,7 +58,7 @@ import os
 import pickle
 import tempfile
 import webbrowser
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -384,7 +384,7 @@ CLASSIFIER_CONFIGS = {
 
 MAX_MEMORY_MB = 512
 MIN_CROSS_VALIDATION_SPLITS = 2
-LOG_TAG = "Dzetsaka/Core"
+LOG_TAG = "Dzetsaka"
 FAST_MODE_MAX_SAMPLES = 15000
 FAST_MODE_MAX_OPTUNA_TRIALS = 25
 
@@ -682,23 +682,37 @@ def _write_report_bundle(
 
     def _per_class_metrics_html_table(values: List[Any], names: List[str], metrics: Dict[str, Any]) -> str:
         rows = []
+        total_support = sum(metrics["support_per_class"])
         for i, cls_val in enumerate(values):
+            support = int(metrics["support_per_class"][i])
+            support_pct = (support / total_support * 100) if total_support > 0 else 0.0
+
+            # Color coding for metrics
+            precision = metrics["precision_per_class"][i]
+            recall = metrics["recall_per_class"][i]
+            f1 = metrics["f1_per_class"][i]
+
+            def metric_cell(value):
+                color = "#059669" if value >= 0.8 else "#d97706" if value >= 0.6 else "#dc2626"
+                return f"<td style='color:{color};font-weight:600;'>{_fmt_metric(value)}</td>"
+
             rows.append(
                 "<tr>"
-                f"<td>{html.escape(str(cls_val))}</td>"
-                f"<td>{html.escape(str(names[i]))}</td>"
-                f"<td>{_fmt_metric(metrics['precision_per_class'][i])}</td>"
-                f"<td>{_fmt_metric(metrics['recall_per_class'][i])}</td>"
-                f"<td>{_fmt_metric(metrics['f1_per_class'][i])}</td>"
-                f"<td>{int(metrics['support_per_class'][i])}</td>"
-                "</tr>"
+                + f"<td style='text-align:center;'>{html.escape(str(cls_val))}</td>"
+                + f"<td style='text-align:left;'>{html.escape(str(names[i]))}</td>"
+                + metric_cell(precision)
+                + metric_cell(recall)
+                + metric_cell(f1)
+                + f"<td style='text-align:right;'>{support}</td>"
+                + f"<td style='text-align:right;color:var(--muted);font-size:12px;'>{support_pct:.1f}%</td>"
+                + "</tr>"
             )
         return (
             "<table>"
-            "<thead><tr><th>Class value</th><th>Class name</th><th>Precision</th><th>Recall</th><th>F1</th><th>Support</th></tr></thead>"
-            "<tbody>"
-            + "".join(rows)
-            + "</tbody></table>"
+            "<thead><tr><th style='text-align:center;'>Class</th><th style='text-align:left;'>Name</th>"
+            "<th>Precision</th><th>Recall</th><th>F1-Score</th><th style='text-align:right;'>Samples</th>"
+            "<th style='text-align:right;'>%</th></tr></thead>"
+            "<tbody>" + "".join(rows) + "</tbody></table>"
         )
 
     numeric_csv = os.path.join(report_dir, "confusion_matrix_numeric.csv")
@@ -728,6 +742,81 @@ def _write_report_bundle(
     config_json = os.path.join(report_dir, "run_config.json")
     with open(config_json, "w", encoding="utf-8") as handle:
         json.dump(rerun_config, handle, indent=2, default=str)
+
+    # Sprint 1 reproducibility artifacts:
+    # - run_manifest.json: machine-readable index of run metadata and artifacts.
+    # - trust_card.json: concise quality + risk snapshot for quick decision support.
+    split_mode = str(config_meta.get("split_mode", "") or "")
+    split_config = config_meta.get("split_config", "")
+    risk_flags = []
+    if split_mode == "RANDOM_SPLIT":
+        risk_flags.append("spatial_leakage_risk")
+    if float(summary_metrics.get("accuracy", 0.0)) < 0.60:
+        risk_flags.append("low_overall_accuracy")
+    min_support = min(summary_metrics.get("support_per_class", [0]) or [0])
+    if int(min_support) < 10:
+        risk_flags.append("low_minority_support")
+
+    run_manifest = {
+        "schema_version": 1,
+        "artifact": "dzetsaka_run_manifest",
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds") + "Z",
+        "run": {
+            "classifier_code": config_meta.get("classifier_code", ""),
+            "classifier_name": config_meta.get("classifier_name", ""),
+            "execution_date": config_meta.get("execution_date", ""),
+            "split_mode": split_mode,
+            "split_config": split_config,
+            "class_field": config_meta.get("class_field", ""),
+            "raster_path": config_meta.get("raster_path", ""),
+            "vector_path": config_meta.get("vector_path", ""),
+            "optimization_method": config_meta.get("optimization_method", ""),
+            "best_hyperparameters": config_meta.get("best_hyperparameters", {}),
+        },
+        "metrics": {
+            "accuracy": summary_metrics.get("accuracy", 0.0),
+            "f1_macro": summary_metrics.get("f1_macro", 0.0),
+            "f1_weighted": summary_metrics.get("f1_weighted", 0.0),
+            "f1_micro": summary_metrics.get("f1_micro", 0.0),
+            "overall_accuracy_conf": summary_metrics.get("overall_accuracy_conf", 0.0),
+            "f1_mean_conf": summary_metrics.get("f1_mean_conf", 0.0),
+        },
+        "artifacts": {
+            "run_config": os.path.basename(config_json),
+            "metrics_json": "metrics.json",
+            "confusion_matrix_numeric_csv": "confusion_matrix_numeric.csv",
+            "confusion_matrix_labeled_csv": "confusion_matrix_labeled.csv",
+            "per_class_metrics_csv": "per_class_metrics.csv",
+            "summary_markdown": "report_summary.md",
+            "html_report": "classification_report.html",
+        },
+    }
+    run_manifest_json = os.path.join(report_dir, "run_manifest.json")
+    with open(run_manifest_json, "w", encoding="utf-8") as handle:
+        json.dump(run_manifest, handle, indent=2, default=str)
+
+    trust_card = {
+        "schema_version": 1,
+        "artifact": "dzetsaka_trust_card",
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds") + "Z",
+        "validation": {
+            "mode": split_mode,
+            "split_config": split_config,
+        },
+        "quality": {
+            "accuracy": summary_metrics.get("accuracy", 0.0),
+            "f1_macro": summary_metrics.get("f1_macro", 0.0),
+            "overall_accuracy_conf": summary_metrics.get("overall_accuracy_conf", 0.0),
+        },
+        "risk_flags": risk_flags,
+        "notes": [
+            "Use POLYGON_GROUP mode when spatial leakage is a concern.",
+            "Inspect confusion_matrix_labeled.csv for per-class failure patterns.",
+        ],
+    }
+    trust_card_json = os.path.join(report_dir, "trust_card.json")
+    with open(trust_card_json, "w", encoding="utf-8") as handle:
+        json.dump(trust_card, handle, indent=2, default=str)
 
     heatmap_png = os.path.join(report_dir, "confusion_matrix_heatmap.png")
     clf_heatmap_png = os.path.join(report_dir, "classification_report_heatmap.png")
@@ -815,8 +904,7 @@ def _write_report_bundle(
             with open(heatmap_png, "rb") as handle:
                 encoded = base64.b64encode(handle.read()).decode("ascii")
             embedded_heatmap = (
-                "<img class='heatmap' alt='Confusion matrix heatmap' "
-                f"src='data:image/png;base64,{encoded}'/>"
+                f"<img class='heatmap' alt='Confusion matrix heatmap' src='data:image/png;base64,{encoded}'/>"
             )
     embedded_clf_heatmap = ""
     if os.path.exists(clf_heatmap_png):
@@ -824,16 +912,13 @@ def _write_report_bundle(
             with open(clf_heatmap_png, "rb") as handle:
                 encoded = base64.b64encode(handle.read()).decode("ascii")
             embedded_clf_heatmap = (
-                "<img class='heatmap' alt='Classification report heatmap' "
-                f"src='data:image/png;base64,{encoded}'/>"
+                f"<img class='heatmap' alt='Classification report heatmap' src='data:image/png;base64,{encoded}'/>"
             )
 
     summary_md = os.path.join(report_dir, "report_summary.md")
     with open(summary_md, "w", encoding="utf-8") as handle:
         handle.write("# dzetsaka Classification Report\n\n")
-        handle.write(
-            f"- Algorithm: `{config_meta.get('classifier_name', config_meta.get('classifier_code', ''))}`\n"
-        )
+        handle.write(f"- Algorithm: `{config_meta.get('classifier_name', config_meta.get('classifier_code', ''))}`\n")
         handle.write(f"- Execution date: `{config_meta.get('execution_date', '')}`\n")
         handle.write(f"- Split/CV mode: `{config_meta.get('split_mode', '')}`\n")
         handle.write(f"- Train/validation setting: `{config_meta.get('split_config', '')}`\n")
@@ -850,11 +935,163 @@ def _write_report_bundle(
         handle.write("- `per_class_metrics.csv`\n")
         handle.write("- `metrics.json`\n")
         handle.write("- `run_config.json`\n")
+        handle.write("- `run_manifest.json`\n")
+        handle.write("- `trust_card.json`\n")
         if os.path.exists(heatmap_png):
             handle.write("- `confusion_matrix_heatmap.png`\n")
         if os.path.exists(clf_heatmap_png):
             handle.write("- `classification_report_heatmap.png`\n")
         handle.write("- `classification_report.html`\n")
+
+    # Compute total samples and samples per class
+    total_samples = sum(summary_metrics.get("support_per_class", []))
+    support_per_class = summary_metrics.get("support_per_class", [])
+
+    # Build per-class sample distribution table
+    def _class_distribution_html_table(values: List[Any], names: List[str], support: List[int]) -> str:
+        total = sum(support)
+        rows = []
+        for i, cls_val in enumerate(values):
+            count = int(support[i])
+            percentage = (count / total * 100) if total > 0 else 0.0
+            rows.append(
+                "<tr>"
+                f"<td>{html.escape(str(cls_val))}</td>"
+                f"<td>{html.escape(str(names[i]))}</td>"
+                f"<td>{count}</td>"
+                f"<td>{percentage:.1f}%</td>"
+                "</tr>"
+            )
+        return (
+            "<table>"
+            "<thead><tr><th>Class value</th><th>Class name</th><th>Samples</th><th>Percentage</th></tr></thead>"
+            "<tbody>" + "".join(rows) + f"<tr style='font-weight:bold;background:var(--head);'>"
+            f"<td colspan='2'>Total</td><td>{total}</td><td>100.0%</td></tr>" + "</tbody></table>"
+        )
+
+    def _generate_classification_abstract(
+        summary_metrics: Dict[str, Any], config_meta: Dict[str, Any], class_values: List[Any], class_names: List[str]
+    ) -> str:
+        """Generate an AI-style executive summary of classification results."""
+
+        # 1. Classify accuracy level
+        accuracy = summary_metrics.get("accuracy", 0.0)
+        if accuracy >= 0.90:
+            accuracy_label, accuracy_color, accuracy_icon = "excellent", "#059669", "✓"
+        elif accuracy >= 0.80:
+            accuracy_label, accuracy_color, accuracy_icon = "good", "#059669", "✓"
+        elif accuracy >= 0.70:
+            accuracy_label, accuracy_color, accuracy_icon = "medium", "#d97706", "⚠"
+        elif accuracy >= 0.60:
+            accuracy_label, accuracy_color, accuracy_icon = "fair", "#d97706", "⚠"
+        else:
+            accuracy_label, accuracy_color, accuracy_icon = "poor", "#dc2626", "⚠"
+
+        # 2. Build hyperparameter description
+        best_params = config_meta.get("best_hyperparameters", {})
+        if best_params and isinstance(best_params, dict):
+            param_items = list(best_params.items())[:3]
+            param_text = ", ".join([f"{k}={v}" for k, v in param_items])
+            if len(best_params) > 3:
+                param_text += f", and {len(best_params) - 3} other parameter{'s' if len(best_params) - 3 > 1 else ''}"
+            params_desc = f"optimized with {param_text}"
+        else:
+            params_desc = "using default parameters"
+
+        # 3. Compare OA vs F1 Macro for imbalance detection
+        oa = summary_metrics.get("accuracy", 0.0)
+        f1_macro = summary_metrics.get("f1_macro", 0.0)
+        diff_pct = abs(oa - f1_macro) * 100
+
+        if diff_pct < 5.0:
+            balance_status, balance_color = "balanced", "#059669"
+            balance_explanation = (
+                "The small difference between Overall Accuracy and F1 Macro indicates "
+                "balanced performance across classes with no significant class imbalance issues."
+            )
+        elif diff_pct < 10.0:
+            balance_status, balance_color = "moderate imbalance", "#d97706"
+            balance_explanation = (
+                "The moderate difference suggests some variation in per-class performance. "
+                "Review per-class metrics to identify underperforming classes."
+            )
+        else:
+            balance_status, balance_color = "significant imbalance", "#dc2626"
+            balance_explanation = (
+                "The large gap indicates significant class imbalance or poor performance on specific classes. "
+                "Examine the confusion matrix and per-class F1 scores for problematic classes."
+            )
+
+        # 4. Generate expert insights
+        insights = []
+
+        # Class distribution analysis
+        support_per_class = summary_metrics.get("support_per_class", [])
+        if support_per_class:
+            min_support = min(support_per_class)
+            max_support = max(support_per_class)
+            imbalance_ratio = max_support / min_support if min_support > 0 else float("inf")
+
+            if imbalance_ratio > 10:
+                insights.append(
+                    f"Severe class imbalance detected (ratio {imbalance_ratio:.1f}:1). "
+                    "Consider resampling techniques or class-weighted training."
+                )
+            elif imbalance_ratio > 5:
+                insights.append(
+                    f"Moderate class imbalance detected (ratio {imbalance_ratio:.1f}:1). "
+                    "Monitor minority class performance."
+                )
+
+            if min_support < 10:
+                insights.append(
+                    f"Warning: Minority class has only {min_support} samples, which may lead to unreliable metrics."
+                )
+
+        # Validation method assessment
+        split_mode = config_meta.get("split_mode", "")
+        if split_mode == "RANDOM_SPLIT":
+            insights.append(
+                "Note: Random split validation may overestimate accuracy for spatial data. "
+                "Consider using POLYGON_GROUP mode to avoid spatial leakage."
+            )
+        elif split_mode == "POLYGON_GROUP":
+            insights.append(
+                "Polygon-based validation provides realistic accuracy for spatial data "
+                "by preventing spatial autocorrelation bias."
+            )
+
+        # 5. Build HTML
+        classifier_name = html.escape(str(config_meta.get("classifier_name", "Unknown")))
+        opt_method = config_meta.get("optimization_method", "None")
+        if not opt_method or opt_method.lower() in ("none", "null", ""):
+            opt_method = "Grid Search (default)"
+        opt_method = html.escape(str(opt_method))
+
+        insights_html = ""
+        if insights:
+            insights_items = "".join([f"<li>{html.escape(insight)}</li>" for insight in insights])
+            insights_html = (
+                f"<div class='insight-list'><strong>Expert Insights:</strong><ul>{insights_items}</ul></div>"
+            )
+
+        return (
+            "<div class='abstract'>"
+            "<h3>📋 Executive Summary</h3>"
+            "<p><strong>Process:</strong> This classification employed "
+            f"<span class='highlight'>{classifier_name}</span> using "
+            f"<span class='highlight'>{opt_method}</span>, {html.escape(params_desc)}.</p>"
+            "<p><strong>Overall Performance:</strong> The model achieved "
+            f"<span class='highlight' style='color:{accuracy_color}'>{accuracy_icon} {accuracy:.1%} accuracy</span>, "
+            f"classified as <strong>{accuracy_label}</strong> performance. "
+            f"F1 Macro score of {f1_macro:.1%} represents the mean F1 across all classes, treating each class equally.</p>"
+            f"<p><strong>Balance Analysis:</strong> With a difference of {diff_pct:.1f} percentage points "
+            "between Overall Accuracy and F1 Macro, the classification shows "
+            f"<span class='highlight' style='color:{balance_color}'>{balance_status}</span>. "
+            f"{html.escape(balance_explanation)}</p>"
+            f"{insights_html}"
+            "</div>"
+        )
 
     html_report = os.path.join(report_dir, "classification_report.html")
     global_metrics_rows = "".join(
@@ -864,82 +1101,423 @@ def _write_report_bundle(
             f"<tr><th>F1 weighted</th><td>{_fmt_metric(summary_metrics.get('f1_weighted', 0.0))}</td></tr>",
             f"<tr><th>F1 micro</th><td>{_fmt_metric(summary_metrics.get('f1_micro', 0.0))}</td></tr>",
             f"<tr><th>OA (CONF)</th><td>{_fmt_metric(summary_metrics.get('overall_accuracy_conf', 0.0))}</td></tr>",
-            f"<tr><th>Kappa</th><td>{_fmt_metric(summary_metrics.get('kappa_conf', 0.0))}</td></tr>",
             f"<tr><th>F1 mean (CONF)</th><td>{_fmt_metric(summary_metrics.get('f1_mean_conf', 0.0))}</td></tr>",
         ]
     )
     run_config_pretty = html.escape(json.dumps(rerun_config, indent=2, default=str))
     matrix_display = str(rerun_config.get("matrix_path", "")).strip() or "<auto-generated at run time>"
+
+    # Format hyperparameters nicely
+    best_params = config_meta.get("best_hyperparameters", {})
+    if best_params and isinstance(best_params, dict):
+        params_html = "<ul style='margin:4px 0;padding-left:20px;'>"
+        for key, value in best_params.items():
+            params_html += f"<li><code>{html.escape(str(key))}</code>: <code>{html.escape(str(value))}</code></li>"
+        params_html += "</ul>"
+    else:
+        params_html = "<span class='muted'>Default parameters (no optimization)</span>"
+
     with open(html_report, "w", encoding="utf-8") as handle:
         handle.write(
             "<!doctype html><html><head><meta charset='utf-8'>"
             "<meta name='viewport' content='width=device-width,initial-scale=1'>"
             "<title>dzetsaka Classification Report</title>"
             "<style>"
-            ":root{--bg:#f6f8fb;--fg:#111827;--muted:#475569;--card:#ffffff;--line:#d7dde8;--head:#eaf0fb;--accent:#0f766e;}"
-            "body{font-family:'Segoe UI',Arial,sans-serif;margin:0;color:var(--fg);"
-            "background:linear-gradient(180deg,#f1f5f9 0%,var(--bg) 60%,#eef2ff 100%);}"
-            ".wrap{max-width:1200px;margin:20px auto;padding:0 14px;}"
-            "h1,h2{margin:0 0 10px;}h2{margin-top:24px;}"
-            ".muted{color:var(--muted);font-size:13px;}"
-            ".hero{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;"
-            "box-shadow:0 8px 22px rgba(15,23,42,.06);}"
-            ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}"
-            ".card{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--card);}"
-            "table{border-collapse:collapse;width:100%;font-size:13px;}"
-            "th,td{border:1px solid var(--line);padding:6px 8px;text-align:center;}"
-            "th{text-align:left;background:var(--head);}"
-            "table.cm th{text-align:center;}"
-            "pre{background:#0b1324;color:#e5e7eb;padding:12px;border-radius:8px;overflow:auto;"
-            "border:1px solid rgba(148,163,184,.35);}"
-            ".heatmap{max-width:100%;height:auto;border:1px solid var(--line);border-radius:6px;background:#fff;}"
+            ":root{--bg:#f6f8fb;--fg:#111827;--muted:#6b7280;--card:#ffffff;--line:#e0e7f1;--head:#f3f7fc;--accent:#0f766e;--success:#059669;--warning:#d97706;}"
+            "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;margin:0;color:var(--fg);"
+            "background:linear-gradient(180deg,#f8fafc 0%,var(--bg) 50%,#f1f5f9 100%);line-height:1.6;}"
+            ".wrap{max-width:900px;margin:20px auto;padding:0 20px;}"
+            "h1{font-size:28px;margin:0 0 8px;font-weight:700;color:#0f172a;}"
+            "h2{font-size:20px;margin:32px 0 12px;font-weight:600;color:#1e293b;border-bottom:2px solid var(--line);padding-bottom:6px;}"
+            "h3{font-size:16px;margin:20px 0 10px;font-weight:600;color:#334155;}"
+            ".muted{color:var(--muted);font-size:14px;}"
+            ".hero{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;"
+            "box-shadow:0 4px 16px rgba(15,23,42,.08);margin-bottom:24px;}"
+            ".intro{background:linear-gradient(135deg,#f0fdfa 0%,#ecfeff 100%);border:1px solid #99f6e4;border-radius:10px;"
+            "padding:16px;margin-bottom:24px;}"
+            ".intro h3{margin-top:0;color:var(--accent);}"
+            ".intro-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:12px;}"
+            ".intro-item{background:white;padding:10px;border-radius:6px;border:1px solid #d1fae5;}"
+            ".intro-label{font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);font-weight:600;margin-bottom:4px;}"
+            ".intro-value{font-size:14px;color:var(--fg);font-weight:500;}"
+            ".abstract{background:linear-gradient(135deg,#fefce8 0%,#fef3c7 100%);border:1px solid #fde68a;border-radius:10px;"
+            "padding:20px;margin-bottom:24px;}"
+            ".abstract h3{margin-top:0;color:#854d0e;font-size:18px;}"
+            ".abstract p{margin:12px 0;line-height:1.7;}"
+            ".abstract .highlight{font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.6);}"
+            ".abstract .insight-list{background:rgba(255,255,255,0.4);border-left:3px solid #fbbf24;padding:12px 16px;"
+            "margin:12px 0;border-radius:4px;}"
+            ".abstract .insight-list ul{margin:8px 0;padding-left:20px;}"
+            ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px;}"
+            ".card{border:1px solid var(--line);border-radius:10px;padding:16px;background:var(--card);box-shadow:0 2px 8px rgba(15,23,42,.04);}"
+            ".card h3{margin-top:0;}"
+            "table{border-collapse:collapse;width:100%;font-size:13px;margin-top:8px;}"
+            "th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;}"
+            "th{background:var(--head);font-weight:600;color:#374151;}"
+            "td{text-align:center;}"
+            "table.cm{margin:12px 0;}"
+            "table.cm th{text-align:center;font-size:12px;}"
+            "table.cm td{font-family:Consolas,Monaco,'Courier New',monospace;}"
+            "pre{background:#0f172a;color:#e2e8f0;padding:16px;border-radius:8px;overflow-x:auto;"
+            "border:1px solid #334155;font-size:12px;line-height:1.5;}"
+            "code{background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:12px;color:#0f172a;font-family:Consolas,Monaco,monospace;}"
+            ".heatmap{max-width:100%;height:auto;border:1px solid var(--line);border-radius:8px;background:#fff;margin:12px 0;"
+            "box-shadow:0 2px 8px rgba(15,23,42,.06);}"
             ".pill{display:inline-block;background:#ecfeff;color:var(--accent);font-size:12px;border:1px solid #99f6e4;"
-            "padding:2px 8px;border-radius:999px;margin-bottom:8px;}"
+            "padding:4px 12px;border-radius:999px;margin-bottom:8px;font-weight:600;}"
+            ".metric-highlight{font-size:24px;font-weight:700;color:var(--success);}"
+            "ul{margin:8px 0;padding-left:24px;}"
+            "li{margin:4px 0;}"
+            ".section{margin-bottom:32px;}"
             "</style></head><body><div class='wrap'>"
         )
         handle.write("<div class='hero'><span class='pill'>dzetsaka report bundle</span>")
         handle.write("<h1>Classification Report</h1>")
         handle.write(
             "<p class='muted'>"
-            f"Algorithm: <b>{html.escape(str(config_meta.get('classifier_name', config_meta.get('classifier_code', ''))))}</b> | "
-            f"Execution date: <b>{html.escape(str(config_meta.get('execution_date', '')))}</b> | "
-            f"Validation mode: <b>{html.escape(str(config_meta.get('split_mode', '')))}</b> | "
-            f"Class field: <b>{html.escape(str(config_meta.get('class_field', '')))}</b>"
+            f"Generated on <b>{html.escape(str(config_meta.get('execution_date', '')))}</b> | "
+            f"Validation samples: <b>{total_samples:,}</b> | "
+            f"Classes: <b>{len(class_values)}</b>"
             "</p>"
         )
         handle.write("</div>")
-        handle.write("<div class='grid'>")
-        handle.write("<div class='card'><h2>Global Metrics</h2><table><tbody>")
-        handle.write(global_metrics_rows)
-        handle.write("</tbody></table></div>")
-        handle.write("<div class='card'><h2>Run Metadata</h2><table><tbody>")
-        for label, key in [
-            ("Split config", "split_config"),
-            ("Optimization method", "optimization_method"),
-            ("Raster path", "raster_path"),
-            ("Vector path", "vector_path"),
-            ("Execution date", "execution_date"),
-        ]:
+
+        # Generate and write AI executive summary
+        abstract_html = _generate_classification_abstract(summary_metrics, config_meta, class_values, class_names)
+        handle.write(abstract_html)
+
+        # Methodology Section
+        handle.write("<div class='section'><h2>📖 Methodology</h2>")
+        handle.write("<h3>Classification Algorithm</h3>")
+        classifier_name = html.escape(str(config_meta.get("classifier_name", "Unknown")))
+        handle.write(f"<p>This analysis employed <strong>{classifier_name}</strong> for supervised classification. ")
+
+        # Add algorithm-specific description
+        classifier_code = config_meta.get("classifier_code", "")
+        algo_descriptions = {
+            "RF": "Random Forest is an ensemble method that constructs multiple decision trees during training and outputs the mode of their predictions. It reduces overfitting through bagging and random feature selection.",
+            "SVM": "Support Vector Machine finds the optimal hyperplane that maximizes the margin between classes in a high-dimensional feature space, using kernel functions for non-linear decision boundaries.",
+            "XGB": "XGBoost (Extreme Gradient Boosting) is an optimized gradient boosting algorithm that builds an ensemble of weak learners (decision trees) sequentially, with each tree correcting errors from previous trees.",
+            "LGB": "LightGBM is a gradient boosting framework using tree-based learning with histogram-based algorithms for efficiency. It grows trees leaf-wise rather than level-wise for faster training.",
+            "CB": "CatBoost (Categorical Boosting) is a gradient boosting algorithm optimized for categorical features, using ordered boosting to reduce overfitting and symmetric trees for faster prediction.",
+            "KNN": "K-Nearest Neighbors is a non-parametric method that classifies samples based on the majority vote of their k nearest neighbors in feature space.",
+            "GMM": "Gaussian Mixture Model with Ridge regression uses probabilistic clustering with multivariate Gaussian distributions to model class distributions.",
+            "ET": "Extra Trees (Extremely Randomized Trees) is an ensemble method similar to Random Forest but with more randomization in split point selection, reducing variance further.",
+            "GBC": "Gradient Boosting Classifier builds an ensemble of weak learners sequentially, where each tree is trained to correct the residual errors of the previous ensemble.",
+            "LR": "Logistic Regression models the probability of class membership using a logistic function, suitable for linearly separable classes.",
+            "NB": "Naive Bayes assumes feature independence and models class-conditional densities using Gaussian distributions, providing fast probabilistic predictions.",
+            "MLP": "Multi-layer Perceptron is a feedforward neural network with one or more hidden layers, capable of learning complex non-linear decision boundaries.",
+        }
+        algo_desc = algo_descriptions.get(classifier_code, "")
+        if algo_desc:
+            handle.write(algo_desc)
+        handle.write("</p>")
+
+        # Validation strategy
+        handle.write("<h3>Validation Strategy</h3>")
+        split_mode = config_meta.get("split_mode", "")
+        split_config = config_meta.get("split_config", "")
+        if split_mode == "POLYGON_GROUP":
+            handle.write("<p><strong>Spatial validation using StratifiedGroupKFold</strong>: ")
+            handle.write("The dataset was split using <code>sklearn.model_selection.StratifiedGroupKFold</code> ")
+            handle.write(f"with {html.escape(str(split_config))} train/validation split. ")
+            handle.write("This method combines two critical properties:</p><ul>")
+            handle.write("<li><strong>Group constraint</strong>: All pixels from the same polygon ")
+            handle.write("(training feature) are assigned to either the training set or validation set, ")
+            handle.write("but never split between them. This prevents <em>spatial leakage</em> where nearby pixels ")
+            handle.write("(which are spatially autocorrelated) appear in both sets, which would artificially ")
+            handle.write("inflate accuracy metrics.</li>")
+            handle.write("<li><strong>Stratification</strong>: The algorithm ensures that class proportions are ")
+            handle.write("approximately preserved in each fold, which is critical for imbalanced datasets. ")
+            handle.write("This provides more stable and representative performance estimates across folds.</li></ul>")
+            handle.write("<p><strong>Implementation:</strong> Each training polygon (vector feature) is assigned ")
+            handle.write("a unique group ID (FID). During cross-validation, StratifiedGroupKFold creates folds where: ")
+            handle.write("(1) no group appears in multiple folds simultaneously, and (2) class distributions are ")
+            handle.write("balanced across folds. This is the <strong>gold standard</strong> for remote sensing ")
+            handle.write("classification, providing realistic accuracy estimates that account for spatial structure ")
+            handle.write("in the data.</p>")
+        elif split_mode == "RANDOM_SPLIT":
+            handle.write("<p><strong>Random split validation (StratifiedKFold)</strong>: ")
+            handle.write("The dataset was split using <code>sklearn.model_selection.StratifiedKFold</code> ")
+            handle.write(f"({html.escape(str(split_config))}). Pixels are randomly assigned to ")
+            handle.write("training/validation sets while preserving class proportions. ")
+            handle.write("<strong>⚠ Warning:</strong> Random splitting does not account for spatial autocorrelation. ")
+            handle.write("When pixels from the same polygon appear in both training and validation sets, the model ")
             handle.write(
-                f"<tr><th>{html.escape(label)}</th><td>{html.escape(str(rerun_config.get(key, '')))}</td></tr>"
+                "can exploit spatial proximity (not spectral information) to achieve artificially high accuracy. "
             )
-        handle.write(f"<tr><th>Matrix path</th><td>{html.escape(matrix_display)}</td></tr>")
-        handle.write("</tbody></table></div>")
+            handle.write(
+                "This leads to <em>overly optimistic</em> performance estimates that don't generalize to new areas. "
+            )
+            handle.write(
+                "<strong>Recommendation:</strong> Use POLYGON_GROUP mode for realistic spatial validation.</p>"
+            )
+        else:
+            handle.write(f"<p>Validation configuration: {html.escape(str(split_config))}</p>")
+
+        # Hyperparameter optimization
+        optimization_method = config_meta.get("optimization_method", "none")
+        best_hyperparameters = config_meta.get("best_hyperparameters", {})
+
+        handle.write("<h3>Hyperparameter Optimization</h3>")
+        if optimization_method == "optuna":
+            optuna_stats = config_meta.get("optuna_stats", {})
+            n_trials = (
+                optuna_stats.get("n_complete", 0) + optuna_stats.get("n_pruned", 0) + optuna_stats.get("n_failed", 0)
+            )
+            best_score = optuna_stats.get("best_value", 0.0)
+            handle.write(
+                f"<p><strong>Bayesian optimization with Optuna</strong>: Explored {n_trials} hyperparameter "
+            )
+            handle.write(
+                "combinations using Tree-structured Parzen Estimator (TPE) algorithm. "
+            )
+            handle.write(
+                f"Best cross-validation F1-weighted score: <strong>{best_score:.4f}</strong>. "
+            )
+            handle.write(
+                "TPE intelligently samples the parameter space, focusing on promising regions and pruning "
+            )
+            handle.write("poor-performing trials early (2-10x faster than exhaustive grid search).</p>")
+
+            # Show best parameters found by Optuna
+            if best_hyperparameters:
+                handle.write("<p><strong>Optimal hyperparameters discovered:</strong></p>")
+                handle.write("<ul style='margin:4px 0 12px 20px;'>")
+                for key, value in sorted(best_hyperparameters.items()):
+                    handle.write(f"<li><code>{html.escape(str(key))}</code> = <code>{html.escape(str(value))}</code></li>")
+                handle.write("</ul>")
+
+        elif optimization_method == "grid_search":
+            grid_combinations = config_meta.get("grid_search_combinations")
+            if grid_combinations:
+                handle.write(
+                    f"<p><strong>Grid Search with cross-validation</strong>: Systematically tested "
+                )
+                handle.write(
+                    f"<strong>{grid_combinations} different hyperparameter combinations</strong> using stratified "
+                )
+                handle.write(
+                    "K-fold cross-validation with F1-weighted scoring to find the optimal configuration.</p>"
+                )
+            else:
+                handle.write(
+                    "<p><strong>Grid Search with cross-validation</strong>: Systematically evaluated hyperparameter "
+                )
+                handle.write(
+                    "combinations using stratified K-fold cross-validation with F1-weighted scoring.</p>"
+                )
+
+            # Show best parameters found by Grid Search
+            if best_hyperparameters:
+                handle.write("<p><strong>Best hyperparameters found:</strong></p>")
+                handle.write("<ul style='margin:4px 0 12px 20px;'>")
+                for key, value in sorted(best_hyperparameters.items()):
+                    handle.write(f"<li><code>{html.escape(str(key))}</code> = <code>{html.escape(str(value))}</code></li>")
+                handle.write("</ul>")
+        else:
+            handle.write("<p>Default hyperparameters were used (no optimization performed).</p>")
+
+        # Class imbalance handling
+        handle.write("<h3>Class Imbalance Handling</h3>")
+        support_per_class = summary_metrics.get("support_per_class", [])
+        if support_per_class and len(support_per_class) > 1:
+            min_support = min(support_per_class)
+            max_support = max(support_per_class)
+            imbalance_ratio = max_support / min_support if min_support > 0 else float("inf")
+            if imbalance_ratio > 5:
+                handle.write(f"<p>The dataset exhibits class imbalance (ratio {imbalance_ratio:.1f}:1). ")
+                handle.write(
+                    "Class-weighted training or resampling techniques (SMOTE) can help improve minority class performance."
+                )
+                handle.write("</p>")
+            else:
+                handle.write("<p>The dataset is relatively balanced across classes (no special handling required).</p>")
+        else:
+            handle.write("<p>Class distribution information not available.</p>")
+
+        # Feature importance analysis
+        shap_config = config_meta.get("shap_config", {})
+        if shap_config.get("enabled"):
+            handle.write("<h3>Explainability Analysis</h3>")
+            handle.write(
+                f"<p><strong>SHAP (SHapley Additive exPlanations)</strong> was computed to quantify feature importance. "
+            )
+            handle.write(
+                f"SHAP values were calculated on {shap_config.get('sample_size', 1000):,} randomly sampled training pixels, "
+            )
+            handle.write("providing a game-theoretic measure of each feature's marginal contribution to predictions. ")
+            handle.write(
+                "This method accounts for feature interactions and provides consistent, interpretable importance scores.</p>"
+            )
+
         handle.write("</div>")
 
-        handle.write("<h2>Confusion Matrix (NxN)</h2>")
+        # Model Configuration Section
+        opt_method = config_meta.get("optimization_method", "None")
+        if not opt_method or opt_method.lower() in ("none", "null", ""):
+            opt_method = "Grid Search (default)"
+        handle.write("<div class='intro'><h3>🤖 Model Configuration</h3>")
+        handle.write("<div class='intro-grid'>")
+        handle.write(
+            "<div class='intro-item'><div class='intro-label'>Algorithm</div>"
+            f"<div class='intro-value'>{html.escape(str(config_meta.get('classifier_name', config_meta.get('classifier_code', 'Unknown'))))}</div></div>"
+        )
+        handle.write(
+            f"<div class='intro-item'><div class='intro-label'>Optimization Method</div>"
+            f"<div class='intro-value'>{html.escape(str(opt_method))}</div></div>"
+        )
+        handle.write(
+            f"<div class='intro-item'><div class='intro-label'>Validation Mode</div>"
+            f"<div class='intro-value'>{html.escape(str(config_meta.get('split_mode', 'Unknown')))}</div></div>"
+        )
+        handle.write(
+            f"<div class='intro-item'><div class='intro-label'>Split Configuration</div>"
+            f"<div class='intro-value'>{html.escape(str(config_meta.get('split_config', 'N/A')))}</div></div>"
+        )
+        handle.write("</div>")
+        handle.write("<h3 style='margin-top:16px;margin-bottom:8px;'>Hyperparameters</h3>")
+        handle.write(params_html)
+        handle.write("</div>")
+
+        # Hyperparameter Optimization Details (if Optuna was used)
+        optuna_stats = config_meta.get("optuna_stats")
+        if optuna_stats and optimization_method == "optuna":
+            handle.write(
+                "<div class='intro' style='background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border-color:#bae6fd;'>"
+            )
+            handle.write("<h3>🔬 Hyperparameter Optimization Details</h3>")
+            handle.write("<p><strong>Method:</strong> Bayesian optimization using Optuna (TPE algorithm)</p>")
+            handle.write(f"<p><strong>Trials:</strong> {optuna_stats.get('n_complete', 0)} completed, ")
+            handle.write(f"{optuna_stats.get('n_pruned', 0)} pruned, ")
+            handle.write(f"{optuna_stats.get('n_failed', 0)} failed</p>")
+            handle.write(f"<p><strong>Best trial:</strong> #{optuna_stats.get('best_trial', 0)} ")
+            handle.write(
+                f"with cross-validation score of <strong>{optuna_stats.get('best_value', 0.0):.4f}</strong></p>"
+            )
+            handle.write(
+                "<p><strong>Search strategy:</strong> Tree-structured Parzen Estimator (TPE) with median pruning. "
+            )
+            handle.write("Optuna intelligently samples the hyperparameter space, focusing on promising regions and ")
+            handle.write("pruning poor-performing trials early. This is 2-10x faster than exhaustive GridSearchCV.</p>")
+            handle.write("</div>")
+
+        # Feature Importance (if SHAP was used)
+        feature_importance = config_meta.get("feature_importance")
+        shap_config = config_meta.get("shap_config", {})
+        shap_enabled = shap_config.get("enabled", False)
+
+        if feature_importance and shap_enabled:
+            # SHAP was enabled and succeeded
+            handle.write(
+                "<div class='intro' style='background:linear-gradient(135deg,#fdf4ff 0%,#fae8ff 100%);border-color:#f0abfc;'>"
+            )
+            handle.write("<h3>🎯 Feature Importance (SHAP Analysis)</h3>")
+            handle.write(f"<p><strong>Method:</strong> SHAP (SHapley Additive exPlanations) values computed on ")
+            handle.write(f"{shap_config.get('sample_size', 1000):,} randomly sampled training pixels.</p>")
+            handle.write("<p><strong>Interpretation:</strong> Higher values indicate features that contribute more ")
+            handle.write("to the model's predictions. SHAP values represent the marginal contribution of each ")
+            handle.write("feature to the prediction, based on Shapley values from cooperative game theory.</p>")
+
+            # Sort by importance and create table
+            sorted_features = sorted(feature_importance.items(), key=lambda x: -x[1])
+            handle.write("<table style='margin-top:12px;'><thead><tr>")
+            handle.write("<th style='text-align:left;'>Feature</th>")
+            handle.write("<th style='text-align:right;'>Mean |SHAP|</th>")
+            handle.write("<th style='text-align:left;'>Importance</th>")
+            handle.write("</tr></thead><tbody>")
+
+            max_importance = max(v for _, v in sorted_features) if sorted_features else 1.0
+            for feature, importance_val in sorted_features:
+                pct = (importance_val / max_importance * 100) if max_importance > 0 else 0
+                bar_width = max(5, int(pct))
+                handle.write("<tr>")
+                handle.write(f"<td style='text-align:left;'><code>{html.escape(str(feature))}</code></td>")
+                handle.write(f"<td style='text-align:right;'><code>{importance_val:.4f}</code></td>")
+                handle.write(f"<td style='text-align:left;'>")
+                handle.write(
+                    f"<div style='background:#a855f7;height:12px;width:{bar_width}%;border-radius:2px;'></div>"
+                )
+                handle.write("</td></tr>")
+
+            handle.write("</tbody></table></div>")
+        elif shap_enabled and not feature_importance:
+            # SHAP was requested but failed or produced no results
+            handle.write(
+                "<div class='intro' style='background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);border-color:#fbbf24;'>"
+            )
+            handle.write("<h3>⚠️ SHAP Explainability</h3>")
+            handle.write("<p><strong>Status:</strong> SHAP analysis was requested but did not produce results.</p>")
+            handle.write("<p><strong>Possible reasons:</strong></p>")
+            handle.write("<ul style='margin:8px 0 8px 20px;'>")
+            handle.write("<li>SHAP library may not be installed (install with: <code>pip install shap>=0.41.0</code>)</li>")
+            handle.write(
+                "<li>The selected classifier may not be compatible with SHAP (GMM has limited SHAP support)</li>"
+            )
+            handle.write("<li>An error occurred during SHAP computation (check the QGIS log for details)</li>")
+            handle.write("</ul>")
+            handle.write(
+                "<p><strong>Recommendation:</strong> Use Random Forest (RF), XGBoost (XGB), or LightGBM (LGB) "
+            )
+            handle.write("for best SHAP compatibility.</p>")
+            handle.write("</div>")
+
+        # Metrics Grid
+        handle.write("<div class='grid'>")
+        handle.write("<div class='card'><h3>📊 Overall Accuracy</h3>")
+        handle.write(f"<div class='metric-highlight'>{summary_metrics.get('accuracy', 0.0):.1%}</div>")
+        handle.write("<table style='margin-top:12px;'><tbody>")
+        handle.write(global_metrics_rows)
+        handle.write("</tbody></table></div>")
+
+        handle.write("<div class='card'><h3>📈 Sample Distribution</h3>")
+        handle.write(f"<p style='margin:8px 0;'><strong>Total samples:</strong> {total_samples:,}</p>")
+        handle.write(_class_distribution_html_table(class_values, class_names, support_per_class))
+        handle.write("</div>")
+        handle.write("</div>")
+
+        # Confusion Matrix
+        handle.write("<div class='section'><h2>Confusion Matrix</h2>")
+        handle.write("<p class='muted'>Rows = Reference (true labels), Columns = Predicted labels</p>")
         handle.write(_confusion_matrix_html_table(cm, class_names))
         if embedded_heatmap:
-            handle.write("<h2>Heatmap</h2>")
+            handle.write("<h3 style='margin-top:20px;'>Confusion Matrix Visualization</h3>")
             handle.write(embedded_heatmap)
+        handle.write("</div>")
+
+        # Classification Report Heatmap
         if embedded_clf_heatmap:
-            handle.write("<h2>Classification Report Heatmap</h2>")
+            handle.write("<div class='section'><h2>Per-Class Metrics Heatmap</h2>")
+            handle.write("<p class='muted'>Visualization of Precision, Recall, and F1-Score for each class</p>")
             handle.write(embedded_clf_heatmap)
+            handle.write("</div>")
 
-        handle.write("<h2>Per-class Metrics</h2>")
+        # Per-class Metrics Table
+        handle.write("<div class='section'><h2>Per-Class Metrics</h2>")
+        handle.write("<p class='muted'>Detailed performance metrics for each class</p>")
         handle.write(_per_class_metrics_html_table(class_values, class_names, summary_metrics))
+        handle.write("</div>")
 
-        handle.write("<h2>Run Configuration (JSON)</h2>")
+        # Run Metadata
+        handle.write("<div class='section'><h2>Run Metadata</h2>")
+        handle.write("<table><tbody>")
+        for label, key in [
+            ("Raster path", "raster_path"),
+            ("Vector path", "vector_path"),
+            ("Class field", "class_field"),
+            ("Execution date", "execution_date"),
+            ("Matrix path", "matrix_path"),
+        ]:
+            value = rerun_config.get(key, "")
+            if key == "matrix_path" and not str(value).strip():
+                value = matrix_display
+            handle.write(
+                f"<tr><th style='width:180px;'>{html.escape(label)}</th><td style='text-align:left;word-break:break-all;'>{html.escape(str(value))}</td></tr>"
+            )
+        handle.write("</tbody></table></div>")
+
+        # Run Configuration
+        handle.write("<div class='section'><h2>Run Configuration (JSON)</h2>")
         handle.write(
             "<p class='muted'>Use this JSON as reference for reproducibility. "
             "In dzetsaka, reruns are managed through Expert mode recipe tools "
@@ -949,6 +1527,21 @@ def _write_report_bundle(
         handle.write(run_config_pretty)
         handle.write("</pre>")
         handle.write("</div></body></html>")
+
+
+def _extract_shap_settings(extraParam: Optional[Dict[str, Any]]) -> Tuple[bool, int]:
+    """Normalize SHAP settings coming from ``extraParam``."""
+    if not extraParam:
+        return False, 1000
+
+    enabled = bool(extraParam.get("COMPUTE_SHAP", False))
+    sample_size = extraParam.get("SHAP_SAMPLE_SIZE", 1000)
+    try:
+        sample_size = int(sample_size)
+    except (TypeError, ValueError):
+        sample_size = 1000
+
+    return enabled, sample_size
 
 
 class LearnModel:
@@ -1070,7 +1663,7 @@ class LearnModel:
 
         # Load and prepare data
         try:
-            X, Y, coords, distanceArray, STDs, vector_test_path = self._load_and_prepare_data(
+            X, Y, coords, distanceArray, STDs, polygon_groups, vector_test_path = self._load_and_prepare_data(
                 raster_path,
                 vector_path,
                 class_field,
@@ -1176,6 +1769,8 @@ class LearnModel:
         classifier_code_input = str(classifier).upper()
         selected_hyperparameters: Dict[str, Any] = {}
         optimization_method = "none"
+        optuna_stats = None  # Initialize for all classifiers (GMM and non-GMM)
+        grid_search_combinations = None  # Track Grid Search search space size
 
         _report(report, "Starting model training process...")
         _report(
@@ -1207,7 +1802,7 @@ class LearnModel:
 
             # model_selection = True
             try:
-                from sklearn.model_selection import GridSearchCV, StratifiedKFold
+                from sklearn.model_selection import GridSearchCV, StratifiedKFold, StratifiedGroupKFold
 
                 joblib = __import__("joblib")  # Test for joblib dependency
             except ImportError as e:
@@ -1578,9 +2173,7 @@ class LearnModel:
             sample_count = int(x.shape[0])
             imbalance_ratio = float(max_samples / max(min_samples, 1))
             fast_mode_enabled = bool(extraParam.get("FAST_MODE", True))
-            fast_mode_active = fast_mode_enabled and (
-                sample_count > 20000 or imbalance_ratio > 50 or min_samples < 30
-            )
+            fast_mode_active = fast_mode_enabled and (sample_count > 20000 or imbalance_ratio > 50 or min_samples < 30)
 
             if fast_mode_active:
                 _report(
@@ -1598,20 +2191,42 @@ class LearnModel:
                 _report(report, f"Adjusting cross-validation splits to {n_splits} due to small class sizes")
 
             # Initialize cross-validation after validation and potential n_splits adjustment
-            cv = (
-                StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
-                if isinstance(SPLIT, int)
-                else cvDistance
-            )
+            # Use StratifiedGroupKFold for polygon-based CV (POLYGON_GROUP mode)
+            if polygon_groups is not None and isinstance(SPLIT, int):
+                # Polygon-based cross-validation: ensure pixels from same polygon stay together
+                n_unique_groups = len(np.unique(polygon_groups))
+                if n_unique_groups < n_splits:
+                    n_splits = max(2, n_unique_groups)
+                    _report(
+                        report,
+                        f"Adjusting CV splits to {n_splits} due to limited number of polygons ({n_unique_groups})",
+                    )
+                cv = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
+                groups_for_cv = polygon_groups
+                _report(
+                    report,
+                    f"Using StratifiedGroupKFold: {n_splits} folds across {n_unique_groups} polygons (spatial CV)",
+                )
+            elif isinstance(SPLIT, int):
+                cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
+                groups_for_cv = None
+            else:
+                cv = cvDistance
+                groups_for_cv = None
 
             x_search = x
             y_search = y
             cv_search = cv
+            groups_search = groups_for_cv
             if fast_mode_active and isinstance(SPLIT, int) and sample_count > FAST_MODE_MAX_SAMPLES:
                 tune_idx = _build_tuning_subset_indices(y, FAST_MODE_MAX_SAMPLES, random_seed)
                 x_search = x[tune_idx, :]
                 y_search = y[tune_idx]
-                cv_search = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_seed + 7)
+                if groups_for_cv is not None:
+                    groups_search = groups_for_cv[tune_idx]
+                    cv_search = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=random_seed + 7)
+                else:
+                    cv_search = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_seed + 7)
                 _report(
                     report,
                     f"Fast mode: hyperparameter search subset size {x_search.shape[0]} "
@@ -1621,6 +2236,7 @@ class LearnModel:
             # Check if Optuna should be used for hyperparameter optimization
             use_optuna = extraParam.get("USE_OPTUNA", False) if extraParam else False
             optuna_trials = extraParam.get("OPTUNA_TRIALS", 100) if extraParam else 100
+            # Note: optuna_stats is initialized at the top of __init__ for all classifiers
             if fast_mode_active and use_optuna:
                 if optuna_trials > FAST_MODE_MAX_OPTUNA_TRIALS:
                     optuna_trials = FAST_MODE_MAX_OPTUNA_TRIALS
@@ -1649,9 +2265,14 @@ class LearnModel:
                     )
 
                     # Run optimization
-                    best_params = optimizer.optimize(X=x_search, y=y_search, cv=cv_search, scoring="f1_weighted")
+                    best_params = optimizer.optimize(
+                        X=x_search, y=y_search, cv=cv_search, scoring="f1_weighted", groups=groups_search
+                    )
                     selected_hyperparameters = dict(best_params)
                     optimization_method = "optuna"
+
+                    # Capture Optuna optimization statistics
+                    optuna_stats = optimizer.get_optimization_stats()
 
                     _report(
                         report,
@@ -1679,23 +2300,17 @@ class LearnModel:
                     elif classifier_code == "XGB":
                         xgb_wrapper = _get_xgboost_wrapper()
                         if xgb_wrapper is None:
-                            raise ImportError(
-                                "XGBoost requires a usable scikit-learn runtime for label encoding"
-                            )
+                            raise ImportError("XGBoost requires a usable scikit-learn runtime for label encoding")
                         model = xgb_wrapper(**best_params)
                     elif classifier_code == "LGB":
                         lgb_wrapper = _get_lightgbm_wrapper()
                         if lgb_wrapper is None:
-                            raise ImportError(
-                                "LightGBM requires a usable scikit-learn runtime for label encoding"
-                            )
+                            raise ImportError("LightGBM requires a usable scikit-learn runtime for label encoding")
                         model = lgb_wrapper(**best_params)
                     elif classifier_code == "CB":
                         cb_wrapper = _get_catboost_wrapper()
                         if cb_wrapper is None:
-                            raise ImportError(
-                                "CatBoost requires a usable scikit-learn runtime for label encoding"
-                            )
+                            raise ImportError("CatBoost requires a usable scikit-learn runtime for label encoding")
                         model = cb_wrapper(**best_params)
                     elif classifier_code == "ET":
                         from sklearn.ensemble import ExtraTreesClassifier
@@ -1736,8 +2351,7 @@ class LearnModel:
             elif use_optuna and not OPTUNA_AVAILABLE:
                 _report(
                     report,
-                    "Optuna is not installed. Falling back to GridSearchCV. "
-                    "Install Optuna with: pip install optuna",
+                    "Optuna is not installed. Falling back to GridSearchCV. Install Optuna with: pip install optuna",
                 )
                 use_optuna = False
 
@@ -1758,13 +2372,18 @@ class LearnModel:
                             f"Fast mode: reduced hyperparameter search from {before} to {after} combinations.",
                         )
 
+                # Capture grid search space size for reporting
+                grid_search_combinations = _param_grid_size(param_grid)
+
                 # Provide feedback about potentially long training time for SVM
                 if classifier == "SVM":
                     _report(report, "Training SVM with GridSearchCV - this may take several minutes...")
 
                 try:
                     grid = GridSearchCV(classifier, param_grid=param_grid, cv=cv_search)
-                    grid.fit(x_search, y_search)
+                    # Pass groups parameter if using StratifiedGroupKFold
+                    fit_params = {} if groups_search is None else {"groups": groups_search}
+                    grid.fit(x_search, y_search, **fit_params)
 
                     _report(report, "GridSearchCV completed, fitting final model...")
                     model = grid.best_estimator_
@@ -1910,12 +2529,13 @@ class LearnModel:
                 """
             res = {
                 "Overall Accuracy": CONF.OA,
-                "Kappa": CONF.Kappa,
-                "f1": CONF.F1mean,
+                "F1 macro": CONF.F1mean,
             }
 
             for estim in res:
-                _report(report, estim + " : " + str(res[estim]))
+                _report(report, f"{estim}: {res[estim]:.2f}")
+
+            self.shap_was_enabled, self.shap_sample_size = _extract_shap_settings(extraParam)
 
             if extraParam.get("GENERATE_REPORT_BUNDLE", False):
                 report_dir = str(extraParam.get("REPORT_OUTPUT_DIR", "")).strip()
@@ -1941,7 +2561,6 @@ class LearnModel:
                 class_names = [label_name_map.get(_value_key(v), str(v)) for v in labels_order]
                 metrics = _compute_metrics_from_cm(cm_report)
                 metrics["overall_accuracy_conf"] = CONF.OA
-                metrics["kappa_conf"] = CONF.Kappa
                 metrics["f1_mean_conf"] = CONF.F1mean
                 config_meta = {
                     "classifier_code": classifier_code_input,
@@ -1954,6 +2573,13 @@ class LearnModel:
                     "raster_path": raster_path,
                     "optimization_method": optimization_method,
                     "best_hyperparameters": selected_hyperparameters,
+                    "optuna_stats": optuna_stats,
+                    "grid_search_combinations": grid_search_combinations,
+                    "feature_importance": getattr(self, "feature_importance", None),
+                    "shap_config": {
+                        "enabled": getattr(self, "shap_was_enabled", False),
+                        "sample_size": getattr(self, "shap_sample_size", 1000),
+                    },
                     "matrix_path": matrix_path,
                 }
                 _write_report_bundle(
@@ -1986,16 +2612,23 @@ class LearnModel:
         self.M = M
         self.m = m
 
-        # SHAP explainability computation (optional)
-        if extraParam.get("COMPUTE_SHAP", False):
-            self._compute_shap_importance(
-                model=model,
-                raster_path=raster_path,
-                X_train=x if 'x' in locals() else X,
-                feature_names=None,  # Will generate Band_1, Band_2, etc.
-                shap_output_path=extraParam.get("SHAP_OUTPUT"),
-                sample_size=extraParam.get("SHAP_SAMPLE_SIZE", 1000),
-            )
+        # SHAP explainability computation (optional); configuration cached above
+        # Debug logging
+        _report(
+            report,
+            f"DEBUG: SHAP config - enabled={self.shap_was_enabled}, sample_size={self.shap_sample_size}, "
+            f"extraParam_COMPUTE_SHAP={extraParam.get('COMPUTE_SHAP') if extraParam else 'N/A'}",
+        )
+
+        if self.shap_was_enabled:
+                self._compute_shap_importance(
+                    model=model,
+                    raster_path=raster_path,
+                    X_train=x if "x" in locals() else X,
+                    feature_names=None,  # Will generate Band_1, Band_2, etc.
+                    shap_output_path=extraParam.get("SHAP_OUTPUT"),
+                    sample_size=self.shap_sample_size,
+                )
 
         if model_path is not None:
             # Debug: log what we're saving
@@ -2089,17 +2722,17 @@ class LearnModel:
             # Generate feature names if not provided
             n_features = X_train.shape[1]
             if feature_names is None:
-                feature_names = [f"Band_{i+1}" for i in range(n_features)]
+                feature_names = [f"Band_{i + 1}" for i in range(n_features)]
 
             # Create ModelExplainer
             explainer = ModelExplainer(
                 model=model,
                 feature_names=feature_names,
-                background_data=X_train[:min(100, len(X_train))],  # Use up to 100 samples as background
+                background_data=X_train[: min(100, len(X_train))],  # Use up to 100 samples as background
             )
 
             # Compute feature importance on training sample
-            sample_for_shap = X_train[:min(sample_size, len(X_train))]
+            sample_for_shap = X_train[: min(sample_size, len(X_train))]
             importance = explainer.get_feature_importance(
                 X_sample=sample_for_shap,
                 aggregate_method="mean_abs",
@@ -2133,7 +2766,18 @@ class LearnModel:
                 _report(report, f"Feature importance raster saved to: {shap_output_path}")
 
         except Exception as e:
-            _report(report, f"Warning: SHAP computation failed: {e!s}\nContinuing without SHAP analysis.")
+            import traceback
+
+            error_details = traceback.format_exc()
+            _report(
+                report,
+                f"Warning: SHAP computation failed: {e!s}\n\nThis is often due to:\n"
+                "  1. SHAP library not installed (install with: pip install shap>=0.41.0)\n"
+                "  2. Incompatible classifier (GMM has limited SHAP support)\n"
+                "  3. Model complexity or data size issues\n\n"
+                "Continuing without SHAP analysis. For best SHAP compatibility, use RF, XGB, or LGB.\n\n"
+                f"Technical details:\n{error_details}",
+            )
             # Don't raise - continue with normal workflow
 
     def _handle_class_imbalance(
@@ -2280,8 +2924,7 @@ class LearnModel:
         except Exception as e:
             _report(
                 self.report,
-                f"Warning: Class weight computation failed: {e!s}. "
-                "Continuing without class weights.",
+                f"Warning: Class weight computation failed: {e!s}. Continuing without class weights.",
             )
             return None
 
@@ -2368,12 +3011,19 @@ class LearnModel:
             if needXY:
                 ROI = rasterize(raster_path, vector_path, class_field)
 
+                # Check CV mode for polygon-based cross-validation
+                cv_mode = extraParam.get("CV_MODE", "RANDOM_SPLIT") if extraParam else "RANDOM_SPLIT"
+                polygon_groups = None  # Will store polygon IDs if CV_MODE is POLYGON_GROUP
+
                 if split_config == "SLOO":
                     X, Y, coords, distanceArray = self._prepare_sloo_data(raster_path, ROI, extraParam, feedback)
                 elif split_config == "STAND":
                     X, Y, STDs = self._prepare_stand_data(
                         raster_path, vector_path, ROI, class_field, extraParam, feedback
                     )
+                elif cv_mode == "POLYGON_GROUP" and isinstance(split_config, (int, float)):
+                    # Use polygon-based CV: extract polygon IDs for StratifiedGroupKFold
+                    X, Y, polygon_groups = self._prepare_polygon_group_data(raster_path, vector_path, ROI, feedback)
                 else:
                     X, Y = dataraster.get_samples_from_roi(raster_path, ROI)
 
@@ -2384,7 +3034,7 @@ class LearnModel:
                     # Store test data for later use
                     self._test_data = (Xt, yt)
 
-        return X, Y, coords, distanceArray, STDs, vector_test_path
+        return X, Y, coords, distanceArray, STDs, polygon_groups, vector_test_path
 
     def _setup_save_directory(self, saveDir: str) -> None:
         """Create save directory and subdirectories."""
@@ -2431,6 +3081,83 @@ class LearnModel:
         X, Y, STDs = dataraster.get_samples_from_roi(raster_path, ROI, STAND)
         return X, Y, STDs
 
+    def _prepare_polygon_group_data(self, raster_path, vector_path, ROI, feedback):
+        """Prepare data for polygon-based cross-validation using feature IDs.
+
+        This extracts polygon IDs (FID) for each training sample to enable
+        StratifiedGroupKFold cross-validation, ensuring pixels from the same
+        polygon are never split between training and validation sets.
+        """
+        report = Reporter.from_feedback(feedback, tag=LOG_TAG)
+
+        try:
+            # Rasterize the FID (Feature ID) field to get polygon IDs
+            import tempfile
+            import os
+            import shutil
+            from osgeo import ogr
+
+            _report(report, "Extracting polygon IDs for spatial cross-validation...")
+
+            # Open vector file
+            vector_ds = ogr.Open(vector_path)
+            if vector_ds is None:
+                raise ValueError(f"Cannot open vector file: {vector_path}")
+
+            layer = vector_ds.GetLayer()
+
+            # Create temporary shapefile with FID field
+            temp_dir = tempfile.mkdtemp()
+            temp_vector = os.path.join(temp_dir, "temp_with_fid.shp")
+
+            # Create output shapefile
+            driver = ogr.GetDriverByName("ESRI Shapefile")
+            temp_ds = driver.CreateDataSource(temp_vector)
+            temp_layer = temp_ds.CreateLayer("fid_layer", layer.GetSpatialRef(), layer.GetGeomType())
+
+            # Add FID field
+            fid_field = ogr.FieldDefn("polygon_id", ogr.OFTInteger)
+            temp_layer.CreateField(fid_field)
+
+            # Copy features and add FID
+            layer.ResetReading()
+            for feature in layer:
+                new_feature = ogr.Feature(temp_layer.GetLayerDefn())
+                new_feature.SetGeometry(feature.GetGeometryRef())
+                new_feature.SetField("polygon_id", feature.GetFID())
+                temp_layer.CreateFeature(new_feature)
+                new_feature = None
+
+            # Flush to disk
+            temp_ds = None
+            vector_ds = None
+
+            # Rasterize the polygon_id field
+            POLYGON_IDS = rasterize(raster_path, temp_vector, "polygon_id")
+
+            # Get samples with polygon IDs
+            X, Y, polygon_groups = dataraster.get_samples_from_roi(raster_path, ROI, POLYGON_IDS)
+
+            # Clean up temporary files
+            try:
+                shutil.rmtree(temp_dir)
+            except Exception:
+                pass
+
+            # Flatten polygon_groups to 1D array
+            polygon_groups = polygon_groups.ravel()
+
+            n_polygons = len(np.unique(polygon_groups))
+            _report(report, f"Extracted polygon IDs: {n_polygons} unique polygons for spatial CV")
+
+            return X, Y, polygon_groups
+
+        except Exception as e:
+            _report(report, f"Warning: Could not extract polygon IDs: {e}. Using standard data loading.")
+            # Fallback to standard loading without polygon IDs
+            X, Y = dataraster.get_samples_from_roi(raster_path, ROI)
+            return X, Y, None
+
     def _handle_data_loading_error(self, error: Exception, class_field: str, feedback, progress) -> None:
         """Handle data loading errors with appropriate error messages."""
         if isinstance(error, ValueError) and ("could not convert" in str(error) or "invalid literal" in str(error)):
@@ -2456,6 +3183,7 @@ class LearnModel:
 
 class ClassifyImage:
     """Classify a raster image from a trained model and optional mask."""
+
     def initPredict(
         self,
         raster_path: Optional[str] = None,

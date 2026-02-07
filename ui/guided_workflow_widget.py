@@ -52,6 +52,25 @@ from qgis.PyQt.QtWidgets import (
     QWizardPage,
 )
 
+try:
+    from dzetsaka.domain.value_objects.recipe_schema_v2 import upgrade_recipe_to_v2 as _upgrade_recipe_to_v2
+except Exception:
+    # Test/import fallback when module is loaded outside the plugin package context.
+    def _upgrade_recipe_to_v2(recipe):  # type: ignore[no-redef]
+        # type: (Dict[str, object]) -> Dict[str, object]
+        upgraded = dict(recipe or {})
+        upgraded.setdefault("version", 1)
+        upgraded.setdefault("schema_version", 2)
+        upgraded.setdefault("provenance", {"source": "local", "author": "", "created_at": "", "updated_at": ""})
+        upgraded.setdefault("constraints", {"offline_compatible": True, "requires_gpu": False})
+        upgraded.setdefault("compat", {"min_plugin_version": "", "max_plugin_version": ""})
+        upgraded.setdefault("expected_runtime_class", "medium")
+        upgraded.setdefault("expected_accuracy_class", "high")
+        upgraded.setdefault("dataset_fingerprint", "")
+        upgraded.setdefault("signature", "")
+        upgraded["schema_version"] = 2
+        return upgraded
+
 # ---------------------------------------------------------------------------
 # Dependency availability helpers (importable without Qt for unit tests)
 # ---------------------------------------------------------------------------
@@ -223,7 +242,7 @@ def build_smart_defaults(deps):
         "USE_NESTED_CV": False,
         "NESTED_INNER_CV": 3,
         "NESTED_OUTER_CV": 5,
-        "CV_MODE": "RANDOM_SPLIT",
+        "CV_MODE": "POLYGON_GROUP",
     }  # type: Dict[str, object]
 
 
@@ -280,7 +299,7 @@ def build_review_summary(config):
     if extra.get("USE_NESTED_CV", False):
         lines.append("    Inner folds : " + str(extra.get("NESTED_INNER_CV", 3)))
         lines.append("    Outer folds : " + str(extra.get("NESTED_OUTER_CV", 5)))
-    cv_mode = str(extra.get("CV_MODE", "RANDOM_SPLIT"))
+    cv_mode = str(extra.get("CV_MODE", "POLYGON_GROUP"))
     lines.append("  CV mode : " + cv_mode)
     lines.append("")
 
@@ -330,8 +349,16 @@ def _recipe_template():
     # type: () -> Dict[str, object]
     return {
         "version": _RECIPE_VERSION,
+        "schema_version": 2,
         "name": "Unnamed Recipe",
         "description": "",
+        "provenance": {"source": "local", "author": "", "created_at": "", "updated_at": ""},
+        "constraints": {"offline_compatible": True, "requires_gpu": False},
+        "compat": {"min_plugin_version": "", "max_plugin_version": ""},
+        "expected_runtime_class": "medium",
+        "expected_accuracy_class": "high",
+        "dataset_fingerprint": "",
+        "signature": "",
         "preprocessing": {},
         "features": {"bands": "all"},
         "classifier": {"code": "GMM"},
@@ -341,7 +368,7 @@ def _recipe_template():
             "nested_cv": False,
             "nested_inner_cv": 3,
             "nested_outer_cv": 5,
-            "cv_mode": "RANDOM_SPLIT",
+            "cv_mode": "POLYGON_GROUP",
         },
         "extraParam": {
             "USE_OPTUNA": False,
@@ -357,7 +384,7 @@ def _recipe_template():
             "USE_NESTED_CV": False,
             "NESTED_INNER_CV": 3,
             "NESTED_OUTER_CV": 5,
-            "CV_MODE": "RANDOM_SPLIT",
+            "CV_MODE": "POLYGON_GROUP",
             "GENERATE_REPORT_BUNDLE": True,
             "OPEN_REPORT_IN_BROWSER": True,
         },
@@ -391,7 +418,7 @@ def build_catboost_recipe():
                 USE_CLASS_WEIGHTS=True,
                 CLASS_WEIGHT_STRATEGY="balanced",
             ),
-            "validation": dict(_recipe_template()["validation"], split_percent=75, cv_mode="RANDOM_SPLIT"),
+            "validation": dict(_recipe_template()["validation"], split_percent=75, cv_mode="POLYGON_GROUP"),
             "postprocess": {"confidence_map": True, "save_model": True, "confusion_matrix": True},
         }
     )
@@ -413,7 +440,7 @@ def build_lightgbm_recipe():
                 USE_CLASS_WEIGHTS=True,
                 CLASS_WEIGHT_STRATEGY="balanced",
             ),
-            "validation": dict(_recipe_template()["validation"], split_percent=75, cv_mode="RANDOM_SPLIT"),
+            "validation": dict(_recipe_template()["validation"], split_percent=75, cv_mode="POLYGON_GROUP"),
             "postprocess": {"confidence_map": False, "save_model": True, "confusion_matrix": True},
         }
     )
@@ -556,6 +583,7 @@ def build_nested_cv_recipe():
 def normalize_recipe(recipe):
     # type: (Dict[str, object]) -> Dict[str, object]
     """Ensure a recipe contains all required keys."""
+    recipe = _upgrade_recipe_to_v2(dict(recipe or {}))
     base = _recipe_template()
     for key, value in base.items():
         if key not in recipe:
@@ -571,7 +599,7 @@ def normalize_recipe(recipe):
     recipe["validation"].setdefault("nested_cv", False)
     recipe["validation"].setdefault("nested_inner_cv", 3)
     recipe["validation"].setdefault("nested_outer_cv", 5)
-    recipe["validation"].setdefault("cv_mode", "RANDOM_SPLIT")
+    recipe["validation"].setdefault("cv_mode", "POLYGON_GROUP")
     recipe["extraParam"].setdefault("USE_OPTUNA", False)
     recipe["extraParam"].setdefault("OPTUNA_TRIALS", 100)
     recipe["extraParam"].setdefault("COMPUTE_SHAP", False)
@@ -585,7 +613,7 @@ def normalize_recipe(recipe):
     recipe["extraParam"].setdefault("USE_NESTED_CV", False)
     recipe["extraParam"].setdefault("NESTED_INNER_CV", 3)
     recipe["extraParam"].setdefault("NESTED_OUTER_CV", 5)
-    recipe["extraParam"].setdefault("CV_MODE", "RANDOM_SPLIT")
+    recipe["extraParam"].setdefault("CV_MODE", "POLYGON_GROUP")
     recipe["extraParam"].setdefault("GENERATE_REPORT_BUNDLE", True)
     recipe["extraParam"].setdefault("REPORT_OUTPUT_DIR", "")
     recipe["extraParam"].setdefault("REPORT_LABEL_COLUMN", "")
@@ -613,11 +641,11 @@ def validate_recipe_list(payload):
 
     for idx, item in enumerate(payload):
         if not isinstance(item, dict):
-            errors.append(f"Recipe #{idx+1}: not an object.")
+            errors.append(f"Recipe #{idx + 1}: not an object.")
             continue
         name = item.get("name", "")
         if not isinstance(name, str) or not name.strip():
-            errors.append(f"Recipe #{idx+1}: missing or empty 'name'.")
+            errors.append(f"Recipe #{idx + 1}: missing or empty 'name'.")
             continue
         if "classifier" not in item:
             errors.append(f"Recipe '{name}': missing required 'classifier'.")
@@ -642,7 +670,7 @@ def validate_recipe_list(payload):
             if split < 10 or split > 100:
                 errors.append(f"Recipe '{name}': split_percent must be 10-100.")
                 continue
-            cv_mode = validation.get("cv_mode", "RANDOM_SPLIT")
+            cv_mode = validation.get("cv_mode", "POLYGON_GROUP")
             if cv_mode not in ("RANDOM_SPLIT", "POLYGON_GROUP"):
                 errors.append(f"Recipe '{name}': cv_mode must be RANDOM_SPLIT or POLYGON_GROUP.")
                 continue
@@ -650,9 +678,7 @@ def validate_recipe_list(payload):
         if isinstance(extra, dict) and "CLASS_WEIGHT_STRATEGY" in extra:
             strategy = extra.get("CLASS_WEIGHT_STRATEGY")
             if strategy not in ("balanced", "uniform"):
-                errors.append(
-                    f"Recipe '{name}': CLASS_WEIGHT_STRATEGY must be 'balanced' or 'uniform'."
-                )
+                errors.append(f"Recipe '{name}': CLASS_WEIGHT_STRATEGY must be 'balanced' or 'uniform'.")
                 continue
         recipes.append(normalize_recipe(item))
 
@@ -678,7 +704,7 @@ def format_recipe_summary(recipe):
     lines.append(f"Class Weights: {extra.get('USE_CLASS_WEIGHTS', False)}")
     lines.append(f"SHAP: {extra.get('COMPUTE_SHAP', False)}")
     lines.append(f"Nested CV: {validation.get('nested_cv', extra.get('USE_NESTED_CV', False))}")
-    lines.append(f"CV mode: {validation.get('cv_mode', extra.get('CV_MODE', 'RANDOM_SPLIT'))}")
+    lines.append(f"CV mode: {validation.get('cv_mode', extra.get('CV_MODE', 'POLYGON_GROUP'))}")
     lines.append(f"Validation split %: {validation.get('split_percent', 100)}")
     return "\n".join(lines)
 
@@ -748,7 +774,7 @@ def recipe_from_config(config, name, description=""):
                 "nested_cv": bool(extra.get("USE_NESTED_CV", False)),
                 "nested_inner_cv": int(extra.get("NESTED_INNER_CV", 3)),
                 "nested_outer_cv": int(extra.get("NESTED_OUTER_CV", 5)),
-                "cv_mode": str(extra.get("CV_MODE", "RANDOM_SPLIT")),
+                "cv_mode": str(extra.get("CV_MODE", "POLYGON_GROUP")),
             },
             "extraParam": extra,
         }
@@ -1064,8 +1090,7 @@ class RecipeShopDialog(QDialog):
         method_layout.addWidget(self.optunaCheck, 0, 0)
         method_layout.addWidget(QLabel("Trials"), 0, 1)
         method_layout.addWidget(self.optunaTrialsSpin, 0, 2)
-        method_layout.addWidget(self._method_info_button(
-            "Run an Optuna tuning loop (requires optuna)."), 0, 3)
+        method_layout.addWidget(self._method_info_button("Run an Optuna tuning loop (requires optuna)."), 0, 3)
 
         self.shapCheck = QCheckBox("Explainability (SHAP)")
         self.shapSampleSpin = QSpinBox()
@@ -1074,8 +1099,7 @@ class RecipeShopDialog(QDialog):
         method_layout.addWidget(self.shapCheck, 1, 0)
         method_layout.addWidget(QLabel("Sample size"), 1, 1)
         method_layout.addWidget(self.shapSampleSpin, 1, 2)
-        method_layout.addWidget(self._method_info_button(
-            "Compute SHAP explainability (requires shap)."), 1, 3)
+        method_layout.addWidget(self._method_info_button("Compute SHAP explainability (requires shap)."), 1, 3)
 
         self.smoteCheck = QCheckBox("Class balancing (SMOTE)")
         self.smoteKSpin = QSpinBox()
@@ -1083,8 +1107,9 @@ class RecipeShopDialog(QDialog):
         method_layout.addWidget(self.smoteCheck, 2, 0)
         method_layout.addWidget(QLabel("k-neighbors"), 2, 1)
         method_layout.addWidget(self.smoteKSpin, 2, 2)
-        method_layout.addWidget(self._method_info_button(
-            "Apply SMOTE oversampling before training (requires imbalanced-learn)."), 2, 3)
+        method_layout.addWidget(
+            self._method_info_button("Apply SMOTE oversampling before training (requires imbalanced-learn)."), 2, 3
+        )
 
         self.classWeightsCheck = QCheckBox("Class weights")
         self.classWeightStrategyCombo = QComboBox()
@@ -1093,8 +1118,7 @@ class RecipeShopDialog(QDialog):
         method_layout.addWidget(self.classWeightsCheck, 3, 0)
         method_layout.addWidget(QLabel("Strategy"), 3, 1)
         method_layout.addWidget(self.classWeightStrategyCombo, 3, 2)
-        method_layout.addWidget(self._method_info_button(
-            "Use class weights when training (needs scikit-learn)."), 3, 3)
+        method_layout.addWidget(self._method_info_button("Use class weights when training (needs scikit-learn)."), 3, 3)
 
         self.nestedCvCheck = QCheckBox("Nested cross-validation")
         self.nestedInnerSpin = QSpinBox()
@@ -1106,8 +1130,7 @@ class RecipeShopDialog(QDialog):
         method_layout.addWidget(self.nestedInnerSpin, 4, 2)
         method_layout.addWidget(QLabel("Outer folds"), 4, 3)
         method_layout.addWidget(self.nestedOuterSpin, 4, 4)
-        method_layout.addWidget(self._method_info_button(
-            "Run nested cross-validation to avoid leakage."), 4, 5)
+        method_layout.addWidget(self._method_info_button("Run nested cross-validation to avoid leakage."), 4, 5)
 
         self.reportBundleCheck = QCheckBox("Generate report bundle")
         self.reportBundleCheck.setChecked(True)
@@ -1115,26 +1138,21 @@ class RecipeShopDialog(QDialog):
         self.openReportCheck.setChecked(True)
         method_layout.addWidget(self.reportBundleCheck, 5, 0)
         method_layout.addWidget(self.openReportCheck, 5, 1, 1, 2)
-        method_layout.addWidget(self._method_info_button(
-            "Generate the full report bundle and optionally open it immediately."), 5, 3)
+        method_layout.addWidget(
+            self._method_info_button("Generate the full report bundle and optionally open it immediately."), 5, 3
+        )
 
         method_group.setLayout(method_layout)
         root.addWidget(method_group)
 
         self.optunaCheck.stateChanged.connect(
-            lambda state: self._on_feature_toggle(
-                self.optunaCheck, "optuna", "Optuna hyperparameter search", state
-            )
+            lambda state: self._on_feature_toggle(self.optunaCheck, "optuna", "Optuna hyperparameter search", state)
         )
         self.shapCheck.stateChanged.connect(
-            lambda state: self._on_feature_toggle(
-                self.shapCheck, "shap", "SHAP explainability", state
-            )
+            lambda state: self._on_feature_toggle(self.shapCheck, "shap", "SHAP explainability", state)
         )
         self.smoteCheck.stateChanged.connect(
-            lambda state: self._on_feature_toggle(
-                self.smoteCheck, "imbalanced-learn", "SMOTE oversampling", state
-            )
+            lambda state: self._on_feature_toggle(self.smoteCheck, "imbalanced-learn", "SMOTE oversampling", state)
         )
         self.classWeightsCheck.stateChanged.connect(
             lambda state: self._on_feature_toggle(
@@ -1251,7 +1269,7 @@ class RecipeShopDialog(QDialog):
         )
         self.openReportCheck.setChecked(bool(extra.get("OPEN_REPORT_IN_BROWSER", True)))
         self.splitSpin.setValue(int(validation.get("split_percent", 75)))
-        cv_mode = str(validation.get("cv_mode", extra.get("CV_MODE", "RANDOM_SPLIT")))
+        cv_mode = str(validation.get("cv_mode", extra.get("CV_MODE", "POLYGON_GROUP")))
         cv_idx = self.cvModeCombo.findText(cv_mode)
         self.cvModeCombo.setCurrentIndex(max(0, cv_idx))
         self._update_dynamic_state()
@@ -1262,7 +1280,9 @@ class RecipeShopDialog(QDialog):
         self.optunaTrialsSpin.setEnabled(self.optunaCheck.isChecked() and self.optunaCheck.isEnabled())
         self.shapSampleSpin.setEnabled(self.shapCheck.isChecked() and self.shapCheck.isEnabled())
         self.smoteKSpin.setEnabled(self.smoteCheck.isChecked() and self.smoteCheck.isEnabled())
-        self.classWeightStrategyCombo.setEnabled(self.classWeightsCheck.isChecked() and self.classWeightsCheck.isEnabled())
+        self.classWeightStrategyCombo.setEnabled(
+            self.classWeightsCheck.isChecked() and self.classWeightsCheck.isEnabled()
+        )
         nested_enabled = self.nestedCvCheck.isChecked()
         self.nestedInnerSpin.setEnabled(nested_enabled)
         self.nestedOuterSpin.setEnabled(nested_enabled)
@@ -1355,10 +1375,7 @@ class RecipeShopDialog(QDialog):
         QMessageBox.information(
             self,
             "Installation Successful",
-            (
-                "Dependencies installed successfully!<br><br>"
-                "Please restart QGIS to load the new libraries."
-            ),
+            ("Dependencies installed successfully!<br><br>Please restart QGIS to load the new libraries."),
             QMessageBox.StandardButton.Ok,
         )
         self._deps = check_dependency_availability()
@@ -1367,10 +1384,7 @@ class RecipeShopDialog(QDialog):
             QMessageBox.warning(
                 self,
                 "Dependencies Missing",
-                (
-                    f"Still missing packages: {', '.join(remaining)}.\n"
-                    "Install them manually or restart QGIS."
-                ),
+                (f"Still missing packages: {', '.join(remaining)}.\nInstall them manually or restart QGIS."),
             )
             return False
         return True
@@ -1437,20 +1451,14 @@ class RecipeShopDialog(QDialog):
             QMessageBox.warning(
                 self,
                 "Dependencies Missing",
-                (
-                    f"Could not install dependencies required for {feature_name}.\n"
-                    "See logs for details."
-                ),
+                (f"Could not install dependencies required for {feature_name}.\nSee logs for details."),
             )
             return False
 
         QMessageBox.information(
             self,
             "Installation Successful",
-            (
-                "Dependencies installed successfully!<br><br>"
-                "Please restart QGIS to load the new libraries."
-            ),
+            ("Dependencies installed successfully!<br><br>Please restart QGIS to load the new libraries."),
             QMessageBox.StandardButton.Ok,
         )
         self._deps = check_dependency_availability()
@@ -1593,6 +1601,7 @@ class RecipeShopDialog(QDialog):
             if c == code:
                 return name
         return code
+
     def _update_preset_description(self, preset):
         # type: (Optional[Dict[str, object]]) -> None
         description = ""
@@ -1891,9 +1900,7 @@ class RecipeGalleryDialog(QDialog):
     def _refresh_remote(self):
         # type: () -> None
         if not self._remote_url:
-            QMessageBox.information(
-                self, "Remote gallery", "Set a remote URL to fetch shared recipes."
-            )
+            QMessageBox.information(self, "Remote gallery", "Set a remote URL to fetch shared recipes.")
             return
         try:
             with urllib.request.urlopen(self._remote_url, timeout=4) as response:
@@ -2472,8 +2479,7 @@ class DataInputPage(QWizardPage):
                     f"Full bundle to install: <code>{_full_bundle_label()}</code><br><br>"
                     "Install the full dzetsaka dependency bundle now?"
                 ),
-                QMessageBox.StandardButton.Yes
-                | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
             )
 
@@ -2591,9 +2597,7 @@ class DataInputPage(QWizardPage):
         class_field = self.get_class_field()
         layer = self._vector_combo.currentLayer() if self._vector_combo is not None else None
         if not vector_path and layer is None:
-            QMessageBox.information(
-                self, "Geometry Explorer", "Select a vector layer or enter a vector path first."
-            )
+            QMessageBox.information(self, "Geometry Explorer", "Select a vector layer or enter a vector path first.")
             return
         dialog = VectorInsightDialog(self, vector_path=vector_path, class_field=class_field, layer=layer)
         try:
@@ -2779,8 +2783,9 @@ class AdvancedOptionsPage(QWizardPage):
 
         cv_mode_label = QLabel("Validation mode:")
         self.cvModeCombo = QComboBox()
-        self.cvModeCombo.addItem("Random split (default)", "RANDOM_SPLIT")
-        self.cvModeCombo.addItem("Polygon group CV (leave-group-out)", "POLYGON_GROUP")
+        self.cvModeCombo.addItem("Random split", "RANDOM_SPLIT")
+        self.cvModeCombo.addItem("Polygon group CV (default, recommended)", "POLYGON_GROUP")
+        self.cvModeCombo.setCurrentIndex(1)  # Default to POLYGON_GROUP
         self.cvModeCombo.setToolTip(
             "Use polygon-group CV to avoid pixel leakage within the same polygon "
             "when spatial autocorrelation is strong."
@@ -2821,7 +2826,7 @@ class AdvancedOptionsPage(QWizardPage):
         self.classWeightCheck.setChecked(bool(defaults.get("USE_CLASS_WEIGHTS", False)))
         self.shapCheck.setChecked(bool(defaults.get("COMPUTE_SHAP", False)))
         self.shapSampleSize.setValue(int(defaults.get("SHAP_SAMPLE_SIZE", 1000)))
-        self._set_cv_mode(str(defaults.get("CV_MODE", "RANDOM_SPLIT")))
+        self._set_cv_mode(str(defaults.get("CV_MODE", "POLYGON_GROUP")))
 
     def apply_recipe(self, recipe):
         # type: (Dict[str, object]) -> None
@@ -2843,7 +2848,7 @@ class AdvancedOptionsPage(QWizardPage):
         self.nestedCVCheck.setChecked(nested)
         self.innerFolds.setValue(int(validation.get("nested_inner_cv", extra.get("NESTED_INNER_CV", 3))))
         self.outerFolds.setValue(int(validation.get("nested_outer_cv", extra.get("NESTED_OUTER_CV", 5))))
-        cv_mode = str(validation.get("cv_mode", extra.get("CV_MODE", "RANDOM_SPLIT")))
+        cv_mode = str(validation.get("cv_mode", extra.get("CV_MODE", "POLYGON_GROUP")))
         self._set_cv_mode(cv_mode)
 
     def get_extra_params(self):
@@ -2863,12 +2868,12 @@ class AdvancedOptionsPage(QWizardPage):
             "USE_NESTED_CV": self.nestedCVCheck.isChecked(),
             "NESTED_INNER_CV": self.innerFolds.value(),
             "NESTED_OUTER_CV": self.outerFolds.value(),
-            "CV_MODE": str(self.cvModeCombo.currentData() or "RANDOM_SPLIT"),
+            "CV_MODE": str(self.cvModeCombo.currentData() or "POLYGON_GROUP"),
         }  # type: Dict[str, object]
 
     def _set_cv_mode(self, mode):
         # type: (str) -> None
-        normalized = "POLYGON_GROUP" if str(mode).upper() == "POLYGON_GROUP" else "RANDOM_SPLIT"
+        normalized = "RANDOM_SPLIT" if str(mode).upper() == "RANDOM_SPLIT" else "POLYGON_GROUP"
         idx = self.cvModeCombo.findData(normalized)
         if idx < 0:
             idx = 0
@@ -3205,9 +3210,9 @@ class GuidedClassificationDialog(QWizard):
         self.advPage = AdvancedOptionsPage(deps=self._deps)
         self.outputPage = OutputConfigPage()
 
-        self.addPage(self.dataPage)      # index 0
-        self.addPage(self.advPage)       # index 1
-        self.addPage(self.outputPage)    # index 2
+        self.addPage(self.dataPage)  # index 0
+        self.addPage(self.advPage)  # index 1
+        self.addPage(self.outputPage)  # index 2
 
         self.dataPage.set_recipe_list(self._recipes)
 
@@ -3272,8 +3277,7 @@ class GuidedClassificationDialog(QWizard):
                     f"Full bundle to install: <code>{_full_bundle_label()}</code><br><br>"
                     "Install the full dzetsaka dependency bundle now?"
                 ),
-                QMessageBox.StandardButton.Yes
-                | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
             )
 
@@ -3425,7 +3429,7 @@ class GuidedClassificationDialog(QWizard):
                     "nested_cv": bool(extra.get("USE_NESTED_CV", False)),
                     "nested_inner_cv": int(extra.get("NESTED_INNER_CV", 3)),
                     "nested_outer_cv": int(extra.get("NESTED_OUTER_CV", 5)),
-                    "cv_mode": str(extra.get("CV_MODE", "RANDOM_SPLIT")),
+                    "cv_mode": str(extra.get("CV_MODE", "POLYGON_GROUP")),
                 },
                 "postprocess": {
                     "confidence_map": bool(config.get("confidence_map", "")),
@@ -3448,6 +3452,42 @@ class GuidedClassificationDialog(QWizard):
         """Normalize imported JSON payload into a config dict accepted by Expert mode."""
         if any(k in payload for k in ("raster", "vector", "class_field", "classifier", "extraParam")):
             return dict(payload)
+
+        # Sprint 1 artifact support: run_manifest.json
+        if payload.get("artifact") == "dzetsaka_run_manifest" and isinstance(payload.get("run"), dict):
+            run = payload.get("run", {})
+            return {
+                "raster": str(run.get("raster_path", "") or ""),
+                "vector": str(run.get("vector_path", "") or ""),
+                "class_field": str(run.get("class_field", "") or ""),
+                "load_model": "",
+                "classifier": str(run.get("classifier_code", "GMM") or "GMM"),
+                "extraParam": {
+                    "CV_MODE": str(run.get("split_mode", "RANDOM_SPLIT") or "RANDOM_SPLIT"),
+                    "USE_OPTUNA": False,
+                    "OPTUNA_TRIALS": 100,
+                    "COMPUTE_SHAP": False,
+                    "SHAP_OUTPUT": "",
+                    "SHAP_SAMPLE_SIZE": 1000,
+                    "USE_SMOTE": False,
+                    "SMOTE_K_NEIGHBORS": 5,
+                    "USE_CLASS_WEIGHTS": False,
+                    "CLASS_WEIGHT_STRATEGY": "balanced",
+                    "CUSTOM_CLASS_WEIGHTS": {},
+                    "USE_NESTED_CV": False,
+                    "NESTED_INNER_CV": 3,
+                    "NESTED_OUTER_CV": 5,
+                    "GENERATE_REPORT_BUNDLE": False,
+                    "REPORT_OUTPUT_DIR": "",
+                    "REPORT_LABEL_COLUMN": "",
+                    "REPORT_LABEL_MAP": "",
+                },
+                "output_raster": "",
+                "confidence_map": "",
+                "save_model": "",
+                "confusion_matrix": "",
+                "split_percent": int(run.get("split_config", 100) or 100),
+            }
 
         # Fallback: report bundle run_config.json style
         classifier_code = str(payload.get("classifier_code", "GMM") or "GMM")
@@ -3525,7 +3565,9 @@ class GuidedClassificationDialog(QWizard):
                 return
             payload = payload[0]
         if not isinstance(payload, dict):
-            QMessageBox.warning(self, "JSON load error", "JSON root must be an object, recipe list, or recipes payload.")
+            QMessageBox.warning(
+                self, "JSON load error", "JSON root must be an object, recipe list, or recipes payload."
+            )
             return
         self._import_payload(payload)
 
@@ -3721,6 +3763,9 @@ class QuickClassificationPanel(QWidget):
         )
         classifier_row.addWidget(QLabel("Recipe:"))
         self.recipeCombo = QComboBox()
+        self.recipeCombo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.recipeCombo.setMinimumContentsLength(15)
+        self.recipeCombo.setMaximumWidth(300)
         self.recipeCombo.currentIndexChanged.connect(self._apply_selected_recipe)
         classifier_row.addWidget(self.recipeCombo)
 
@@ -3968,18 +4013,19 @@ class QuickClassificationPanel(QWidget):
         QMessageBox.warning(
             self,
             "Dependencies Missing",
-                (
-                    f"Selected classifier {classifier_name} cannot run right now.\n\n"
-                    f"Missing runtime dependencies: {', '.join(missing_required)}\n\n"
-                    "Install dependencies from the dashboard installer and restart QGIS."
-                ),
-            )
+            (
+                f"Selected classifier {classifier_name} cannot run right now.\n\n"
+                f"Missing runtime dependencies: {', '.join(missing_required)}\n\n"
+                "Install dependencies from the dashboard installer and restart QGIS."
+            ),
+        )
         self.classifierCombo.setCurrentIndex(0)
 
     def _quick_extra_params(self):
         # type: () -> Dict[str, object]
         report_enabled = bool(self.reportCheck.isChecked()) if hasattr(self, "reportCheck") else True
-        return {
+        # Start with defaults
+        defaults = {
             "USE_OPTUNA": False,
             "OPTUNA_TRIALS": 100,
             "COMPUTE_SHAP": False,
@@ -3999,6 +4045,13 @@ class QuickClassificationPanel(QWidget):
             "REPORT_LABEL_MAP": "",
             "OPEN_REPORT_IN_BROWSER": report_enabled and self._open_report_in_browser,
         }
+        # Merge recipe's extraParam if a recipe was applied
+        if hasattr(self, "_recipe_extra_params") and self._recipe_extra_params:
+            defaults.update(self._recipe_extra_params)
+            # Override report settings based on current UI state
+            defaults["GENERATE_REPORT_BUNDLE"] = report_enabled
+            defaults["OPEN_REPORT_IN_BROWSER"] = report_enabled and self._open_report_in_browser
+        return defaults
 
     def _refresh_recipe_combo(self, preferred_name=""):
         # type: (str) -> None
@@ -4126,6 +4179,10 @@ class QuickClassificationPanel(QWidget):
         extra = selected.get("extraParam", {})
         validation = selected.get("validation", {})
         post = selected.get("postprocess", {})
+
+        # Store recipe's extraParam so it's used when emitting config
+        self._recipe_extra_params = dict(extra) if extra else {}
+
         report_enabled = bool(extra.get("GENERATE_REPORT_BUNDLE", False) or post.get("confusion_matrix", False))
         if hasattr(self, "reportCheck"):
             self.reportCheck.setChecked(report_enabled)
@@ -4293,5 +4350,3 @@ class ClassificationDashboardDock(QDockWidget):
     def closeEvent(self, event):
         self.closingPlugin.emit()
         event.accept()
-
-
