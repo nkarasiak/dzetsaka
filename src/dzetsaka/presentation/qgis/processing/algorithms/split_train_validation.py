@@ -7,9 +7,6 @@ and validation subsets for robust model evaluation.
 import os
 from typing import ClassVar
 
-# Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
-from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtGui import QIcon
 from qgis.core import (
     QgsProcessingAlgorithm,
     QgsProcessingParameterEnum,
@@ -19,9 +16,13 @@ from qgis.core import (
     QgsProcessingParameterVectorLayer,
 )
 
+# Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
+from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtGui import QIcon
+
+from dzetsaka.infrastructure.geo.vector_split import split_vector_stratified
 from dzetsaka.logging_utils import QgisLogger, show_error_dialog
 from dzetsaka.presentation.qgis.processing import metadata_helpers
-from dzetsaka.scripts import function_vector
 from dzetsaka.scripts.function_dataraster import get_layer_source_path
 
 plugin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), *([".."] * 7)))
@@ -120,31 +121,74 @@ class SplitTrain(QgsProcessingAlgorithm):
             # Retrieve algo from code
             selectedMETHOD = self.METHOD_VALUES[METHOD[0]]
 
-            percent = selectedMETHOD == "Percent"
+            use_percent = selectedMETHOD == "Percent"
 
-            libOk = True
+            # Convert from validation-centric to train-centric parameter
+            # Old RandomInSubset used VALUE for validation size
+            # New split_vector_stratified uses train_percent for training size
+            if use_percent:
+                # VALUE is percentage for validation, convert to training percentage
+                train_value = 100 - VALUE
+            else:
+                # VALUE is absolute count for validation
+                # We need to convert to training count
+                # This requires knowing total count, which we'll let the function handle
+                # by passing the validation count and letting it calculate train count
+                # Actually, we'll pass total-VALUE as train_value
+                # But since we don't know total here, we'll use a different approach:
+                # Pass VALUE as validation count instead
+                train_value = VALUE
+                # We'll need to adjust the logic in the call
 
             try:
-                pass
-            except BaseException:
-                libOk = False
+                # Call new scikit-learn based splitting function
+                if use_percent:
+                    train_path, valid_path = split_vector_stratified(
+                        vector_path=get_layer_source_path(INPUT_LAYER),
+                        class_field=str(INPUT_COLUMN[0]),
+                        train_percent=train_value,
+                        train_output=OUTPUT_TRAIN,
+                        validation_output=OUTPUT_VALIDATION,
+                        use_percent=True,
+                    )
+                else:
+                    # For count mode, we need total features to calculate train count
+                    # Let's read the total count first
+                    try:
+                        from osgeo import ogr
+                    except ImportError:
+                        import ogr  # type: ignore[no-redef]
 
-            if libOk:
-                function_vector.RandomInSubset(
-                    get_layer_source_path(INPUT_LAYER),
-                    str(INPUT_COLUMN[0]),
-                    OUTPUT_VALIDATION,
-                    OUTPUT_TRAIN,
-                    VALUE,
-                    percent,
-                )
+                    ds = ogr.Open(get_layer_source_path(INPUT_LAYER))
+                    if ds is None:
+                        raise RuntimeError("Unable to open input vector layer")
+                    lyr = ds.GetLayer()
+                    total_features = lyr.GetFeatureCount()
+                    ds = None
+
+                    train_count = max(1, total_features - VALUE)
+                    train_path, valid_path = split_vector_stratified(
+                        vector_path=get_layer_source_path(INPUT_LAYER),
+                        class_field=str(INPUT_COLUMN[0]),
+                        train_percent=train_count,
+                        train_output=OUTPUT_TRAIN,
+                        validation_output=OUTPUT_VALIDATION,
+                        use_percent=False,
+                    )
+
+                feedback.pushInfo(f"Training samples written to: {train_path}")
+                feedback.pushInfo(f"Validation samples written to: {valid_path}")
+
                 return {
                     self.OUTPUT_TRAIN: OUTPUT_TRAIN,
                     self.OUTPUT_VALIDATION: OUTPUT_VALIDATION,
                 }
-            else:
-                # QMessageBox(None, "Please install scikit-learn library")
-                log.warning("Please install scikit-learn library")
+
+            except ImportError:
+                error_msg = "scikit-learn is required for train/test splitting. Install with: pip install scikit-learn"
+                feedback.reportError(error_msg)
+                log.error(error_msg)
+                show_error_dialog("dzetsaka Split Train/Validation Error", error_msg)
                 return {}
 
         except Exception as e:

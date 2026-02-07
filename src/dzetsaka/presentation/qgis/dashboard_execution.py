@@ -5,77 +5,7 @@ from __future__ import annotations
 import os
 import tempfile
 
-
-def _build_polygon_label_split(vector_path, class_field, train_percent):
-    # type: (str, str, int) -> tuple[str, str]
-    """Create train/validation vectors by splitting polygons stratified by label."""
-    try:
-        from osgeo import ogr
-    except ImportError:
-        import ogr  # type: ignore[no-redef]
-
-    from sklearn.model_selection import train_test_split
-
-    ds = ogr.Open(vector_path)
-    if ds is None:
-        raise RuntimeError(f"Unable to open vector dataset: {vector_path}")
-    lyr = ds.GetLayer()
-    if lyr is None:
-        raise RuntimeError(f"No layer found in vector dataset: {vector_path}")
-
-    features = []
-    labels = []
-    srs = lyr.GetSpatialRef()
-    defn = lyr.GetLayerDefn()
-    field_names = [defn.GetFieldDefn(i).GetName() for i in range(defn.GetFieldCount())]
-    for feat in lyr:
-        label = feat.GetField(class_field)
-        if label in (None, ""):
-            continue
-        features.append(feat.Clone())
-        labels.append(label)
-    ds = None
-
-    if len(features) < 2:
-        raise RuntimeError("Not enough polygons for polygon-group split.")
-
-    validation_percent = max(1, min(99, 100 - int(train_percent)))
-    test_size = validation_percent / 100.0
-    valid_feats, train_feats = train_test_split(features, test_size=test_size, stratify=labels, random_state=0)
-
-    out_dir = tempfile.mkdtemp(prefix="dzetsaka_poly_split_")
-    train_path = os.path.join(out_dir, "train.shp")
-    valid_path = os.path.join(out_dir, "valid.shp")
-
-    driver = ogr.GetDriverByName("ESRI Shapefile")
-    if driver is None:
-        raise RuntimeError("OGR Shapefile driver unavailable.")
-
-    def _write_subset(path, subset):
-        if os.path.exists(path):
-            driver.DeleteDataSource(path)
-        out_ds = driver.CreateDataSource(path)
-        if out_ds is None:
-            raise RuntimeError(f"Unable to create output vector: {path}")
-        out_lyr = out_ds.CreateLayer("subset", srs, defn.GetGeomType())
-        for field_name in field_names:
-            src_field = defn.GetFieldDefn(defn.GetFieldIndex(field_name))
-            out_lyr.CreateField(src_field)
-        out_defn = out_lyr.GetLayerDefn()
-        for src_feat in subset:
-            out_feat = ogr.Feature(out_defn)
-            geom = src_feat.GetGeometryRef()
-            if geom is not None:
-                out_feat.SetGeometry(geom.Clone())
-            for field_name in field_names:
-                out_feat.SetField(field_name, src_feat.GetField(field_name))
-            out_lyr.CreateFeature(out_feat)
-            out_feat = None
-        out_ds = None
-
-    _write_subset(train_path, train_feats)
-    _write_subset(valid_path, valid_feats)
-    return train_path, valid_path
+from dzetsaka.infrastructure.geo.vector_split import split_vector_stratified
 
 
 def execute_dashboard_config(plugin, config) -> None:
@@ -148,7 +78,7 @@ def execute_dashboard_config(plugin, config) -> None:
         if train_percent < 1 or train_percent > 99:
             train_percent = 75
         try:
-            train_vector, valid_vector = _build_polygon_label_split(vector_path, class_field, train_percent)
+            train_vector, valid_vector = split_vector_stratified(vector_path, class_field, train_percent)
             vector_path = train_vector
             split_config = valid_vector
         except Exception as exc:
