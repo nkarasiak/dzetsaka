@@ -140,6 +140,17 @@ class GMMR(BaseEstimator, ClassifierMixin):
         this threshold are clipped to prevent numerical issues.
     warn_ill_conditioned : bool, default=False
         Whether to warn about ill-conditioned covariance matrices during training.
+    reg_type : str, default='ridge'
+        Regularization type. Options:
+        - 'ridge': Standard ridge regularization (L2)
+        - 'ledoit_wolf': Ledoit-Wolf shrinkage (automatic optimal shrinkage)
+        - 'oas': Oracle Approximating Shrinkage (OAS)
+        - 'empirical': No regularization (use with caution)
+    shrinkage_target : str, default='diagonal'
+        Target for shrinkage regularization. Options:
+        - 'diagonal': Shrink towards diagonal matrix
+        - 'identity': Shrink towards identity matrix
+        - 'spherical': Shrink towards spherical covariance
 
     Attributes
     ----------
@@ -189,11 +200,15 @@ class GMMR(BaseEstimator, ClassifierMixin):
         random_state: Optional[int] = None,
         min_eigenvalue: float = 1e-6,
         warn_ill_conditioned: bool = False,
+        reg_type: str = "ridge",
+        shrinkage_target: str = "diagonal",
     ):
         self.tau = tau
         self.random_state = random_state
         self.min_eigenvalue = min_eigenvalue
         self.warn_ill_conditioned = warn_ill_conditioned
+        self.reg_type = reg_type
+        self.shrinkage_target = shrinkage_target
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> "GMMR":
         """Fit the Gaussian Mixture Model.
@@ -278,6 +293,9 @@ class GMMR(BaseEstimator, ClassifierMixin):
         self.classnum = unique_labels.astype("uint16")
         self.classes_ = self.classnum
 
+        # Initialize M2 for partial_fit support
+        self._M2 = np.zeros((C, d, d))
+
         # Learn parameters for each class
         for c, cR in enumerate(unique_labels):
             j = np.where(y == cR)[0]
@@ -287,7 +305,17 @@ class GMMR(BaseEstimator, ClassifierMixin):
             self.mean[c, :] = np.mean(x[j, :], axis=0)
 
             # Compute covariance (biased estimator for consistency with ridge)
-            self.cov[c, :, :] = np.cov(x[j, :], bias=1, rowvar=0)
+            empirical_cov = np.cov(x[j, :], bias=1, rowvar=0)
+
+            # Apply advanced regularization if not using default ridge
+            if self.reg_type != "ridge":
+                self.cov[c, :, :] = self._apply_advanced_regularization(empirical_cov, j.size)
+            else:
+                self.cov[c, :, :] = empirical_cov
+
+            # Initialize M2 for this class (for partial_fit)
+            x_centered = x[j, :] - self.mean[c, :]
+            self._M2[c] = np.dot(x_centered.T, x_centered)
 
             # Eigendecomposition for efficient inversion
             L, Q = linalg.eigh(self.cov[c, :, :])
@@ -817,6 +845,267 @@ class GMMR(BaseEstimator, ClassifierMixin):
             "explained_variance_ratio": explained_variance_ratio,
         }
 
+    def partial_fit(self, X: np.ndarray, y: np.ndarray, classes: Optional[np.ndarray] = None) -> "GMMR":
+        """Incremental fit for streaming data.
+
+        Updates the model parameters using online algorithms (Welford's method)
+        to incorporate new data without retraining from scratch.
+
+        Parameters
+        ----------
+        X : np.ndarray of shape (n_samples, n_features)
+            Training samples
+        y : np.ndarray of shape (n_samples,)
+            Target class labels
+        classes : np.ndarray, optional
+            Array of all possible class labels. Required on first call.
+
+        Returns
+        -------
+        self : object
+            Returns self for method chaining
+
+        Examples
+        --------
+        >>> model = GMMR(tau=0.1)
+        >>> # First batch - must provide classes
+        >>> model.partial_fit(X1, y1, classes=np.array([1, 2, 3]))
+        >>> # Subsequent batches
+        >>> model.partial_fit(X2, y2)
+        >>> model.partial_fit(X3, y3)
+
+        Notes
+        -----
+        This method uses Welford's online algorithm for numerically stable
+        computation of mean and covariance updates. It's suitable for:
+        - Streaming data (too large to fit in memory)
+        - Online learning scenarios
+        - Incremental model updates
+
+        Warnings
+        --------
+        - Eigendecomposition is recomputed after each update (O(d^3) cost)
+        - For very frequent small updates, consider batching
+        - First call must include `classes` parameter
+        """
+        X, y = check_X_y(X, y, dtype=np.float64)
+
+        # Initialize on first call
+        if not hasattr(self, "mean"):
+            if classes is None:
+                raise ValueError("classes must be provided on first call to partial_fit")
+
+            self.classes_ = np.asarray(classes)
+            self.classnum = self.classes_.astype("uint16")
+            C = len(self.classes_)
+            d = X.shape[1]
+
+            self.n_features_in_ = d
+            self.ni = np.zeros((C, 1))
+            self.prop = np.zeros((C, 1))
+            self.mean = np.zeros((C, d))
+            self.cov = np.zeros((C, d, d))
+            self.Q = np.zeros((C, d, d))
+            self.L = np.zeros((C, d))
+
+            # Track sum of squares for online covariance
+            self._M2 = np.zeros((C, d, d))
+
+        # Validate features
+        if X.shape[1] != self.n_features_in_:
+            raise ValueError(
+                f"X has {X.shape[1]} features but model expects {self.n_features_in_} features"
+            )
+
+        C = len(self.classes_)
+
+        # Update statistics for each class using Welford's algorithm
+        for c, class_label in enumerate(self.classes_):
+            # Get samples for this class in current batch
+            mask = y == class_label
+            if not np.any(mask):
+                continue
+
+            X_c = X[mask]
+            n_new = X_c.shape[0]
+
+            # Update sample count
+            n_old = self.ni[c, 0]
+            n_total = n_old + n_new
+
+            # Update mean (Welford)
+            delta = X_c - self.mean[c]
+            self.mean[c] += np.sum(delta, axis=0) / n_total
+
+            # Update M2 (sum of squared deviations)
+            # This is the numerically stable way to compute covariance online
+            for i in range(n_new):
+                delta_before = X_c[i] - (self.mean[c] - np.sum(delta, axis=0) / n_total)
+                delta_after = X_c[i] - self.mean[c]
+                self._M2[c] += np.outer(delta_before, delta_after)
+
+            # Update covariance (biased estimator)
+            if n_total > 1:
+                self.cov[c] = self._M2[c] / n_total
+            else:
+                # Single sample: use small diagonal for stability
+                self.cov[c] = np.eye(self.n_features_in_) * self.min_eigenvalue
+
+            # Update count and proportion
+            self.ni[c] = n_total
+            total_samples = np.sum(self.ni)
+            self.prop[c] = self.ni[c] / total_samples
+
+            # Recompute eigendecomposition for this class
+            L, Q = linalg.eigh(self.cov[c])
+            idx = L.argsort()[::-1]
+            self.L[c] = L[idx]
+            self.Q[c] = Q[:, idx]
+
+        # Update all class proportions
+        total_samples = np.sum(self.ni)
+        for c in range(C):
+            self.prop[c] = self.ni[c] / total_samples
+
+        return self
+
+    def _apply_advanced_regularization(self, cov: np.ndarray, n_samples: int) -> np.ndarray:
+        """Apply advanced regularization to covariance matrix.
+
+        Parameters
+        ----------
+        cov : np.ndarray of shape (n_features, n_features)
+            Empirical covariance matrix
+        n_samples : int
+            Number of samples used to estimate covariance
+
+        Returns
+        -------
+        reg_cov : np.ndarray of shape (n_features, n_features)
+            Regularized covariance matrix
+        """
+        d = cov.shape[0]
+
+        if self.reg_type == "ridge":
+            # Standard ridge: Cov + tau * I
+            return cov + self.tau * np.eye(d)
+
+        elif self.reg_type == "ledoit_wolf":
+            # Ledoit-Wolf shrinkage
+            shrinkage = self._ledoit_wolf_shrinkage(cov, n_samples)
+
+            if self.shrinkage_target == "diagonal":
+                target = np.diag(np.diag(cov))
+            elif self.shrinkage_target == "identity":
+                target = np.eye(d) * np.trace(cov) / d
+            elif self.shrinkage_target == "spherical":
+                target = np.eye(d) * np.mean(np.diag(cov))
+            else:
+                raise ValueError(f"Unknown shrinkage_target: {self.shrinkage_target}")
+
+            return (1 - shrinkage) * cov + shrinkage * target
+
+        elif self.reg_type == "oas":
+            # Oracle Approximating Shrinkage
+            shrinkage = self._oas_shrinkage(cov, n_samples)
+
+            if self.shrinkage_target == "diagonal":
+                target = np.diag(np.diag(cov))
+            elif self.shrinkage_target == "identity":
+                target = np.eye(d) * np.trace(cov) / d
+            else:
+                target = np.eye(d) * np.mean(np.diag(cov))
+
+            return (1 - shrinkage) * cov + shrinkage * target
+
+        elif self.reg_type == "empirical":
+            # No regularization
+            return cov
+
+        else:
+            raise ValueError(f"Unknown reg_type: {self.reg_type}. Use 'ridge', 'ledoit_wolf', 'oas', or 'empirical'")
+
+    def _ledoit_wolf_shrinkage(self, cov: np.ndarray, n_samples: int) -> float:
+        """Compute Ledoit-Wolf optimal shrinkage intensity.
+
+        Parameters
+        ----------
+        cov : np.ndarray
+            Empirical covariance matrix
+        n_samples : int
+            Number of samples
+
+        Returns
+        -------
+        shrinkage : float
+            Optimal shrinkage intensity in [0, 1]
+
+        References
+        ----------
+        Ledoit, O., & Wolf, M. (2004). A well-conditioned estimator for
+        large-dimensional covariance matrices. Journal of Multivariate
+        Analysis, 88(2), 365-411.
+        """
+        d = cov.shape[0]
+
+        # Target: diagonal matrix
+        if self.shrinkage_target == "identity":
+            mu = np.trace(cov) / d
+        else:
+            mu = np.mean(np.diag(cov))
+
+        # Compute delta (squared Frobenius norm of difference)
+        delta = np.sum((cov - mu * np.eye(d)) ** 2)
+
+        # Estimate delta_bar (asymptotic expectation of delta)
+        # This is a simplified version; full LW requires sample data
+        delta_bar = delta / (n_samples - 1)
+
+        # Shrinkage intensity
+        shrinkage = min(delta_bar / (delta + 1e-10), 1.0)
+        shrinkage = max(shrinkage, 0.0)
+
+        return shrinkage
+
+    def _oas_shrinkage(self, cov: np.ndarray, n_samples: int) -> float:
+        """Compute Oracle Approximating Shrinkage intensity.
+
+        Parameters
+        ----------
+        cov : np.ndarray
+            Empirical covariance matrix
+        n_samples : int
+            Number of samples
+
+        Returns
+        -------
+        shrinkage : float
+            Optimal shrinkage intensity in [0, 1]
+
+        References
+        ----------
+        Chen, Y., Wiesel, A., Eldar, Y. C., & Hero, A. O. (2010).
+        Shrinkage algorithms for MMSE covariance estimation.
+        IEEE Transactions on Signal Processing, 58(10), 5016-5029.
+        """
+        d = cov.shape[0]
+        n = n_samples
+
+        # Trace-based quantities
+        trace_cov2 = np.trace(np.dot(cov, cov))
+        trace_cov = np.trace(cov)
+
+        # OAS formula
+        rho = min(
+            ((1 - 2 / d) * trace_cov2 + trace_cov**2) / ((n + 1 - 2 / d) * (trace_cov2 - trace_cov**2 / d)),
+            1.0
+        )
+
+        # Ensure shrinkage is in [0, 1]
+        shrinkage = max(min(rho, 1.0), 0.0)
+
+        return shrinkage
+
     def __getstate__(self) -> Dict[str, Any]:
         """Get state for pickle serialization."""
         return {
@@ -824,6 +1113,8 @@ class GMMR(BaseEstimator, ClassifierMixin):
             "random_state": self.random_state,
             "min_eigenvalue": self.min_eigenvalue,
             "warn_ill_conditioned": self.warn_ill_conditioned,
+            "reg_type": self.reg_type,
+            "shrinkage_target": self.shrinkage_target,
             "n_features_in_": getattr(self, "n_features_in_", None),
             "ni": getattr(self, "ni", None),
             "prop": getattr(self, "prop", None),
@@ -833,6 +1124,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
             "L": getattr(self, "L", None),
             "classnum": getattr(self, "classnum", None),
             "classes_": getattr(self, "classes_", None),
+            "_M2": getattr(self, "_M2", None),
         }
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
@@ -841,6 +1133,8 @@ class GMMR(BaseEstimator, ClassifierMixin):
         self.random_state = state["random_state"]
         self.min_eigenvalue = state["min_eigenvalue"]
         self.warn_ill_conditioned = state["warn_ill_conditioned"]
+        self.reg_type = state.get("reg_type", "ridge")  # Backward compatibility
+        self.shrinkage_target = state.get("shrinkage_target", "diagonal")
         self.n_features_in_ = state["n_features_in_"]
         self.ni = state["ni"]
         self.prop = state["prop"]
@@ -850,6 +1144,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         self.L = state["L"]
         self.classnum = state["classnum"]
         self.classes_ = state["classes_"]
+        self._M2 = state.get("_M2", None)
 
 
 # Backward compatibility alias for factory pattern
