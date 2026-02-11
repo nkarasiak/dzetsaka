@@ -57,7 +57,9 @@ except ImportError:
 class DataQualityIssue:
     """Represents a data quality issue with severity and recommendations."""
 
-    SEVERITY_ERROR = "error"
+    SEVERITY_CRITICAL = "critical"
+    # Backward-compatible alias for older code paths that still reference "error".
+    SEVERITY_ERROR = SEVERITY_CRITICAL
     SEVERITY_WARNING = "warning"
     SEVERITY_INFO = "info"
 
@@ -67,7 +69,7 @@ class DataQualityIssue:
         Parameters
         ----------
         severity : str
-            Issue severity: "error", "warning", or "info"
+            Issue severity: "critical", "warning", or "info"
         title : str
             Short issue title
         description : str
@@ -82,11 +84,13 @@ class DataQualityIssue:
 
     def get_icon(self) -> str:
         """Get emoji icon for severity level."""
-        return {"error": "🔴", "warning": "⚠️", "info": "ℹ️"}.get(self.severity, "📌")
+        return {"critical": "🔴", "error": "🔴", "warning": "⚠️", "info": "ℹ️"}.get(self.severity, "📌")
 
     def get_color(self) -> str:
         """Get color code for severity level."""
-        return {"error": "#e74c3c", "warning": "#f39c12", "info": "#3498db"}.get(self.severity, "#95a5a6")
+        return {"critical": "#e74c3c", "error": "#e74c3c", "warning": "#f39c12", "info": "#3498db"}.get(
+            self.severity, "#95a5a6"
+        )
 
 
 class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
@@ -108,6 +112,9 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
         self.vector_path = vector_path
         self.class_field = class_field
         self.issues: List[DataQualityIssue] = []
+        self._severity_filter = "all"
+        self._filter_buttons = {}  # type: Dict[str, QPushButton]
+        self._issues_layout: Optional[QVBoxLayout] = None
 
         # Apply theme-aware styling
         if _THEME_SUPPORT_AVAILABLE:
@@ -149,16 +156,11 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
             issues_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
 
             issues_container = QWidget()
-            issues_layout = QVBoxLayout(issues_container)
-            issues_layout.setSpacing(10)
-
-            for issue in self.issues:
-                issue_widget = self._create_issue_widget(issue)
-                issues_layout.addWidget(issue_widget)
-
-            issues_layout.addStretch()
+            self._issues_layout = QVBoxLayout(issues_container)
+            self._issues_layout.setSpacing(10)
             issues_scroll.setWidget(issues_container)
             layout.addWidget(issues_scroll, 1)  # Stretch to fill available space
+            self._rebuild_issue_list()
         else:
             # No issues found
             success_group = QGroupBox()
@@ -193,34 +195,84 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
         summary_layout = QHBoxLayout(summary_widget)
 
         # Count issues by severity
-        error_count = sum(1 for issue in self.issues if issue.severity == DataQualityIssue.SEVERITY_ERROR)
+        error_count = sum(
+            1
+            for issue in self.issues
+            if issue.severity in (DataQualityIssue.SEVERITY_CRITICAL, DataQualityIssue.SEVERITY_ERROR)
+        )
         warning_count = sum(1 for issue in self.issues if issue.severity == DataQualityIssue.SEVERITY_WARNING)
         info_count = sum(1 for issue in self.issues if issue.severity == DataQualityIssue.SEVERITY_INFO)
-
-        # Create status labels
-        if error_count > 0:
-            error_label = QLabel(f"🔴 <b>{error_count}</b> Error{'' if error_count == 1 else 's'}")
-            error_label.setStyleSheet("color: #e74c3c; font-size: 11pt;")
-            summary_layout.addWidget(error_label)
-
-        if warning_count > 0:
-            warning_label = QLabel(f"⚠️ <b>{warning_count}</b> Warning{'' if warning_count == 1 else 's'}")
-            warning_label.setStyleSheet("color: #f39c12; font-size: 11pt;")
-            summary_layout.addWidget(warning_label)
-
-        if info_count > 0:
-            info_label = QLabel(f"ℹ️ <b>{info_count}</b> Info")
-            info_label.setStyleSheet("color: #3498db; font-size: 11pt;")
-            summary_layout.addWidget(info_label)
 
         if not self.issues:
             success_label = QLabel("✅ <b>No issues found</b>")
             success_label.setStyleSheet("color: #27ae60; font-size: 11pt;")
             summary_layout.addWidget(success_label)
+            summary_layout.addStretch()
+            return summary_widget
+
+        counts = {
+            "all": len(self.issues),
+            "critical": error_count,
+            "warning": warning_count,
+            "info": info_count,
+        }
+        labels = {
+            "all": "All",
+            "critical": "Critical",
+            "warning": "Warning",
+            "info": "Info",
+        }
+
+        for key in ("all", "critical", "warning", "info"):
+            button = QPushButton(f"{labels[key]} ({counts[key]})")
+            button.setCheckable(True)
+            button.clicked.connect(lambda _checked=False, k=key: self._set_severity_filter(k))
+            if key == "critical":
+                button.setStyleSheet("color: #e74c3c;")
+            elif key == "warning":
+                button.setStyleSheet("color: #f39c12;")
+            elif key == "info":
+                button.setStyleSheet("color: #3498db;")
+            self._filter_buttons[key] = button
+            summary_layout.addWidget(button)
+        self._set_severity_filter("all")
 
         summary_layout.addStretch()
 
         return summary_widget
+
+    def _set_severity_filter(self, severity: str):
+        """Set active severity filter and refresh issue list."""
+        self._severity_filter = severity
+        for key, button in self._filter_buttons.items():
+            button.setChecked(key == severity)
+        self._rebuild_issue_list()
+
+    def _rebuild_issue_list(self):
+        """Rebuild issue list according to active severity filter."""
+        if self._issues_layout is None:
+            return
+        while self._issues_layout.count():
+            item = self._issues_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+                widget.deleteLater()
+
+        for issue in self.issues:
+            if not self._issue_visible_for_filter(issue):
+                continue
+            issue_widget = self._create_issue_widget(issue)
+            self._issues_layout.addWidget(issue_widget)
+        self._issues_layout.addStretch()
+
+    def _issue_visible_for_filter(self, issue: DataQualityIssue) -> bool:
+        """Return True if issue matches current severity filter."""
+        if self._severity_filter == "all":
+            return True
+        if self._severity_filter == "critical":
+            return issue.severity in (DataQualityIssue.SEVERITY_CRITICAL, DataQualityIssue.SEVERITY_ERROR)
+        return issue.severity == self._severity_filter
 
     def _create_issue_widget(self, issue: DataQualityIssue) -> QWidget:
         """Create a widget displaying a single quality issue."""
@@ -264,7 +316,7 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
         if ogr is None:
             self.issues.append(
                 DataQualityIssue(
-                    DataQualityIssue.SEVERITY_ERROR,
+                    DataQualityIssue.SEVERITY_CRITICAL,
                     "OGR Not Available",
                     "Cannot analyze vector data - OGR/GDAL library not found.",
                     "Install GDAL/OGR to enable data quality checking.",
@@ -277,7 +329,7 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
         if ds is None:
             self.issues.append(
                 DataQualityIssue(
-                    DataQualityIssue.SEVERITY_ERROR,
+                    DataQualityIssue.SEVERITY_CRITICAL,
                     "Cannot Open Vector File",
                     f"Unable to open vector dataset: {self.vector_path}",
                     "Check that the file path is correct and the file is not corrupted.",
@@ -289,7 +341,7 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
         if layer is None:
             self.issues.append(
                 DataQualityIssue(
-                    DataQualityIssue.SEVERITY_ERROR,
+                    DataQualityIssue.SEVERITY_CRITICAL,
                     "No Layer Found",
                     "Vector dataset contains no layers.",
                     "Ensure the vector file has a valid layer.",
@@ -303,7 +355,7 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
         if field_idx == -1:
             self.issues.append(
                 DataQualityIssue(
-                    DataQualityIssue.SEVERITY_ERROR,
+                    DataQualityIssue.SEVERITY_CRITICAL,
                     "Class Field Not Found",
                     f"Field '{self.class_field}' does not exist in the vector layer.",
                     f"Select a valid field name. Available fields: {self._get_field_names(layer_defn)}",
@@ -368,7 +420,7 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
         if len(class_counts) < 2:
             self.issues.append(
                 DataQualityIssue(
-                    DataQualityIssue.SEVERITY_ERROR,
+                    DataQualityIssue.SEVERITY_CRITICAL,
                     "Single Class Detected",
                     "All training samples belong to the same class. Classification requires at least 2 classes.",
                     "Add training samples for other classes you want to classify.",
@@ -387,7 +439,7 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
                 minority_class = min(class_counts, key=class_counts.get)
                 self.issues.append(
                     DataQualityIssue(
-                        DataQualityIssue.SEVERITY_ERROR,
+                        DataQualityIssue.SEVERITY_CRITICAL,
                         "Extreme Class Imbalance",
                         (
                             f"Severe imbalance detected: class '{majority_class}' has {max_count} samples "
@@ -428,7 +480,7 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
             class_list = ", ".join([f"'{cls}' ({count})" for cls, count in classes_below_10.items()])
             self.issues.append(
                 DataQualityIssue(
-                    DataQualityIssue.SEVERITY_ERROR,
+                    DataQualityIssue.SEVERITY_CRITICAL,
                     "Critically Low Sample Count",
                     f"Classes with <10 samples: {class_list}. This is too few for reliable classification.",
                     "Collect at least 30 samples per class (50+ recommended) for stable results.",
@@ -449,7 +501,7 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
         """Check for missing or invalid geometries."""
         if invalid_count > 0:
             percentage = (invalid_count / total_count) * 100 if total_count > 0 else 0
-            severity = DataQualityIssue.SEVERITY_ERROR if percentage > 10 else DataQualityIssue.SEVERITY_WARNING
+            severity = DataQualityIssue.SEVERITY_CRITICAL if percentage > 10 else DataQualityIssue.SEVERITY_WARNING
 
             self.issues.append(
                 DataQualityIssue(

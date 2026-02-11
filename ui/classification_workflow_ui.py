@@ -20,7 +20,7 @@ import urllib.request
 from collections import Counter
 from typing import Any, Dict, List, Optional, Tuple
 
-from qgis.PyQt.QtCore import QEvent, QSettings, QSize, QTimer, Qt, pyqtSignal
+from qgis.PyQt.QtCore import QSettings, QSize, Qt, pyqtSignal
 from qgis.PyQt.QtGui import QColor, QIcon, QKeySequence, QPainter, QPixmap
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
@@ -2989,7 +2989,7 @@ class DataInputPage(QWizardPage):
         # type: () -> None
         """Open the training data quality checker dialog."""
         if not _QUALITY_CHECKER_AVAILABLE:
-            QMessageBox.warning(
+            QMessageBox.critical(
                 self,
                 "Feature Unavailable",
                 "Training data quality checker is not available. Please check that all dependencies are installed."
@@ -3042,7 +3042,7 @@ class DataInputPage(QWizardPage):
         # Show completion message with issue count
         try:
             if hasattr(dialog, 'issues'):
-                issue_count = len([i for i in dialog.issues if i.severity in ["error", "warning"]])
+                issue_count = len([i for i in dialog.issues if i.severity in ["critical", "error", "warning"]])
                 parent_widget = self.parent()
                 while parent_widget is not None:
                     if hasattr(parent_widget, 'iface'):
@@ -4769,9 +4769,8 @@ class RecipeHubDialog(QDialog):
         self.categoryList = QListWidget()
         self.categoryList.setObjectName("hubList")
         self.categoryList.setSpacing(1 if self._compact_mode else 4)
-        self.categoryList.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.categoryList.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.categoryList.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.categoryList.installEventFilter(self)
         categories_layout.addWidget(self.categoryList)
         root.addWidget(categories_group, 3, 0)
         if self._compact_mode:
@@ -4922,21 +4921,18 @@ class RecipeHubDialog(QDialog):
         # type: () -> None
         if self.categoryList.count() <= 0:
             return
-        row_height = self.categoryList.sizeHintForRow(0)
-        if row_height <= 0:
-            row_height = 24 if self._compact_mode else 34
+        default_row_height = 24 if self._compact_mode else 34
+        row_heights = []
+        for idx in range(self.categoryList.count()):
+            hint = self.categoryList.sizeHintForRow(idx)
+            row_heights.append(hint if hint > 0 else default_row_height)
+        content_height = sum(row_heights)
         spacing = self.categoryList.spacing()
         frame = self.categoryList.frameWidth() * 2
-        visible = (row_height * self.categoryList.count()) + (spacing * max(0, self.categoryList.count() - 1)) + frame + 4
-        self.categoryList.setFixedHeight(visible)
-        self._pin_category_viewport()
-
-    def _pin_category_viewport(self):
-        # type: () -> None
-        if not hasattr(self, "categoryList"):
-            return
-        self.categoryList.scrollToTop()
-        self.categoryList.verticalScrollBar().setValue(0)
+        visible = content_height + (spacing * max(0, self.categoryList.count() - 1)) + frame + 8
+        # Keep a little headroom to avoid clipping/auto-scroll jitter on selection.
+        self.categoryList.setMinimumHeight(visible)
+        self.categoryList.setMaximumHeight(visible + default_row_height)
 
     def _recipes_for_category(self, category):
         # type: (str) -> List[Dict[str, object]]
@@ -5116,25 +5112,12 @@ class RecipeHubDialog(QDialog):
 
     def _on_category_changed(self, row):
         # type: (int) -> None
-        self._pin_category_viewport()
-        QTimer.singleShot(0, self._pin_category_viewport)
-        QTimer.singleShot(10, self._pin_category_viewport)
         if row < 0 or row >= len(getattr(self, "_categories", [])):
             self._active_category = "All"
             self._rebuild_recipe_list()
             return
         self._active_category = self._categories[row]
         self._rebuild_recipe_list()
-
-    def eventFilter(self, obj, event):
-        # type: (object, object) -> bool
-        if obj is getattr(self, "categoryList", None) and event is not None:
-            try:
-                if event.type() == QEvent.Wheel:
-                    return True
-            except Exception:
-                pass
-        return super(RecipeHubDialog, self).eventFilter(obj, event)
 
     def _on_search_changed(self, _text):
         # type: (str) -> None
@@ -5979,7 +5962,7 @@ class QuickClassificationPanel(QWidget):
         # type: () -> None
         """Open the training data quality checker dialog."""
         if not _QUALITY_CHECKER_AVAILABLE:
-            QMessageBox.warning(
+            QMessageBox.critical(
                 self,
                 "Feature Unavailable",
                 "Training data quality checker is not available. Please check that all dependencies are installed."
@@ -6031,7 +6014,7 @@ class QuickClassificationPanel(QWidget):
         # Show completion message
         try:
             if hasattr(dialog, 'issues'):
-                issue_count = len([i for i in dialog.issues if i.severity in ["error", "warning"]])
+                issue_count = len([i for i in dialog.issues if i.severity in ["critical", "error", "warning"]])
                 parent_widget = self.parent()
                 while parent_widget is not None:
                     if hasattr(parent_widget, 'iface'):
