@@ -20,7 +20,7 @@ import urllib.request
 from collections import Counter
 from typing import Any, Dict, List, Optional, Tuple
 
-from qgis.PyQt.QtCore import QSettings, QSize, Qt, pyqtSignal
+from qgis.PyQt.QtCore import QEvent, QSettings, QSize, QTimer, Qt, pyqtSignal
 from qgis.PyQt.QtGui import QColor, QIcon, QKeySequence, QPainter, QPixmap
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
@@ -4680,8 +4680,8 @@ class RecipeHubDialog(QDialog):
         self.setWindowTitle("Recipe Hub")
         self._compact_mode = bool(compact_mode)
         if self._compact_mode:
-            self.resize(760, 430)
-            self.setMinimumSize(700, 400)
+            self.resize(680, 430)
+            self.setMinimumSize(640, 400)
         else:
             self.resize(960, 620)
             self.setMinimumSize(760, 460)
@@ -4695,9 +4695,9 @@ class RecipeHubDialog(QDialog):
 
         root = QGridLayout(self)
         if self._compact_mode:
-            root.setContentsMargins(6, 6, 6, 6)
-            root.setHorizontalSpacing(6)
-            root.setVerticalSpacing(6)
+            root.setContentsMargins(4, 4, 4, 4)
+            root.setHorizontalSpacing(4)
+            root.setVerticalSpacing(4)
         else:
             root.setContentsMargins(10, 10, 10, 10)
             root.setHorizontalSpacing(8)
@@ -4707,14 +4707,27 @@ class RecipeHubDialog(QDialog):
         self.headerTitle.setObjectName("recipeHubTitle")
         self.headerSubtitle = QLabel("Browse templates like a web mega menu: pick category, preview recipe, apply.")
         self.headerSubtitle.setObjectName("recipeHubSubtitle")
+        self.fastPresetBtn = QToolButton()
+        self.fastPresetBtn.setText("Fast")
+        self.fastPresetBtn.setObjectName("hubQuickPreset")
+        self.qualityPresetBtn = QToolButton()
+        self.qualityPresetBtn.setText("Highest quality")
+        self.qualityPresetBtn.setObjectName("hubQuickPreset")
         self.searchEdit = QLineEdit()
         self.searchEdit.setPlaceholderText("Search recipes...")
         self.searchEdit.setClearButtonEnabled(True)
         self.searchEdit.setObjectName("hubSearch")
+        self.headerTools = QWidget()
+        header_tools_layout = QHBoxLayout(self.headerTools)
+        header_tools_layout.setContentsMargins(0, 0, 0, 0)
+        header_tools_layout.setSpacing(4)
+        header_tools_layout.addWidget(self.fastPresetBtn)
+        header_tools_layout.addWidget(self.qualityPresetBtn)
+        header_tools_layout.addWidget(self.searchEdit)
         if self._compact_mode:
             self.headerSubtitle.setVisible(False)
         root.addWidget(self.headerTitle, 0, 0, 1, 1)
-        root.addWidget(self.searchEdit, 0, 1, 1, 1, _qt_align_right())
+        root.addWidget(self.headerTools, 0, 1, 1, 1, _qt_align_right())
         root.addWidget(self.headerSubtitle, 1, 0, 1, 2)
 
         self.topBar = QFrame()
@@ -4752,29 +4765,32 @@ class RecipeHubDialog(QDialog):
         categories_group = QGroupBox("Categories")
         categories_group.setObjectName("hubPanel")
         categories_layout = QVBoxLayout(categories_group)
-        categories_layout.setContentsMargins(8, 12, 8, 8)
+        categories_layout.setContentsMargins(4, 8, 4, 4)
         self.categoryList = QListWidget()
         self.categoryList.setObjectName("hubList")
-        self.categoryList.setSpacing(4 if self._compact_mode else 6)
+        self.categoryList.setSpacing(1 if self._compact_mode else 4)
         self.categoryList.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.categoryList.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.categoryList.installEventFilter(self)
         categories_layout.addWidget(self.categoryList)
         root.addWidget(categories_group, 3, 0)
+        if self._compact_mode:
+            categories_group.setMaximumWidth(220)
 
         recipes_group = QGroupBox("Recipes")
         recipes_group.setObjectName("hubPanel")
         recipes_layout = QVBoxLayout(recipes_group)
-        recipes_layout.setContentsMargins(8, 12, 8, 8)
+        recipes_layout.setContentsMargins(4, 8, 4, 4)
         self.recipeList = QListWidget()
         self.recipeList.setObjectName("hubList")
-        self.recipeList.setSpacing(4 if self._compact_mode else 6)
+        self.recipeList.setSpacing(1 if self._compact_mode else 4)
         recipes_layout.addWidget(self.recipeList)
         root.addWidget(recipes_group, 3, 1)
 
         actions_group = QGroupBox("Quick Actions")
         actions_group.setObjectName("hubPanel")
         actions_layout = QVBoxLayout(actions_group)
-        actions_layout.setContentsMargins(8, 12, 8, 8)
+        actions_layout.setContentsMargins(4, 8, 4, 4)
         self.createBtn = QPushButton("Create / Customize...")
         self.importBtn = QPushButton("Import Recipe...")
         self.exportBtn = QPushButton("Export Selected")
@@ -4786,11 +4802,13 @@ class RecipeHubDialog(QDialog):
         actions_layout.addWidget(self.exportBtn)
         actions_layout.addStretch()
         root.addWidget(actions_group, 4, 0)
+        if self._compact_mode:
+            actions_group.setMaximumWidth(220)
 
         details_group = QGroupBox("Recipe Details")
         details_group.setObjectName("hubPanel")
         details_layout = QVBoxLayout(details_group)
-        details_layout.setContentsMargins(8, 12, 8, 8)
+        details_layout.setContentsMargins(4, 8, 4, 4)
         self.detailsLabel = QLabel("Select a recipe to view details.")
         self.detailsLabel.setWordWrap(True)
         self.detailsLabel.setTextFormat(Qt.RichText)
@@ -4814,16 +4832,18 @@ class RecipeHubDialog(QDialog):
         details_layout.addLayout(footer)
         root.addWidget(details_group, 4, 1)
         if self._compact_mode:
-            actions_group.setMaximumHeight(180)
-            details_group.setMaximumHeight(220)
+            actions_group.setMaximumHeight(150)
+            details_group.setMaximumHeight(190)
 
-        root.setColumnStretch(0, 4)
-        root.setColumnStretch(1, 6)
-        root.setRowStretch(3, 3 if self._compact_mode else 7)
+        root.setColumnStretch(0, 3)
+        root.setColumnStretch(1, 7)
+        root.setRowStretch(3, 5 if self._compact_mode else 7)
         root.setRowStretch(4, 2 if self._compact_mode else 6)
 
         self.categoryList.currentRowChanged.connect(self._on_category_changed)
         self.searchEdit.textChanged.connect(self._on_search_changed)
+        self.fastPresetBtn.clicked.connect(self._select_fast_recipe)
+        self.qualityPresetBtn.clicked.connect(self._select_highest_quality_recipe)
         self.sortCombo.currentIndexChanged.connect(self._on_sort_changed)
         self.recipeList.currentItemChanged.connect(self._on_recipe_changed)
         self.recipeList.itemDoubleClicked.connect(lambda _item: self._apply_selection())
@@ -4833,6 +4853,8 @@ class RecipeHubDialog(QDialog):
         self.createBtn.clicked.connect(lambda: self._finish_with_command("create"))
         self.importBtn.clicked.connect(lambda: self._finish_with_command("import"))
         self.exportBtn.clicked.connect(lambda: self._finish_with_command("export"))
+        self._alt_f4_shortcut = QShortcut(QKeySequence("Alt+F4"), self)
+        self._alt_f4_shortcut.activated.connect(self.reject)
 
         self._apply_web_style()
         self._populate_categories()
@@ -4871,27 +4893,25 @@ class RecipeHubDialog(QDialog):
                 user_recipes.append(recipe)
 
         all_recipes = list(self._recipes)
-        if all_recipes:
-            self._categories.append("All Recipes")
-            self._category_items["All Recipes"] = all_recipes
-            item = QListWidgetItem(f"🧭 All Recipes ({len(all_recipes)})")
-            item.setSizeHint(QSize(0, 34 if self._compact_mode else 40))
-            self.categoryList.addItem(item)
+        self._categories.append("All")
+        self._category_items["All"] = all_recipes
+        item = QListWidgetItem(f"All ({len(all_recipes)})")
+        item.setSizeHint(QSize(0, 24 if self._compact_mode else 34))
+        self.categoryList.addItem(item)
 
         for label in ("Beginner", "Intermediate", "Advanced"):
             count = len(templates_by_category[label])
             if count > 0:
                 self._categories.append(label)
                 self._category_items[label] = templates_by_category[label]
-                icon = "✨" if label == "Beginner" else ("⚖️" if label == "Intermediate" else "🚀")
-                item = QListWidgetItem(f"{icon} {label} Templates ({count})")
-                item.setSizeHint(QSize(0, 34 if self._compact_mode else 40))
+                item = QListWidgetItem(f"{label} ({count})")
+                item.setSizeHint(QSize(0, 24 if self._compact_mode else 34))
                 self.categoryList.addItem(item)
         if user_recipes:
             self._categories.append("My Recipes")
             self._category_items["My Recipes"] = user_recipes
-            item = QListWidgetItem(f"⚙️ My Recipes ({len(user_recipes)})")
-            item.setSizeHint(QSize(0, 34 if self._compact_mode else 40))
+            item = QListWidgetItem(f"My Recipes ({len(user_recipes)})")
+            item.setSizeHint(QSize(0, 24 if self._compact_mode else 34))
             self.categoryList.addItem(item)
 
         if self.categoryList.count() > 0:
@@ -4904,14 +4924,24 @@ class RecipeHubDialog(QDialog):
             return
         row_height = self.categoryList.sizeHintForRow(0)
         if row_height <= 0:
-            row_height = 34 if self._compact_mode else 40
+            row_height = 24 if self._compact_mode else 34
         spacing = self.categoryList.spacing()
         frame = self.categoryList.frameWidth() * 2
         visible = (row_height * self.categoryList.count()) + (spacing * max(0, self.categoryList.count() - 1)) + frame + 4
         self.categoryList.setFixedHeight(visible)
+        self._pin_category_viewport()
+
+    def _pin_category_viewport(self):
+        # type: () -> None
+        if not hasattr(self, "categoryList"):
+            return
+        self.categoryList.scrollToTop()
+        self.categoryList.verticalScrollBar().setValue(0)
 
     def _recipes_for_category(self, category):
         # type: (str) -> List[Dict[str, object]]
+        if category not in self._category_items:
+            return list(self._category_items.get("All", []))
         return list(self._category_items.get(category, []))
 
     def _recipe_feature_tags(self, recipe):
@@ -4997,11 +5027,16 @@ class RecipeHubDialog(QDialog):
 
     def _update_stats_pill(self):
         # type: () -> None
-        total = len(self._recipes_for_category(self._active_category)) if self._active_category else 0
+        search_term = self.searchEdit.text().strip()
+        if search_term:
+            total = len(self._recipes)
+            category = "All"
+        else:
+            total = len(self._recipes_for_category(self._active_category)) if self._active_category else 0
+            category = self._active_category if self._active_category else "None"
         shown = self.recipeList.count()
         chip = self.chipButtons.get(self._active_chip)
         chip_label = chip.text() if chip else "All"
-        category = self._active_category if self._active_category else "None"
         self.statsLabel.setText(f"{shown} / {total} recipes | {category} | Filter: {chip_label}")
 
     def _build_recipe_card_widget(self, recipe):
@@ -5053,11 +5088,11 @@ class RecipeHubDialog(QDialog):
         self.recipeList.clear()
         self.applyBtn.setEnabled(False)
         self.detailsLabel.setText("Select a recipe to view details.")
-        if not self._active_category:
-            self._update_stats_pill()
-            return
+        if not self._active_category or self._active_category not in self._category_items:
+            self._active_category = "All"
         search_term = self.searchEdit.text().strip().lower()
-        recipes = self._sort_recipes(self._recipes_for_category(self._active_category))
+        base_recipes = list(self._recipes) if search_term else self._recipes_for_category(self._active_category)
+        recipes = self._sort_recipes(base_recipes)
         for recipe in recipes:
             if not self._passes_chip_filter(recipe):
                 continue
@@ -5068,10 +5103,10 @@ class RecipeHubDialog(QDialog):
             blob = f"{name} {desc} {classifier_code} {' '.join(tags)}".lower()
             if search_term and search_term not in blob:
                 continue
-            item = QListWidgetItem(f"📦 {name}" if is_builtin_recipe(recipe) else f"⚙️ {name}")
+            item = QListWidgetItem(name)
             item.setData(Qt.UserRole, name)
             item.setToolTip(desc)
-            item.setSizeHint(QSize(0, 32 if self._compact_mode else 38))
+            item.setSizeHint(QSize(0, 24 if self._compact_mode else 32))
             self.recipeList.addItem(item)
         if self.recipeList.count() > 0:
             self.recipeList.setCurrentRow(0)
@@ -5081,20 +5116,68 @@ class RecipeHubDialog(QDialog):
 
     def _on_category_changed(self, row):
         # type: (int) -> None
+        self._pin_category_viewport()
+        QTimer.singleShot(0, self._pin_category_viewport)
+        QTimer.singleShot(10, self._pin_category_viewport)
         if row < 0 or row >= len(getattr(self, "_categories", [])):
-            self._active_category = ""
+            self._active_category = "All"
             self._rebuild_recipe_list()
             return
         self._active_category = self._categories[row]
         self._rebuild_recipe_list()
 
+    def eventFilter(self, obj, event):
+        # type: (object, object) -> bool
+        if obj is getattr(self, "categoryList", None) and event is not None:
+            try:
+                if event.type() == QEvent.Wheel:
+                    return True
+            except Exception:
+                pass
+        return super(RecipeHubDialog, self).eventFilter(obj, event)
+
     def _on_search_changed(self, _text):
         # type: (str) -> None
+        # Search always operates on All recipes; keep All selected while filtering.
+        if self.searchEdit.text().strip() and self.categoryList.count() > 0 and self.categoryList.currentRow() != 0:
+            self.categoryList.setCurrentRow(0)
+            return
         self._rebuild_recipe_list()
 
     def _on_sort_changed(self, _index):
         # type: (int) -> None
         self._rebuild_recipe_list()
+
+    def _ensure_all_category_selected(self):
+        # type: () -> None
+        if self.categoryList.count() <= 0:
+            return
+        if self.categoryList.currentRow() != 0:
+            self.categoryList.setCurrentRow(0)
+
+    def _select_fast_recipe(self):
+        # type: () -> None
+        self._ensure_all_category_selected()
+        self.searchEdit.clear()
+        idx = self.sortCombo.findText("Fastest")
+        if idx >= 0:
+            self.sortCombo.setCurrentIndex(idx)
+        self._set_active_chip("ALL")
+        self._rebuild_recipe_list()
+        if self.recipeList.count() > 0:
+            self.recipeList.setCurrentRow(0)
+
+    def _select_highest_quality_recipe(self):
+        # type: () -> None
+        self._ensure_all_category_selected()
+        self.searchEdit.clear()
+        idx = self.sortCombo.findText("Highest Accuracy")
+        if idx >= 0:
+            self.sortCombo.setCurrentIndex(idx)
+        self._set_active_chip("ALL")
+        self._rebuild_recipe_list()
+        if self.recipeList.count() > 0:
+            self.recipeList.setCurrentRow(0)
 
     def _details_html(self, recipe):
         # type: (Dict[str, object]) -> str
@@ -5173,141 +5256,230 @@ class RecipeHubDialog(QDialog):
 
     def _apply_web_style(self):
         # type: () -> None
+        if self._compact_mode:
+            # Compact mode: mimic QGIS plugin-manager palette and density.
+            self.setStyleSheet(
+                """
+                QDialog {
+                    background: #efefef;
+                }
+                QLabel#recipeHubTitle {
+                    color: #111111;
+                    font-size: 14px;
+                    font-weight: 700;
+                }
+                QLabel#recipeHubSubtitle {
+                    color: #555555;
+                    font-size: 11px;
+                }
+                QGroupBox {
+                    background: #f7f7f7;
+                    border: 0;
+                    border-radius: 0;
+                    margin-top: 6px;
+                    color: #222222;
+                    font-weight: 600;
+                }
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    left: 6px;
+                    padding: 0 3px;
+                }
+                QLineEdit#hubSearch, QComboBox#hubSort {
+                    background: #ffffff;
+                    border: 0;
+                    border-radius: 0;
+                    padding: 2px 6px;
+                    color: #222222;
+                }
+                QToolButton#hubQuickPreset {
+                    background: #f4f4f4;
+                    color: #222222;
+                    border: 0;
+                    padding: 2px 7px;
+                    min-height: 22px;
+                }
+                QToolButton#hubQuickPreset:hover {
+                    background: #eaeaea;
+                }
+                QListWidget#hubList {
+                    background: #ffffff;
+                    border: 0;
+                    outline: 0;
+                }
+                QListWidget#hubList::item {
+                    border: 0;
+                    padding: 2px 6px;
+                    color: #222222;
+                }
+                QListWidget#hubList::item:selected {
+                    background: #d9d9d9;
+                    color: #111111;
+                }
+                QListWidget#hubList::item:hover {
+                    background: #ececec;
+                }
+                QLabel#detailsCard {
+                    background: #ffffff;
+                    border: 0;
+                    border-radius: 0;
+                    padding: 6px;
+                    color: #222222;
+                }
+                QPushButton {
+                    background: #f4f4f4;
+                    color: #222222;
+                    border: 0;
+                    border-radius: 0;
+                    padding: 2px 8px;
+                    min-height: 22px;
+                }
+                QPushButton:hover {
+                    background: #eaeaea;
+                }
+                QPushButton:pressed {
+                    background: #dddddd;
+                }
+                """
+            )
+            return
+
         self.setStyleSheet(
             """
             QDialog {
-                background: qlineargradient(
-                    x1: 0, y1: 0, x2: 1, y2: 1,
-                    stop: 0 #f4f7fb,
-                    stop: 1 #edf3f9
-                );
+                background: #f3f3f3;
             }
             QLabel#recipeHubTitle {
-                color: #102a43;
-                font-size: 20px;
+                color: #202020;
+                font-size: 16px;
                 font-weight: 700;
             }
             QLabel#recipeHubSubtitle {
-                color: #5f748a;
-                font-size: 12px;
+                color: #4a4a4a;
+                font-size: 11px;
             }
             QFrame#hubTopBar {
-                background: #ffffff;
-                border: 1px solid #d8e3ef;
-                border-radius: 10px;
+                background: #f3f3f3;
+                border: 1px solid #d0d0d0;
+                border-radius: 0;
             }
             QLabel#hubStatPill {
-                color: #1f3f5f;
-                background: #e8f3ff;
-                border: 1px solid #bfdcff;
-                border-radius: 12px;
+                color: #333333;
+                background: #f3f3f3;
+                border: 1px solid #d0d0d0;
+                border-radius: 0;
                 padding: 3px 8px;
-                font-weight: 600;
+                font-weight: 500;
             }
             QToolButton#hubChip {
-                background: #ffffff;
-                color: #37516a;
-                border: 1px solid #d0ddeb;
-                border-radius: 11px;
+                background: #f8f8f8;
+                color: #333333;
+                border: 1px solid #d0d0d0;
+                border-radius: 0;
                 padding: 3px 8px;
             }
             QToolButton#hubChip:checked {
-                background: #dff0ff;
-                border: 1px solid #62a9ea;
-                color: #0b3d72;
+                background: #e6edf7;
+                border: 1px solid #8ca9cc;
+                color: #1f3f5f;
                 font-weight: 700;
             }
             QComboBox#hubSort {
-                border: 1px solid #ced9e6;
-                border-radius: 8px;
+                border: 1px solid #c6c6c6;
+                border-radius: 0;
                 padding: 4px 8px;
-                background: #f8fbff;
+                background: #ffffff;
             }
             QGroupBox#hubPanel {
-                border: 1px solid #d8e3ef;
-                border-radius: 10px;
-                margin-top: 8px;
+                border: 1px solid #d0d0d0;
+                border-radius: 0;
+                margin-top: 6px;
                 background: #ffffff;
                 font-weight: 600;
-                color: #2f4f6a;
+                color: #2a2a2a;
             }
             QGroupBox#hubPanel::title {
                 subcontrol-origin: margin;
-                left: 10px;
+                left: 6px;
                 padding: 0 6px;
             }
             QLineEdit#hubSearch {
-                border: 1px solid #ced9e6;
-                border-radius: 8px;
-                padding: 6px 8px;
-                background: #f8fbff;
-                min-width: 230px;
-                max-width: 280px;
+                border: 1px solid #c6c6c6;
+                border-radius: 0;
+                padding: 3px 6px;
+                background: #ffffff;
+                min-width: 200px;
+                max-width: 240px;
+            }
+            QToolButton#hubQuickPreset {
+                background: #f8f8f8;
+                color: #252525;
+                border: 1px solid #c6c6c6;
+                border-radius: 0;
+                padding: 1px 6px;
+                min-height: 22px;
             }
             QLineEdit#hubSearch:focus {
                 border: 1px solid #2196f3;
                 background: #ffffff;
             }
             QListWidget#hubList {
-                border: 0;
-                background: transparent;
-                padding: 2px;
+                border: 1px solid #d0d0d0;
+                background: #ffffff;
+                padding: 0;
                 outline: 0;
             }
             QListWidget#hubList::item {
                 background: #ffffff;
-                border: 1px solid #dfeaf5;
-                border-radius: 8px;
-                padding: 6px 10px;
-                color: #243b53;
+                border: 0;
+                border-bottom: 1px solid #ececec;
+                border-radius: 0;
+                padding: 2px 8px;
+                color: #252525;
             }
             QListWidget#hubList::item:hover {
-                background: #f2f8ff;
-                border: 1px solid #c5d9ee;
+                background: #f3f3f3;
             }
             QListWidget#hubList::item:selected {
-                background: #dff0ff;
-                border: 1px solid #62a9ea;
-                color: #102a43;
+                background: #e6edf7;
+                border: 0;
+                color: #1f3f5f;
+                font-weight: 700;
             }
             QFrame#recipeCard {
                 background: transparent;
                 border: 0;
             }
             QLabel#detailsCard {
-                background: qlineargradient(
-                    x1: 0, y1: 0, x2: 1, y2: 1,
-                    stop: 0 #f8fcff,
-                    stop: 1 #eef5fd
-                );
-                border: 1px solid #c6d8ea;
-                border-radius: 10px;
-                padding: 10px;
-                color: #16324b;
+                background: #ffffff;
+                border: 1px solid #d0d0d0;
+                border-radius: 0;
+                padding: 6px;
+                color: #252525;
             }
             QPushButton#hubPrimary {
-                background: #0b74de;
-                color: #ffffff;
-                border: 1px solid #0a67c6;
-                border-radius: 8px;
-                padding: 3px 8px;
+                background: #f8f8f8;
+                color: #252525;
+                border: 1px solid #c6c6c6;
+                border-radius: 0;
+                padding: 1px 6px;
                 font-weight: 600;
-                min-height: 24px;
+                min-height: 22px;
             }
             QPushButton#hubPrimary:hover {
-                background: #0d7be8;
+                background: #f0f0f0;
             }
             QPushButton#hubSecondary, QPushButton#hubGhost {
-                background: #ffffff;
-                color: #284b6b;
-                border: 1px solid #c9d8e8;
-                border-radius: 8px;
-                padding: 3px 8px;
-                min-height: 24px;
+                background: #f8f8f8;
+                color: #252525;
+                border: 1px solid #c6c6c6;
+                border-radius: 0;
+                padding: 1px 6px;
+                min-height: 22px;
             }
             QPushButton#hubSecondary:hover, QPushButton#hubGhost:hover {
-                background: #f1f7ff;
-                border: 1px solid #a8c6e6;
+                background: #f0f0f0;
+                border: 1px solid #b8b8b8;
             }
             """
         )
