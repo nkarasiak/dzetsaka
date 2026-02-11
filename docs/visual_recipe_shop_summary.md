@@ -260,7 +260,7 @@ ALGORITHM_EMOJI = {
 
 ## Integration Status
 
-### ⚠ NOT YET INTEGRATED into `guided_workflow_widget.py`
+### ⚠ NOT YET INTEGRATED into `classification_workflow_ui.py`
 
 The Visual Recipe Shop is **fully implemented** but **not yet connected** to the main workflow UI.
 
@@ -269,7 +269,7 @@ The Visual Recipe Shop is **fully implemented** but **not yet connected** to the
 **Option 1: Replace existing recipe shop button**
 
 ```python
-# In guided_workflow_widget.py
+# In classification_workflow_ui.py
 
 # Add import at top
 from ui.recipe_shop_visual import show_visual_recipe_shop
@@ -379,7 +379,7 @@ The implementation successfully delivers:
 
 To complete the integration:
 
-1. **Add import** to `guided_workflow_widget.py`
+1. **Add import** to `classification_workflow_ui.py`
 2. **Connect button** to `_open_visual_recipe_shop()` method
 3. **Test** in QGIS environment
 4. **Update** user documentation
@@ -398,3 +398,4 @@ The Visual Recipe Shop is a **complete, production-ready feature** that transfor
 **Created:** 2026-02-09
 **Files:** 7 files, ~2000 lines of code
 **Testing:** Manual testing complete, unit tests passing
+

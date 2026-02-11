@@ -232,7 +232,7 @@ The details panel shows:
 **Option 2: From Code**
 ```python
 from ui.recipe_shop_visual import show_visual_recipe_shop
-from ui.guided_workflow_widget import load_builtin_recipes
+from ui.classification_workflow_ui import load_builtin_recipes
 
 # Load recipes
 recipes = load_builtin_recipes()
@@ -471,3 +471,4 @@ For issues or questions:
 **Version:** 5.0.0
 **Last Updated:** 2026-02-09
 **Author:** Nicolas Karasiak / dzetsaka team
+

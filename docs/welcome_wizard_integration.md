@@ -49,7 +49,7 @@ def initialize_runtime_state(gui, iface) -> None:
     # Check if welcome wizard should be shown
     welcome_completed = gui.settings.value("/dzetsaka/welcomeCompleted", False, bool)
     gui._show_welcome_wizard = not welcome_completed and gui.firstInstallation
-    gui._open_dashboard_on_init = welcome_completed  # Only auto-open dashboard if wizard was completed
+    gui._auto_open_dashboard_on_init = welcome_completed  # Only auto-open dashboard if wizard was completed
 ```
 
 ### 3. Show Wizard at Appropriate Time
@@ -74,8 +74,8 @@ def init_gui(plugin):
         # Delay slightly to ensure QGIS is fully loaded
         QTimer.singleShot(800, show_welcome)
         plugin._show_welcome_wizard = False
-    elif plugin._open_dashboard_on_init:
-        plugin._open_dashboard_on_init = False
+    elif plugin._auto_open_dashboard_on_init:
+        plugin._auto_open_dashboard_on_init = False
         QTimer.singleShot(1200, plugin.open_dashboard)
 ```
 
@@ -301,3 +301,4 @@ Potential improvements:
 - `src/dzetsaka/qgis/dependency_installer.py` - Dependency installation implementation
 - `ui/install_progress_dialog.py` - Installation progress UI
 - `src/dzetsaka/qgis/runtime_bootstrap.py` - Plugin initialization
+

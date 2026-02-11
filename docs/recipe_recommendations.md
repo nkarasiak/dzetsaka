@@ -82,7 +82,7 @@ def _browse_raster(self):
     path, _f = QFileDialog.getOpenFileName(...)
     if path:
         self.rasterLineEdit.setText(path)
-        self._show_recipe_recommendations_if_wizard(path)
+        self._show_recipe_recommendations_for_setup_dialog(path)
 ```
 
 ## User Control
@@ -244,3 +244,4 @@ Potential improvements:
 
 Part of the dzetsaka QGIS plugin.
 Copyright (c) 2024 Nicolas Karasiak
+

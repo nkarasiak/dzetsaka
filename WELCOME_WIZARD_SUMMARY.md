@@ -56,7 +56,7 @@ Unit tests covering:
 - Dependency mapping (8 parametrized tests)
 
 **Test Results**: 9/23 passing (dependency mapping and utility function tests)
-- Other tests blocked by existing syntax error in `guided_workflow_widget.py` (unrelated to wizard)
+- Other tests blocked by existing syntax error in `classification_workflow_ui.py` (unrelated to wizard)
 - Wizard code itself validates successfully with UTF-8 encoding
 
 ## Key Features
@@ -122,8 +122,8 @@ if plugin._show_welcome_wizard:
         wizard.show()
     QTimer.singleShot(800, show_welcome)
     plugin._show_welcome_wizard = False
-elif plugin._open_dashboard_on_init:
-    plugin._open_dashboard_on_init = False
+elif plugin._auto_open_dashboard_on_init:
+    plugin._auto_open_dashboard_on_init = False
     QTimer.singleShot(1200, plugin.open_dashboard)
 ```
 
@@ -283,7 +283,7 @@ vector_files = list(sample_dir.glob("*.shp")) + ...
 
 ### Unit Testing
 
-Run tests (once `guided_workflow_widget.py` syntax issue is fixed):
+Run tests (once `classification_workflow_ui.py` syntax issue is fixed):
 
 ```bash
 pytest tests/unit/test_welcome_wizard.py -v
@@ -305,9 +305,9 @@ Test within QGIS:
 
 ### Import Test Failures
 
-Tests that import from `ui.welcome_wizard` are currently blocked by a syntax error in `ui/guided_workflow_widget.py` (line 4896: invalid non-printable character U+0002). This is unrelated to the wizard code.
+Tests that import from `ui.welcome_wizard` are currently blocked by a syntax error in `ui/classification_workflow_ui.py` (line 4896: invalid non-printable character U+0002). This is unrelated to the wizard code.
 
-**Resolution**: Fix the syntax error in `guided_workflow_widget.py`, or import wizard directly:
+**Resolution**: Fix the syntax error in `classification_workflow_ui.py`, or import wizard directly:
 
 ```python
 # Direct import (bypasses ui/__init__.py)
@@ -404,7 +404,9 @@ The welcome wizard provides a polished, professional first-run experience that:
 - ✅ Maintains visual consistency with modern QGIS plugins
 
 Ready for integration pending:
-1. Fix syntax error in `guided_workflow_widget.py`
+1. Fix syntax error in `classification_workflow_ui.py`
 2. Add wizard trigger in `runtime_bootstrap.py` and `ui_init.py`
 3. Test in live QGIS environment
 4. Optionally add sample images for visual appeal
+
+

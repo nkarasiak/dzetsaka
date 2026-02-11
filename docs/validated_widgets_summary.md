@@ -100,7 +100,7 @@ trials.setToolTip("Number of Optuna trials")
 
 ### Immediate Opportunities (Phase 1)
 
-Ready to integrate into `ui/guided_workflow_widget.py`:
+Ready to integrate into `ui/classification_workflow_ui.py`:
 
 1. **QuickClassificationPanel**
    - `self.optunaTrials` (~line 2640)
@@ -272,3 +272,4 @@ For questions or issues:
 ---
 
 **Status:** ✅ Implementation Complete - Ready for Review and Integration
+

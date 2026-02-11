@@ -2,7 +2,7 @@
 
 ## Feature Overview
 
-Added recipe import/export functionality to the `QuickClassificationPanel` in `ui/guided_workflow_widget.py`.
+Added recipe import/export functionality to the `QuickClassificationPanel` in `ui/classification_workflow_ui.py`.
 
 ## Changes Made
 
@@ -131,10 +131,11 @@ If a recipe requires missing dependencies:
 
 ## File Location
 
-`C:\Users\nicar\git\dzetsaka\ui\guided_workflow_widget.py`
+`C:\Users\nicar\git\dzetsaka\ui\classification_workflow_ui.py`
 
 **Lines:**
 - Export/Import buttons: 4112-4138
 - _export_recipe method: 4565-4611
 - _import_recipe method: 4612-4756
 - _emit_config method: 4756+ (unchanged, methods inserted before it)
+

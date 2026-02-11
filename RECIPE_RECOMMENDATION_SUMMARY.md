@@ -46,7 +46,7 @@ A smart recommendation engine that analyzes raster characteristics and suggests 
 - Settings persistence
 
 ### 3. Integration with Guided Workflow
-**File:** `ui/guided_workflow_widget.py` (modified)
+**File:** `ui/classification_workflow_ui.py` (modified)
 
 **Changes:**
 1. Added imports for recommendation system (lines 77-84)
@@ -54,7 +54,7 @@ A smart recommendation engine that analyzes raster characteristics and suggests 
 3. Added `_show_recipe_recommendations()` method to QuickClassificationPanel
 4. Added `_apply_recommended_recipe()` method to apply selections
 5. Updated `DataInputPage._browse_raster()` for wizard support
-6. Added `_show_recipe_recommendations_if_wizard()` for wizard context
+6. Added `_show_recipe_recommendations_for_setup_dialog()` for wizard context
 
 **Integration Points:**
 - Dashboard quick panel: Recommendations shown after raster selection
@@ -292,7 +292,7 @@ pytest tests/unit/test_recommender_core.py -v
 ## Summary Statistics
 
 - **Files created**: 5 (recommender, dialog, tests, docs, summary)
-- **Files modified**: 2 (guided_workflow_widget.py, ui/__init__.py)
+- **Files modified**: 2 (classification_workflow_ui.py, ui/__init__.py)
 - **Lines of code**: ~1200 (excluding tests and docs)
 - **Test coverage**: 10 tests, 100% passing
 - **Documentation**: Comprehensive user and developer docs
@@ -322,3 +322,4 @@ pytest tests/unit/test_recommender_core.py -v
 ## Contact
 
 For questions or enhancements, see the dzetsaka project repository.
+

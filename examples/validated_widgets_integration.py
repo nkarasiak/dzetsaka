@@ -5,7 +5,7 @@ with ValidatedSpinBox widgets in the guided workflow to provide
 real-time validation feedback.
 
 This is a reference implementation that can be adapted into
-ui/guided_workflow_widget.py.
+ui/classification_workflow_ui.py.
 """
 
 from qgis.PyQt.QtWidgets import QCheckBox, QGridLayout, QGroupBox, QLabel, QVBoxLayout, QWidget
@@ -284,7 +284,7 @@ def example_replacement():
     This is a conceptual example showing the minimal diff needed
     to upgrade existing code.
     """
-    # BEFORE (original code in guided_workflow_widget.py):
+    # BEFORE (original code in classification_workflow_ui.py):
     # -------------------------------------------------
     # from qgis.PyQt.QtWidgets import QSpinBox
     #
@@ -306,3 +306,4 @@ def example_replacement():
     # self.optunaTrials.setValue(100)
     # self.optunaTrials.setSingleStep(10)
     # self.optunaTrials.setToolTip("Number of Optuna optimization trials")
+

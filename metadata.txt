@@ -49,7 +49,7 @@ changelog=
       * NEW: Guided workflow classification with full extraParam support (Optuna, SHAP, SMOTE, class weights, nested CV)
       * ENHANCED: Menu-accessible guided workflow keeps toolbar clean while adding powerful defaults
     4.6.0
-      * NEW: ui/guided_workflow_widget.py - 5-page QWizard with DataInput, Algorithm, AdvancedOptions, OutputConfig, Review pages
+      * NEW: ui/classification_workflow_ui.py - 5-page QWizard with DataInput, Algorithm, AdvancedOptions, OutputConfig, Review pages
       * NEW: ui/comparison_panel.py - AlgorithmComparisonPanel QDialog with dependency-aware colouring
       * NEW: Standalone helper functions (check_dependency_availability, build_smart_defaults, build_review_summary)
     4.5.0
@@ -156,4 +156,5 @@ experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
+
 

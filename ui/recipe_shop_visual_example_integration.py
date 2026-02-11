@@ -1,13 +1,13 @@
 """Example integration code for visual recipe shop.
 
 This file shows exactly how to add the visual recipe shop to the existing
-guided_workflow_widget.py without breaking existing functionality.
+classification_workflow_ui.py without breaking existing functionality.
 
-Copy the relevant sections into guided_workflow_widget.py.
+Copy the relevant sections into classification_workflow_ui.py.
 """
 
 # ==============================================================================
-# STEP 1: Add import at the top of guided_workflow_widget.py
+# STEP 1: Add import at the top of classification_workflow_ui.py
 # ==============================================================================
 
 # Add this with the other UI imports (around line 25-50)
@@ -369,7 +369,7 @@ def _open_recipe_shop_from_toolbar(self):
 """
 To integrate the visual recipe shop:
 
-1. Copy the import statement to the top of guided_workflow_widget.py
+1. Copy the import statement to the top of classification_workflow_ui.py
 2. Add the _open_visual_recipe_shop method to QuickClassificationPanel
 3. Replace or supplement existing recipe UI with the new button
 4. Add the supporting methods (_clear_recipe, _save_current_as_recipe, etc.)
@@ -387,3 +387,4 @@ Backward compatibility:
 - Falls back gracefully if visual shop import fails
 - Works with existing recipe data structures
 """
+

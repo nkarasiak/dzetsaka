@@ -16,7 +16,7 @@ The `VisualRecipeShopDialog` provides a modern, card-based UI for browsing and s
 
 ### Option 1: Replace Existing Recipe Shop Button
 
-In `guided_workflow_widget.py`, find the recipe shop button (search for "Browse Recipe Shop" or similar) and replace its click handler:
+In `classification_workflow_ui.py`, find the recipe shop button (search for "Browse Recipe Shop" or similar) and replace its click handler:
 
 ```python
 # Add import at top of file
@@ -136,7 +136,7 @@ def _check_dependencies(self):
 Or reuse existing dependency checks:
 
 ```python
-from ui.guided_workflow_widget import check_dependency_availability
+from ui.classification_workflow_ui import check_dependency_availability
 
 # Later in code:
 available_deps = check_dependency_availability()
@@ -309,3 +309,4 @@ For questions or issues with the visual recipe shop:
 2. Look at `recipe_shop_visual_demo.py` for examples
 3. Review the docstrings in `recipe_shop_visual.py`
 4. Open an issue on the dzetsaka GitHub repository
+

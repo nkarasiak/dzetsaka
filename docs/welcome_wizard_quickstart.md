@@ -11,10 +11,10 @@ def initialize_runtime_state(gui, iface) -> None:
     """Initialize DzetsakaGUI runtime state."""
     # ... existing code ...
 
-    # Add these lines before gui._open_dashboard_on_init
+    # Add these lines before gui._auto_open_dashboard_on_init
     welcome_completed = gui.settings.value("/dzetsaka/welcomeCompleted", False, bool)
     gui._show_welcome_wizard = not welcome_completed and gui.firstInstallation
-    gui._open_dashboard_on_init = welcome_completed  # Only if wizard done
+    gui._auto_open_dashboard_on_init = welcome_completed  # Only if wizard done
 ```
 
 ### 2. Add to UI Initialization
@@ -38,8 +38,8 @@ def init_gui(plugin):
 
         QTimer.singleShot(800, show_welcome)
         plugin._show_welcome_wizard = False
-    elif plugin._open_dashboard_on_init:
-        plugin._open_dashboard_on_init = False
+    elif plugin._auto_open_dashboard_on_init:
+        plugin._auto_open_dashboard_on_init = False
         QTimer.singleShot(1200, plugin.open_dashboard)
 ```
 
@@ -206,7 +206,7 @@ Menu → "Show Welcome Wizard" → Wizard Opens
 python -c "with open('ui/welcome_wizard.py', 'r', encoding='utf-8') as f: \
     compile(f.read(), 'welcome_wizard.py', 'exec')"
 
-# Unit tests (after fixing guided_workflow_widget.py syntax error)
+# Unit tests (after fixing classification_workflow_ui.py syntax error)
 pytest tests/unit/test_welcome_wizard.py -v
 
 # Reset for testing
@@ -220,3 +220,5 @@ python -c "from qgis.PyQt.QtCore import QSettings; \
 - Implementation: `ui/welcome_wizard.py`
 - Tests: `tests/unit/test_welcome_wizard.py`
 - Summary: `WELCOME_WIZARD_SUMMARY.md`
+
+

@@ -12,7 +12,7 @@ This checklist guides the integration of validated widgets into the dzetsaka gui
   - Validator: `lambda v: 10 <= v <= 2000`
   - Warning threshold: `500`
   - Time estimator: `lambda v: f"{v * 0.1:.0f}-{v * 0.3:.0f} min"`
-  - Location: `~line 2640` in `guided_workflow_widget.py`
+  - Location: `~line 2640` in `classification_workflow_ui.py`
 
 - [ ] **SHAP Sample Size** (`self.shapSampleSize`)
   - Current: `QSpinBox` (range 100-50000)
@@ -20,7 +20,7 @@ This checklist guides the integration of validated widgets into the dzetsaka gui
   - Validator: `lambda v: 100 <= v <= 50000`
   - Warning threshold: `10000`
   - Time estimator: `lambda v: f"{v * 0.01:.0f}-{v * 0.05:.0f} sec"`
-  - Location: `~line 2753` in `guided_workflow_widget.py`
+  - Location: `~line 2753` in `classification_workflow_ui.py`
 
 - [ ] **SMOTE k-neighbors** (`self.smoteK`)
   - Current: `QSpinBox` (range 1-20)
@@ -28,7 +28,7 @@ This checklist guides the integration of validated widgets into the dzetsaka gui
   - Validator: `lambda v: 1 <= v <= 20`
   - Warning threshold: `15`
   - Time estimator: None
-  - Location: `~line 2676` in `guided_workflow_widget.py`
+  - Location: `~line 2676` in `classification_workflow_ui.py`
 
 - [ ] **Nested CV - Inner Folds** (`self.innerFolds`)
   - Current: `QSpinBox` (range 2-10)
@@ -36,7 +36,7 @@ This checklist guides the integration of validated widgets into the dzetsaka gui
   - Validator: `lambda v: 2 <= v <= 10`
   - Warning threshold: `7`
   - Time estimator: None
-  - Location: `~line 2795` in `guided_workflow_widget.py`
+  - Location: `~line 2795` in `classification_workflow_ui.py`
 
 - [ ] **Nested CV - Outer Folds** (`self.outerFolds`)
   - Current: `QSpinBox` (range 2-10)
@@ -44,7 +44,7 @@ This checklist guides the integration of validated widgets into the dzetsaka gui
   - Validator: `lambda v: 2 <= v <= 10`
   - Warning threshold: `7`
   - Time estimator: None
-  - Location: `~line 2809` in `guided_workflow_widget.py`
+  - Location: `~line 2809` in `classification_workflow_ui.py`
 
 - [ ] **Validation Split** (`self.splitSpinBox`)
   - Current: `QSpinBox` (range 10-90)
@@ -52,7 +52,7 @@ This checklist guides the integration of validated widgets into the dzetsaka gui
   - Validator: `lambda v: 10 <= v <= 90`
   - Warning threshold: `80` (too little validation data)
   - Time estimator: None
-  - Location: `~line 3035` in `guided_workflow_widget.py`
+  - Location: `~line 3035` in `classification_workflow_ui.py`
 
 ## Phase 2: Advanced Method Panel
 
@@ -64,7 +64,7 @@ This checklist guides the integration of validated widgets into the dzetsaka gui
   - Validator: `lambda v: 10 <= v <= 2000`
   - Warning threshold: `500`
   - Time estimator: `lambda v: f"{v * 0.1:.0f}-{v * 0.3:.0f} min"`
-  - Location: `~line 1034` in `guided_workflow_widget.py`
+  - Location: `~line 1034` in `classification_workflow_ui.py`
 
 - [ ] **SHAP Sample** (`self.shapSampleSpin`)
   - Current: `QSpinBox` (range 100-50000)
@@ -72,7 +72,7 @@ This checklist guides the integration of validated widgets into the dzetsaka gui
   - Validator: `lambda v: 100 <= v <= 50000`
   - Warning threshold: `10000`
   - Time estimator: `lambda v: f"{v * 0.01:.0f}-{v * 0.05:.0f} sec"`
-  - Location: `~line 1043` in `guided_workflow_widget.py`
+  - Location: `~line 1043` in `classification_workflow_ui.py`
 
 - [ ] **SMOTE k-neighbors** (`self.smoteKSpin`)
   - Current: `QSpinBox` (range 2-30)
@@ -80,7 +80,7 @@ This checklist guides the integration of validated widgets into the dzetsaka gui
   - Validator: `lambda v: 2 <= v <= 30`
   - Warning threshold: `20`
   - Time estimator: None
-  - Location: `~line 1052` in `guided_workflow_widget.py`
+  - Location: `~line 1052` in `classification_workflow_ui.py`
 
 - [ ] **Nested CV - Inner** (`self.nestedInnerSpin`)
   - Current: `QSpinBox` (range 2-20)
@@ -88,7 +88,7 @@ This checklist guides the integration of validated widgets into the dzetsaka gui
   - Validator: `lambda v: 2 <= v <= 20`
   - Warning threshold: `10`
   - Time estimator: None
-  - Location: `~line 1071` in `guided_workflow_widget.py`
+  - Location: `~line 1071` in `classification_workflow_ui.py`
 
 - [ ] **Nested CV - Outer** (`self.nestedOuterSpin`)
   - Current: `QSpinBox` (range 2-20)
@@ -96,7 +96,7 @@ This checklist guides the integration of validated widgets into the dzetsaka gui
   - Validator: `lambda v: 2 <= v <= 20`
   - Warning threshold: `10`
   - Time estimator: None
-  - Location: `~line 1073` in `guided_workflow_widget.py`
+  - Location: `~line 1073` in `classification_workflow_ui.py`
 
 - [ ] **Train Split %** (`self.splitSpin`)
   - Current: `QSpinBox` (range 10-100)
@@ -104,7 +104,7 @@ This checklist guides the integration of validated widgets into the dzetsaka gui
   - Validator: `lambda v: 10 <= v <= 100`
   - Warning threshold: `90` (too much training data)
   - Time estimator: None
-  - Location: `~line 1113` in `guided_workflow_widget.py`
+  - Location: `~line 1113` in `classification_workflow_ui.py`
 
 ## Phase 3: Algorithm-Specific Parameters (Future)
 
@@ -284,3 +284,4 @@ After integration:
 - [ ] Integrate with Qt's built-in validator system
 - [ ] Add animation for state transitions
 - [ ] Support custom color schemes for themes
+

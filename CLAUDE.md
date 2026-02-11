@@ -90,7 +90,7 @@ The codebase follows a **hybrid architecture**:
 #### 1. Presentation Layer (`src/dzetsaka/presentation/qgis/`)
 - **QGIS plugin runtime** (`plugin_runtime.py`, `ui_init.py`, `runtime_bootstrap.py`)
 - **Dashboard UI** (`dashboard_dock.py`, `dashboard_execution.py`)
-- **Guided workflow** (`ui/guided_workflow_widget.py`) - main classification wizard
+- **Guided workflow** (`ui/classification_workflow_ui.py`) - main classification wizard
 - **Dependency management** (`dependency_installer.py`, `dependency_catalog.py`)
 - **Settings and configuration** (`config_runtime.py`, `settings_handlers.py`)
 
@@ -115,8 +115,8 @@ The codebase follows a **hybrid architecture**:
 
 ### Critical UI Components
 
-#### Guided Workflow Widget (`ui/guided_workflow_widget.py`)
-- **GuidedClassificationDialog**: Full wizard for new users
+#### Guided Workflow Widget (`ui/classification_workflow_ui.py`)
+- **ClassificationSetupDialog**: Full wizard for new users
 - **QuickClassificationPanel**: Simplified panel for dashboard
 - **ClassificationDashboardDock**: Main dockable panel that opens on plugin load
 - Contains recipe management, parameter selection, and classification execution
@@ -151,7 +151,7 @@ The codebase follows a **hybrid architecture**:
 1. **QGIS loads plugin** → `__init__.py::classFactory()` → `DzetsakaGUI.__init__()`
 2. **Runtime bootstrap** (`runtime_bootstrap.py::initialize_runtime_state()`)
    - Loads settings, checks first installation
-   - Sets `_open_welcome_on_init` and `_open_dashboard_on_init` flags
+   - Sets `_open_welcome_on_init` and `_auto_open_dashboard_on_init` flags
 3. **GUI initialization** (`plugin_runtime.py::initGui()` → `ui_init.py::init_gui()`)
    - Registers processing provider
    - Creates menu actions and toolbar icons
@@ -172,11 +172,11 @@ The codebase follows a **hybrid architecture**:
 
 ### UI File Editing
 - **Generated UI files** (`ui/welcome.py`, `ui/install_progress_dialog.py`): Can be edited directly
-- **Custom widgets** (`ui/guided_workflow_widget.py`): Hand-coded, NOT generated
+- **Custom widgets** (`ui/classification_workflow_ui.py`): Hand-coded, NOT generated
 - QGIS uses PyQt6 with compatibility for PyQt5 (use try/except for enum values)
 
 ### Reading Files
-When modifying UI code in `ui/guided_workflow_widget.py`:
+When modifying UI code in `ui/classification_workflow_ui.py`:
 1. **ALWAYS read the file first** before editing (it's 4000+ lines)
 2. Use offset/limit for large files or grep for specific sections
 3. Search for class definitions, combo boxes, or methods before editing
@@ -234,12 +234,12 @@ pytest tests/unit/test_recipe_schema_v2.py::test_v1_migration  # Single test
 ### Adding a New Algorithm
 1. Add entry to `classifier_config.py::CLASSIFIER_NAMES` and dependency checks
 2. Add to `scripts/classification_pipeline.py::LearnModel()` train logic
-3. Update `_CLASSIFIER_META` in `ui/guided_workflow_widget.py`
+3. Update `_CLASSIFIER_META` in `ui/classification_workflow_ui.py`
 4. Add dependency to `dependency_catalog.py::FULL_DEPENDENCY_BUNDLE`
 5. Write unit tests in `tests/algorithms/`
 
 ### Adding a New UI Parameter
-1. Add widget in `ui/guided_workflow_widget.py::QuickClassificationPanel.__init__()`
+1. Add widget in `ui/classification_workflow_ui.py::QuickClassificationPanel.__init__()`
 2. Connect signal if interactive
 3. Read value in `_quick_extra_params()` or `_emit_config()`
 4. Update `dashboard_execution.py::_on_config_ready()` to pass to classification
@@ -256,7 +256,7 @@ pytest tests/unit/test_recipe_schema_v2.py::test_v1_migration  # Single test
 - **Main plugin entry**: `__init__.py::classFactory()`
 - **Plugin runtime**: `src/dzetsaka/presentation/qgis/plugin_runtime.py::DzetsakaGUI`
 - **Classification engine**: `scripts/classification_pipeline.py`
-- **Dashboard UI**: `ui/guided_workflow_widget.py`
+- **Dashboard UI**: `ui/classification_workflow_ui.py`
 - **Dependency installer**: `src/dzetsaka/presentation/qgis/dependency_installer.py`
 - **Recipe schema**: `src/dzetsaka/domain/value_objects/recipe_schema_v2.py`
 - **Config**: `pyproject.toml`, `classifier_config.py`
@@ -290,3 +290,5 @@ pytest tests/unit/test_recipe_schema_v2.py::test_v1_migration  # Single test
 ## Current Development Focus
 
 See `PLAN.md` for the active roadmap. Current phase: implementing recipe schema v2, trust artifacts, and local recommendation system for reproducible, shareable classification workflows.
+
+
