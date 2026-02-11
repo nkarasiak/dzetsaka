@@ -15,11 +15,11 @@ import pytest
 
 # ---------------------------------------------------------------------------
 # Import the module under test.  The helpers are defined before any Qt class
-# in guided_workflow_widget.py, so we load the file directly via importlib to avoid
+# in classification_workflow_ui.py, so we load the file directly via importlib to avoid
 # triggering ui/__init__.py (which pulls in qgis.PyQt).
 # ---------------------------------------------------------------------------
 
-_WORKFLOW_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "ui", "guided_workflow_widget.py")
+_WORKFLOW_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "ui", "classification_workflow_ui.py")
 _WORKFLOW_PATH = os.path.abspath(_WORKFLOW_PATH)
 
 WORKFLOW_MODULE_AVAILABLE = False
@@ -61,7 +61,7 @@ try:
     sys.modules.setdefault("qgis.PyQt.QtCore", _pyqt_core)
     sys.modules.setdefault("qgis.PyQt.QtWidgets", _pyqt_widgets)
 
-    spec = importlib.util.spec_from_file_location("_guided_workflow_widget_test", _WORKFLOW_PATH)
+    spec = importlib.util.spec_from_file_location("_classification_workflow_ui_test", _WORKFLOW_PATH)
     _workflow_mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(_workflow_mod)
 
@@ -81,7 +81,7 @@ try:
 except Exception:
     pass
 
-pytestmark = pytest.mark.skipif(not WORKFLOW_MODULE_AVAILABLE, reason="guided_workflow_widget helpers not importable")
+pytestmark = pytest.mark.skipif(not WORKFLOW_MODULE_AVAILABLE, reason="classification_workflow_ui helpers not importable")
 
 
 # ===========================================================================
@@ -599,4 +599,5 @@ class TestOutputPageLogic:
         cfg = self._make_output_config(confusion_matrix="/data/mat.csv", split_percent=70)
         assert cfg["split_percent"] == 70
         assert cfg["confusion_matrix"] == "/data/mat.csv"
+
 

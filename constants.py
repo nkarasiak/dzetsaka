@@ -47,7 +47,7 @@ ERROR_DIALOG_DEDUPE_TIMEOUT = 5000  # Milliseconds to deduplicate error dialogs
 # File Extensions
 MODEL_FILE_EXTENSION = ".npz"  # Extension for saved models
 MATRIX_FILE_EXTENSION = ".csv"  # Extension for confusion matrices
-RECIPE_FILE_EXTENSION = ".json"  # Extension for wizard recipes
+RECIPE_FILE_EXTENSION = ".json"  # Extension for workflow recipe files
 
 # Hyperparameter Optimization
 OPTUNA_N_TRIALS_DEFAULT = 100  # Default number of Optuna trials

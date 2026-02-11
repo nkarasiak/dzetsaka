@@ -16,15 +16,15 @@ def unload_plugin(plugin) -> None:
         except (TypeError, RuntimeError):
             pass  # Signal was not connected or already disconnected
         try:
-            plugin.dashboard_dock.closingPlugin.disconnect(plugin.on_close_dashboard_dock)
+            plugin.dashboard_dock.closingRequested.disconnect(plugin.on_close_dashboard_dock)
         except (TypeError, RuntimeError):
             pass
         plugin.dashboard_dock.close()
 
     # Disconnect toolbar action signal
-    if hasattr(plugin, 'dockIcon') and plugin.dockIcon is not None:
+    if plugin.dashboard_toolbar_action is not None:
         try:
-            plugin.dockIcon.triggered.disconnect(plugin.open_dashboard)
+            plugin.dashboard_toolbar_action.triggered.disconnect(plugin.open_dashboard)
         except (TypeError, RuntimeError):
             pass
 
@@ -33,6 +33,4 @@ def unload_plugin(plugin) -> None:
     for action in plugin.actions:
         plugin.iface.removeToolBarIcon(action)
         plugin.iface.removePluginMenu(plugin.tr("&dzetsaka"), action)
-
-
 

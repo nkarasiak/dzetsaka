@@ -83,7 +83,7 @@ class DzetsakaGUI(QDialog):
     ----------
     iface : QgsInterface
         Reference to the QGIS interface
-    provider : dzetsakaProvider
+    provider : DzetsakaProvider
         Processing provider for batch operations
     plugin_dir : str
         Plugin directory path

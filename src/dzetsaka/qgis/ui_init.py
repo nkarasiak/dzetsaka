@@ -31,16 +31,15 @@ def init_gui(plugin) -> None:
         add_to_toolbar=False,  # Don't add to toolbar, only menu
     )
 
-    plugin.dockIcon = QAction(
+    plugin.dashboard_toolbar_action = QAction(
         QIcon(plugin.get_icon_path("icon.png")),
         "dzetsaka classifier dashboard",
         plugin.iface.mainWindow(),
     )
-    plugin.dockIcon.triggered.connect(plugin.open_dashboard)
-    plugin.iface.addToolBarIcon(plugin.dockIcon)
-    plugin.actions.append(plugin.dockIcon)
-
-    if plugin._open_dashboard_on_init:
-        plugin._open_dashboard_on_init = False
+    plugin.dashboard_toolbar_action.triggered.connect(plugin.open_dashboard)
+    plugin.iface.addToolBarIcon(plugin.dashboard_toolbar_action)
+    plugin.actions.append(plugin.dashboard_toolbar_action)
+    if plugin._auto_open_dashboard_on_init:
+        plugin._auto_open_dashboard_on_init = False
         QTimer.singleShot(1200, plugin.open_dashboard)
 

@@ -1,7 +1,7 @@
 """Demo script for visual recipe shop dialog.
 
 Shows how to integrate VisualRecipeShopDialog with existing dzetsaka code.
-Can be run standalone for testing or imported into guided_workflow_widget.py.
+Can be run standalone for testing or imported into classification_workflow_ui.py.
 
 Usage:
     python -m ui.recipe_shop_visual_demo
@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from qgis.PyQt.QtWidgets import QApplication
 from ui.recipe_shop_visual import show_visual_recipe_shop
-from ui.guided_workflow_widget import load_builtin_recipes
+from ui.classification_workflow_ui import load_builtin_recipes
 
 
 def check_dependency_availability():

@@ -12,8 +12,6 @@ def save_settings(gui) -> None:
     """Save modified settings from the settings dock."""
     settings_dock = getattr(gui, "settings_dock", None)
     if settings_dock is None:
-        settings_dock = getattr(gui, "settingsdock", None)
-    if settings_dock is None:
         return
     classifier_selector = getattr(settings_dock, "classifierSelector", None)
     if classifier_selector is None:

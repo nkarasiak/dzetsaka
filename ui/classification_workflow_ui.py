@@ -2659,7 +2659,7 @@ class DataInputPage(QWizardPage):
         if path:
             self.rasterLineEdit.setText(path)
             # Show recipe recommendations if available
-            self._show_recipe_recommendations_if_wizard(path)
+            self._show_recipe_recommendations_for_setup_dialog(path)
 
     def _browse_vector(self):
         # type: () -> None
@@ -2926,7 +2926,7 @@ class DataInputPage(QWizardPage):
     def _apply_selected_recipe(self):
         # type: () -> None
         parent_dialog = self.window()
-        if not isinstance(parent_dialog, GuidedClassificationDialog) or not self._recipes:
+        if not isinstance(parent_dialog, ClassificationSetupDialog) or not self._recipes:
             return
         name = self.recipeCombo.currentText()
         for recipe in self._recipes:
@@ -2937,28 +2937,28 @@ class DataInputPage(QWizardPage):
     def _save_current_recipe(self):
         # type: () -> None
         parent_dialog = self.window()
-        if not isinstance(parent_dialog, GuidedClassificationDialog):
+        if not isinstance(parent_dialog, ClassificationSetupDialog):
             return
         parent_dialog.save_current_recipe()
 
     def _open_recipe_gallery(self):
         # type: () -> None
         parent_dialog = self.window()
-        if not isinstance(parent_dialog, GuidedClassificationDialog):
+        if not isinstance(parent_dialog, ClassificationSetupDialog):
             return
         parent_dialog.open_recipe_gallery()
 
     def _load_json_config(self):
         # type: () -> None
         parent_dialog = self.window()
-        if not isinstance(parent_dialog, GuidedClassificationDialog):
+        if not isinstance(parent_dialog, ClassificationSetupDialog):
             return
         parent_dialog.import_config_from_json_file()
 
     def _paste_json_config(self):
         # type: () -> None
         parent_dialog = self.window()
-        if not isinstance(parent_dialog, GuidedClassificationDialog):
+        if not isinstance(parent_dialog, ClassificationSetupDialog):
             return
         parent_dialog.import_config_from_json_paste()
 
@@ -3058,9 +3058,9 @@ class DataInputPage(QWizardPage):
         """Return True if the user clicked Smart Defaults on this page."""
         return self._smart_defaults_applied
 
-    def _show_recipe_recommendations_if_wizard(self, raster_path):
+    def _show_recipe_recommendations_for_setup_dialog(self, raster_path):
         # type: (str) -> None
-        """Show recipe recommendations for wizard context.
+        """Show recipe recommendations for setup-dialog context.
 
         Parameters
         ----------
@@ -3076,12 +3076,12 @@ class DataInputPage(QWizardPage):
         if not settings.value("/dzetsaka/show_recommendations", True, bool):
             return
 
-        # Get recipes from the wizard
-        wizard = self.wizard()
-        if not wizard or not hasattr(wizard, "_recipes"):
+        # Get recipes from the setup dialog
+        setup_dialog = self.wizard()
+        if not setup_dialog or not hasattr(setup_dialog, "_recipes"):
             return
 
-        recipes = getattr(wizard, "_recipes", [])
+        recipes = getattr(setup_dialog, "_recipes", [])
         if not recipes:
             return
 
@@ -3104,16 +3104,16 @@ class DataInputPage(QWizardPage):
 
             # Show recommendation dialog
             dialog = RecommendationDialog(recommendations, raster_info, self)
-            dialog.recipeSelected.connect(lambda recipe: self._apply_recipe_to_wizard(recipe))
+            dialog.recipeSelected.connect(lambda recipe: self._apply_recipe_to_setup_dialog(recipe))
             dialog.exec_()
 
         except Exception:
             # Silently fail - recommendations are a nice-to-have feature
             pass
 
-    def _apply_recipe_to_wizard(self, recipe):
+    def _apply_recipe_to_setup_dialog(self, recipe):
         # type: (Dict[str, object]) -> None
-        """Apply a recommended recipe to the wizard.
+        """Apply a recommended recipe to the setup dialog.
 
         Parameters
         ----------
@@ -3122,12 +3122,11 @@ class DataInputPage(QWizardPage):
 
         """
         try:
-            wizard = self.wizard()
-            if wizard and hasattr(wizard, "apply_recipe"):
-                wizard.apply_recipe(recipe)
+            setup_dialog = self.wizard()
+            if setup_dialog and hasattr(setup_dialog, "apply_recipe"):
+                setup_dialog.apply_recipe(recipe)
         except Exception:
             pass
-
 
 # ---------------------------------------------------------------------------
 # Page 2 — Advanced Options
@@ -4065,10 +4064,10 @@ class OutputConfigPage(QWizardPage):
         # type: () -> None
         """Preview train/test split distribution before running classification."""
         parent_dialog = self.window()
-        if not isinstance(parent_dialog, GuidedClassificationDialog):
+        if not isinstance(parent_dialog, ClassificationSetupDialog):
             return
 
-        # Get required parameters from wizard
+        # Get required parameters from setup dialog
         vector_path = parent_dialog.dataPage.field("vector") or parent_dialog.dataPage.vectorLineEdit.text()
         class_field = parent_dialog.dataPage.get_class_field()
         split_percent = self.splitSpinBox.value()
@@ -4090,7 +4089,7 @@ class OutputConfigPage(QWizardPage):
         # type: () -> None
         """Refresh the review summary based on current guided workflow state."""
         parent_dialog = self.window()
-        if not isinstance(parent_dialog, GuidedClassificationDialog):
+        if not isinstance(parent_dialog, ClassificationSetupDialog):
             return
         config = parent_dialog.collect_config()
         self.reviewEdit.setPlainText(build_review_summary(config))
@@ -4158,7 +4157,7 @@ class OutputConfigPage(QWizardPage):
 # ---------------------------------------------------------------------------
 
 
-class GuidedClassificationDialog(ThemeAwareWidget, QWizard):
+class ClassificationSetupDialog(ThemeAwareWidget, QWizard):
     """Step-by-step guided classification dialog for dzetsaka.
 
     Emits ``classificationRequested`` with the assembled config dict
@@ -4168,8 +4167,8 @@ class GuidedClassificationDialog(ThemeAwareWidget, QWizard):
     classificationRequested = pyqtSignal(dict)
 
     def __init__(self, parent=None, installer=None, close_on_accept=True):
-        """Initialise GuidedClassificationDialog with all 3 pages."""
-        super(GuidedClassificationDialog, self).__init__(parent)
+        """Initialise ClassificationSetupDialog with all 3 pages."""
+        super(ClassificationSetupDialog, self).__init__(parent)
         self.setWindowTitle("dzetsaka Classification")
 
         # Apply theme-aware styling
@@ -4210,11 +4209,11 @@ class GuidedClassificationDialog(ThemeAwareWidget, QWizard):
         self.setWizardStyle(dialog_style)
 
         # Setup keyboard shortcuts
-        self._setup_wizard_shortcuts()
+        self._setup_dialog_shortcuts()
 
-    def _setup_wizard_shortcuts(self):
+    def _setup_dialog_shortcuts(self):
         # type: () -> None
-        """Setup keyboard shortcuts for the wizard."""
+        """Setup keyboard shortcuts for the setup dialog."""
         # Shortcut for Check Data Quality: Ctrl+Shift+Q
         if _QUALITY_CHECKER_AVAILABLE and hasattr(self.dataPage, 'checkQualityBtn'):
             quality_shortcut = QShortcut(QKeySequence("Ctrl+Shift+Q"), self)
@@ -4241,7 +4240,7 @@ class GuidedClassificationDialog(ThemeAwareWidget, QWizard):
                 self.advPage.apply_smart_defaults(defaults)
                 # Reset flag so it fires only once
                 self.dataPage._smart_defaults_applied = False
-        return super(GuidedClassificationDialog, self).validateCurrentPage()
+        return super(ClassificationSetupDialog, self).validateCurrentPage()
 
     # --- recipe helpers ---------------------------------------------------
 
@@ -4660,7 +4659,7 @@ class GuidedClassificationDialog(ThemeAwareWidget, QWizard):
         config = self.collect_config()
         self.classificationRequested.emit(config)
         if self._close_on_accept:
-            super(GuidedClassificationDialog, self).accept()
+            super(ClassificationSetupDialog, self).accept()
 
 
 class QuickClassificationPanel(QWidget):
@@ -6193,11 +6192,10 @@ class QuickClassificationPanel(QWidget):
             # If something goes wrong, just skip
             pass
 
-
 class ClassificationDashboardDock(QDockWidget):
     """Dockable dashboard with Quick Run and Advanced Setup modes."""
 
-    closingPlugin = pyqtSignal()
+    closingRequested = pyqtSignal()
     classificationRequested = pyqtSignal(dict)
 
     def __init__(self, parent=None, installer=None):
@@ -6252,5 +6250,5 @@ class ClassificationDashboardDock(QDockWidget):
         self.setMinimumHeight(260)
 
     def closeEvent(self, event):
-        self.closingPlugin.emit()
+        self.closingRequested.emit()
         event.accept()

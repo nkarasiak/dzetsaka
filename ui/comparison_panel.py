@@ -414,7 +414,7 @@ def build_comparison_data(deps):
     Parameters
     ----------
     deps : dict[str, bool]
-        Output of :func:`~guided_workflow_widget.check_dependency_availability`.
+        Output of :func:`~classification_workflow_ui.check_dependency_availability`.
 
     Returns
     -------
@@ -687,3 +687,4 @@ class AlgorithmComparisonPanel(QDialog):
         if algorithm_code:
             dialog = AlgorithmExplanationDialog(algorithm_code, self)
             dialog.exec()
+

@@ -1,6 +1,6 @@
 from .dashboard_widget import (
+    ClassificationSetupDialog,
     ClassificationDashboardDock,
-    GuidedClassificationDialog,
     check_dependency_availability,
 )
 from .comparison_panel import AlgorithmComparisonPanel
@@ -14,7 +14,7 @@ try:
 
     __all__ = [
         "ClassificationDashboardDock",
-        "GuidedClassificationDialog",
+        "ClassificationSetupDialog",
         "check_dependency_availability",
         "AlgorithmComparisonPanel",
         "ValidatedSpinBox",
@@ -29,7 +29,7 @@ try:
 except ImportError:
     __all__ = [
         "ClassificationDashboardDock",
-        "GuidedClassificationDialog",
+        "ClassificationSetupDialog",
         "check_dependency_availability",
         "AlgorithmComparisonPanel",
         "ValidatedSpinBox",
@@ -38,4 +38,5 @@ except ImportError:
         "ResultsExplorerDock",
         "open_results_explorer",
     ]
+
 

@@ -19,18 +19,13 @@ def test_signal_disconnection_in_unload():
     plugin.dashboard_dock = Mock()
     plugin.dashboard_dock.classificationRequested = Mock()
     plugin.dashboard_dock.classificationRequested.disconnect = Mock()
-    plugin.dashboard_dock.closingPlugin = Mock()
-    plugin.dashboard_dock.closingPlugin.disconnect = Mock()
+    plugin.dashboard_dock.closingRequested = Mock()
+    plugin.dashboard_dock.closingRequested.disconnect = Mock()
     plugin.dashboard_dock.close = Mock()
 
-    plugin.dock_widget = Mock()
-    plugin.dock_widget.closingPlugin = Mock()
-    plugin.dock_widget.closingPlugin.disconnect = Mock()
-    plugin.dock_widget.close = Mock()
-
-    plugin.dockIcon = Mock()
-    plugin.dockIcon.triggered = Mock()
-    plugin.dockIcon.triggered.disconnect = Mock()
+    plugin.dashboard_toolbar_action = Mock()
+    plugin.dashboard_toolbar_action.triggered = Mock()
+    plugin.dashboard_toolbar_action.triggered.disconnect = Mock()
 
     plugin.provider = Mock()
     plugin.actions = []
@@ -47,13 +42,11 @@ def test_signal_disconnection_in_unload():
 
         # Verify signals were disconnected
         plugin.dashboard_dock.classificationRequested.disconnect.assert_called_once()
-        plugin.dashboard_dock.closingPlugin.disconnect.assert_called_once()
-        plugin.dock_widget.closingPlugin.disconnect.assert_called_once()
-        plugin.dockIcon.triggered.disconnect.assert_called_once()
+        plugin.dashboard_dock.closingRequested.disconnect.assert_called_once()
+        plugin.dashboard_toolbar_action.triggered.disconnect.assert_called_once()
 
         # Verify widgets were closed
         plugin.dashboard_dock.close.assert_called_once()
-        plugin.dock_widget.close.assert_called_once()
 
         # Verify cleanup
         assert plugin.pluginIsActive is False
@@ -74,14 +67,13 @@ def test_signal_disconnection_handles_exceptions():
     plugin.dashboard_dock.classificationRequested.disconnect = Mock(
         side_effect=TypeError("Signal not connected")
     )
-    plugin.dashboard_dock.closingPlugin = Mock()
-    plugin.dashboard_dock.closingPlugin.disconnect = Mock(
+    plugin.dashboard_dock.closingRequested = Mock()
+    plugin.dashboard_dock.closingRequested.disconnect = Mock(
         side_effect=RuntimeError("Signal already disconnected")
     )
     plugin.dashboard_dock.close = Mock()
 
-    plugin.dock_widget = None  # Test None widget
-    plugin.dockIcon = None  # Test None action
+    plugin.dashboard_toolbar_action = None  # Test None action
 
     plugin.provider = Mock()
     plugin.actions = []

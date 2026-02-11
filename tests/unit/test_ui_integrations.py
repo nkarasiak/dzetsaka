@@ -44,7 +44,7 @@ class TestQualityCheckerIntegration:
     def test_quality_checker_button_exists_in_data_input_page(self):
         """Test that quality checker button exists in DataInputPage."""
         pytest.importorskip("qgis.PyQt.QtWidgets")
-        from ui.guided_workflow_widget import DataInputPage
+        from ui.classification_workflow_ui import DataInputPage
 
         page = DataInputPage()
         assert hasattr(page, "checkQualityBtn"), "DataInputPage should have checkQualityBtn"
@@ -53,7 +53,7 @@ class TestQualityCheckerIntegration:
     def test_quality_checker_button_exists_in_quick_panel(self):
         """Test that quality checker button exists in QuickClassificationPanel."""
         pytest.importorskip("qgis.PyQt.QtWidgets")
-        from ui.guided_workflow_widget import QuickClassificationPanel
+        from ui.classification_workflow_ui import QuickClassificationPanel
 
         panel = QuickClassificationPanel()
         assert hasattr(panel, "checkQualityBtn"), "QuickClassificationPanel should have checkQualityBtn"
@@ -62,7 +62,7 @@ class TestQualityCheckerIntegration:
     def test_quality_checker_handler_method_exists(self):
         """Test that quality checker handler methods exist."""
         pytest.importorskip("qgis.PyQt.QtWidgets")
-        from ui.guided_workflow_widget import DataInputPage, QuickClassificationPanel
+        from ui.classification_workflow_ui import DataInputPage, QuickClassificationPanel
 
         data_page = DataInputPage()
         assert hasattr(data_page, "_check_data_quality"), "DataInputPage should have _check_data_quality method"
@@ -70,11 +70,11 @@ class TestQualityCheckerIntegration:
         quick_panel = QuickClassificationPanel()
         assert hasattr(quick_panel, "_check_data_quality"), "QuickClassificationPanel should have _check_data_quality method"
 
-    @patch("ui.guided_workflow_widget.TrainingDataQualityChecker")
+    @patch("ui.classification_workflow_ui.TrainingDataQualityChecker")
     def test_quality_checker_opens_with_correct_params(self, mock_checker_class):
         """Test that quality checker is opened with correct parameters."""
         pytest.importorskip("qgis.PyQt.QtWidgets")
-        from ui.guided_workflow_widget import QuickClassificationPanel
+        from ui.classification_workflow_ui import QuickClassificationPanel
 
         panel = QuickClassificationPanel()
         panel._get_vector_path = Mock(return_value="/path/to/vector.shp")
@@ -189,13 +189,13 @@ class TestThemeSupportIntegration:
     """Test theme support application to dialogs."""
 
     def test_guided_dialog_inherits_theme_aware(self):
-        """Test that GuidedClassificationDialog inherits from ThemeAwareWidget."""
+        """Test that ClassificationSetupDialog inherits from ThemeAwareWidget."""
         pytest.importorskip("qgis.PyQt.QtWidgets")
-        from ui.guided_workflow_widget import GuidedClassificationDialog
+        from ui.classification_workflow_ui import ClassificationSetupDialog
         from ui.theme_support import ThemeAwareWidget
 
-        assert issubclass(GuidedClassificationDialog, ThemeAwareWidget), \
-            "GuidedClassificationDialog should inherit from ThemeAwareWidget"
+        assert issubclass(ClassificationSetupDialog, ThemeAwareWidget), \
+            "ClassificationSetupDialog should inherit from ThemeAwareWidget"
 
     def test_welcome_wizard_inherits_theme_aware(self):
         """Test that WelcomeWizard inherits from ThemeAwareWidget."""
@@ -249,24 +249,24 @@ class TestKeyboardShortcuts:
     def test_quick_panel_shortcuts_setup_method_exists(self):
         """Test that QuickClassificationPanel has shortcuts setup method."""
         pytest.importorskip("qgis.PyQt.QtWidgets")
-        from ui.guided_workflow_widget import QuickClassificationPanel
+        from ui.classification_workflow_ui import QuickClassificationPanel
 
         panel = QuickClassificationPanel()
         assert hasattr(panel, "_setup_shortcuts"), "QuickClassificationPanel should have _setup_shortcuts method"
 
     def test_wizard_shortcuts_setup_method_exists(self):
-        """Test that GuidedClassificationDialog has shortcuts setup method."""
+        """Test that ClassificationSetupDialog has shortcuts setup method."""
         pytest.importorskip("qgis.PyQt.QtWidgets")
-        from ui.guided_workflow_widget import GuidedClassificationDialog
+        from ui.classification_workflow_ui import ClassificationSetupDialog
 
-        dialog = GuidedClassificationDialog()
-        assert hasattr(dialog, "_setup_wizard_shortcuts"), \
-            "GuidedClassificationDialog should have _setup_wizard_shortcuts method"
+        dialog = ClassificationSetupDialog()
+        assert hasattr(dialog, "_setup_dialog_shortcuts"), \
+            "ClassificationSetupDialog should have _setup_dialog_shortcuts method"
 
     def test_quality_check_shortcut_tooltip_updated(self):
         """Test that quality check button tooltip mentions keyboard shortcut."""
         pytest.importorskip("qgis.PyQt.QtWidgets")
-        from ui.guided_workflow_widget import QuickClassificationPanel
+        from ui.classification_workflow_ui import QuickClassificationPanel
 
         panel = QuickClassificationPanel()
 
@@ -278,7 +278,7 @@ class TestKeyboardShortcuts:
     def test_run_button_shortcut_tooltip_updated(self):
         """Test that run button tooltip mentions keyboard shortcut."""
         pytest.importorskip("qgis.PyQt.QtWidgets")
-        from ui.guided_workflow_widget import QuickClassificationPanel
+        from ui.classification_workflow_ui import QuickClassificationPanel
 
         panel = QuickClassificationPanel()
 
@@ -358,3 +358,4 @@ class TestResultsExplorerQualityChecker:
 
 # Integration test markers
 pytestmark = pytest.mark.integration
+

@@ -10,7 +10,7 @@ def open_dashboard_dock(plugin, left_dock_area) -> None:
     if plugin.dashboard_dock is None:
         plugin.dashboard_dock = ui.ClassificationDashboardDock(plugin.iface.mainWindow(), installer=plugin)
         plugin.dashboard_dock.classificationRequested.connect(plugin.execute_dashboard_config)
-        plugin.dashboard_dock.closingPlugin.connect(plugin.on_close_dashboard_dock)
+        plugin.dashboard_dock.closingRequested.connect(plugin.on_close_dashboard_dock)
         plugin.iface.addDockWidget(left_dock_area, plugin.dashboard_dock)
 
     plugin.dashboard_dock.show()
