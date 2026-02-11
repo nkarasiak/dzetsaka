@@ -20,7 +20,7 @@ import urllib.request
 from collections import Counter
 from typing import Any, Dict, List, Optional, Tuple
 
-from qgis.PyQt.QtCore import QSettings, Qt, pyqtSignal
+from qgis.PyQt.QtCore import QSettings, QSize, Qt, pyqtSignal
 from qgis.PyQt.QtGui import QColor, QIcon, QKeySequence, QPainter, QPixmap
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
@@ -28,6 +28,7 @@ from qgis.PyQt.QtWidgets import (
     QDialog,
     QDockWidget,
     QFileDialog,
+    QFrame,
     QGroupBox,
     QGridLayout,
     QHBoxLayout,
@@ -970,6 +971,14 @@ def _qt_align_hcenter():
     if hasattr(Qt, "AlignmentFlag"):
         return Qt.AlignmentFlag.AlignHCenter
     return Qt.AlignHCenter
+
+
+def _qt_align_right():
+    # type: () -> object
+    """Return a Qt right-alignment flag compatible with Qt5 and Qt6 APIs."""
+    if hasattr(Qt, "AlignmentFlag"):
+        return Qt.AlignmentFlag.AlignRight
+    return Qt.AlignRight
 
 
 class _CoverPixmapLabel(QLabel):
@@ -4662,6 +4671,648 @@ class ClassificationSetupDialog(ThemeAwareWidget, QWizard):
             super(ClassificationSetupDialog, self).accept()
 
 
+class RecipeHubDialog(QDialog):
+    """Quad-layout recipe hub inspired by e-commerce mega menus."""
+
+    def __init__(self, parent=None, recipes=None, current_recipe_name="", compact_mode=True):
+        # type: (Optional[QWidget], Optional[List[Dict[str, object]]], str, bool) -> None
+        super(RecipeHubDialog, self).__init__(parent)
+        self.setWindowTitle("Recipe Hub")
+        self._compact_mode = bool(compact_mode)
+        if self._compact_mode:
+            self.resize(760, 430)
+            self.setMinimumSize(700, 400)
+        else:
+            self.resize(960, 620)
+            self.setMinimumSize(760, 460)
+        self._command = "apply"
+        self._selected_recipe_name = ""
+        self._current_recipe_name = str(current_recipe_name or "").strip()
+        self._active_category = ""
+        self._active_chip = "ALL"
+        self._recipes = [normalize_recipe(dict(r)) for r in (recipes or []) if isinstance(r, dict)]
+        self._category_items = {}  # type: Dict[str, List[Dict[str, object]]]
+
+        root = QGridLayout(self)
+        if self._compact_mode:
+            root.setContentsMargins(6, 6, 6, 6)
+            root.setHorizontalSpacing(6)
+            root.setVerticalSpacing(6)
+        else:
+            root.setContentsMargins(10, 10, 10, 10)
+            root.setHorizontalSpacing(8)
+            root.setVerticalSpacing(8)
+
+        self.headerTitle = QLabel("Recipe Hub")
+        self.headerTitle.setObjectName("recipeHubTitle")
+        self.headerSubtitle = QLabel("Browse templates like a web mega menu: pick category, preview recipe, apply.")
+        self.headerSubtitle.setObjectName("recipeHubSubtitle")
+        self.searchEdit = QLineEdit()
+        self.searchEdit.setPlaceholderText("Search recipes...")
+        self.searchEdit.setClearButtonEnabled(True)
+        self.searchEdit.setObjectName("hubSearch")
+        if self._compact_mode:
+            self.headerSubtitle.setVisible(False)
+        root.addWidget(self.headerTitle, 0, 0, 1, 1)
+        root.addWidget(self.searchEdit, 0, 1, 1, 1, _qt_align_right())
+        root.addWidget(self.headerSubtitle, 1, 0, 1, 2)
+
+        self.topBar = QFrame()
+        self.topBar.setObjectName("hubTopBar")
+        top_layout = QHBoxLayout(self.topBar)
+        top_layout.setContentsMargins(8, 6, 8, 6)
+        top_layout.setSpacing(6)
+        self.statsLabel = QLabel("")
+        self.statsLabel.setObjectName("hubStatPill")
+        top_layout.addWidget(self.statsLabel)
+        self.chipButtons = {}  # type: Dict[str, QToolButton]
+        for key, label in [
+            ("ALL", "All"),
+            ("OPTUNA", "Optuna"),
+            ("SHAP", "SHAP"),
+            ("SMOTE", "SMOTE"),
+            ("CUSTOM", "Custom"),
+        ]:
+            btn = QToolButton()
+            btn.setText(label)
+            btn.setCheckable(True)
+            btn.setObjectName("hubChip")
+            btn.clicked.connect(lambda _checked=False, k=key: self._set_active_chip(k))
+            self.chipButtons[key] = btn
+            top_layout.addWidget(btn)
+        top_layout.addStretch()
+        self.sortCombo = QComboBox()
+        self.sortCombo.addItems(["Featured", "Name (A-Z)", "Fastest", "Highest Accuracy"])
+        self.sortCombo.setObjectName("hubSort")
+        top_layout.addWidget(self.sortCombo)
+        root.addWidget(self.topBar, 2, 0, 1, 2)
+        if self._compact_mode:
+            self.topBar.setVisible(False)
+
+        categories_group = QGroupBox("Categories")
+        categories_group.setObjectName("hubPanel")
+        categories_layout = QVBoxLayout(categories_group)
+        categories_layout.setContentsMargins(8, 12, 8, 8)
+        self.categoryList = QListWidget()
+        self.categoryList.setObjectName("hubList")
+        self.categoryList.setSpacing(4 if self._compact_mode else 6)
+        self.categoryList.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.categoryList.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        categories_layout.addWidget(self.categoryList)
+        root.addWidget(categories_group, 3, 0)
+
+        recipes_group = QGroupBox("Recipes")
+        recipes_group.setObjectName("hubPanel")
+        recipes_layout = QVBoxLayout(recipes_group)
+        recipes_layout.setContentsMargins(8, 12, 8, 8)
+        self.recipeList = QListWidget()
+        self.recipeList.setObjectName("hubList")
+        self.recipeList.setSpacing(4 if self._compact_mode else 6)
+        recipes_layout.addWidget(self.recipeList)
+        root.addWidget(recipes_group, 3, 1)
+
+        actions_group = QGroupBox("Quick Actions")
+        actions_group.setObjectName("hubPanel")
+        actions_layout = QVBoxLayout(actions_group)
+        actions_layout.setContentsMargins(8, 12, 8, 8)
+        self.createBtn = QPushButton("Create / Customize...")
+        self.importBtn = QPushButton("Import Recipe...")
+        self.exportBtn = QPushButton("Export Selected")
+        self.createBtn.setObjectName("hubPrimary")
+        self.importBtn.setObjectName("hubSecondary")
+        self.exportBtn.setObjectName("hubSecondary")
+        actions_layout.addWidget(self.createBtn)
+        actions_layout.addWidget(self.importBtn)
+        actions_layout.addWidget(self.exportBtn)
+        actions_layout.addStretch()
+        root.addWidget(actions_group, 4, 0)
+
+        details_group = QGroupBox("Recipe Details")
+        details_group.setObjectName("hubPanel")
+        details_layout = QVBoxLayout(details_group)
+        details_layout.setContentsMargins(8, 12, 8, 8)
+        self.detailsLabel = QLabel("Select a recipe to view details.")
+        self.detailsLabel.setWordWrap(True)
+        self.detailsLabel.setTextFormat(Qt.RichText)
+        self.detailsLabel.setObjectName("detailsCard")
+        details_layout.addWidget(self.detailsLabel)
+        footer = QHBoxLayout()
+        footer.addStretch()
+        self.applyBtn = QPushButton("Apply Recipe")
+        self.cancelBtn = QPushButton("Close")
+        self.applyBtn.setObjectName("hubPrimary")
+        self.cancelBtn.setObjectName("hubGhost")
+        self.applyBtn.setEnabled(False)
+        if self._compact_mode:
+            self.createBtn.setFixedHeight(26)
+            self.importBtn.setFixedHeight(26)
+            self.exportBtn.setFixedHeight(26)
+            self.applyBtn.setFixedHeight(26)
+            self.cancelBtn.setFixedHeight(26)
+        footer.addWidget(self.cancelBtn)
+        footer.addWidget(self.applyBtn)
+        details_layout.addLayout(footer)
+        root.addWidget(details_group, 4, 1)
+        if self._compact_mode:
+            actions_group.setMaximumHeight(180)
+            details_group.setMaximumHeight(220)
+
+        root.setColumnStretch(0, 4)
+        root.setColumnStretch(1, 6)
+        root.setRowStretch(3, 3 if self._compact_mode else 7)
+        root.setRowStretch(4, 2 if self._compact_mode else 6)
+
+        self.categoryList.currentRowChanged.connect(self._on_category_changed)
+        self.searchEdit.textChanged.connect(self._on_search_changed)
+        self.sortCombo.currentIndexChanged.connect(self._on_sort_changed)
+        self.recipeList.currentItemChanged.connect(self._on_recipe_changed)
+        self.recipeList.itemDoubleClicked.connect(lambda _item: self._apply_selection())
+        self.applyBtn.clicked.connect(self._apply_selection)
+        self.cancelBtn.clicked.connect(self.reject)
+
+        self.createBtn.clicked.connect(lambda: self._finish_with_command("create"))
+        self.importBtn.clicked.connect(lambda: self._finish_with_command("import"))
+        self.exportBtn.clicked.connect(lambda: self._finish_with_command("export"))
+
+        self._apply_web_style()
+        self._populate_categories()
+        self._set_active_chip("ALL")
+        self._restore_initial_selection()
+
+    def command(self):
+        # type: () -> str
+        return self._command
+
+    def selected_recipe_name(self):
+        # type: () -> str
+        return self._selected_recipe_name
+
+    def _finish_with_command(self, command_name):
+        # type: (str) -> None
+        self._command = command_name
+        self.accept()
+
+    def _populate_categories(self):
+        # type: () -> None
+        self.categoryList.clear()
+        self._category_items = {}
+        self._categories = []  # type: List[str]
+        templates_by_category = {"Beginner": [], "Intermediate": [], "Advanced": []}
+        user_recipes = []
+        for recipe in self._recipes:
+            if is_builtin_recipe(recipe):
+                metadata = recipe.get("metadata", {})
+                category = metadata.get("category", "intermediate") if isinstance(metadata, dict) else "intermediate"
+                category = str(category).capitalize()
+                if category not in templates_by_category:
+                    category = "Intermediate"
+                templates_by_category[category].append(recipe)
+            else:
+                user_recipes.append(recipe)
+
+        all_recipes = list(self._recipes)
+        if all_recipes:
+            self._categories.append("All Recipes")
+            self._category_items["All Recipes"] = all_recipes
+            item = QListWidgetItem(f"🧭 All Recipes ({len(all_recipes)})")
+            item.setSizeHint(QSize(0, 34 if self._compact_mode else 40))
+            self.categoryList.addItem(item)
+
+        for label in ("Beginner", "Intermediate", "Advanced"):
+            count = len(templates_by_category[label])
+            if count > 0:
+                self._categories.append(label)
+                self._category_items[label] = templates_by_category[label]
+                icon = "✨" if label == "Beginner" else ("⚖️" if label == "Intermediate" else "🚀")
+                item = QListWidgetItem(f"{icon} {label} Templates ({count})")
+                item.setSizeHint(QSize(0, 34 if self._compact_mode else 40))
+                self.categoryList.addItem(item)
+        if user_recipes:
+            self._categories.append("My Recipes")
+            self._category_items["My Recipes"] = user_recipes
+            item = QListWidgetItem(f"⚙️ My Recipes ({len(user_recipes)})")
+            item.setSizeHint(QSize(0, 34 if self._compact_mode else 40))
+            self.categoryList.addItem(item)
+
+        if self.categoryList.count() > 0:
+            self.categoryList.setCurrentRow(0)
+        self._autosize_category_list()
+
+    def _autosize_category_list(self):
+        # type: () -> None
+        if self.categoryList.count() <= 0:
+            return
+        row_height = self.categoryList.sizeHintForRow(0)
+        if row_height <= 0:
+            row_height = 34 if self._compact_mode else 40
+        spacing = self.categoryList.spacing()
+        frame = self.categoryList.frameWidth() * 2
+        visible = (row_height * self.categoryList.count()) + (spacing * max(0, self.categoryList.count() - 1)) + frame + 4
+        self.categoryList.setFixedHeight(visible)
+
+    def _recipes_for_category(self, category):
+        # type: (str) -> List[Dict[str, object]]
+        return list(self._category_items.get(category, []))
+
+    def _recipe_feature_tags(self, recipe):
+        # type: (Dict[str, object]) -> List[str]
+        extra = recipe.get("extraParam", {})
+        tags = []
+        if extra.get("USE_OPTUNA"):
+            tags.append("Optuna")
+        if extra.get("COMPUTE_SHAP"):
+            tags.append("SHAP")
+        if extra.get("USE_SMOTE"):
+            tags.append("SMOTE")
+        if extra.get("USE_CLASS_WEIGHTS"):
+            tags.append("Class weights")
+        if extra.get("USE_NESTED_CV") or recipe.get("validation", {}).get("nested_cv"):
+            tags.append("Nested CV")
+        return tags
+
+    def _classifier_name(self, recipe):
+        # type: (Dict[str, object]) -> str
+        classifier = recipe.get("classifier", {})
+        classifier_code = str(classifier.get("code", "GMM"))
+        for code, label, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
+            if code == classifier_code:
+                return label
+        return classifier_code
+
+    def _accuracy_rank(self, recipe):
+        # type: (Dict[str, object]) -> int
+        value = str(recipe.get("expected_accuracy_class", "")).lower()
+        if "high" in value:
+            return 3
+        if "medium" in value:
+            return 2
+        if "low" in value or "baseline" in value:
+            return 1
+        return 2
+
+    def _runtime_rank(self, recipe):
+        # type: (Dict[str, object]) -> int
+        value = str(recipe.get("expected_runtime_class", "")).lower()
+        if "fast" in value:
+            return 1
+        if "slow" in value:
+            return 3
+        return 2
+
+    def _sort_recipes(self, recipes):
+        # type: (List[Dict[str, object]]) -> List[Dict[str, object]]
+        mode = self.sortCombo.currentText().strip().lower()
+        items = list(recipes)
+        if mode.startswith("name"):
+            return sorted(items, key=lambda r: str(r.get("name", "")).lower())
+        if mode.startswith("fastest"):
+            return sorted(items, key=lambda r: (self._runtime_rank(r), str(r.get("name", "")).lower()))
+        if mode.startswith("highest"):
+            return sorted(items, key=lambda r: (-self._accuracy_rank(r), str(r.get("name", "")).lower()))
+        return sorted(
+            items,
+            key=lambda r: (
+                0 if is_builtin_recipe(r) else 1,
+                self._runtime_rank(r),
+                -self._accuracy_rank(r),
+                str(r.get("name", "")).lower(),
+            ),
+        )
+
+    def _passes_chip_filter(self, recipe):
+        # type: (Dict[str, object]) -> bool
+        if self._active_chip == "ALL":
+            return True
+        tags = {t.upper() for t in self._recipe_feature_tags(recipe)}
+        if self._active_chip == "CUSTOM":
+            return not is_builtin_recipe(recipe)
+        return self._active_chip in tags
+
+    def _set_active_chip(self, key):
+        # type: (str) -> None
+        self._active_chip = key
+        for chip_key, btn in self.chipButtons.items():
+            btn.setChecked(chip_key == key)
+        self._rebuild_recipe_list()
+
+    def _update_stats_pill(self):
+        # type: () -> None
+        total = len(self._recipes_for_category(self._active_category)) if self._active_category else 0
+        shown = self.recipeList.count()
+        chip = self.chipButtons.get(self._active_chip)
+        chip_label = chip.text() if chip else "All"
+        category = self._active_category if self._active_category else "None"
+        self.statsLabel.setText(f"{shown} / {total} recipes | {category} | Filter: {chip_label}")
+
+    def _build_recipe_card_widget(self, recipe):
+        # type: (Dict[str, object]) -> QWidget
+        # Legacy helper kept for compatibility. Current UI uses title-only rows.
+        card = QFrame()
+        card.setObjectName("recipeCard")
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(4)
+
+        name = str(recipe.get("name", "Unnamed Recipe"))
+        classifier_name = self._classifier_name(recipe)
+        metadata = recipe.get("metadata", {})
+        category = metadata.get("category", "Custom") if isinstance(metadata, dict) else "Custom"
+        description = str(recipe.get("description", "No description available"))
+        description = description if len(description) <= 130 else description[:127] + "..."
+        runtime = str(recipe.get("expected_runtime_class", "medium")).capitalize()
+        accuracy = str(recipe.get("expected_accuracy_class", "high")).capitalize()
+        tags = self._recipe_feature_tags(recipe)
+
+        top = QLabel(
+            f"<span style='font-size:14px; font-weight:700; color:#102a43;'>{name}</span> "
+            f"<span style='color:#5f748a;'>({classifier_name})</span>"
+        )
+        top.setTextFormat(Qt.RichText)
+        layout.addWidget(top)
+
+        meta = QLabel(
+            f"<span style='color:#37516a;'>Category: {category}</span>  •  "
+            f"<span style='color:#37516a;'>Runtime: {runtime}</span>  •  "
+            f"<span style='color:#37516a;'>Accuracy: {accuracy}</span>"
+        )
+        meta.setTextFormat(Qt.RichText)
+        layout.addWidget(meta)
+
+        desc = QLabel(description)
+        desc.setWordWrap(True)
+        desc.setStyleSheet("color:#334e68;")
+        layout.addWidget(desc)
+
+        badges = QLabel("  ".join([f"#{t.replace(' ', '')}" for t in tags]) if tags else "#Baseline")
+        badges.setStyleSheet("color:#0b74de; font-weight:600;")
+        layout.addWidget(badges)
+        return card
+
+    def _rebuild_recipe_list(self):
+        # type: () -> None
+        self.recipeList.clear()
+        self.applyBtn.setEnabled(False)
+        self.detailsLabel.setText("Select a recipe to view details.")
+        if not self._active_category:
+            self._update_stats_pill()
+            return
+        search_term = self.searchEdit.text().strip().lower()
+        recipes = self._sort_recipes(self._recipes_for_category(self._active_category))
+        for recipe in recipes:
+            if not self._passes_chip_filter(recipe):
+                continue
+            name = str(recipe.get("name", "Unnamed Recipe"))
+            desc = str(recipe.get("description", ""))
+            classifier_code = str(recipe.get("classifier", {}).get("code", "GMM")).lower()
+            tags = [tag.lower() for tag in self._recipe_feature_tags(recipe)]
+            blob = f"{name} {desc} {classifier_code} {' '.join(tags)}".lower()
+            if search_term and search_term not in blob:
+                continue
+            item = QListWidgetItem(f"📦 {name}" if is_builtin_recipe(recipe) else f"⚙️ {name}")
+            item.setData(Qt.UserRole, name)
+            item.setToolTip(desc)
+            item.setSizeHint(QSize(0, 32 if self._compact_mode else 38))
+            self.recipeList.addItem(item)
+        if self.recipeList.count() > 0:
+            self.recipeList.setCurrentRow(0)
+        else:
+            self.detailsLabel.setText("No recipes match this filter.")
+        self._update_stats_pill()
+
+    def _on_category_changed(self, row):
+        # type: (int) -> None
+        if row < 0 or row >= len(getattr(self, "_categories", [])):
+            self._active_category = ""
+            self._rebuild_recipe_list()
+            return
+        self._active_category = self._categories[row]
+        self._rebuild_recipe_list()
+
+    def _on_search_changed(self, _text):
+        # type: (str) -> None
+        self._rebuild_recipe_list()
+
+    def _on_sort_changed(self, _index):
+        # type: (int) -> None
+        self._rebuild_recipe_list()
+
+    def _details_html(self, recipe):
+        # type: (Dict[str, object]) -> str
+        name = str(recipe.get("name", "Unnamed Recipe"))
+        description = str(recipe.get("description", "No description available"))
+        classifier = recipe.get("classifier", {})
+        classifier_code = str(classifier.get("code", "GMM"))
+        classifier_name = classifier_code
+        for code, label, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
+            if code == classifier_code:
+                classifier_name = label
+                break
+        metadata = recipe.get("metadata", {})
+        category = metadata.get("category", "Custom") if isinstance(metadata, dict) else "Custom"
+        extra = recipe.get("extraParam", {})
+        features = []
+        if extra.get("USE_OPTUNA"):
+            features.append("Optuna")
+        if extra.get("COMPUTE_SHAP"):
+            features.append("SHAP")
+        if extra.get("USE_SMOTE"):
+            features.append("SMOTE")
+        if extra.get("USE_CLASS_WEIGHTS"):
+            features.append("Class weights")
+        if extra.get("USE_NESTED_CV") or recipe.get("validation", {}).get("nested_cv"):
+            features.append("Nested CV")
+        features_text = ", ".join(features) if features else "Baseline"
+        return (
+            f"<b>{name}</b><br>"
+            f"<span style='color:#2f4f6a;'><b>{classifier_name}</b> | {category}</span><br>"
+            f"<span style='color:#5f748a;'>Features: {features_text}</span><br><br>"
+            f"{description}<br><br>"
+            f"<span style='color:#7c8ea1;'>Tip: double-click recipe card to apply instantly.</span>"
+        )
+
+    def _on_recipe_changed(self, current, _previous):
+        # type: (Optional[QListWidgetItem], Optional[QListWidgetItem]) -> None
+        if current is None:
+            self._selected_recipe_name = ""
+            self.applyBtn.setEnabled(False)
+            self.detailsLabel.setText("Select a recipe to view details.")
+            return
+        recipe_name = str(current.data(Qt.UserRole) or "").strip()
+        self._selected_recipe_name = recipe_name
+        self.applyBtn.setEnabled(bool(recipe_name))
+        selected = None
+        for recipe in self._recipes:
+            if str(recipe.get("name", "")).strip() == recipe_name:
+                selected = recipe
+                break
+        if selected is None:
+            self.detailsLabel.setText("Select a recipe to view details.")
+            return
+        self.detailsLabel.setText(self._details_html(selected))
+
+    def _restore_initial_selection(self):
+        # type: () -> None
+        # Always start on All Recipes; optionally pre-select current recipe in that list.
+        if self.categoryList.count() > 0:
+            self.categoryList.setCurrentRow(0)
+        if not self._current_recipe_name or self.recipeList.count() <= 0:
+            return
+        target = self._current_recipe_name
+        for idx in range(self.recipeList.count()):
+            item = self.recipeList.item(idx)
+            if item and str(item.data(Qt.UserRole) or "").strip() == target:
+                self.recipeList.setCurrentRow(idx)
+                break
+
+    def _apply_selection(self):
+        # type: () -> None
+        if not self._selected_recipe_name:
+            return
+        self._command = "apply"
+        self.accept()
+
+    def _apply_web_style(self):
+        # type: () -> None
+        self.setStyleSheet(
+            """
+            QDialog {
+                background: qlineargradient(
+                    x1: 0, y1: 0, x2: 1, y2: 1,
+                    stop: 0 #f4f7fb,
+                    stop: 1 #edf3f9
+                );
+            }
+            QLabel#recipeHubTitle {
+                color: #102a43;
+                font-size: 20px;
+                font-weight: 700;
+            }
+            QLabel#recipeHubSubtitle {
+                color: #5f748a;
+                font-size: 12px;
+            }
+            QFrame#hubTopBar {
+                background: #ffffff;
+                border: 1px solid #d8e3ef;
+                border-radius: 10px;
+            }
+            QLabel#hubStatPill {
+                color: #1f3f5f;
+                background: #e8f3ff;
+                border: 1px solid #bfdcff;
+                border-radius: 12px;
+                padding: 3px 8px;
+                font-weight: 600;
+            }
+            QToolButton#hubChip {
+                background: #ffffff;
+                color: #37516a;
+                border: 1px solid #d0ddeb;
+                border-radius: 11px;
+                padding: 3px 8px;
+            }
+            QToolButton#hubChip:checked {
+                background: #dff0ff;
+                border: 1px solid #62a9ea;
+                color: #0b3d72;
+                font-weight: 700;
+            }
+            QComboBox#hubSort {
+                border: 1px solid #ced9e6;
+                border-radius: 8px;
+                padding: 4px 8px;
+                background: #f8fbff;
+            }
+            QGroupBox#hubPanel {
+                border: 1px solid #d8e3ef;
+                border-radius: 10px;
+                margin-top: 8px;
+                background: #ffffff;
+                font-weight: 600;
+                color: #2f4f6a;
+            }
+            QGroupBox#hubPanel::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 6px;
+            }
+            QLineEdit#hubSearch {
+                border: 1px solid #ced9e6;
+                border-radius: 8px;
+                padding: 6px 8px;
+                background: #f8fbff;
+                min-width: 230px;
+                max-width: 280px;
+            }
+            QLineEdit#hubSearch:focus {
+                border: 1px solid #2196f3;
+                background: #ffffff;
+            }
+            QListWidget#hubList {
+                border: 0;
+                background: transparent;
+                padding: 2px;
+                outline: 0;
+            }
+            QListWidget#hubList::item {
+                background: #ffffff;
+                border: 1px solid #dfeaf5;
+                border-radius: 8px;
+                padding: 6px 10px;
+                color: #243b53;
+            }
+            QListWidget#hubList::item:hover {
+                background: #f2f8ff;
+                border: 1px solid #c5d9ee;
+            }
+            QListWidget#hubList::item:selected {
+                background: #dff0ff;
+                border: 1px solid #62a9ea;
+                color: #102a43;
+            }
+            QFrame#recipeCard {
+                background: transparent;
+                border: 0;
+            }
+            QLabel#detailsCard {
+                background: qlineargradient(
+                    x1: 0, y1: 0, x2: 1, y2: 1,
+                    stop: 0 #f8fcff,
+                    stop: 1 #eef5fd
+                );
+                border: 1px solid #c6d8ea;
+                border-radius: 10px;
+                padding: 10px;
+                color: #16324b;
+            }
+            QPushButton#hubPrimary {
+                background: #0b74de;
+                color: #ffffff;
+                border: 1px solid #0a67c6;
+                border-radius: 8px;
+                padding: 3px 8px;
+                font-weight: 600;
+                min-height: 24px;
+            }
+            QPushButton#hubPrimary:hover {
+                background: #0d7be8;
+            }
+            QPushButton#hubSecondary, QPushButton#hubGhost {
+                background: #ffffff;
+                color: #284b6b;
+                border: 1px solid #c9d8e8;
+                border-radius: 8px;
+                padding: 3px 8px;
+                min-height: 24px;
+            }
+            QPushButton#hubSecondary:hover, QPushButton#hubGhost:hover {
+                background: #f1f7ff;
+                border: 1px solid #a8c6e6;
+            }
+            """
+        )
+
+
 class QuickClassificationPanel(QWidget):
     """Compact dashboard for common classification tasks."""
 
@@ -4675,7 +5326,6 @@ class QuickClassificationPanel(QWidget):
         self._recipes = load_recipes(QSettings())
         self._quick_split_percent = 75
         self._open_report_in_browser = True
-        self._recipe_add_action_value = "__add_custom_recipe__"
         self._previous_recipe_index = 0
 
         # Connect to global recipe update signal
@@ -4837,10 +5487,25 @@ class QuickClassificationPanel(QWidget):
         self.recipeCombo.setToolTip(
             "<b>Classification Recipe</b><br>"
             "Pre-configured classifier preset including algorithm, parameters, and advanced features.<br><br>"
-            "<i>Hover over recipes</i> to see detailed configuration.<br>"
-            "<i>Create custom:</i> Select '+ Add custom recipe...' to save current settings."
+            "<i>Use Recipe Hub</i> for recipe selection and management."
         )
-        classifier_row.addWidget(self.recipeCombo)
+        self.recipeCombo.setVisible(False)
+
+        self.currentRecipeLabel = QLabel("No recipe selected")
+        self.currentRecipeLabel.setObjectName("currentRecipeLabel")
+        self.currentRecipeLabel.setStyleSheet(
+            "color: #37516a; background: #eef5fd; border: 1px solid #c6d8ea; border-radius: 6px; padding: 5px 8px;"
+        )
+        classifier_row.addWidget(self.currentRecipeLabel, 1)
+
+        self.recipeHubBtn = QToolButton()
+        self.recipeHubBtn.setText("Recipe Hub")
+        self.recipeHubBtn.setToolTip(
+            "<b>Recipe Hub</b><br>"
+            "Open the modern quad recipe hub with categories, recipe list, actions, and details."
+        )
+        self.recipeHubBtn.clicked.connect(self._open_recipe_hub)
+        classifier_row.addWidget(self.recipeHubBtn)
 
         # Keep classifier combo as internal state (not shown in default dashboard).
         self.classifierCombo = QComboBox()
@@ -4852,47 +5517,6 @@ class QuickClassificationPanel(QWidget):
         self.depStatusLabel.setVisible(False)
         root.addWidget(self.depStatusLabel)
         self._update_dep_status(self.classifierCombo.currentIndex())
-
-        # Advanced Methods panel
-        advanced_group = QGroupBox("Advanced Methods (Optional)")
-        advanced_group.setCheckable(True)
-        advanced_group.setChecked(False)
-        advanced_group.setToolTip(
-            "<b>Advanced Methods</b><br>"
-            "Enable hyperparameter optimization, explainability, and class balancing features.<br><br>"
-            "<i>Expand to configure:</i> Optuna (auto-tuning), SHAP (model explanation), SMOTE (oversampling)."
-        )
-        advanced_layout = QHBoxLayout()
-        advanced_layout.setContentsMargins(8, 8, 8, 8)
-        advanced_layout.setSpacing(8)
-
-        # Create feature badges
-        self.optunaBadge = self._create_feature_badge(
-            "optuna",
-            "Optuna - Automatic hyperparameter optimization using Bayesian optimization",
-            "modern/ux_optuna.png",
-            self._deps.get("optuna", False)
-        )
-        self.shapBadge = self._create_feature_badge(
-            "shap",
-            "SHAP - Model explainability showing feature importance and decision reasoning",
-            "modern/ux_shap.png",
-            self._deps.get("shap", False)
-        )
-        self.smoteBadge = self._create_feature_badge(
-            "smote",
-            "SMOTE - Synthetic oversampling to handle imbalanced training data",
-            "modern/ux_smote.png",
-            self._deps.get("imblearn", False)
-        )
-
-        advanced_layout.addWidget(self.optunaBadge)
-        advanced_layout.addWidget(self.shapBadge)
-        advanced_layout.addWidget(self.smoteBadge)
-        advanced_layout.addStretch()
-
-        advanced_group.setLayout(advanced_layout)
-        root.addWidget(advanced_group)
 
         run_row = QHBoxLayout()
         run_row.setSpacing(3)
@@ -5579,15 +6203,38 @@ class QuickClassificationPanel(QWidget):
             defaults["GENERATE_REPORT_BUNDLE"] = report_enabled
             defaults["OPEN_REPORT_IN_BROWSER"] = report_enabled and self._open_report_in_browser
 
-        # Override advanced feature settings from badge states (if badges exist and are enabled)
-        if hasattr(self, "optunaBadge") and self.optunaBadge.isEnabled():
-            defaults["USE_OPTUNA"] = self.optunaBadge.isChecked()
-        if hasattr(self, "shapBadge") and self.shapBadge.isEnabled():
-            defaults["COMPUTE_SHAP"] = self.shapBadge.isChecked()
-        if hasattr(self, "smoteBadge") and self.smoteBadge.isEnabled():
-            defaults["USE_SMOTE"] = self.smoteBadge.isChecked()
-
         return defaults
+
+    def _apply_recipe_by_name(self, recipe_name):
+        # type: (str) -> None
+        target = str(recipe_name or "").strip()
+        if not target:
+            return
+        for i in range(self.recipeCombo.count()):
+            if str(self.recipeCombo.itemData(i) or "").strip() == target:
+                self.recipeCombo.setCurrentIndex(i)
+                return
+
+    def _open_recipe_hub(self):
+        # type: () -> None
+        current_name = str(self.recipeCombo.currentData() or "").strip()
+        dialog = RecipeHubDialog(self, recipes=list(self._recipes), current_recipe_name=current_name)
+        try:
+            accepted = dialog.exec_()
+        except AttributeError:
+            accepted = dialog.exec()
+        if accepted != 1:
+            return
+
+        command = dialog.command()
+        if command == "apply":
+            self._apply_recipe_by_name(dialog.selected_recipe_name())
+        elif command == "create":
+            self._open_recipe_shop()
+        elif command == "import":
+            self._import_recipe()
+        elif command == "export":
+            self._export_recipe()
 
     def _refresh_recipe_combo(self, preferred_name=""):
         # type: (str) -> None
@@ -5603,66 +6250,12 @@ class QuickClassificationPanel(QWidget):
         self.recipeCombo.blockSignals(True)
         self.recipeCombo.clear()
 
-        # Group recipes by category
-        templates_by_category = {"Beginner": [], "Intermediate": [], "Advanced": []}
-        user_recipes = []
-
         for recipe in self._recipes:
-            is_template = is_builtin_recipe(recipe)
-            if is_template:
-                metadata = recipe.get("metadata", {})
-                category = metadata.get("category", "intermediate") if isinstance(metadata, dict) else "intermediate"
-                category = category.capitalize()
-                if category in templates_by_category:
-                    templates_by_category[category].append(recipe)
-                else:
-                    templates_by_category["Intermediate"].append(recipe)
-            else:
-                user_recipes.append(recipe)
-
-        # Add templates by category with separators
-        for category in ["Beginner", "Intermediate", "Advanced"]:
-            category_recipes = templates_by_category[category]
-            if category_recipes:
-                # Add category separator
-                separator_item = f"--- {category} Templates ---"
-                self.recipeCombo.addItem(separator_item, None)
-                # Disable separator item
-                model = self.recipeCombo.model()
-                if model:
-                    item = model.item(self.recipeCombo.count() - 1)
-                    if item:
-                        item.setEnabled(False)
-                        item.setFlags(item.flags() & ~Qt.ItemIsSelectable)
-
-                # Add recipes in this category
-                for recipe in category_recipes:
-                    name = str(recipe.get("name", "Unnamed Recipe"))
-                    display_name = f"📦 {name}"
-                    self.recipeCombo.addItem(display_name, name)
-                    # Add tooltip with detailed info
-                    tooltip = self._build_recipe_tooltip(recipe)
-                    self.recipeCombo.setItemData(self.recipeCombo.count() - 1, tooltip, Qt.ToolTipRole)
-
-        # Add user recipes separator if there are user recipes
-        if user_recipes:
-            separator_item = "--- My Recipes ---"
-            self.recipeCombo.addItem(separator_item, None)
-            model = self.recipeCombo.model()
-            if model:
-                item = model.item(self.recipeCombo.count() - 1)
-                if item:
-                    item.setEnabled(False)
-                    item.setFlags(item.flags() & ~Qt.ItemIsSelectable)
-
-            for recipe in user_recipes:
-                name = str(recipe.get("name", "Unnamed Recipe"))
-                display_name = f"⚙️ {name}"
-                self.recipeCombo.addItem(display_name, name)
-                tooltip = self._build_recipe_tooltip(recipe)
-                self.recipeCombo.setItemData(self.recipeCombo.count() - 1, tooltip, Qt.ToolTipRole)
-
-        self.recipeCombo.addItem("+ Add custom model/recipe...", self._recipe_add_action_value)
+            name = str(recipe.get("name", "Unnamed Recipe"))
+            prefix = "📦 " if is_builtin_recipe(recipe) else "⚙️ "
+            self.recipeCombo.addItem(prefix + name, name)
+            tooltip = self._build_recipe_tooltip(recipe)
+            self.recipeCombo.setItemData(self.recipeCombo.count() - 1, tooltip, Qt.ToolTipRole)
 
         restore_index = 0
         if current_name:
@@ -5777,21 +6370,19 @@ class QuickClassificationPanel(QWidget):
         if not self._recipes or self.recipeCombo.count() == 0:
             return
         current_value = self.recipeCombo.currentData()
-        if current_value == self._recipe_add_action_value:
-            self.recipeCombo.blockSignals(True)
-            self.recipeCombo.setCurrentIndex(self._previous_recipe_index)
-            self.recipeCombo.blockSignals(False)
-            self._open_recipe_shop()
+        name = str(current_value or "").strip()
+        if not name:
             return
-        name = self.recipeCombo.currentText()
         selected = None
         for recipe in self._recipes:
-            if recipe.get("name") == name:
+            if str(recipe.get("name", "")).strip() == name:
                 selected = normalize_recipe(dict(recipe))
                 break
         if selected is None:
             return
         self._previous_recipe_index = self.recipeCombo.currentIndex()
+        if hasattr(self, "currentRecipeLabel"):
+            self.currentRecipeLabel.setText(name)
 
         classifier = selected.get("classifier", {})
         classifier_code = str(classifier.get("code", "GMM"))
@@ -5838,12 +6429,11 @@ class QuickClassificationPanel(QWidget):
         # Get current recipe from combo or build from current state
         recipe = None
         current_value = self.recipeCombo.currentData()
-        if current_value != self._recipe_add_action_value:
-            name = self.recipeCombo.currentText()
-            for r in self._recipes:
-                if r.get("name") == name:
-                    recipe = normalize_recipe(dict(r))
-                    break
+        name = str(current_value or "").strip()
+        for r in self._recipes:
+            if str(r.get("name", "")).strip() == name:
+                recipe = normalize_recipe(dict(r))
+                break
 
         # If no recipe selected or "Add custom" is selected, build from current UI state
         if recipe is None:
@@ -6184,9 +6774,9 @@ class QuickClassificationPanel(QWidget):
             # Find the recipe in the combo box
             recipe_name = recipe.get("name", "")
             for i in range(self.recipeCombo.count()):
-                if self.recipeCombo.itemText(i) == recipe_name:
+                if self.recipeCombo.itemData(i) == recipe_name:
                     self.recipeCombo.setCurrentIndex(i)
-                    # This will trigger _on_recipe_selected which applies the recipe
+                    # This will trigger recipe application through _apply_selected_recipe.
                     break
 
         except Exception:
