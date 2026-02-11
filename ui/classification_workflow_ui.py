@@ -5648,9 +5648,7 @@ class QuickClassificationPanel(QWidget):
 
         self.currentRecipeLabel = QLabel("No recipe selected")
         self.currentRecipeLabel.setObjectName("currentRecipeLabel")
-        self.currentRecipeLabel.setStyleSheet(
-            "color: #37516a; background: #eef5fd; border: 1px solid #c6d8ea; border-radius: 6px; padding: 5px 8px;"
-        )
+        self.currentRecipeLabel.setStyleSheet("")
         classifier_row.addWidget(self.currentRecipeLabel, 1)
 
         self.recipeHubBtn = QToolButton()

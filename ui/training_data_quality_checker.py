@@ -191,7 +191,7 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
 
     def _create_summary_widget(self) -> QWidget:
         """Create summary status widget showing counts by severity."""
-        summary_widget = QGroupBox("Summary")
+        summary_widget = QGroupBox("Filters")
         summary_layout = QHBoxLayout(summary_widget)
 
         # Count issues by severity
