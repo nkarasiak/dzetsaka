@@ -320,6 +320,29 @@ class DzetsakaGUI(QDialog):
 
         open_dashboard_dock(self, _LEFT_DOCK_AREA)
 
+    def open_batch_classification(self):
+        """Open the batch classification dialog."""
+        try:
+            from ui.batch_classification_dialog import BatchClassificationDialog
+        except ImportError:
+            from qgis.PyQt.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Batch Classification",
+                "Batch classification dialog is not available. Please check that all files are installed correctly."
+            )
+            return
+
+        dialog = BatchClassificationDialog(
+            parent=self.iface.mainWindow(),
+            iface=self.iface,
+            plugin=self
+        )
+        try:
+            dialog.exec_()
+        except AttributeError:
+            dialog.exec()
+
     def on_close_dashboard_dock(self):
         """Track dashboard dock closing state."""
         from dzetsaka.qgis.dashboard_dock import close_dashboard_dock

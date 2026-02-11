@@ -24,8 +24,20 @@ from qgis.PyQt.QtWidgets import (
     QWizardPage,
 )
 
+# Import theme support
+try:
+    from ui.theme_support import ThemeAwareWidget
+    _THEME_SUPPORT_AVAILABLE = True
+except ImportError:
+    _THEME_SUPPORT_AVAILABLE = False
+    # Fallback: create empty mixin class
+    class ThemeAwareWidget:
+        """Fallback mixin when theme_support is not available."""
+        def apply_theme(self):
+            pass
 
-class WelcomeWizard(QWizard):
+
+class WelcomeWizard(ThemeAwareWidget, QWizard):
     """First-run welcome wizard for dzetsaka plugin.
 
     Provides a 3-page guided experience:
@@ -54,6 +66,10 @@ class WelcomeWizard(QWizard):
         """
         super().__init__(parent)
         self.plugin = plugin
+
+        # Apply theme-aware styling
+        if _THEME_SUPPORT_AVAILABLE:
+            self.apply_theme()
 
         # Configure wizard appearance
         self.setWindowTitle("Welcome to dzetsaka")

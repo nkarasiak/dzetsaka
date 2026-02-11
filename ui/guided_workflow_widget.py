@@ -21,7 +21,7 @@ from collections import Counter
 from typing import Any, Dict, List, Optional, Tuple
 
 from qgis.PyQt.QtCore import QSettings, Qt, pyqtSignal
-from qgis.PyQt.QtGui import QColor, QIcon, QPainter, QPixmap
+from qgis.PyQt.QtGui import QColor, QIcon, QKeySequence, QPainter, QPixmap
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -38,6 +38,8 @@ from qgis.PyQt.QtWidgets import (
     QListWidgetItem,
     QMessageBox,
     QPushButton,
+    QScrollArea,
+    QShortcut,
     QSizePolicy,
     QSpinBox,
     QStackedLayout,
@@ -47,13 +49,34 @@ from qgis.PyQt.QtWidgets import (
     QTableWidgetItem,
     QTextEdit,
     QToolButton,
-    QScrollArea,
     QVBoxLayout,
     QWidget,
     QWhatsThis,
     QWizard,
     QWizardPage,
 )
+
+# Import validated widgets for real-time validation feedback
+from ui.validated_widgets import ValidatedSpinBox, ValidatedDoubleSpinBox
+
+# Import training data quality checker
+try:
+    from ui.training_data_quality_checker import TrainingDataQualityChecker
+    _QUALITY_CHECKER_AVAILABLE = True
+except ImportError:
+    _QUALITY_CHECKER_AVAILABLE = False
+
+# Import theme support
+try:
+    from ui.theme_support import ThemeAwareWidget
+    _THEME_SUPPORT_AVAILABLE = True
+except ImportError:
+    _THEME_SUPPORT_AVAILABLE = False
+    # Fallback: create empty mixin class
+    class ThemeAwareWidget:
+        """Fallback mixin when theme_support is not available."""
+        def apply_theme(self):
+            pass
 
 try:
     from dzetsaka.domain.value_objects.recipe_schema_v2 import upgrade_recipe_to_v2 as _upgrade_recipe_to_v2
@@ -2459,6 +2482,30 @@ class DataInputPage(QWizardPage):
         input_layout.addWidget(self.classFieldCombo)
         self.fieldStatusLabel = QLabel()
         input_layout.addWidget(self.fieldStatusLabel)
+
+        # Add Check Data Quality button
+        self.checkQualityBtn = QPushButton("Check Data Quality…")
+        self.checkQualityBtn.setToolTip(
+            "<b>Check Training Data Quality</b><br>"
+            "Analyze your training data for common issues before classification:<br>"
+            "• Class imbalance<br>"
+            "• Insufficient samples<br>"
+            "• Invalid geometries<br>"
+            "• Spatial clustering"
+        )
+        # Try to set icon
+        quality_icon = QIcon(":/plugins/dzetsaka/img/table.png")
+        if quality_icon.isNull():
+            # Fallback to vector icon if table icon not found
+            quality_icon = QIcon(":/plugins/dzetsaka/img/vector.svg")
+        if not quality_icon.isNull():
+            self.checkQualityBtn.setIcon(quality_icon)
+        self.checkQualityBtn.clicked.connect(self._check_data_quality)
+        self.checkQualityBtn.setEnabled(_QUALITY_CHECKER_AVAILABLE)
+        if not _QUALITY_CHECKER_AVAILABLE:
+            self.checkQualityBtn.setToolTip("Training data quality checker not available (module import failed)")
+        input_layout.addWidget(self.checkQualityBtn)
+
         self.geometryExplorerBtn = QPushButton("Geometry Explorer…")
         self.geometryExplorerBtn.clicked.connect(self._open_geometry_explorer)
         input_layout.addWidget(self.geometryExplorerBtn)
@@ -2929,6 +2976,73 @@ class DataInputPage(QWizardPage):
         except AttributeError:
             dialog.exec()
 
+    def _check_data_quality(self):
+        # type: () -> None
+        """Open the training data quality checker dialog."""
+        if not _QUALITY_CHECKER_AVAILABLE:
+            QMessageBox.warning(
+                self,
+                "Feature Unavailable",
+                "Training data quality checker is not available. Please check that all dependencies are installed."
+            )
+            return
+
+        vector_path = self.get_vector_path()
+        class_field = self.get_class_field()
+
+        if not vector_path:
+            QMessageBox.information(
+                self,
+                "Check Data Quality",
+                "Please select a training vector layer first."
+            )
+            return
+
+        if not class_field:
+            QMessageBox.information(
+                self,
+                "Check Data Quality",
+                "Please select a class field first."
+            )
+            return
+
+        # Show status bar message
+        try:
+            from src.dzetsaka.infrastructure.ui.status_bar_feedback import show_quality_check_started, show_quality_check_completed
+            # Try to get iface from parent plugin
+            parent_widget = self.parent()
+            while parent_widget is not None:
+                if hasattr(parent_widget, 'iface'):
+                    show_quality_check_started(parent_widget.iface)
+                    break
+                parent_widget = parent_widget.parent()
+        except Exception:
+            pass  # Fallback if status bar not available
+
+        # Open the quality checker dialog
+        dialog = TrainingDataQualityChecker(
+            vector_path=vector_path,
+            class_field=class_field,
+            parent=self
+        )
+        try:
+            result = dialog.exec_()
+        except AttributeError:
+            result = dialog.exec()
+
+        # Show completion message with issue count
+        try:
+            if hasattr(dialog, 'issues'):
+                issue_count = len([i for i in dialog.issues if i.severity in ["error", "warning"]])
+                parent_widget = self.parent()
+                while parent_widget is not None:
+                    if hasattr(parent_widget, 'iface'):
+                        show_quality_check_completed(parent_widget.iface, issue_count)
+                        break
+                    parent_widget = parent_widget.parent()
+        except Exception:
+            pass
+
     def get_classifier_code(self):
         # type: () -> str
         """Return the short code of the currently selected classifier."""
@@ -3111,7 +3225,11 @@ class AdvancedOptionsPage(QWizardPage):
         opt_layout.addWidget(self.optunaInfoLabel, 1, 0, 1, 2)
 
         trials_label = QLabel("Trials:")
-        self.optunaTrials = QSpinBox()
+        self.optunaTrials = ValidatedSpinBox(
+            validator_fn=lambda v: 10 <= v <= 1000,
+            warning_threshold=300,
+            time_estimator_fn=lambda v: f"{v * 0.05:.0f}-{v * 0.15:.0f} min" if v > 0 else "0 min"
+        )
         self.optunaTrials.setRange(10, 1000)
         self.optunaTrials.setValue(100)
         self.optunaTrials.setEnabled(False)
@@ -3119,8 +3237,7 @@ class AdvancedOptionsPage(QWizardPage):
             "<b>Optuna Trials</b><br>"
             "Number of hyperparameter combinations to test. "
             "More trials = better accuracy but slower training.<br><br>"
-            "<i>Typical values:</i> Quick: 10-50, Balanced: 100-200, Thorough: 300-1000<br>"
-            "<i>Estimated time:</i> 100 trials ≈ 5-15 min, 300 trials ≈ 10-30 min"
+            "<i>Typical values:</i> Quick: 10-50, Balanced: 100-200, Thorough: 300-1000"
         )
         opt_layout.addWidget(trials_label, 2, 0)
         opt_layout.addWidget(self.optunaTrials, 2, 1)
@@ -3303,7 +3420,11 @@ class AdvancedOptionsPage(QWizardPage):
         exp_layout.addWidget(self.shapBrowse, 1, 2)
 
         shap_sample_label = QLabel("Sample size:")
-        self.shapSampleSize = QSpinBox()
+        self.shapSampleSize = ValidatedSpinBox(
+            validator_fn=lambda v: 100 <= v <= 50000,
+            warning_threshold=5000,
+            time_estimator_fn=lambda v: f"{v * 0.002:.0f}-{v * 0.005:.0f} min" if v > 0 else "0 min"
+        )
         self.shapSampleSize.setRange(100, 50000)
         self.shapSampleSize.setValue(1000)
         self.shapSampleSize.setEnabled(False)
@@ -3311,8 +3432,7 @@ class AdvancedOptionsPage(QWizardPage):
             "<b>SHAP Sample Size</b><br>"
             "Number of samples used to compute feature importance. "
             "Higher = more accurate explanations but slower computation.<br><br>"
-            "<i>Typical values:</i> Fast: 100-500, Balanced: 1000-2000, Thorough: 5000+<br>"
-            "<i>Estimated time:</i> 1000 samples ≈ 2-5 min, 5000 samples ≈ 10-20 min"
+            "<i>Typical values:</i> Fast: 100-500, Balanced: 1000-2000, Thorough: 5000+"
         )
         exp_layout.addWidget(shap_sample_label, 2, 0)
         exp_layout.addWidget(self.shapSampleSize, 2, 1)
@@ -3742,7 +3862,10 @@ class OutputConfigPage(QWizardPage):
         out_layout.addWidget(self.matrixBrowse, 6, 2)
 
         out_layout.addWidget(QLabel("Validation split (%):"), 7, 0)
-        self.splitSpinBox = QSpinBox()
+        self.splitSpinBox = ValidatedSpinBox(
+            validator_fn=lambda v: 10 <= v <= 90,
+            warning_threshold=None  # No warning needed for split percentage
+        )
         self.splitSpinBox.setRange(10, 90)
         self.splitSpinBox.setValue(50)
         self.splitSpinBox.setEnabled(False)
@@ -4035,7 +4158,7 @@ class OutputConfigPage(QWizardPage):
 # ---------------------------------------------------------------------------
 
 
-class GuidedClassificationDialog(QWizard):
+class GuidedClassificationDialog(ThemeAwareWidget, QWizard):
     """Step-by-step guided classification dialog for dzetsaka.
 
     Emits ``classificationRequested`` with the assembled config dict
@@ -4048,6 +4171,10 @@ class GuidedClassificationDialog(QWizard):
         """Initialise GuidedClassificationDialog with all 3 pages."""
         super(GuidedClassificationDialog, self).__init__(parent)
         self.setWindowTitle("dzetsaka Classification")
+
+        # Apply theme-aware styling
+        if _THEME_SUPPORT_AVAILABLE:
+            self.apply_theme()
         self._settings = QSettings()
         self._deps = check_dependency_availability()
         self._installer = installer
@@ -4081,6 +4208,25 @@ class GuidedClassificationDialog(QWizard):
         except AttributeError:
             dialog_style = QWizard.WizardStyle.ModernStyle
         self.setWizardStyle(dialog_style)
+
+        # Setup keyboard shortcuts
+        self._setup_wizard_shortcuts()
+
+    def _setup_wizard_shortcuts(self):
+        # type: () -> None
+        """Setup keyboard shortcuts for the wizard."""
+        # Shortcut for Check Data Quality: Ctrl+Shift+Q
+        if _QUALITY_CHECKER_AVAILABLE and hasattr(self.dataPage, 'checkQualityBtn'):
+            quality_shortcut = QShortcut(QKeySequence("Ctrl+Shift+Q"), self)
+            quality_shortcut.activated.connect(self.dataPage._check_data_quality)
+
+        # Shortcut for Next page: Ctrl+Right
+        next_shortcut = QShortcut(QKeySequence("Ctrl+Right"), self)
+        next_shortcut.activated.connect(self.next)
+
+        # Shortcut for Previous page: Ctrl+Left
+        back_shortcut = QShortcut(QKeySequence("Ctrl+Left"), self)
+        back_shortcut.activated.connect(self.back)
 
     # --- page-transition hook ---------------------------------------------
 
@@ -4538,6 +4684,9 @@ class QuickClassificationPanel(QWidget):
 
         self._setup_ui()
 
+        # Setup keyboard shortcuts for power users
+        self._setup_shortcuts()
+
     def _setup_ui(self):
         # type: () -> None
         root = QVBoxLayout()
@@ -4646,6 +4795,34 @@ class QuickClassificationPanel(QWidget):
         self.fieldStatusLabel = QLabel("")
         self.fieldStatusLabel.setVisible(False)
         root.addWidget(self.fieldStatusLabel)
+
+        # Add Check Data Quality button
+        quality_btn_row = QHBoxLayout()
+        quality_btn_row.setSpacing(3)
+        self.checkQualityBtn = QPushButton("Check Data Quality")
+        self.checkQualityBtn.setToolTip(
+            "<b>Check Training Data Quality</b><br>"
+            "Analyze training data for common issues:<br>"
+            "• Class imbalance (>10:1 ratio)<br>"
+            "• Insufficient samples (<30 per class)<br>"
+            "• Invalid geometries<br>"
+            "• Spatial clustering"
+        )
+        # Try to set icon
+        quality_icon = QIcon(":/plugins/dzetsaka/img/table.png")
+        if quality_icon.isNull():
+            quality_icon = QIcon(":/plugins/dzetsaka/img/vector.svg")
+        if not quality_icon.isNull():
+            self.checkQualityBtn.setIcon(quality_icon)
+        self.checkQualityBtn.clicked.connect(self._check_data_quality)
+        self.checkQualityBtn.setEnabled(_QUALITY_CHECKER_AVAILABLE)
+        if not _QUALITY_CHECKER_AVAILABLE:
+            self.checkQualityBtn.setToolTip("Quality checker not available (module import failed)")
+        quality_btn_row.addStretch()
+        quality_btn_row.addWidget(self.checkQualityBtn)
+        quality_btn_row.addStretch()
+        root.addLayout(quality_btn_row)
+
         self.vectorLineEdit.editingFinished.connect(self._on_vector_path_edited)
         self._on_vector_changed()
 
@@ -4789,6 +4966,31 @@ class QuickClassificationPanel(QWidget):
         icon_label.setPixmap(pix)
         icon_label.setScaledContents(True)
         return icon_label
+
+    def _setup_shortcuts(self):
+        # type: () -> None
+        """Setup keyboard shortcuts for power users."""
+        # Shortcut for Check Data Quality: Ctrl+Shift+Q
+        if _QUALITY_CHECKER_AVAILABLE and hasattr(self, 'checkQualityBtn'):
+            quality_shortcut = QShortcut(QKeySequence("Ctrl+Shift+Q"), self)
+            quality_shortcut.activated.connect(self._check_data_quality)
+            # Update button tooltip to mention shortcut
+            current_tooltip = self.checkQualityBtn.toolTip()
+            if "Ctrl+Shift+Q" not in current_tooltip:
+                self.checkQualityBtn.setToolTip(
+                    current_tooltip + "<br><br><i>Keyboard shortcut: Ctrl+Shift+Q</i>"
+                )
+
+        # Shortcut for Run Classification: Ctrl+Return
+        if hasattr(self, 'runButton'):
+            run_shortcut = QShortcut(QKeySequence("Ctrl+Return"), self)
+            run_shortcut.activated.connect(self._emit_config)
+            # Update button tooltip to mention shortcut
+            current_tooltip = self.runButton.toolTip()
+            if "Ctrl+Return" not in current_tooltip:
+                self.runButton.setToolTip(
+                    current_tooltip + "<br><br><i>Keyboard shortcut: Ctrl+Return</i>"
+                )
 
     def _create_feature_badge(self, name, description, icon_path, enabled):
         # type: (str, str, str, bool) -> QToolButton
@@ -5006,6 +5208,72 @@ class QuickClassificationPanel(QWidget):
         if path:
             self.vectorLineEdit.setText(path)
             self._populate_fields_from_path(path)
+
+    def _check_data_quality(self):
+        # type: () -> None
+        """Open the training data quality checker dialog."""
+        if not _QUALITY_CHECKER_AVAILABLE:
+            QMessageBox.warning(
+                self,
+                "Feature Unavailable",
+                "Training data quality checker is not available. Please check that all dependencies are installed."
+            )
+            return
+
+        vector_path = self._get_vector_path()
+        class_field = self.classFieldCombo.currentText().strip()
+
+        if not vector_path:
+            QMessageBox.information(
+                self,
+                "Check Data Quality",
+                "Please select a training vector layer first."
+            )
+            return
+
+        if not class_field:
+            QMessageBox.information(
+                self,
+                "Check Data Quality",
+                "Please select a class field first."
+            )
+            return
+
+        # Show status bar message
+        try:
+            from src.dzetsaka.infrastructure.ui.status_bar_feedback import show_quality_check_started, show_quality_check_completed
+            parent_widget = self.parent()
+            while parent_widget is not None:
+                if hasattr(parent_widget, 'iface'):
+                    show_quality_check_started(parent_widget.iface)
+                    break
+                parent_widget = parent_widget.parent()
+        except Exception:
+            pass
+
+        # Open the quality checker dialog
+        dialog = TrainingDataQualityChecker(
+            vector_path=vector_path,
+            class_field=class_field,
+            parent=self
+        )
+        try:
+            result = dialog.exec_()
+        except AttributeError:
+            result = dialog.exec()
+
+        # Show completion message
+        try:
+            if hasattr(dialog, 'issues'):
+                issue_count = len([i for i in dialog.issues if i.severity in ["error", "warning"]])
+                parent_widget = self.parent()
+                while parent_widget is not None:
+                    if hasattr(parent_widget, 'iface'):
+                        show_quality_check_completed(parent_widget.iface, issue_count)
+                        break
+                    parent_widget = parent_widget.parent()
+        except Exception:
+            pass
 
     def _on_vector_changed(self):
         # type: () -> None

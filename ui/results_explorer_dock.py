@@ -50,8 +50,32 @@ except ImportError:
     except ImportError:
         gdal = None
 
+try:
+    from ui.confidence_analysis_widget import ConfidenceAnalysisWidget
+    CONFIDENCE_WIDGET_AVAILABLE = True
+except ImportError:
+    CONFIDENCE_WIDGET_AVAILABLE = False
 
-class ResultsExplorerDock(QDockWidget):
+try:
+    from ui.training_data_quality_checker import TrainingDataQualityChecker
+    QUALITY_CHECKER_AVAILABLE = True
+except ImportError:
+    QUALITY_CHECKER_AVAILABLE = False
+
+# Import theme support
+try:
+    from ui.theme_support import ThemeAwareWidget
+    _THEME_SUPPORT_AVAILABLE = True
+except ImportError:
+    _THEME_SUPPORT_AVAILABLE = False
+    # Fallback: create empty mixin class
+    class ThemeAwareWidget:
+        """Fallback mixin when theme_support is not available."""
+        def apply_theme(self):
+            pass
+
+
+class ResultsExplorerDock(ThemeAwareWidget, QDockWidget):
     """Interactive dock widget for exploring classification results.
 
     Displays comprehensive information about a completed classification including:
@@ -85,6 +109,10 @@ class ResultsExplorerDock(QDockWidget):
         self.result = classification_result
         self.iface = iface
 
+        # Apply theme-aware styling
+        if _THEME_SUPPORT_AVAILABLE:
+            self.apply_theme()
+
         # Set dock properties
         self.setWindowTitle("Classification Results")
         self.setObjectName("DzetsakaResultsExplorerDock")
@@ -108,6 +136,9 @@ class ResultsExplorerDock(QDockWidget):
 
         if self.result.get("shap_path") and os.path.exists(self.result.get("shap_path", "")):
             self._create_explainability_tab()
+
+        if self.result.get("confidence_path") and os.path.exists(self.result.get("confidence_path", "")):
+            self._create_confidence_tab()
 
         self.main_layout.addWidget(self.tab_widget)
 
@@ -408,6 +439,48 @@ class ResultsExplorerDock(QDockWidget):
         explainability_layout.addStretch()
         self.tab_widget.addTab(explainability_widget, "Explainability")
 
+    def _create_confidence_tab(self):
+        """Create the confidence analysis tab with confidence map visualization."""
+        if not CONFIDENCE_WIDGET_AVAILABLE:
+            confidence_widget = QWidget()
+            confidence_layout = QVBoxLayout(confidence_widget)
+            confidence_layout.setContentsMargins(10, 10, 10, 10)
+            no_module_label = QLabel("Confidence analysis widget not available (module import failed).")
+            no_module_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            confidence_layout.addWidget(no_module_label)
+            self.tab_widget.addTab(confidence_widget, "Confidence")
+            return
+
+        confidence_path = self.result.get("confidence_path", "")
+        if not confidence_path or not os.path.exists(confidence_path):
+            confidence_widget = QWidget()
+            confidence_layout = QVBoxLayout(confidence_widget)
+            confidence_layout.setContentsMargins(10, 10, 10, 10)
+            no_data_label = QLabel("Confidence map file not found.")
+            no_data_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            confidence_layout.addWidget(no_data_label)
+            self.tab_widget.addTab(confidence_widget, "Confidence")
+            return
+
+        # Create confidence analysis widget
+        try:
+            confidence_widget = ConfidenceAnalysisWidget(
+                confidence_raster_path=confidence_path,
+                parent=self,
+                iface=self.iface
+            )
+            self.tab_widget.addTab(confidence_widget, "Confidence")
+        except Exception as e:
+            # Fallback if widget creation fails
+            confidence_widget = QWidget()
+            confidence_layout = QVBoxLayout(confidence_widget)
+            confidence_layout.setContentsMargins(10, 10, 10, 10)
+            error_label = QLabel(f"Error loading confidence analysis: {e}")
+            error_label.setStyleSheet("color: red;")
+            error_label.setWordWrap(True)
+            confidence_layout.addWidget(error_label)
+            self.tab_widget.addTab(confidence_widget, "Confidence")
+
     def _create_quick_actions(self):
         """Create quick actions section with useful buttons."""
         actions_group = QGroupBox("Quick Actions")
@@ -424,6 +497,16 @@ class ResultsExplorerDock(QDockWidget):
         export_btn.setToolTip("Save the classification result as a GeoPackage")
         export_btn.clicked.connect(self._export_to_geopackage)
         actions_layout.addWidget(export_btn)
+
+        # Check Training Data Quality button (if training data available)
+        if QUALITY_CHECKER_AVAILABLE and self.result.get("training_vector") and self.result.get("class_field"):
+            quality_btn = QPushButton("Check Training Data")
+            quality_btn.setToolTip(
+                "Analyze training data quality for iterative improvement<br>"
+                "Check for class imbalance, insufficient samples, and spatial issues"
+            )
+            quality_btn.clicked.connect(self._check_training_data)
+            actions_layout.addWidget(quality_btn)
 
         # Open Full Report button (if available)
         report_path = self.result.get("report_path", "")
@@ -616,6 +699,38 @@ class ResultsExplorerDock(QDockWidget):
                 "Error",
                 f"Failed to open report: {e}",
             )
+
+    def _check_training_data(self):
+        """Open training data quality checker for iterative improvement."""
+        training_vector = self.result.get("training_vector", "")
+        class_field = self.result.get("class_field", "")
+
+        if not training_vector or not os.path.exists(training_vector):
+            QMessageBox.warning(
+                self,
+                "Training Data Not Found",
+                "Training vector path not available or file not found.",
+            )
+            return
+
+        if not class_field:
+            QMessageBox.warning(
+                self,
+                "Missing Class Field",
+                "Class field information not available.",
+            )
+            return
+
+        # Open quality checker dialog
+        dialog = TrainingDataQualityChecker(
+            vector_path=training_vector,
+            class_field=class_field,
+            parent=self
+        )
+        try:
+            dialog.exec_()
+        except AttributeError:
+            dialog.exec()
 
     def _compute_class_counts(self, raster_path: str) -> Dict[int, int]:
         """Compute class pixel counts from a raster file.
