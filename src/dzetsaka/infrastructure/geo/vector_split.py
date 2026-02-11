@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from typing import Any
 
 try:
     from osgeo import ogr
@@ -15,6 +16,32 @@ except ImportError:
     import ogr  # type: ignore[no-redef]
 
 from sklearn.model_selection import train_test_split
+
+OGR_BACKEND: Any | None = None
+_DEFAULT_OGR = ogr
+
+
+def _get_ogr():
+    return OGR_BACKEND or _DEFAULT_OGR
+
+
+def count_polygons_per_class(vector_path: str, class_field: str) -> dict[Any, int]:
+    """Count how many vector features per class exist in a layer."""
+
+    ds = _get_ogr().Open(vector_path)
+    if ds is None:
+        return {}
+
+    layer = ds.GetLayer()
+    class_counts: dict[Any, int] = {}
+    for feature in layer:
+        label = feature.GetField(class_field)
+        if label in (None, ""):
+            continue
+        class_counts[label] = class_counts.get(label, 0) + 1
+
+    ds = None
+    return class_counts
 
 
 def split_vector_stratified(

@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from dzetsaka.presentation.qgis.processing.algorithms.train import TrainAlgorithm
+from dzetsaka.qgis.processing.algorithms.train import TrainAlgorithm
 
 __all__ = ["TrainAlgorithm"]

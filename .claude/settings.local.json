@@ -30,7 +30,10 @@
       "Bash(wc:*)",
       "Bash(pytest:*)",
       "Bash(python3:*)",
-      "Bash(make lint:*)"
+      "Bash(make lint:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)"
     ],
     "deny": []
   }

@@ -44,9 +44,13 @@ classifiers = [
 requires-python = ">=3.8"
 dependencies = [
     "numpy>=1.19.0",
-    "gdal>=3.0.0",
+    "gdal==3.10.1",
     "PyQt6>=6.2.0",
     "seaborn>=0.11.0",
+    "optuna>=3.0.0",
+    "shap>=0.47.0",
+    "catboost>=1.2.0",
+    "numba>=0.55.2",
 ]
 
 [project.optional-dependencies]
@@ -138,6 +142,8 @@ Documentation = "https://dzetsaka.readthedocs.io"
 "Bug Tracker" = "https://github.com/nkarasiak/dzetsaka/issues"
 Changelog = "https://github.com/nkarasiak/dzetsaka/blob/master/CHANGELOG.md"
 DOI = "https://doi.org/10.5281/zenodo.2552284"
+[project.scripts]
+dzetsaka = "dzetsaka.cli:main"
 
 # Ruff configuration for linting and formatting
 [tool.ruff]

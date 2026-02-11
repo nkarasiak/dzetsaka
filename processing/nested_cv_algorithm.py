@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from dzetsaka.presentation.qgis.processing.algorithms.nested_cv_algorithm import NestedCVAlgorithm
+from dzetsaka.qgis.processing.algorithms.nested_cv_algorithm import NestedCVAlgorithm
 
 __all__ = ["NestedCVAlgorithm"]

@@ -209,12 +209,12 @@ class TestBuildComparisonData:
         """When all deps are present every row is marked available."""
         rows = build_comparison_data(self._all_deps())
         for row in rows:
-            assert row[4] is True, f"{row[1]} should be available"
+            assert row[5] is True, f"{row[1]} should be available"
 
     def test_only_gmm_available_when_no_deps(self):
         """Only GMM is available when no packages are installed."""
         rows = build_comparison_data(self._no_deps())
-        available_names = [row[1] for row in rows if row[4] is True]
+        available_names = [row[1] for row in rows if row[5] is True]
         assert available_names == ["Gaussian Mixture Model"]
 
     def test_sklearn_classifiers_available_with_sklearn(self):
@@ -222,7 +222,7 @@ class TestBuildComparisonData:
         deps = self._no_deps()
         deps["sklearn"] = True
         rows = build_comparison_data(deps)
-        available = {row[0] for row in rows if row[4] is True}
+        available = {row[0] for row in rows if row[5] is True}
         expected_available = {"GMM", "RF", "SVM", "KNN", "ET", "GBC", "LR", "NB", "MLP"}
         assert available == expected_available
 
@@ -232,7 +232,7 @@ class TestBuildComparisonData:
         deps["xgboost"] = True
         rows = build_comparison_data(deps)
         xgb_row = next(r for r in rows if r[0] == "XGB")
-        assert xgb_row[4] is True
+        assert xgb_row[5] is True
 
     def test_lgb_available_with_lightgbm(self):
         """LGB becomes available when lightgbm dep is True."""
@@ -240,7 +240,7 @@ class TestBuildComparisonData:
         deps["lightgbm"] = True
         rows = build_comparison_data(deps)
         lgb_row = next(r for r in rows if r[0] == "LGB")
-        assert lgb_row[4] is True
+        assert lgb_row[5] is True
 
     def test_cb_available_with_catboost(self):
         """CB becomes available when catboost dep is True."""
@@ -248,20 +248,20 @@ class TestBuildComparisonData:
         deps["catboost"] = True
         rows = build_comparison_data(deps)
         cb_row = next(r for r in rows if r[0] == "CB")
-        assert cb_row[4] is True
+        assert cb_row[5] is True
 
     def test_feature_columns_are_yes_no_strings(self):
         """Optuna, SHAP, SMOTE, class_weights columns are 'Yes' or 'No'."""
         rows = build_comparison_data(self._all_deps())
         for row in rows:
-            for col_idx in (5, 6, 7, 8):
+            for col_idx in (6, 7, 8, 9):
                 assert row[col_idx] in ("Yes", "No"), f"Row {row[1]} col {col_idx}: {row[col_idx]}"
 
     def test_row_tuple_length(self):
-        """Each row tuple has exactly 9 elements."""
+        """Each row tuple has exactly 10 elements."""
         rows = build_comparison_data(self._all_deps())
         for row in rows:
-            assert len(row) == 9, f"Row {row[1]} has {len(row)} elements, expected 9"
+            assert len(row) == 10, f"Row {row[1]} has {len(row)} elements, expected 10"
 
     def test_speed_labels_correct_for_known_algorithms(self):
         """Spot-check known speed labels."""
@@ -272,4 +272,21 @@ class TestBuildComparisonData:
         assert speed_map["MLP"] == "Slow"
         assert speed_map["LGB"] == "Fast"
         assert speed_map["XGB"] == "Medium"
+
+    def test_recommended_for_column_populated(self):
+        """All rows have a recommendation string in column 4."""
+        rows = build_comparison_data(self._all_deps())
+        for row in rows:
+            recommended = row[4]
+            assert isinstance(recommended, str), f"Row {row[1]} recommendation is not a string"
+            assert len(recommended) > 0, f"Row {row[1]} has empty recommendation"
+
+    def test_recommended_for_spot_checks(self):
+        """Spot-check known recommendations."""
+        rows = build_comparison_data(self._all_deps())
+        rec_map = {row[0]: row[4] for row in rows}
+        assert "no dependencies" in rec_map["GMM"].lower()
+        assert "state-of-the-art" in rec_map["XGB"].lower()
+        assert "fastest gradient boosting" in rec_map["LGB"].lower()
+        assert "best default parameters" in rec_map["CB"].lower()
 

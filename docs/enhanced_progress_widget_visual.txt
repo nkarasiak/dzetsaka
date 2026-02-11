@@ -1,0 +1,145 @@
+Enhanced Progress Widget - Visual Layout
+========================================
+
+┌─────────────────────────────────────────────────────────┐
+│                                                         │
+│  Training Random Forest...                             │  <-- Main task (bold)
+│                                                         │
+│  ████████████████████░░░░░░░░░░░░░  45%               │  <-- Progress bar
+│                                                         │
+│  Testing parameter set 3/10                            │  <-- Sub-task (gray, smaller)
+│                                                         │
+│  Elapsed: 23s | ~28s remaining                         │  <-- Time estimate (gray)
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+
+
+Progress Stages During Full Workflow
+=====================================
+
+Stage 1: Loading data (0-5%)
+┌─────────────────────────────────────────────────────────┐
+│  Loading data...                                        │
+│  ██░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  3%             │
+│  Opening raster file...                                 │
+│  Elapsed: 1s | ~32s remaining                           │
+└─────────────────────────────────────────────────────────┘
+
+Stage 2: Training model (5-60%)
+┌─────────────────────────────────────────────────────────┐
+│  Training model...                                      │
+│  ████████████████████░░░░░░░░░░░░░░  32%              │
+│  Testing trial 8/20                                     │
+│  Elapsed: 15s | ~32s remaining                          │
+└─────────────────────────────────────────────────────────┘
+
+Stage 3: Computing SHAP values (60-70%)
+┌─────────────────────────────────────────────────────────┐
+│  Computing SHAP values...                               │
+│  ████████████████████████████████░░░░  65%             │
+│  Computing SHAP values...                               │
+│  Elapsed: 45s | ~24s remaining                          │
+└─────────────────────────────────────────────────────────┘
+
+Stage 4: Classifying raster (70-95%)
+┌─────────────────────────────────────────────────────────┐
+│  Classifying raster...                                  │
+│  █████████████████████████████████████░░  82%          │
+│  Processing 4-band image                                │
+│  Elapsed: 62s | ~14s remaining                          │
+└─────────────────────────────────────────────────────────┘
+
+Stage 5: Generating report (95-100%)
+┌─────────────────────────────────────────────────────────┐
+│  Generating report...                                   │
+│  ██████████████████████████████████████░  97%          │
+│  Generating report...                                   │
+│  Elapsed: 75s | ~2s remaining                           │
+└─────────────────────────────────────────────────────────┘
+
+Completion
+┌─────────────────────────────────────────────────────────┐
+│  Classifying raster...                                  │
+│  ████████████████████████████████████████  100%        │
+│  Complete!                                              │
+│  Completed in 77s                                       │
+└─────────────────────────────────────────────────────────┘
+
+
+Widget Styling Details
+=======================
+
+Main Task Label:
+  - Font: System default, bold
+  - Size: Default size
+  - Color: Black (system default)
+
+Progress Bar:
+  - Range: 0-100
+  - Format: "%p%" (shows percentage)
+  - Alignment: Center
+  - Style: System default progress bar
+
+Sub-task Label:
+  - Font: System default
+  - Size: 10pt
+  - Color: Gray
+  - Visibility: Hidden when empty
+
+Time Label:
+  - Font: System default
+  - Size: 10pt
+  - Color: Gray
+  - Visibility: Hidden at 0% and when no estimate available
+
+Layout:
+  - Type: QVBoxLayout (vertical stacking)
+  - Margins: 10px all sides
+  - Spacing: 5px between elements
+
+
+Pattern Recognition Examples
+=============================
+
+Input Message                          →  Detected Stage  →  Sub-task Display
+────────────────────────────────────────────────────────────────────────────────
+"Loading raster data..."               →  loading         →  "Loading raster data..."
+"Reading vector file..."               →  loading         →  "Reading vector file..."
+
+"Learning..."                          →  training        →  "Learning..."
+"Training model... trial 5/10"         →  training        →  "Testing trial 5/10"
+"Fitting classifier..."                →  training        →  "Fitting classifier..."
+"Testing parameter set 3/20"           →  training        →  "Testing parameter set 3/20"
+
+"Computing SHAP values..."             →  shap            →  "Computing SHAP values..."
+"Explaining model predictions..."      →  shap            →  "Explaining model predictions..."
+
+"Predicting model..."                  →  classifying     →  "Predicting model..."
+"Classifying 4-band image..."          →  classifying     →  "Processing 4-band image"
+"Running inference..."                 →  classifying     →  "Running inference..."
+
+"Generating report..."                 →  report          →  "Generating report..."
+"Writing output files..."              →  report          →  "Writing output files..."
+
+
+Time Estimation Logic
+=====================
+
+The widget tracks elapsed time from the first progress update and uses
+linear extrapolation to estimate remaining time:
+
+  elapsed_time = current_time - start_time
+  estimated_total_time = elapsed_time / (progress / 100)
+  remaining_time = estimated_total_time - elapsed_time
+
+Example:
+  - Current progress: 40%
+  - Elapsed time: 20 seconds
+  - Estimated total: 20 / 0.40 = 50 seconds
+  - Remaining: 50 - 20 = 30 seconds
+  - Display: "Elapsed: 20s | ~30s remaining"
+
+Format rules:
+  - Seconds: "~Xs remaining" (e.g., "~45s remaining")
+  - Minutes: "~Xm remaining" (e.g., "~2m remaining")
+  - Completed: "Completed in Xs" (e.g., "Completed in 77s")

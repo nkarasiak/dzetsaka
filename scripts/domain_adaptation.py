@@ -4,11 +4,7 @@
 @author: nkarasiak
 """
 
-try:
-    # if use in Qgis 3
-    from ..logging_utils import Reporter
-except BaseException:
-    from logging_utils import Reporter
+from dzetsaka.logging import Reporter
 
 
 try:

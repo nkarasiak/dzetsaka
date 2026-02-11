@@ -8,9 +8,7 @@ from dzetsaka.services.runtime_loader import load_module_from_path
 
 
 def _load_provider_class():
-    provider_path = (
-        Path(__file__).resolve().parent / "src" / "dzetsaka" / "presentation" / "qgis" / "provider.py"
-    )
+    provider_path = Path(__file__).resolve().parent / "src" / "dzetsaka" / "qgis" / "provider.py"
     module = load_module_from_path("_dzetsaka_provider_runtime", provider_path)
     runtime_cls = getattr(module, "DzetsakaProvider", None)
     if runtime_cls is None:

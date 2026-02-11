@@ -9,7 +9,7 @@ from unittest.mock import Mock, MagicMock, patch
 @pytest.mark.unit
 def test_signal_disconnection_in_unload():
     """Test that all signals are properly disconnected during plugin unload."""
-    from dzetsaka.presentation.qgis.unload_utils import unload_plugin
+    from dzetsaka.qgis.unload_utils import unload_plugin
 
     # Create mock plugin
     plugin = Mock()
@@ -38,7 +38,7 @@ def test_signal_disconnection_in_unload():
     plugin.tr = Mock(return_value="&dzetsaka")
 
     # Mock QgsApplication
-    with patch('dzetsaka.presentation.qgis.unload_utils.QgsApplication') as mock_qgs_app:
+    with patch('dzetsaka.qgis.unload_utils.QgsApplication') as mock_qgs_app:
         mock_registry = Mock()
         mock_qgs_app.processingRegistry.return_value = mock_registry
 
@@ -63,7 +63,7 @@ def test_signal_disconnection_in_unload():
 @pytest.mark.unit
 def test_signal_disconnection_handles_exceptions():
     """Test that signal disconnection handles missing signals gracefully."""
-    from dzetsaka.presentation.qgis.unload_utils import unload_plugin
+    from dzetsaka.qgis.unload_utils import unload_plugin
 
     # Create mock plugin with signals that raise exceptions
     plugin = Mock()
@@ -88,7 +88,7 @@ def test_signal_disconnection_handles_exceptions():
     plugin.iface = Mock()
     plugin.tr = Mock(return_value="&dzetsaka")
 
-    with patch('dzetsaka.presentation.qgis.unload_utils.QgsApplication'):
+    with patch('dzetsaka.qgis.unload_utils.QgsApplication'):
         # Should not raise exception
         unload_plugin(plugin)
 
@@ -99,7 +99,7 @@ def test_signal_disconnection_handles_exceptions():
 @pytest.mark.unit
 def test_dependency_install_task_structure():
     """Test that DependencyInstallTask follows QgsTask pattern correctly."""
-    from dzetsaka.presentation.qgis.dependency_install_task import DependencyInstallTask
+    from dzetsaka.qgis.dependency_install_task import DependencyInstallTask
 
     # Create mock logger
     mock_logger = Mock()
@@ -128,7 +128,7 @@ def test_dependency_install_task_structure():
 @pytest.mark.unit
 def test_classification_task_checks_cancellation():
     """Test that ClassificationTask properly checks for cancellation."""
-    from dzetsaka.presentation.qgis.task_runner import ClassificationTask
+    from dzetsaka.qgis.task_runner import ClassificationTask
 
     # Create task with minimal parameters
     task = ClassificationTask(
@@ -155,7 +155,7 @@ def test_classification_task_checks_cancellation():
     task.isCanceled = Mock(return_value=True)
 
     # Run should return False when cancelled
-    with patch('dzetsaka.presentation.qgis.task_runner.run_classification'):
+    with patch('dzetsaka.qgis.task_runner.run_classification'):
         result = task.run()
         assert result is False, "Task should return False when cancelled"
 
@@ -163,7 +163,7 @@ def test_classification_task_checks_cancellation():
 @pytest.mark.unit
 def test_async_dependency_installer_uses_callback():
     """Test that async dependency installer uses callback pattern."""
-    from dzetsaka.presentation.qgis.dependency_installer import try_install_dependencies_async
+    from dzetsaka.qgis.dependency_installer import try_install_dependencies_async
 
     # Create mock plugin
     plugin = Mock()
@@ -179,8 +179,8 @@ def test_async_dependency_installer_uses_callback():
         callback_called["value"] = True
 
     # Mock the task creation and submission
-    with patch('dzetsaka.presentation.qgis.dependency_installer.DependencyInstallTask'), \
-         patch('dzetsaka.presentation.qgis.dependency_installer.QgsApplication'):
+    with patch('dzetsaka.qgis.dependency_installer.DependencyInstallTask'), \
+         patch('dzetsaka.qgis.dependency_installer.QgsApplication'):
 
         try_install_dependencies_async(plugin, ["test-package"], on_complete)
 

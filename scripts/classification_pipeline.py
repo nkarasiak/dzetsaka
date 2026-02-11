@@ -74,6 +74,14 @@ except ImportError:
     OPTUNA_AVAILABLE = False
     OptunaOptimizer = None
 
+
+class OptunaOptimizationError(RuntimeError):
+    """Raised when Optuna fails and a GridSearchCV fallback should not run."""
+
+
+class PolygonCoverageInsufficientError(RuntimeError):
+    """Raised when polygon-based CV cannot run because some classes lack polygons."""
+
 # Try to import SHAP explainer (optional)
 try:
     from .explainability.shap_explainer import ModelExplainer, SHAP_AVAILABLE
@@ -144,7 +152,7 @@ except ImportError:
     SKLEARN_AVAILABLE = False
 
 from .. import classifier_config
-from ..logging_utils import Reporter, show_issue_popup
+from dzetsaka.logging import Reporter, show_issue_popup
 from .wrappers.label_encoders import (
     XGBLabelWrapper,
     LGBLabelWrapper,
@@ -2192,9 +2200,16 @@ class LearnModel:
 
             # Initialize cross-validation after validation and potential n_splits adjustment
             # Use StratifiedGroupKFold for polygon-based CV (POLYGON_GROUP mode)
-            if polygon_groups is not None and isinstance(SPLIT, int):
+            polygon_groups_for_cv = polygon_groups
+            if polygon_groups_for_cv is not None and isinstance(SPLIT, int):
+                try:
+                    self._ensure_polygon_group_counts(y, polygon_groups_for_cv, n_splits)
+                except PolygonCoverageInsufficientError as exc:
+                    _report(report, str(exc))
+                    raise
+            if polygon_groups_for_cv is not None and isinstance(SPLIT, int):
                 # Polygon-based cross-validation: ensure pixels from same polygon stay together
-                n_unique_groups = len(np.unique(polygon_groups))
+                n_unique_groups = len(np.unique(polygon_groups_for_cv))
                 if n_unique_groups < n_splits:
                     n_splits = max(2, n_unique_groups)
                     _report(
@@ -2202,7 +2217,7 @@ class LearnModel:
                         f"Adjusting CV splits to {n_splits} due to limited number of polygons ({n_unique_groups})",
                     )
                 cv = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
-                groups_for_cv = polygon_groups
+                groups_for_cv = polygon_groups_for_cv
                 _report(
                     report,
                     f"Using StratifiedGroupKFold: {n_splits} folds across {n_unique_groups} polygons (spatial CV)",
@@ -2345,8 +2360,9 @@ class LearnModel:
                         _report(report, "Final model training completed with Optuna parameters")
 
                 except Exception as e:
-                    _report(report, f"Optuna optimization failed: {e!s}. Falling back to GridSearchCV.")
-                    use_optuna = False
+                    message = f"Optuna optimization failed: {e!s}"
+                    _report(report, message)
+                    raise OptunaOptimizationError(message) from e
 
             elif use_optuna and not OPTUNA_AVAILABLE:
                 _report(
@@ -2517,10 +2533,9 @@ class LearnModel:
                     fmt="%1.4d",
                 )
 
-            if classifier != "GMM":
-                for key in param_grid:
-                    message = "best " + key + " : " + str(grid.best_params_[key])
-                    _report(report, message)
+            if classifier != "GMM" and optimization_method == "grid_search" and selected_hyperparameters:
+                for key, value in selected_hyperparameters.items():
+                    _report(report, f"best {key} : {value}")
 
             """
                 self.kappa = cohen_kappa_score(yp,yt)
@@ -2536,6 +2551,20 @@ class LearnModel:
                 _report(report, f"{estim}: {res[estim]:.2f}")
 
             self.shap_was_enabled, self.shap_sample_size = _extract_shap_settings(extraParam)
+            _report(
+                report,
+                f"DEBUG: SHAP config - enabled={self.shap_was_enabled}, sample_size={self.shap_sample_size}, "
+                f"extraParam_COMPUTE_SHAP={extraParam.get('COMPUTE_SHAP') if extraParam else 'N/A'}",
+            )
+            if self.shap_was_enabled:
+                self._compute_shap_importance(
+                    model=model,
+                    raster_path=raster_path,
+                    X_train=x if "x" in locals() else X,
+                    feature_names=None,
+                    shap_output_path=extraParam.get("SHAP_OUTPUT"),
+                    sample_size=self.shap_sample_size,
+                )
 
             if extraParam.get("GENERATE_REPORT_BUNDLE", False):
                 report_dir = str(extraParam.get("REPORT_OUTPUT_DIR", "")).strip()
@@ -2611,24 +2640,6 @@ class LearnModel:
         self.model = model
         self.M = M
         self.m = m
-
-        # SHAP explainability computation (optional); configuration cached above
-        # Debug logging
-        _report(
-            report,
-            f"DEBUG: SHAP config - enabled={self.shap_was_enabled}, sample_size={self.shap_sample_size}, "
-            f"extraParam_COMPUTE_SHAP={extraParam.get('COMPUTE_SHAP') if extraParam else 'N/A'}",
-        )
-
-        if self.shap_was_enabled:
-                self._compute_shap_importance(
-                    model=model,
-                    raster_path=raster_path,
-                    X_train=x if "x" in locals() else X,
-                    feature_names=None,  # Will generate Band_1, Band_2, etc.
-                    shap_output_path=extraParam.get("SHAP_OUTPUT"),
-                    sample_size=self.shap_sample_size,
-                )
 
         if model_path is not None:
             # Debug: log what we're saving
@@ -2948,9 +2959,9 @@ class LearnModel:
     def _setup_progress_feedback(self, feedback):
         """Setup progress feedback based on feedback type."""
         if feedback == "gui":
-            return progress_bar.ProgressBar("Loading...", 100)
+            return progress_bar.ProgressBar("Learning...", 100)
         elif feedback is not None and hasattr(feedback, "setProgress"):
-            feedback.setProgressText("Loading...")
+            feedback.setProgressText("Learning...")
             feedback.setProgress(0)
             return None
         return None
@@ -3157,6 +3168,31 @@ class LearnModel:
             # Fallback to standard loading without polygon IDs
             X, Y = dataraster.get_samples_from_roi(raster_path, ROI)
             return X, Y, None
+
+    def _classes_with_too_few_polygons(self, y, polygon_groups, min_polygons):
+        """Return classes with fewer than `min_polygons` unique polygons."""
+        if polygon_groups is None:
+            return []
+        class_polygons: dict[Any, set[Any]] = {}
+        for label, polygon_id in zip(y, polygon_groups):
+            class_polygons.setdefault(label, set()).add(polygon_id)
+        return [
+            (label, len(polygons))
+            for label, polygons in class_polygons.items()
+            if len(polygons) < min_polygons
+        ]
+
+    def _ensure_polygon_group_counts(self, y, polygon_groups, min_polygons):
+        """Raise if any class has fewer than `min_polygons` polygons."""
+        insufficient = self._classes_with_too_few_polygons(y, polygon_groups, min_polygons)
+        if not insufficient:
+            return
+
+        cls_msgs = ", ".join(f"{cls} ({count})" for cls, count in insufficient)
+        raise PolygonCoverageInsufficientError(
+            "Polygon-based cross-validation requires each class to span "
+            f"at least {min_polygons} polygons. Classes with too few polygons: {cls_msgs}."
+        )
 
     def _handle_data_loading_error(self, error: Exception, class_field: str, feedback, progress) -> None:
         """Handle data loading errors with appropriate error messages."""

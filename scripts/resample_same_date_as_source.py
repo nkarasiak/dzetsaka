@@ -17,12 +17,8 @@ import os
 
 import numpy as np
 
-try:
-    import function_dataraster as dataraster
-    from logging_utils import Reporter
-except BaseException:
-    from . import function_dataraster as dataraster
-    from ..logging_utils import Reporter
+from dzetsaka.logging import Reporter
+import function_dataraster as dataraster
 
 
 def convertToDateTime(dates, strp="%Y%m%d", DOY=False):

@@ -1,6 +1,6 @@
 """Unit tests for output raster default naming."""
 
-from dzetsaka.presentation.qgis.output_naming import default_output_name
+from dzetsaka.qgis.output_naming import default_output_name
 
 
 def test_default_output_name_uses_full_boosting_names() -> None:

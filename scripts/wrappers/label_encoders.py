@@ -210,7 +210,7 @@ if SKLEARN_AVAILABLE:
             y_pred : ndarray of shape (n_samples,)
                 Predicted class labels (in original sparse encoding)
             """
-            y_encoded = self.lgb_classifier.predict(X)
+            y_encoded = self.lgb_classifier.predict(X, feature_name=None)
             return self.label_encoder.inverse_transform(y_encoded)
 
         def predict_proba(self, X):
@@ -226,7 +226,7 @@ if SKLEARN_AVAILABLE:
             proba : ndarray of shape (n_samples, n_classes)
                 Class probabilities
             """
-            return self.lgb_classifier.predict_proba(X)
+            return self.lgb_classifier.predict_proba(X, feature_name=None)
 
         @property
         def classes_(self):

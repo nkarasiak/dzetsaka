@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from dzetsaka.presentation.qgis.processing.algorithms.classify import ClassifyAlgorithm
+from dzetsaka.qgis.processing.algorithms.classify import ClassifyAlgorithm
 
 __all__ = ["ClassifyAlgorithm"]

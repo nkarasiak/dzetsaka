@@ -36,7 +36,42 @@ def test_predict_no_numpy_deprecation_warning():
         warnings.simplefilter("error", DeprecationWarning)
         preds = model.predict(x)
 
+    assert isinstance(preds, np.ndarray)
     assert preds.shape == (x.shape[0],)
+
+
+def test_predict_confidence_map_returns_probabilities():
+    x, y = _make_toy_data()
+    model = GMMR()
+    model.learn(x, y)
+
+    preds, probabilities = model.predict(x, confidenceMap=True)
+    assert preds.shape == (x.shape[0],)
+    assert probabilities.shape == (x.shape[0],)
+    assert np.all((0 <= probabilities) & (probabilities <= 1))
+
+
+def test_predict_zero_tau_stable():
+    x, y = _make_toy_data()
+    model = GMMR()
+    model.learn(x, y)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        preds = model.predict(x, tau=0.0)
+
+    assert np.isfinite(preds).all()
+
+
+def test_cross_validation_runs_without_crash():
+    x, y = _make_toy_data()
+    model = GMMR()
+    model.learn(x, y)
+
+    tau_values = np.array([1e-3, 1.0])
+    best_tau, err = model.cross_validation(x, y, tau_values, v=2)
+    assert err.shape == tau_values.shape
+    assert best_tau in tau_values
 
 
 def test_bic_no_numpy_deprecation_warning():

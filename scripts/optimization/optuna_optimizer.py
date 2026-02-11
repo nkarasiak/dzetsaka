@@ -25,6 +25,17 @@ from __future__ import annotations
 from typing import Any, Dict, Optional, Union
 
 import numpy as np
+import warnings
+
+try:
+    from sklearn.base import BaseEstimator
+except ImportError:  # pragma: no cover
+    class BaseEstimator:
+        """Minimal BaseEstimator stub that exposes ``__sklearn_tags__``."""
+
+        @classmethod
+        def __sklearn_tags__(cls):
+            return {}
 
 # Conditional imports
 try:
@@ -44,7 +55,7 @@ except ImportError:
     SKLEARN_AVAILABLE = False
 
 
-from ...logging_utils import QgisLogger
+from ...logging import create_logger
 
 
 class OptunaOptimizer:
@@ -97,7 +108,7 @@ class OptunaOptimizer:
         self.n_jobs = n_jobs
         self.verbose = verbose
         self.study: Optional[optuna.Study] = None
-        self.log = QgisLogger(tag="Dzetsaka/Optuna")
+        self.log = create_logger("Dzetsaka/Optuna")
 
         # Configure Optuna logging
         if not verbose:
@@ -153,7 +164,11 @@ class OptunaOptimizer:
 
             # Evaluate with cross-validation
             try:
-                scores = cross_val_score(clf, X, y, cv=cv_splitter, scoring=scoring, n_jobs=1, groups=groups)
+                with warnings.catch_warnings():
+                    warnings.filterwarnings(
+                        "ignore", message=".*feature names.*", category=UserWarning
+                    )
+                    scores = cross_val_score(clf, X, y, cv=cv_splitter, scoring=scoring, n_jobs=1, groups=groups)
                 mean_score = scores.mean()
 
                 # Report intermediate value for pruning
@@ -387,10 +402,18 @@ class OptunaOptimizer:
         elif classifier_code == "CB":
             try:
                 from catboost import CatBoostClassifier
-
-                return CatBoostClassifier(**params)
             except ImportError as e:
                 raise ImportError("CatBoost is not installed. Install it with: pip install catboost") from e
+
+            classifier_cls = CatBoostClassifier
+            if BaseEstimator is not None:
+                class _CatBoostSklearnCompanion(CatBoostClassifier, BaseEstimator):  # noqa: WPS306
+                    # Place BaseEstimator on the right so __sklearn_tags__ is available to sklearn.clone
+                    pass
+
+                classifier_cls = _CatBoostSklearnCompanion
+
+            return classifier_cls(**params)
 
         elif classifier_code == "ET":
             from sklearn.ensemble import ExtraTreesClassifier
@@ -441,3 +464,7 @@ class OptunaOptimizer:
             "n_pruned": len([t for t in self.study.trials if t.state == optuna.trial.TrialState.PRUNED]),
             "n_failed": len([t for t in self.study.trials if t.state == optuna.trial.TrialState.FAIL]),
         }
+
+    def get_optimization_stats(self) -> Optional[Dict[str, Any]]:
+        """Alias for backwards compatibility with dzetsaka reporting."""
+        return self.get_optimization_history()

@@ -18,10 +18,10 @@ import json
 import os
 import urllib.request
 from collections import Counter
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from qgis.PyQt.QtCore import QSettings, Qt, pyqtSignal
-from qgis.PyQt.QtGui import QIcon, QPainter, QPixmap
+from qgis.PyQt.QtGui import QColor, QIcon, QPainter, QPixmap
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -43,11 +43,14 @@ from qgis.PyQt.QtWidgets import (
     QStackedLayout,
     QStackedWidget,
     QTabWidget,
+    QTableWidget,
+    QTableWidgetItem,
     QTextEdit,
     QToolButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
+    QWhatsThis,
     QWizard,
     QWizardPage,
 )
@@ -72,6 +75,42 @@ except Exception:
         return upgraded
 
 # ---------------------------------------------------------------------------
+# Recipe recommendation system imports
+# ---------------------------------------------------------------------------
+
+try:
+    from ui.recipe_recommender import RasterAnalyzer, RecipeRecommender
+    from ui.recommendation_dialog import RecommendationDialog
+    _RECOMMENDER_AVAILABLE = True
+except Exception:
+    _RECOMMENDER_AVAILABLE = False
+
+# ---------------------------------------------------------------------------
+# Global recipe update notification system
+# ---------------------------------------------------------------------------
+
+try:
+    from qgis.PyQt.QtCore import QObject
+except ImportError:
+    from PyQt5.QtCore import QObject  # type: ignore
+
+
+class _RecipeNotifier(QObject):
+    """Global notifier for recipe updates across components."""
+    recipesUpdated = pyqtSignal()
+
+
+# Global instance
+_recipe_notifier = _RecipeNotifier()
+
+
+def notify_recipes_updated():
+    # type: () -> None
+    """Emit signal to notify all components that recipes were updated."""
+    _recipe_notifier.recipesUpdated.emit()
+
+
+# ---------------------------------------------------------------------------
 # Dependency availability helpers (importable without Qt for unit tests)
 # ---------------------------------------------------------------------------
 
@@ -79,7 +118,7 @@ except Exception:
 def _full_dependency_bundle():
     # type: () -> List[str]
     try:
-        from dzetsaka.presentation.qgis.dependency_catalog import FULL_DEPENDENCY_BUNDLE
+        from dzetsaka.qgis.dependency_catalog import FULL_DEPENDENCY_BUNDLE
 
         return list(FULL_DEPENDENCY_BUNDLE)
     except Exception:
@@ -197,7 +236,7 @@ def _show_issue_popup(owner, installer, title, error_type, error_message, contex
         return
 
     try:
-        from ..logging_utils import show_error_dialog
+        from dzetsaka.logging import show_error_dialog
 
         show_error_dialog(
             title,
@@ -396,8 +435,13 @@ def build_fast_recipe():
     recipe = _recipe_template()
     recipe.update(
         {
-            "name": "Gaussian Mixture Model (Fastest)",
-            "description": "Fastest baseline with minimal dependencies (GMM).",
+            "name": "GMM Baseline Express",
+            "description": "Probabilistic baseline that delivers the fastest response without extra dependencies.",
+            "is_template": True,
+            "category": "Beginner",
+            "expected_runtime": "< 1 min",
+            "typical_accuracy": "70-80%",
+            "best_for": "Quick baseline testing and prototyping",
         }
     )
     return recipe
@@ -430,8 +474,13 @@ def build_lightgbm_recipe():
     recipe = _recipe_template()
     recipe.update(
         {
-            "name": "LightGBM Large-Scale",
-            "description": "Fast gradient boosting for larger feature spaces and larger training sets.",
+            "name": "LightGBM Large-Scale (Optuna)",
+            "description": "Optuna-tuned LightGBM with nested CV and SMOTE-ready preconditioning.",
+            "is_template": True,
+            "category": "Intermediate",
+            "expected_runtime": "10-20 min",
+            "typical_accuracy": "85-92%",
+            "best_for": "Large-scale datasets with many features",
             "classifier": {"code": "LGB"},
             "extraParam": dict(
                 _recipe_template()["extraParam"],
@@ -453,7 +502,12 @@ def build_best_accuracy_recipe():
     recipe.update(
         {
             "name": "CatBoost SOTA (Optuna + Polygon CV)",
-            "description": "Best-practice default: CatBoost + Optuna with leakage-aware polygon validation.",
+            "description": "CatBoost + Optuna with polygon grouping to maximize accuracy and fairness.",
+            "is_template": True,
+            "category": "Advanced",
+            "expected_runtime": "20-40 min",
+            "typical_accuracy": "92-96%",
+            "best_for": "Maximum accuracy on production workflows",
             "classifier": {"code": "CB"},
             "extraParam": dict(
                 _recipe_template()["extraParam"],
@@ -480,8 +534,13 @@ def build_explainability_recipe():
     recipe = _recipe_template()
     recipe.update(
         {
-            "name": "Explainability (CatBoost + SHAP)",
-            "description": "CatBoost with SHAP-based feature importance and confidence outputs.",
+            "name": "CatBoost SHAP Explainability",
+            "description": "CatBoost + SHAP feature importance with confidence outputs for QA.",
+            "is_template": True,
+            "category": "Intermediate",
+            "expected_runtime": "5-15 min",
+            "typical_accuracy": "88-94%",
+            "best_for": "Interpretable models and feature importance analysis",
             "classifier": {"code": "CB"},
             "extraParam": dict(
                 _recipe_template()["extraParam"],
@@ -532,8 +591,13 @@ def build_imbalanced_fast_recipe():
     recipe = _recipe_template()
     recipe.update(
         {
-            "name": "Imbalanced Fast (RF + SMOTE + Weights)",
-            "description": "Fast robust baseline for class imbalance with SMOTE and balanced class weights.",
+            "name": "RF Imbalanced Guard (SMOTE + Weights)",
+            "description": "Fast Random Forest with SMOTE and class weights to tame imbalance.",
+            "is_template": True,
+            "category": "Beginner",
+            "expected_runtime": "2-5 min",
+            "typical_accuracy": "82-88%",
+            "best_for": "Imbalanced datasets with rare classes",
             "classifier": {"code": "RF"},
             "extraParam": dict(
                 _recipe_template()["extraParam"],
@@ -709,20 +773,64 @@ def format_recipe_summary(recipe):
     return "\n".join(lines)
 
 
+
+def load_builtin_recipes():
+    # type: () -> List[Dict[str, object]]
+    """Load built-in template recipes from builtin_recipes.json."""
+    builtin_path = os.path.join(os.path.dirname(__file__), "builtin_recipes.json")
+    builtin_recipes = []  # type: List[Dict[str, object]]
+
+    if os.path.exists(builtin_path):
+        try:
+            with open(builtin_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    builtin_recipes = data.get("recipes", [])
+                elif isinstance(data, list):
+                    builtin_recipes = data
+        except (IOError, json.JSONDecodeError, TypeError, ValueError):
+            pass  # Silently fail if built-in recipes can't be loaded
+
+    # Normalize and mark as templates
+    normalized = []
+    for recipe in builtin_recipes:
+        if isinstance(recipe, dict):
+            normalized_recipe = normalize_recipe(recipe)
+            # Ensure metadata exists and is_template is set
+            if "metadata" not in normalized_recipe:
+                normalized_recipe["metadata"] = {}
+            normalized_recipe["metadata"]["is_template"] = True
+            normalized.append(normalized_recipe)
+
+    return normalized
+
+
+def is_builtin_recipe(recipe):
+    # type: (Dict[str, object]) -> bool
+    """Check if a recipe is a built-in template (read-only)."""
+    metadata = recipe.get("metadata", {})
+    if isinstance(metadata, dict):
+        return bool(metadata.get("is_template", False))
+    return False
+
+
 def load_recipes(settings):
     # type: (QSettings) -> List[Dict[str, object]]
-    """Load recipes from QSettings; seed with defaults when missing."""
+    """Load recipes from QSettings merged with built-in templates."""
+    # Load user recipes from settings
     raw = settings.value("/dzetsaka/recipes", "", str)
-    recipes = []  # type: List[Dict[str, object]]
+    user_recipes = []  # type: List[Dict[str, object]]
     if raw:
         try:
             data = json.loads(raw)
             if isinstance(data, dict):
-                recipes = data.get("recipes", [])
+                user_recipes = data.get("recipes", [])
             elif isinstance(data, list):
-                recipes = data
+                user_recipes = data
         except (TypeError, ValueError):
-            recipes = []
+            user_recipes = []
+
+    # Load legacy default recipes (kept for backward compatibility)
     default_recipes = [
         build_fast_recipe(),
         build_lightgbm_recipe(),
@@ -730,28 +838,50 @@ def load_recipes(settings):
         build_explainability_recipe(),
         build_imbalanced_fast_recipe(),
     ]
+
+    # Load built-in template recipes
+    builtin_recipes = load_builtin_recipes()
+
+    # Remove old built-in names that have been replaced
     removed_builtin_names = {
         "CatBoost Strong Baseline (2026)",
         "SOTA 2026 (CatBoost + Optuna + Polygon CV)",
         "Polygon Group CV (No Pixel Leakage)",
         "Nested CV Benchmark (XGBoost)",
+        "Gaussian Mixture Model (Fastest)",
+        "LightGBM Large-Scale",
+        "CatBoost SOTA (Optuna + Polygon CV)",
+        "Explainability (CatBoost + SHAP)",
+        "Imbalanced Fast (RF + SMOTE + Weights)",
+        "Satellite Enterprise · CatBoost · Optuna, SHAP, Class weights, Nested CV · 65% Polygon Group",
+        "Explain & Report · CatBoost · SHAP · 70% Polygon Group",
     }
-    recipes = [r for r in recipes if str(r.get("name", "")) not in removed_builtin_names]
-    if not recipes:
-        recipes = default_recipes
-    else:
-        recipes = [normalize_recipe(r) for r in recipes if isinstance(r, dict)]
-        names = {r.get("name") for r in recipes}
-        for default_recipe in default_recipes:
-            if default_recipe.get("name") not in names:
-                recipes.append(default_recipe)
+    user_recipes = [r for r in user_recipes if str(r.get("name", "")) not in removed_builtin_names]
+
+    # Start with built-in templates
+    recipes = list(builtin_recipes)
+
+    # Add legacy defaults if not already present
+    builtin_names = {r.get("name") for r in recipes}
+    for default_recipe in default_recipes:
+        if default_recipe.get("name") not in builtin_names:
+            recipes.append(default_recipe)
+
+    # Add user recipes (normalized)
+    if user_recipes:
+        user_recipes = [normalize_recipe(r) for r in user_recipes if isinstance(r, dict)]
+        # User recipes come after built-ins so they appear at the bottom
+        recipes.extend(user_recipes)
+
     return recipes
 
 
 def save_recipes(settings, recipes):
     # type: (QSettings, List[Dict[str, object]]) -> None
-    """Persist recipes to QSettings."""
-    settings.setValue("/dzetsaka/recipes", json.dumps(recipes))
+    """Persist recipes to QSettings (only user recipes, not built-in templates)."""
+    # Filter out built-in templates - they should not be saved to user settings
+    user_recipes = [r for r in recipes if not is_builtin_recipe(r)]
+    settings.setValue("/dzetsaka/recipes", json.dumps(user_recipes))
 
 
 def recipe_from_config(config, name, description=""):
@@ -875,125 +1005,65 @@ class RecipeShopDialog(QDialog):
 
     _PRESETS = [
         {
-            "name": "Speed Demon",
-            "description": "Random Forest, no extras, polygon CV, split 90/10 for fastest iterations.",
-            "classifier": "RF",
+            "name": "Gaussian Mixture Model (Fastest)",
+            "description": "Built-in probabilistic baseline that runs instantly with no extra dependencies.",
+            "classifier": "GMM",
             "optuna": False,
             "shap": False,
             "smote": False,
             "class_weights": False,
             "nested_cv": False,
-            "split": 90,
-            "cv_mode": "POLYGON_GROUP",
-            "report_bundle": False,
-            "open_report": False,
-        },
-        {
-            "name": "Explain & Report",
-            "description": "RF with SHAP + report bundle and open preview to audit outputs quickly.",
-            "classifier": "RF",
-            "optuna": False,
-            "shap": True,
-            "shap_sample": 2000,
-            "smote": False,
-            "class_weights": False,
-            "nested_cv": False,
-            "split": 70,
-            "cv_mode": "POLYGON_GROUP",
+            "split": 100,
+            "cv_mode": "RANDOM_SPLIT",
             "report_bundle": True,
             "open_report": True,
         },
         {
-            "name": "Balanced Accuracy",
-            "description": "LightGBM + SMOTE + class weights with nested CV for balanced recall.",
+            "name": "LightGBM Large-Scale (Optuna)",
+            "description": "LightGBM with Optuna, SMOTE, and nested CV tuned for large datasets.",
             "classifier": "LGB",
-            "optuna": False,
+            "optuna": True,
+            "optuna_trials": 200,
             "shap": False,
             "smote": True,
             "class_weights": True,
-            "nested_cv": True,
-            "nested_inner": 3,
-            "nested_outer": 5,
-            "split": 70,
-            "cv_mode": "POLYGON_GROUP",
-            "report_bundle": True,
-            "open_report": False,
-        },
-        {
-            "name": "High-Sensitivity Ensemble",
-            "description": "CatBoost + Optuna + SHAP for high recall/precision deliverables.",
-            "classifier": "CB",
-            "optuna": True,
-            "optuna_trials": 200,
-            "shap": True,
-            "shap_sample": 2000,
-            "smote": False,
-            "class_weights": False,
-            "nested_cv": False,
-            "split": 60,
-            "cv_mode": "POLYGON_GROUP",
-            "report_bundle": True,
-            "open_report": True,
-        },
-        {
-            "name": "Minimal Validity Check",
-            "description": "Simple LR run to sanity-check labels without extra dependencies.",
-            "classifier": "LR",
-            "optuna": False,
-            "shap": False,
-            "smote": False,
-            "class_weights": False,
-            "nested_cv": False,
-            "split": 80,
-            "cv_mode": "POLYGON_GROUP",
-            "report_bundle": False,
-            "open_report": False,
-        },
-        {
-            "name": "Regulatory Baseline",
-            "description": "Logistic Regression + nested CV + report bundle for fully auditable workflows.",
-            "classifier": "LR",
-            "optuna": False,
-            "shap": False,
-            "smote": False,
-            "class_weights": False,
             "nested_cv": True,
             "nested_inner": 4,
             "nested_outer": 6,
-            "split": 80,
-            "cv_mode": "POLYGON_GROUP",
-            "report_bundle": True,
-            "open_report": False,
-        },
-        {
-            "name": "False-Positive Guard",
-            "description": "LightGBM + SMOTE + polygon CV with report bundle tuned to limit false positives.",
-            "classifier": "LGB",
-            "optuna": False,
-            "shap": False,
-            "shap_sample": 1500,
-            "smote": True,
-            "smote_k": 7,
-            "class_weights": True,
-            "nested_cv": False,
-            "split": 75,
+            "split": 65,
             "cv_mode": "POLYGON_GROUP",
             "report_bundle": True,
             "open_report": True,
         },
         {
-            "name": "Satellite Enterprise",
-            "description": "CatBoost + Optuna + nested CV + SHAP for stakeholder-ready satellite deliverables.",
+            "name": "CatBoost SOTA (Optuna + Polygon CV)",
+            "description": "CatBoost + Optuna with community best-practice polygon CV for accuracy.",
             "classifier": "CB",
             "optuna": True,
             "optuna_trials": 250,
             "shap": True,
+            "shap_sample": 2000,
             "smote": False,
             "class_weights": True,
             "nested_cv": True,
             "nested_inner": 4,
             "nested_outer": 6,
             "split": 65,
+            "cv_mode": "POLYGON_GROUP",
+            "report_bundle": True,
+            "open_report": True,
+        },
+        {
+            "name": "CatBoost SHAP Explainability",
+            "description": "CatBoost with SHAP-focused output for explainability and reporting.",
+            "classifier": "CB",
+            "optuna": False,
+            "shap": True,
+            "shap_sample": 2500,
+            "smote": False,
+            "class_weights": True,
+            "nested_cv": False,
+            "split": 70,
             "cv_mode": "POLYGON_GROUP",
             "report_bundle": True,
             "open_report": True,
@@ -1724,6 +1794,28 @@ class RecipeGalleryDialog(QDialog):
         # type: () -> QWidget
         widget = QWidget()
         layout = QVBoxLayout()
+
+        # Filter tabs
+        filter_row = QHBoxLayout()
+        self.filterAllBtn = QPushButton("All")
+        self.filterAllBtn.setCheckable(True)
+        self.filterAllBtn.setChecked(True)
+        self.filterAllBtn.clicked.connect(lambda: self._set_filter("all"))
+        filter_row.addWidget(self.filterAllBtn)
+
+        self.filterTemplatesBtn = QPushButton("Templates")
+        self.filterTemplatesBtn.setCheckable(True)
+        self.filterTemplatesBtn.clicked.connect(lambda: self._set_filter("templates"))
+        filter_row.addWidget(self.filterTemplatesBtn)
+
+        self.filterUserBtn = QPushButton("My Recipes")
+        self.filterUserBtn.setCheckable(True)
+        self.filterUserBtn.clicked.connect(lambda: self._set_filter("user"))
+        filter_row.addWidget(self.filterUserBtn)
+
+        filter_row.addStretch()
+        layout.addLayout(filter_row)
+
         self.localList = QListWidget()
         self.localList.currentItemChanged.connect(self._on_local_selected)
         layout.addWidget(self.localList)
@@ -1737,10 +1829,16 @@ class RecipeGalleryDialog(QDialog):
         self.exportBtn = QPushButton("Export JSON…")
         self.exportBtn.clicked.connect(self._export_selected_local)
         btn_row.addWidget(self.exportBtn)
+
+        self.copyTemplateBtn = QPushButton("Copy as User Recipe…")
+        self.copyTemplateBtn.clicked.connect(self._copy_template_to_user)
+        btn_row.addWidget(self.copyTemplateBtn)
+
         btn_row.addStretch()
         layout.addLayout(btn_row)
 
         widget.setLayout(layout)
+        self._current_filter = "all"
         return widget
 
     def _build_remote_tab(self):
@@ -1783,12 +1881,40 @@ class RecipeGalleryDialog(QDialog):
         widget.setLayout(layout)
         return widget
 
+    def _set_filter(self, filter_type):
+        # type: (str) -> None
+        """Set the current filter and update button states."""
+        self._current_filter = filter_type
+        self.filterAllBtn.setChecked(filter_type == "all")
+        self.filterTemplatesBtn.setChecked(filter_type == "templates")
+        self.filterUserBtn.setChecked(filter_type == "user")
+        self._populate_local()
+
     def _populate_local(self):
         # type: () -> None
         self.localList.clear()
         for recipe in self._local_recipes:
+            is_template = recipe.get("is_template", False)
+
+            # Apply filter
+            if self._current_filter == "templates" and not is_template:
+                continue
+            if self._current_filter == "user" and is_template:
+                continue
+
             name = recipe.get("name", "Unnamed Recipe")
-            self.localList.addItem(QListWidgetItem(name))
+            icon = "📦" if is_template else "⚙️"
+            display_name = f"{icon} {name}"
+
+            item = QListWidgetItem(display_name)
+
+            # Color coding: templates with light blue, user recipes with light green
+            if is_template:
+                item.setBackground(QColor(230, 240, 255))  # Light blue
+            else:
+                item.setBackground(QColor(230, 255, 230))  # Light green
+
+            self.localList.addItem(item)
 
     def _populate_remote(self):
         # type: () -> None
@@ -1801,9 +1927,22 @@ class RecipeGalleryDialog(QDialog):
         # type: (QListWidgetItem, Optional[QListWidgetItem]) -> None
         if current is None:
             self.localSummary.setPlainText("")
+            self.copyTemplateBtn.setEnabled(False)
             return
-        recipe = self._find_recipe(self._local_recipes, current.text())
+
+        # Strip emoji prefix to find recipe
+        display_text = current.text()
+        for prefix in ["📦 ", "⚙️ "]:
+            if display_text.startswith(prefix):
+                display_text = display_text[len(prefix):]
+                break
+
+        recipe = self._find_recipe(self._local_recipes, display_text)
         self.localSummary.setPlainText(format_recipe_summary(recipe) if recipe else "")
+
+        # Enable copy button only for templates
+        is_template = recipe.get("is_template", False) if recipe else False
+        self.copyTemplateBtn.setEnabled(is_template)
 
     def _on_remote_selected(self, current, _previous=None):
         # type: (QListWidgetItem, Optional[QListWidgetItem]) -> None
@@ -1825,7 +1964,15 @@ class RecipeGalleryDialog(QDialog):
         item = self.localList.currentItem()
         if item is None:
             return
-        recipe = self._find_recipe(self._local_recipes, item.text())
+
+        # Strip emoji prefix to find recipe
+        display_text = item.text()
+        for prefix in ["📦 ", "⚙️ "]:
+            if display_text.startswith(prefix):
+                display_text = display_text[len(prefix):]
+                break
+
+        recipe = self._find_recipe(self._local_recipes, display_text)
         if recipe:
             self.recipeApplied.emit(recipe)
             self.close()
@@ -1839,12 +1986,78 @@ class RecipeGalleryDialog(QDialog):
             self.recipeApplied.emit(recipe)
             self.close()
 
+    def _copy_template_to_user(self):
+        # type: () -> None
+        """Create a user recipe copy from a selected template."""
+        item = self.localList.currentItem()
+        if item is None:
+            return
+
+        # Strip emoji prefix to find recipe
+        display_text = item.text()
+        for prefix in ["📦 ", "⚙️ "]:
+            if display_text.startswith(prefix):
+                display_text = display_text[len(prefix):]
+                break
+
+        recipe = self._find_recipe(self._local_recipes, display_text)
+        if not recipe or not recipe.get("is_template", False):
+            return
+
+        # Ask for new name
+        original_name = recipe.get("name", "Unnamed Recipe")
+        new_name, ok = QInputDialog.getText(
+            self,
+            "Copy Template",
+            f"Create a user recipe based on '{original_name}'.\n\nEnter a new name:",
+            text=f"{original_name} (Custom)",
+        )
+
+        if not ok or not new_name.strip():
+            return
+
+        new_name = new_name.strip()
+
+        # Check if name already exists
+        if any(r.get("name") == new_name for r in self._local_recipes):
+            QMessageBox.warning(
+                self, "Name Conflict", f"A recipe named '{new_name}' already exists. Please choose a different name."
+            )
+            return
+
+        # Create copy without template flag
+        user_recipe = dict(recipe)
+        user_recipe["name"] = new_name
+        user_recipe["is_template"] = False
+        user_recipe.pop("category", None)
+        user_recipe.pop("expected_runtime", None)
+        user_recipe.pop("typical_accuracy", None)
+        user_recipe.pop("best_for", None)
+        user_recipe["description"] = f"Based on template: {original_name}"
+
+        # Add to local recipes
+        self._local_recipes.append(user_recipe)
+        self.recipesUpdated.emit(self._local_recipes)
+        self._populate_local()
+
+        QMessageBox.information(
+            self, "Template Copied", f"User recipe '{new_name}' created successfully from template '{original_name}'."
+        )
+
     def _export_selected_local(self):
         # type: () -> None
         item = self.localList.currentItem()
         if item is None:
             return
-        recipe = self._find_recipe(self._local_recipes, item.text())
+
+        # Strip emoji prefix to find recipe
+        display_text = item.text()
+        for prefix in ["📦 ", "⚙️ "]:
+            if display_text.startswith(prefix):
+                display_text = display_text[len(prefix):]
+                break
+
+        recipe = self._find_recipe(self._local_recipes, display_text)
         if recipe is None:
             return
         path, _f = QFileDialog.getSaveFileName(self, "Export recipe", "", "JSON (*.json)")
@@ -2102,11 +2315,55 @@ class DataInputPage(QWizardPage):
 
         layout = QVBoxLayout()
 
+        # Add What's This help button to title bar
+        help_btn_layout = QHBoxLayout()
+        help_btn_layout.addStretch()
+        help_btn = QPushButton("?")
+        help_btn.setToolTip("Click for detailed help on this page")
+        help_btn.setMaximumWidth(30)
+        help_btn.clicked.connect(lambda: QWhatsThis.enterWhatsThisMode())
+        help_btn_layout.addWidget(help_btn)
+        layout.addLayout(help_btn_layout)
+
         # --- Recipe group ---
         recipe_group = QGroupBox("Recipe")
         recipe_layout = QGridLayout()
         recipe_layout.addWidget(QLabel("Recipe:"), 0, 0)
         self.recipeCombo = QComboBox()
+        self.recipeCombo.setToolTip(
+            "<b>Classification Recipe</b><br>"
+            "Pre-configured classifier preset including algorithm, parameters, and advanced features.<br><br>"
+            "<i>Use:</i> Load a recipe to quickly configure optimal settings for common use cases."
+        )
+        self.recipeCombo.setWhatsThis(
+            "<h3>Classification Recipe</h3>"
+            "<p>A <b>recipe</b> is a pre-configured classification workflow that bundles together:</p>"
+            "<ul>"
+            "<li>Algorithm selection (Random Forest, XGBoost, etc.)</li>"
+            "<li>Algorithm parameters (tree depth, learning rate, etc.)</li>"
+            "<li>Advanced features (Optuna, SHAP, SMOTE)</li>"
+            "<li>Validation settings (CV mode, split percentage)</li>"
+            "</ul>"
+            "<h4>When to use:</h4>"
+            "<ul>"
+            "<li>You want to quickly apply proven settings for common tasks</li>"
+            "<li>You're new to machine learning and want expert-recommended configurations</li>"
+            "<li>You want to reproduce results from a previous classification</li>"
+            "<li>You've received a recipe from a colleague or online</li>"
+            "</ul>"
+            "<h4>When to skip:</h4>"
+            "<ul>"
+            "<li>You're experimenting with custom parameters</li>"
+            "<li>Your use case doesn't match available recipes</li>"
+            "<li>You prefer to configure everything manually</li>"
+            "</ul>"
+            "<h4>Tips:</h4>"
+            "<ul>"
+            "<li>The <b>Gallery</b> button shows curated recipes with descriptions</li>"
+            "<li>Use <b>Save Current</b> to create custom recipes from your settings</li>"
+            "<li>Recipes can be shared as JSON files for reproducibility</li>"
+            "</ul>"
+        )
         recipe_layout.addWidget(self.recipeCombo, 0, 1, 1, 3)
 
         self.recipeApplyBtn = QPushButton("Apply")
@@ -2194,6 +2451,11 @@ class DataInputPage(QWizardPage):
 
         input_layout.addWidget(QLabel("Label field:"))
         self.classFieldCombo = QComboBox()
+        self.classFieldCombo.setToolTip(
+            "<b>Class Label Field</b><br>"
+            "Vector attribute field containing class codes for each training polygon/point.<br><br>"
+            "<i>Required:</i> Numeric field with integer values (1, 2, 3, etc.)."
+        )
         input_layout.addWidget(self.classFieldCombo)
         self.fieldStatusLabel = QLabel()
         input_layout.addWidget(self.fieldStatusLabel)
@@ -2202,12 +2464,45 @@ class DataInputPage(QWizardPage):
         input_layout.addWidget(self.geometryExplorerBtn)
 
         self.loadModelCheck = QCheckBox("Use existing model")
+        self.loadModelCheck.setToolTip(
+            "<b>Use Existing Model</b><br>"
+            "Load a previously trained classifier instead of training a new one.<br><br>"
+            "<i>When to use:</i> Classify multiple rasters with same model, reuse trusted model.<br>"
+            "<i>Note:</i> Model must match the number of raster bands."
+        )
+        self.loadModelCheck.setWhatsThis(
+            "<h3>Use Existing Model</h3>"
+            "<p>Load a previously trained classifier (.pkl file) to classify a raster without training a new model.</p>"
+            "<h4>When to use:</h4>"
+            "<ul>"
+            "<li><b>Classify multiple rasters:</b> Train once, apply to multiple images with same band structure</li>"
+            "<li><b>Save time:</b> Skip training when you already have a good model</li>"
+            "<li><b>Reproducibility:</b> Reuse exact same model for consistent results</li>"
+            "<li><b>Share models:</b> Use models trained by colleagues or from literature</li>"
+            "</ul>"
+            "<h4>When to skip:</h4>"
+            "<ul>"
+            "<li>Your training data has changed (new classes, different spectral characteristics)</li>"
+            "<li>The raster has a different number of bands than the training data</li>"
+            "<li>You want to experiment with different algorithms or parameters</li>"
+            "</ul>"
+            "<h4>Important notes:</h4>"
+            "<ul>"
+            "<li><b>Band matching:</b> The model expects the same number and order of bands as training data</li>"
+            "<li><b>Spectral consistency:</b> Best results when raster has similar spectral characteristics (sensor, season, preprocessing)</li>"
+            "<li><b>Model format:</b> dzetsaka saves models as pickled scikit-learn/XGBoost/LightGBM/CatBoost files (.pkl)</li>"
+            "</ul>"
+        )
         input_layout.addWidget(self.loadModelCheck)
 
         model_row = QHBoxLayout()
         self.modelLineEdit = QLineEdit()
         self.modelLineEdit.setPlaceholderText("Model file path…")
         self.modelLineEdit.setEnabled(False)
+        self.modelLineEdit.setToolTip(
+            "<b>Model File Path</b><br>"
+            "Path to saved classifier model (.pkl file) from previous dzetsaka training."
+        )
         model_row.addWidget(self.modelLineEdit)
         self.modelBrowse = QPushButton("Browse…")
         self.modelBrowse.setEnabled(False)
@@ -2228,6 +2523,33 @@ class DataInputPage(QWizardPage):
         self.classifierCombo = QComboBox()
         for _code, name, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
             self.classifierCombo.addItem(name)
+        self.classifierCombo.setWhatsThis(
+            "<h3>Classifier Algorithm</h3>"
+            "<p>Choose the machine learning algorithm to train your classification model. "
+            "dzetsaka supports 12 algorithms with different strengths and trade-offs.</p>"
+            "<h4>Popular choices:</h4>"
+            "<ul>"
+            "<li><b>Random Forest:</b> Balanced accuracy, fast training, good default choice for most cases</li>"
+            "<li><b>XGBoost/LightGBM/CatBoost:</b> State-of-the-art accuracy, excellent with Optuna optimization</li>"
+            "<li><b>SVM:</b> High accuracy for smaller datasets, slower on large datasets</li>"
+            "<li><b>GMM:</b> Fast, probabilistic, good for quick exploration</li>"
+            "</ul>"
+            "<h4>When to use each:</h4>"
+            "<ul>"
+            "<li><b>Experimenting:</b> Start with Random Forest - fast, robust, good baseline</li>"
+            "<li><b>Best accuracy:</b> Try XGBoost/LightGBM with Optuna optimization</li>"
+            "<li><b>Small datasets (<1000 samples):</b> SVM or Random Forest</li>"
+            "<li><b>Large datasets (>100k samples):</b> LightGBM, Random Forest, or Neural Network (MLP)</li>"
+            "<li><b>Fast preview:</b> GMM or KNN</li>"
+            "</ul>"
+            "<h4>Dependencies:</h4>"
+            "<ul>"
+            "<li><b>Always available:</b> GMM, KNN, SVM, Random Forest (via scikit-learn)</li>"
+            "<li><b>Require installation:</b> XGBoost, LightGBM, CatBoost (dzetsaka can auto-install)</li>"
+            "</ul>"
+            "<p><i>Tip:</i> Use the <b>Compare</b> button to see algorithm characteristics side-by-side, "
+            "or click <b>Smart Defaults</b> to enable recommended advanced features.</p>"
+        )
         algo_layout.addWidget(self.classifierCombo)
 
         self.depStatusLabel = QLabel()
@@ -2289,6 +2611,8 @@ class DataInputPage(QWizardPage):
         path, _f = QFileDialog.getOpenFileName(self, "Select raster", "", "GeoTIFF (*.tif *.tiff)")
         if path:
             self.rasterLineEdit.setText(path)
+            # Show recipe recommendations if available
+            self._show_recipe_recommendations_if_wizard(path)
 
     def _browse_vector(self):
         # type: () -> None
@@ -2620,6 +2944,76 @@ class DataInputPage(QWizardPage):
         """Return True if the user clicked Smart Defaults on this page."""
         return self._smart_defaults_applied
 
+    def _show_recipe_recommendations_if_wizard(self, raster_path):
+        # type: (str) -> None
+        """Show recipe recommendations for wizard context.
+
+        Parameters
+        ----------
+        raster_path : str
+            Path to the raster file to analyze
+
+        """
+        # Check if recommender is available and enabled
+        if not _RECOMMENDER_AVAILABLE:
+            return
+
+        settings = QSettings()
+        if not settings.value("/dzetsaka/show_recommendations", True, bool):
+            return
+
+        # Get recipes from the wizard
+        wizard = self.wizard()
+        if not wizard or not hasattr(wizard, "_recipes"):
+            return
+
+        recipes = getattr(wizard, "_recipes", [])
+        if not recipes:
+            return
+
+        try:
+            # Analyze the raster
+            analyzer = RasterAnalyzer()
+            raster_info = analyzer.analyze_raster(raster_path)
+
+            # Check for errors
+            if raster_info.get("error"):
+                return
+
+            # Get recommendations
+            recommender = RecipeRecommender()
+            recommendations = recommender.recommend(raster_info, recipes)
+
+            # Only show dialog if we have good recommendations
+            if not recommendations or recommendations[0][1] < 40:
+                return
+
+            # Show recommendation dialog
+            dialog = RecommendationDialog(recommendations, raster_info, self)
+            dialog.recipeSelected.connect(lambda recipe: self._apply_recipe_to_wizard(recipe))
+            dialog.exec_()
+
+        except Exception:
+            # Silently fail - recommendations are a nice-to-have feature
+            pass
+
+    def _apply_recipe_to_wizard(self, recipe):
+        # type: (Dict[str, object]) -> None
+        """Apply a recommended recipe to the wizard.
+
+        Parameters
+        ----------
+        recipe : Dict[str, object]
+            Recipe dictionary to apply
+
+        """
+        try:
+            wizard = self.wizard()
+            if wizard and hasattr(wizard, "apply_recipe"):
+                wizard.apply_recipe(recipe)
+        except Exception:
+            pass
+
 
 # ---------------------------------------------------------------------------
 # Page 2 — Advanced Options
@@ -2637,6 +3031,19 @@ class AdvancedOptionsPage(QWizardPage):
 
         self._deps = deps if deps is not None else check_dependency_availability()
 
+        # Create main layout container
+        main_layout = QVBoxLayout()
+
+        # Add What's This help button
+        help_btn_layout = QHBoxLayout()
+        help_btn_layout.addStretch()
+        help_btn = QPushButton("?")
+        help_btn.setToolTip("Click for detailed help on this page")
+        help_btn.setMaximumWidth(30)
+        help_btn.clicked.connect(lambda: QWhatsThis.enterWhatsThisMode())
+        help_btn_layout.addWidget(help_btn)
+        main_layout.addLayout(help_btn_layout)
+
         layout = QGridLayout()
         layout.setHorizontalSpacing(12)
         layout.setVerticalSpacing(8)
@@ -2650,6 +3057,49 @@ class AdvancedOptionsPage(QWizardPage):
 
         self.optunaCheck = QCheckBox("Use Optuna hyperparameter optimization")
         self.optunaCheck.setEnabled(self._deps.get("optuna", False))
+        self.optunaCheck.setToolTip(
+            "<b>Optuna Hyperparameter Optimization</b><br>"
+            "Automatically searches for optimal algorithm parameters using Bayesian optimization. "
+            "Significantly improves accuracy but increases training time.<br><br>"
+            "<i>When to use:</i> Want best accuracy, have time for longer training (5-30 min), "
+            "unsure about parameter values.<br>"
+            "<i>When to skip:</i> Quick exploration, proven parameters from past runs."
+        )
+        self.optunaCheck.setWhatsThis(
+            "<h3>Optuna Hyperparameter Optimization</h3>"
+            "<p>Optuna automatically searches for the best algorithm parameters (hyperparameters) using "
+            "<b>Bayesian optimization</b> - a smart search strategy that learns from previous trials.</p>"
+            "<h4>What it does:</h4>"
+            "<ul>"
+            "<li>Tests multiple parameter combinations (trials) during training</li>"
+            "<li>Learns which parameter ranges work best for your data</li>"
+            "<li>Converges toward optimal settings without exhaustive grid search</li>"
+            "<li>Typically improves accuracy by 2-10% compared to default parameters</li>"
+            "</ul>"
+            "<h4>When to use:</h4>"
+            "<ul>"
+            "<li><b>Best accuracy is critical:</b> Research, production models, competitive benchmarks</li>"
+            "<li><b>Unsure about parameters:</b> Don't know optimal tree depth, learning rate, etc.</li>"
+            "<li><b>Have time for training:</b> 5-30 min extra depending on trials (100 trials ≈ 10-15 min)</li>"
+            "<li><b>Complex datasets:</b> Many classes, high-dimensional features, imbalanced data</li>"
+            "</ul>"
+            "<h4>When to skip:</h4>"
+            "<ul>"
+            "<li><b>Quick exploration:</b> Testing different algorithms, rapid prototyping</li>"
+            "<li><b>Known good parameters:</b> Reusing parameters from previous successful runs</li>"
+            "<li><b>Time constraints:</b> Need results in <5 minutes</li>"
+            "<li><b>Very small datasets:</b> <500 samples may overfit during search</li>"
+            "</ul>"
+            "<h4>Trade-offs:</h4>"
+            "<ul>"
+            "<li><b>Pro:</b> Often significant accuracy gains (2-10%)</li>"
+            "<li><b>Pro:</b> Removes guesswork from parameter tuning</li>"
+            "<li><b>Con:</b> Training time multiplied by number of trials (10-1000x)</li>"
+            "<li><b>Con:</b> Risk of overfitting if validation split is too small</li>"
+            "</ul>"
+            "<p><i>Recommended:</i> Use 100 trials for balanced speed/accuracy. "
+            "Increase to 300+ for critical applications. Use <50 for quick experiments.</p>"
+        )
         opt_layout.addWidget(self.optunaCheck, 0, 0, 1, 2)
 
         self.optunaInfoLabel = QLabel(
@@ -2665,7 +3115,13 @@ class AdvancedOptionsPage(QWizardPage):
         self.optunaTrials.setRange(10, 1000)
         self.optunaTrials.setValue(100)
         self.optunaTrials.setEnabled(False)
-        self.optunaTrials.setToolTip("Number of Optuna search trials (10-1000).")
+        self.optunaTrials.setToolTip(
+            "<b>Optuna Trials</b><br>"
+            "Number of hyperparameter combinations to test. "
+            "More trials = better accuracy but slower training.<br><br>"
+            "<i>Typical values:</i> Quick: 10-50, Balanced: 100-200, Thorough: 300-1000<br>"
+            "<i>Estimated time:</i> 100 trials ≈ 5-15 min, 300 trials ≈ 10-30 min"
+        )
         opt_layout.addWidget(trials_label, 2, 0)
         opt_layout.addWidget(self.optunaTrials, 2, 1)
 
@@ -2682,6 +3138,56 @@ class AdvancedOptionsPage(QWizardPage):
 
         self.smoteCheck = QCheckBox("SMOTE oversampling")
         self.smoteCheck.setEnabled(self._deps.get("imblearn", False))
+        self.smoteCheck.setToolTip(
+            "<b>SMOTE Oversampling</b><br>"
+            "Synthetic Minority Over-sampling Technique. Creates synthetic samples for underrepresented classes "
+            "to balance training data.<br><br>"
+            "<i>When to use:</i> Severe class imbalance (ratio >10:1), minority class has <100 samples.<br>"
+            "<i>When to skip:</i> Balanced classes, very small datasets (<50 samples per class)."
+        )
+        self.smoteCheck.setWhatsThis(
+            "<h3>SMOTE Class Balancing</h3>"
+            "<p><b>SMOTE</b> (Synthetic Minority Over-sampling Technique) creates synthetic training samples for "
+            "underrepresented classes by interpolating between existing minority samples and their nearest neighbors.</p>"
+            "<h4>What it does:</h4>"
+            "<ul>"
+            "<li>Identifies minority classes (those with fewer samples)</li>"
+            "<li>Generates synthetic samples by interpolating between k-nearest neighbors</li>"
+            "<li>Balances class distribution before training the classifier</li>"
+            "<li>Improves model's ability to detect rare classes</li>"
+            "</ul>"
+            "<h4>When to use:</h4>"
+            "<ul>"
+            "<li><b>Severe class imbalance:</b> Ratio >10:1 (e.g., 1000 forest samples vs. 50 wetland samples)</li>"
+            "<li><b>Rare class detection critical:</b> Missing rare classes is unacceptable (e.g., endangered habitats)</li>"
+            "<li><b>Sufficient minority samples:</b> At least 50-100 samples in smallest class (needed for k-neighbors)</li>"
+            "<li><b>Continuous features:</b> Works best with spectral data, not categorical attributes</li>"
+            "</ul>"
+            "<h4>When to skip:</h4>"
+            "<ul>"
+            "<li><b>Balanced classes:</b> All classes have similar sample counts (ratio <3:1)</li>"
+            "<li><b>Very small datasets:</b> <50 samples per class (risk of overfitting synthetic samples)</li>"
+            "<li><b>High-dimensional data:</b> Many bands may create unrealistic synthetic samples</li>"
+            "<li><b>Use class weights instead:</b> Simpler alternative for moderate imbalance</li>"
+            "</ul>"
+            "<h4>Trade-offs:</h4>"
+            "<ul>"
+            "<li><b>Pro:</b> Improves recall for minority classes (fewer missed detections)</li>"
+            "<li><b>Pro:</b> Better than simple duplication or downsampling</li>"
+            "<li><b>Con:</b> Can introduce synthetic noise or unrealistic samples</li>"
+            "<li><b>Con:</b> May overfit if k_neighbors is too small or dataset is tiny</li>"
+            "<li><b>Con:</b> Training time increases (more samples to process)</li>"
+            "</ul>"
+            "<h4>k_neighbors parameter:</h4>"
+            "<ul>"
+            "<li><b>Default (5):</b> Good for most cases</li>"
+            "<li><b>Small (2-3):</b> For very small minority classes (<100 samples)</li>"
+            "<li><b>Large (7-10):</b> For large datasets with smooth class boundaries</li>"
+            "<li><b>Constraint:</b> Must be less than smallest class sample count</li>"
+            "</ul>"
+            "<p><i>Alternative:</i> For moderate imbalance (2:1 to 10:1), try <b>Class Weights</b> first - "
+            "it's simpler and faster, with no risk of synthetic sample artifacts.</p>"
+        )
         imb_layout.addWidget(self.smoteCheck, 0, 0, 1, 2)
 
         k_label = QLabel("k_neighbors:")
@@ -2689,18 +3195,37 @@ class AdvancedOptionsPage(QWizardPage):
         self.smoteK.setRange(1, 20)
         self.smoteK.setValue(5)
         self.smoteK.setEnabled(False)
+        self.smoteK.setToolTip(
+            "<b>SMOTE k_neighbors</b><br>"
+            "Number of nearest neighbors used to generate synthetic samples.<br><br>"
+            "<i>Typical values:</i> Default: 5, Small datasets (<100 samples): 3, Large datasets: 5-10<br>"
+            "<i>Note:</i> Must be less than the number of samples in the smallest class."
+        )
         imb_layout.addWidget(k_label, 1, 0)
         imb_layout.addWidget(self.smoteK, 1, 1)
         self.smoteCheck.toggled.connect(self.smoteK.setEnabled)
 
         self.classWeightCheck = QCheckBox("Use class weights")
         self.classWeightCheck.setEnabled(self._deps.get("sklearn", False))
+        self.classWeightCheck.setToolTip(
+            "<b>Class Weights</b><br>"
+            "Assigns higher penalty to misclassifying minority classes. "
+            "Lighter alternative to SMOTE, works directly during training.<br><br>"
+            "<i>When to use:</i> Moderate class imbalance (2:1 to 10:1).<br>"
+            "<i>When to skip:</i> Balanced classes, already using SMOTE."
+        )
         imb_layout.addWidget(self.classWeightCheck, 2, 0, 1, 2)
 
         strat_label = QLabel("Strategy:")
         self.weightStrategyCombo = QComboBox()
         self.weightStrategyCombo.addItems(["balanced", "uniform"])
         self.weightStrategyCombo.setEnabled(False)
+        self.weightStrategyCombo.setToolTip(
+            "<b>Class Weight Strategy</b><br>"
+            "<i>Balanced:</i> Automatically adjusts weights inversely proportional to class frequencies.<br>"
+            "<i>Uniform:</i> All classes weighted equally (no balancing).<br><br>"
+            "<i>Recommended:</i> Use 'balanced' for most imbalanced datasets."
+        )
         imb_layout.addWidget(strat_label, 3, 0)
         imb_layout.addWidget(self.weightStrategyCombo, 3, 1)
         self.classWeightCheck.toggled.connect(self.weightStrategyCombo.setEnabled)
@@ -2717,12 +3242,59 @@ class AdvancedOptionsPage(QWizardPage):
 
         self.shapCheck = QCheckBox("Compute SHAP feature importance")
         self.shapCheck.setEnabled(self._deps.get("shap", False))
+        self.shapCheck.setToolTip(
+            "<b>SHAP Feature Importance</b><br>"
+            "Computes SHapley Additive exPlanations to show which raster bands contribute most to predictions. "
+            "Generates feature importance raster and summary plots.<br><br>"
+            "<i>Use case:</i> Understanding model decisions, identifying important spectral bands.<br>"
+            "<i>Note:</i> Adds 10-30% to processing time depending on sample size."
+        )
+        self.shapCheck.setWhatsThis(
+            "<h3>SHAP Feature Importance (Explainability)</h3>"
+            "<p><b>SHAP</b> (SHapley Additive exPlanations) explains <i>why</i> the model makes predictions "
+            "by computing how much each raster band contributes to each classification decision.</p>"
+            "<h4>What it generates:</h4>"
+            "<ul>"
+            "<li><b>Feature importance raster:</b> Multi-band GeoTIFF showing spatial contribution of each input band</li>"
+            "<li><b>Summary plots:</b> Bar charts and beeswarm plots showing global feature importance</li>"
+            "<li><b>Per-class importance:</b> Which bands matter most for each land cover class</li>"
+            "</ul>"
+            "<h4>When to use:</h4>"
+            "<ul>"
+            "<li><b>Model interpretation:</b> Understanding which spectral bands drive classifications</li>"
+            "<li><b>Scientific research:</b> Identifying key vegetation indices, atmospheric windows, etc.</li>"
+            "<li><b>Debugging:</b> Finding if model relies on artifacts or unexpected bands</li>"
+            "<li><b>Feature selection:</b> Discovering which bands are redundant or uninformative</li>"
+            "<li><b>Stakeholder communication:</b> Explaining model decisions to non-technical users</li>"
+            "</ul>"
+            "<h4>When to skip:</h4>"
+            "<ul>"
+            "<li><b>Pure production:</b> Only need classification output, not explanations</li>"
+            "<li><b>Time-critical workflows:</b> Adds 10-30% to processing time</li>"
+            "<li><b>Well-understood models:</b> Already know which bands are important from past runs</li>"
+            "<li><b>Simple datasets:</b> Obvious band importance (e.g., only 3-4 bands)</li>"
+            "</ul>"
+            "<h4>Technical details:</h4>"
+            "<ul>"
+            "<li><b>Method:</b> Uses game-theory Shapley values from cooperative game theory</li>"
+            "<li><b>Sample size:</b> 1000 samples = balanced speed/accuracy, 5000+ = thorough but slower</li>"
+            "<li><b>Overhead:</b> ~2-5 min for 1000 samples, ~10-20 min for 5000 samples</li>"
+            "<li><b>Compatible with:</b> All tree-based models (RF, XGB, LGB, CB, ET, GBC)</li>"
+            "</ul>"
+            "<p><i>Use case example:</i> In vegetation mapping, SHAP might reveal that NIR and Red Edge bands "
+            "are most important for forest/grassland distinction, while SWIR bands matter for urban areas.</p>"
+        )
         exp_layout.addWidget(self.shapCheck, 0, 0, 1, 3)
 
         shap_label = QLabel("Output:")
         self.shapOutput = QLineEdit()
         self.shapOutput.setPlaceholderText("Path to SHAP raster…")
         self.shapOutput.setEnabled(False)
+        self.shapOutput.setToolTip(
+            "<b>SHAP Output Raster</b><br>"
+            "Path where SHAP feature importance raster will be saved. "
+            "Each band shows the importance of corresponding input band for the classification."
+        )
         self.shapBrowse = QPushButton("Browse…")
         self.shapBrowse.setEnabled(False)
         self.shapBrowse.clicked.connect(self._browse_shap_output)
@@ -2735,6 +3307,13 @@ class AdvancedOptionsPage(QWizardPage):
         self.shapSampleSize.setRange(100, 50000)
         self.shapSampleSize.setValue(1000)
         self.shapSampleSize.setEnabled(False)
+        self.shapSampleSize.setToolTip(
+            "<b>SHAP Sample Size</b><br>"
+            "Number of samples used to compute feature importance. "
+            "Higher = more accurate explanations but slower computation.<br><br>"
+            "<i>Typical values:</i> Fast: 100-500, Balanced: 1000-2000, Thorough: 5000+<br>"
+            "<i>Estimated time:</i> 1000 samples ≈ 2-5 min, 5000 samples ≈ 10-20 min"
+        )
         exp_layout.addWidget(shap_sample_label, 2, 0)
         exp_layout.addWidget(self.shapSampleSize, 2, 1)
 
@@ -2756,6 +3335,13 @@ class AdvancedOptionsPage(QWizardPage):
         val_layout.setVerticalSpacing(6)
 
         self.nestedCVCheck = QCheckBox("Nested cross-validation")
+        self.nestedCVCheck.setToolTip(
+            "<b>Nested Cross-Validation</b><br>"
+            "Uses two levels of cross-validation: inner loop for hyperparameter tuning, "
+            "outer loop for unbiased performance estimation.<br><br>"
+            "<i>When to use:</i> Small datasets (<5000 samples), need unbiased accuracy estimate.<br>"
+            "<i>Note:</i> Significantly increases training time (multiply by inner_folds × outer_folds)."
+        )
         val_layout.addWidget(self.nestedCVCheck, 0, 0, 1, 2)
 
         inner_label = QLabel("Inner folds:")
@@ -2763,6 +3349,12 @@ class AdvancedOptionsPage(QWizardPage):
         self.innerFolds.setRange(2, 10)
         self.innerFolds.setValue(3)
         self.innerFolds.setEnabled(False)
+        self.innerFolds.setToolTip(
+            "<b>Inner Folds</b><br>"
+            "Number of cross-validation folds for hyperparameter tuning in nested CV.<br><br>"
+            "<i>Typical values:</i> 3-5 folds<br>"
+            "<i>Note:</i> Higher values = more robust tuning but longer training time."
+        )
         val_layout.addWidget(inner_label, 1, 0)
         val_layout.addWidget(self.innerFolds, 1, 1)
 
@@ -2771,6 +3363,12 @@ class AdvancedOptionsPage(QWizardPage):
         self.outerFolds.setRange(2, 10)
         self.outerFolds.setValue(5)
         self.outerFolds.setEnabled(False)
+        self.outerFolds.setToolTip(
+            "<b>Outer Folds</b><br>"
+            "Number of cross-validation folds for performance estimation in nested CV.<br><br>"
+            "<i>Typical values:</i> 5-10 folds<br>"
+            "<i>Note:</i> Higher values = more reliable accuracy estimate but longer training time."
+        )
         val_layout.addWidget(outer_label, 2, 0)
         val_layout.addWidget(self.outerFolds, 2, 1)
 
@@ -2803,7 +3401,8 @@ class AdvancedOptionsPage(QWizardPage):
         val_group.setLayout(val_layout)
         layout.addWidget(val_group, 1, 1)
 
-        self.setLayout(layout)
+        main_layout.addLayout(layout)
+        self.setLayout(main_layout)
 
     # --- internal helpers --------------------------------------------------
 
@@ -2885,6 +3484,162 @@ class AdvancedOptionsPage(QWizardPage):
 # ---------------------------------------------------------------------------
 
 
+class SplitPreviewDialog(QDialog):
+    """Dialog showing train/test split distribution preview."""
+
+    def __init__(self, vector_path, class_field, split_percent, cv_mode, parent=None):
+        # type: (str, str, int, str, QWidget) -> None
+        """Initialize SplitPreviewDialog.
+
+        Args:
+            vector_path: Path to training vector file
+            class_field: Name of the class field
+            split_percent: Percentage for training (in POLYGON_GROUP) or test (in RANDOM_SPLIT)
+            cv_mode: CV mode - "RANDOM_SPLIT" or "POLYGON_GROUP"
+            parent: Parent widget
+        """
+        super(SplitPreviewDialog, self).__init__(parent)
+        self.setWindowTitle("Split Preview")
+        self.setMinimumWidth(500)
+        self.setMinimumHeight(400)
+
+        layout = QVBoxLayout()
+
+        # Header
+        header_label = QLabel(f"<h3>Train/Test Split Preview</h3>")
+        layout.addWidget(header_label)
+
+        info_label = QLabel(
+            f"<b>Mode:</b> {cv_mode}<br>"
+            f"<b>Split:</b> {split_percent}% train, {100 - split_percent}% test<br>"
+            f"<b>Vector:</b> {vector_path}"
+        )
+        info_label.setWordWrap(True)
+        layout.addWidget(info_label)
+
+        # Compute split preview
+        try:
+            train_counts, test_counts, warnings = self._compute_split_preview(
+                vector_path, class_field, split_percent, cv_mode
+            )
+        except Exception as e:
+            error_label = QLabel(f"<font color='red'>Error computing split: {str(e)}</font>")
+            error_label.setWordWrap(True)
+            layout.addWidget(error_label)
+            close_btn = QPushButton("Close")
+            close_btn.clicked.connect(self.accept)
+            layout.addWidget(close_btn)
+            self.setLayout(layout)
+            return
+
+        # Results table
+        table = QTableWidget()
+        table.setColumnCount(3)
+        table.setHorizontalHeaderLabels(["Class", "Train Count", "Test Count"])
+        table.horizontalHeader().setStretchLastSection(True)
+
+        classes = sorted(set(train_counts.keys()) | set(test_counts.keys()))
+        table.setRowCount(len(classes))
+
+        for i, cls in enumerate(classes):
+            train_count = train_counts.get(cls, 0)
+            test_count = test_counts.get(cls, 0)
+
+            table.setItem(i, 0, QTableWidgetItem(str(cls)))
+            table.setItem(i, 1, QTableWidgetItem(str(train_count)))
+            table.setItem(i, 2, QTableWidgetItem(str(test_count)))
+
+        layout.addWidget(table)
+
+        # Warnings section
+        if warnings:
+            warnings_label = QLabel("<b>Warnings:</b>")
+            warnings_label.setStyleSheet("color: orange; font-weight: bold;")
+            layout.addWidget(warnings_label)
+
+            warnings_text = QTextEdit()
+            warnings_text.setReadOnly(True)
+            warnings_text.setMaximumHeight(150)
+            warnings_text.setHtml("<ul>" + "".join([f"<li>{w}</li>" for w in warnings]) + "</ul>")
+            layout.addWidget(warnings_text)
+
+        # Close button
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.accept)
+        layout.addWidget(close_btn)
+
+        self.setLayout(layout)
+
+    def _compute_split_preview(self, vector_path, class_field, split_percent, cv_mode):
+        # type: (str, str, int, str) -> Tuple[Dict[Any, int], Dict[Any, int], List[str]]
+        """Compute train/test class distribution.
+
+        Returns:
+            Tuple of (train_counts, test_counts, warnings)
+        """
+        from dzetsaka.infrastructure.geo.vector_split import count_polygons_per_class, split_vector_stratified
+
+        # Get total class counts
+        class_counts = count_polygons_per_class(vector_path, class_field)
+
+        if not class_counts:
+            raise RuntimeError("Unable to read vector file or no features found")
+
+        # Perform split using the same logic as classification pipeline
+        train_path, test_path = split_vector_stratified(
+            vector_path, class_field, train_percent=split_percent, use_percent=True
+        )
+
+        # Count classes in train/test splits
+        train_counts = count_polygons_per_class(train_path, class_field)
+        test_counts = count_polygons_per_class(test_path, class_field)
+
+        # Generate warnings
+        warnings = []
+
+        # Check for class imbalance
+        all_counts = list(train_counts.values()) + list(test_counts.values())
+        if all_counts:
+            max_count = max(all_counts)
+            min_count = min(all_counts)
+            if min_count > 0 and max_count / min_count > 10:
+                warnings.append(
+                    f"<b>Severe class imbalance detected:</b> Ratio {max_count}:{min_count} (>10:1). "
+                    "Consider using SMOTE for class balancing."
+                )
+
+        # Check for small test sets
+        small_test_classes = [cls for cls, count in test_counts.items() if count < 5]
+        if small_test_classes:
+            warnings.append(
+                f"<b>Small test sets:</b> Classes {', '.join(map(str, small_test_classes))} have <5 test samples. "
+                "Results may be unreliable."
+            )
+
+        # Check for classes missing in train or test
+        missing_in_train = set(test_counts.keys()) - set(train_counts.keys())
+        missing_in_test = set(train_counts.keys()) - set(test_counts.keys())
+        if missing_in_train:
+            warnings.append(
+                f"<b>Classes missing in training:</b> {', '.join(map(str, missing_in_train))}. "
+                "Model will not learn these classes."
+            )
+        if missing_in_test:
+            warnings.append(
+                f"<b>Classes missing in test:</b> {', '.join(map(str, missing_in_test))}. "
+                "Accuracy for these classes cannot be evaluated."
+            )
+
+        # Note about polygon group mode
+        if cv_mode == "POLYGON_GROUP":
+            warnings.append(
+                "<b>Info:</b> POLYGON_GROUP mode ensures pixels from the same polygon stay together, "
+                "preventing spatial leakage. This is a more realistic validation for spatial data."
+            )
+
+        return train_counts, test_counts, warnings
+
+
 class OutputConfigPage(QWizardPage):
     """Workflow page for specifying output paths and optional outputs."""
 
@@ -2911,11 +3666,21 @@ class OutputConfigPage(QWizardPage):
         out_layout.addWidget(self.outRasterBrowse, 0, 2)
 
         self.confidenceCheck = QCheckBox("Generate confidence map")
+        self.confidenceCheck.setToolTip(
+            "<b>Confidence Map</b><br>"
+            "Generates a raster showing the classifier's confidence (probability) for each pixel's predicted class.<br><br>"
+            "<i>Use case:</i> Identify uncertain regions, threshold predictions, quality assessment.<br>"
+            "<i>Output:</i> Float raster with values 0.0-1.0 (or 0-100%)."
+        )
         out_layout.addWidget(self.confidenceCheck, 1, 0, 1, 3)
         out_layout.addWidget(QLabel("Confidence map:"), 2, 0)
         self.confMapEdit = QLineEdit()
         self.confMapEdit.setPlaceholderText("Path to confidence map…")
         self.confMapEdit.setEnabled(False)
+        self.confMapEdit.setToolTip(
+            "<b>Confidence Map Output Path</b><br>"
+            "Path where confidence raster will be saved. Leave empty to auto-generate next to classification map."
+        )
         out_layout.addWidget(self.confMapEdit, 2, 1)
         self.confMapBrowse = QPushButton("Browse…")
         self.confMapBrowse.setEnabled(False)
@@ -2930,11 +3695,21 @@ class OutputConfigPage(QWizardPage):
         self.confidenceCheck.toggled.connect(_toggle_conf)
 
         self.saveModelCheck = QCheckBox("Save trained model")
+        self.saveModelCheck.setToolTip(
+            "<b>Save Trained Model</b><br>"
+            "Saves the trained classifier to disk for later reuse without retraining.<br><br>"
+            "<i>Use case:</i> Classify multiple rasters with same model, share model with colleagues.<br>"
+            "<i>Format:</i> Pickled scikit-learn/XGBoost/LightGBM/CatBoost model file."
+        )
         out_layout.addWidget(self.saveModelCheck, 3, 0, 1, 3)
         out_layout.addWidget(QLabel("Model file:"), 4, 0)
         self.saveModelEdit = QLineEdit()
         self.saveModelEdit.setPlaceholderText("Model file path…")
         self.saveModelEdit.setEnabled(False)
+        self.saveModelEdit.setToolTip(
+            "<b>Model File Path</b><br>"
+            "Path where trained model will be saved (.pkl file)."
+        )
         out_layout.addWidget(self.saveModelEdit, 4, 1)
         self.saveModelBrowse = QPushButton("Browse…")
         self.saveModelBrowse.setEnabled(False)
@@ -2949,6 +3724,12 @@ class OutputConfigPage(QWizardPage):
         self.saveModelCheck.toggled.connect(_toggle_save_model)
 
         self.matrixCheck = QCheckBox("Save confusion matrix")
+        self.matrixCheck.setToolTip(
+            "<b>Confusion Matrix</b><br>"
+            "Generates accuracy assessment table showing predicted vs. actual classes.<br><br>"
+            "<i>Metrics included:</i> Overall accuracy, per-class precision/recall/F1, kappa coefficient.<br>"
+            "<i>Note:</i> Requires validation split - portion of training data held out for testing."
+        )
         out_layout.addWidget(self.matrixCheck, 5, 0, 1, 3)
         out_layout.addWidget(QLabel("Matrix CSV:"), 6, 0)
         self.matrixEdit = QLineEdit()
@@ -2965,13 +3746,34 @@ class OutputConfigPage(QWizardPage):
         self.splitSpinBox.setRange(10, 90)
         self.splitSpinBox.setValue(50)
         self.splitSpinBox.setEnabled(False)
+        self.splitSpinBox.setToolTip(
+            "<b>Validation Split Percentage</b><br>"
+            "Percentage of training data used for validation (accuracy assessment).<br><br>"
+            "<i>Typical values:</i> 20-30% for large datasets, 40-50% for small datasets.<br>"
+            "<i>Note:</i> In POLYGON_GROUP mode, this is interpreted as TRAIN percent "
+            "(e.g., 75 = 75% train, 25% validation)."
+        )
         out_layout.addWidget(self.splitSpinBox, 7, 1)
+
+        self.previewSplitBtn = QPushButton("Preview Split...")
+        self.previewSplitBtn.setEnabled(False)
+        self.previewSplitBtn.setToolTip(
+            "<b>Preview Split Distribution</b><br>"
+            "Shows how training samples will be distributed across train/test sets.<br><br>"
+            "Helps identify potential issues:<br>"
+            "• Class imbalance (ratio >10:1)<br>"
+            "• Small test sets (<5 samples)<br>"
+            "• Polygon group leakage (in POLYGON_GROUP mode)"
+        )
+        self.previewSplitBtn.clicked.connect(self._preview_split)
+        out_layout.addWidget(self.previewSplitBtn, 7, 2)
 
         def _toggle_matrix(checked):
             # type: (bool) -> None
             self.matrixEdit.setEnabled(checked)
             self.matrixBrowse.setEnabled(checked)
             self.splitSpinBox.setEnabled(checked)
+            self.previewSplitBtn.setEnabled(checked)
 
         self.matrixCheck.toggled.connect(_toggle_matrix)
 
@@ -2986,12 +3788,24 @@ class OutputConfigPage(QWizardPage):
         report_layout.setVerticalSpacing(6)
 
         self.reportBundleCheck = QCheckBox("Generate classification report (HTML + CSV/JSON + heatmaps)")
+        self.reportBundleCheck.setToolTip(
+            "<b>Classification Report Bundle</b><br>"
+            "Generates comprehensive report with confusion matrix, accuracy metrics, "
+            "visualization heatmaps, and run metadata (algorithm, parameters, timestamps).<br><br>"
+            "<i>Formats:</i> HTML (interactive), CSV (metrics), JSON (machine-readable), PNG (heatmaps).<br>"
+            "<i>Use case:</i> Documentation, quality assessment, reproducibility."
+        )
         report_layout.addWidget(self.reportBundleCheck, 0, 0, 1, 3)
 
         report_layout.addWidget(QLabel("Report output folder (optional):"), 1, 0)
         self.reportFolderEdit = QLineEdit()
         self.reportFolderEdit.setPlaceholderText("Leave empty to create report next to output map")
         self.reportFolderEdit.setEnabled(False)
+        self.reportFolderEdit.setToolTip(
+            "<b>Report Output Folder</b><br>"
+            "Custom folder for classification report files. "
+            "Leave empty to auto-create folder next to classification output map."
+        )
         report_layout.addWidget(self.reportFolderEdit, 1, 1)
         self.reportFolderBrowse = QPushButton("Browse…")
         self.reportFolderBrowse.setEnabled(False)
@@ -3002,12 +3816,23 @@ class OutputConfigPage(QWizardPage):
         self.reportLabelColumnEdit = QLineEdit()
         self.reportLabelColumnEdit.setPlaceholderText("e.g. class_name")
         self.reportLabelColumnEdit.setEnabled(False)
+        self.reportLabelColumnEdit.setToolTip(
+            "<b>Label Name Column</b><br>"
+            "Vector field containing human-readable class names (e.g., 'Forest', 'Water').<br><br>"
+            "<i>Use case:</i> Makes confusion matrix more readable by showing names instead of numeric codes."
+        )
         report_layout.addWidget(self.reportLabelColumnEdit, 2, 1, 1, 2)
 
         report_layout.addWidget(QLabel("Label mapping (optional):"), 3, 0)
         self.reportLabelMapEdit = QLineEdit()
         self.reportLabelMapEdit.setPlaceholderText("1:Forest,2:Water")
         self.reportLabelMapEdit.setEnabled(False)
+        self.reportLabelMapEdit.setToolTip(
+            "<b>Label Mapping</b><br>"
+            "Manual mapping of class codes to names in format: code:name,code:name<br><br>"
+            "<i>Example:</i> 1:Forest,2:Water,3:Urban<br>"
+            "<i>Note:</i> Alternative to Label Name Column if vector lacks a name field."
+        )
         report_layout.addWidget(self.reportLabelMapEdit, 3, 1, 1, 2)
 
         self.reportInfoLabel = QLabel(
@@ -3113,6 +3938,31 @@ class OutputConfigPage(QWizardPage):
         if path:
             self.reportFolderEdit.setText(path)
 
+    def _preview_split(self):
+        # type: () -> None
+        """Preview train/test split distribution before running classification."""
+        parent_dialog = self.window()
+        if not isinstance(parent_dialog, GuidedClassificationDialog):
+            return
+
+        # Get required parameters from wizard
+        vector_path = parent_dialog.dataPage.field("vector") or parent_dialog.dataPage.vectorLineEdit.text()
+        class_field = parent_dialog.dataPage.get_class_field()
+        split_percent = self.splitSpinBox.value()
+        cv_mode = parent_dialog.advPage.cvModeCombo.currentText()
+
+        # Validate inputs
+        if not vector_path or not class_field:
+            QMessageBox.warning(self, "Missing Information", "Please select training vector and class field first.")
+            return
+
+        # Show preview dialog
+        try:
+            dialog = SplitPreviewDialog(vector_path, class_field, split_percent, cv_mode, self)
+            dialog.exec_()
+        except Exception as e:
+            QMessageBox.critical(self, "Preview Error", f"Failed to compute split preview:\n{str(e)}")
+
     def _refresh_review(self):
         # type: () -> None
         """Refresh the review summary based on current guided workflow state."""
@@ -3216,6 +4066,9 @@ class GuidedClassificationDialog(QWizard):
 
         self.dataPage.set_recipe_list(self._recipes)
 
+        # Connect to global recipe update signal
+        _recipe_notifier.recipesUpdated.connect(self.reload_recipes_from_settings)
+
         # Override the Finish button text
         try:
             finish_button = QWizard.FinishButton
@@ -3250,6 +4103,14 @@ class GuidedClassificationDialog(QWizard):
         # type: (List[Dict[str, object]]) -> None
         self._recipes = recipes
         save_recipes(self._settings, self._recipes)
+        self.dataPage.set_recipe_list(self._recipes)
+        # Notify other components
+        notify_recipes_updated()
+
+    def reload_recipes_from_settings(self):
+        # type: () -> None
+        """Reload recipes from QSettings (e.g., after external updates)."""
+        self._recipes = load_recipes(self._settings)
         self.dataPage.set_recipe_list(self._recipes)
 
     def apply_recipe(self, recipe):
@@ -3351,9 +4212,25 @@ class GuidedClassificationDialog(QWizard):
         name, ok = QInputDialog.getText(self, "Save Recipe", "Recipe name:")
         if not ok or not name.strip():
             return
+
+        # Check if trying to overwrite a template
+        for r in self._recipes:
+            if r.get("name") == name.strip() and r.get("is_template", False):
+                QMessageBox.warning(
+                    self,
+                    "Cannot Overwrite Template",
+                    f"'{name.strip()}' is a built-in template and cannot be overwritten.\n\n"
+                    "Please choose a different name for your custom recipe.",
+                )
+                return
+
         description, _ok = QInputDialog.getText(self, "Save Recipe", "Description (optional):")
         config = self.collect_config()
         recipe = recipe_from_config(config, name.strip(), description.strip())
+        # Ensure it's marked as user recipe (remove template metadata)
+        if "metadata" in recipe and isinstance(recipe["metadata"], dict):
+            recipe["metadata"]["is_template"] = False
+
         if any(r.get("name") == recipe.get("name") for r in self._recipes):
             reply = QMessageBox.question(
                 self,
@@ -3655,6 +4532,10 @@ class QuickClassificationPanel(QWidget):
         self._open_report_in_browser = True
         self._recipe_add_action_value = "__add_custom_recipe__"
         self._previous_recipe_index = 0
+
+        # Connect to global recipe update signal
+        _recipe_notifier.recipesUpdated.connect(self.reload_recipes_from_settings)
+
         self._setup_ui()
 
     def _setup_ui(self):
@@ -3675,6 +4556,11 @@ class QuickClassificationPanel(QWidget):
         )
         self.rasterLineEdit = QLineEdit()
         self.rasterLineEdit.setPlaceholderText("Path to raster file…")
+        self.rasterLineEdit.setToolTip(
+            "<b>Raster to Classify</b><br>"
+            "Multi-band raster image (e.g., satellite imagery) to be classified.<br><br>"
+            "<i>Supported formats:</i> GeoTIFF (.tif), IMG, other GDAL-supported formats."
+        )
         raster_row.addWidget(self.rasterLineEdit)
         self.rasterBrowse = QPushButton("Browse…")
         self.rasterBrowse.clicked.connect(self._browse_raster)
@@ -3708,6 +4594,12 @@ class QuickClassificationPanel(QWidget):
         )
         self.vectorLineEdit = QLineEdit()
         self.vectorLineEdit.setPlaceholderText("Path to vector file…")
+        self.vectorLineEdit.setToolTip(
+            "<b>Training Vector Layer</b><br>"
+            "Polygon/point shapefile with labeled samples for training the classifier.<br><br>"
+            "<i>Supported formats:</i> Shapefile (.shp), GeoPackage (.gpkg).<br>"
+            "<i>Required:</i> Must contain a field with class labels (numeric codes)."
+        )
         vector_row.addWidget(self.vectorLineEdit)
         self.vectorBrowse = QPushButton("Browse…")
         self.vectorBrowse.clicked.connect(self._browse_vector)
@@ -3743,6 +4635,11 @@ class QuickClassificationPanel(QWidget):
             )
         )
         self.classFieldCombo = QComboBox()
+        self.classFieldCombo.setToolTip(
+            "<b>Class Label Field</b><br>"
+            "Vector attribute field containing class codes (numeric values) for each training polygon/point.<br><br>"
+            "<i>Example values:</i> 1 (Forest), 2 (Water), 3 (Urban), etc."
+        )
         field_row.addWidget(self.classFieldCombo)
         root.addLayout(field_row)
 
@@ -3767,7 +4664,41 @@ class QuickClassificationPanel(QWidget):
         self.recipeCombo.setMinimumContentsLength(15)
         self.recipeCombo.setMaximumWidth(300)
         self.recipeCombo.currentIndexChanged.connect(self._apply_selected_recipe)
+        self.recipeCombo.setToolTip(
+            "<b>Classification Recipe</b><br>"
+            "Pre-configured classifier preset including algorithm, parameters, and advanced features.<br><br>"
+            "<i>Hover over recipes</i> to see detailed configuration.<br>"
+            "<i>Create custom:</i> Select '+ Add custom recipe...' to save current settings."
+        )
         classifier_row.addWidget(self.recipeCombo)
+
+        # Export recipe button
+        self.exportRecipeBtn = QToolButton()
+        self.exportRecipeBtn.setText("Export...")
+        self.exportRecipeBtn.setToolTip(
+            "<b>Export Recipe</b><br>"
+            "Save the current recipe configuration to a .dzrecipe file for sharing or backup.<br><br>"
+            "<i>Use:</i> Share recipes with colleagues or back up your custom configurations."
+        )
+        export_icon = QIcon(":/plugins/dzetsaka/img/save.svg")
+        if not export_icon.isNull():
+            self.exportRecipeBtn.setIcon(export_icon)
+        self.exportRecipeBtn.clicked.connect(self._export_recipe)
+        classifier_row.addWidget(self.exportRecipeBtn)
+
+        # Import recipe button
+        self.importRecipeBtn = QToolButton()
+        self.importRecipeBtn.setText("Import...")
+        self.importRecipeBtn.setToolTip(
+            "<b>Import Recipe</b><br>"
+            "Load a recipe configuration from a .dzrecipe or .json file.<br><br>"
+            "<i>Use:</i> Import recipes shared by colleagues or from the dzetsaka community."
+        )
+        import_icon = QIcon(":/plugins/dzetsaka/img/open.svg")
+        if not import_icon.isNull():
+            self.importRecipeBtn.setIcon(import_icon)
+        self.importRecipeBtn.clicked.connect(self._import_recipe)
+        classifier_row.addWidget(self.importRecipeBtn)
 
         # Keep classifier combo as internal state (not shown in default dashboard).
         self.classifierCombo = QComboBox()
@@ -3779,6 +4710,47 @@ class QuickClassificationPanel(QWidget):
         self.depStatusLabel.setVisible(False)
         root.addWidget(self.depStatusLabel)
         self._update_dep_status(self.classifierCombo.currentIndex())
+
+        # Advanced Methods panel
+        advanced_group = QGroupBox("Advanced Methods (Optional)")
+        advanced_group.setCheckable(True)
+        advanced_group.setChecked(False)
+        advanced_group.setToolTip(
+            "<b>Advanced Methods</b><br>"
+            "Enable hyperparameter optimization, explainability, and class balancing features.<br><br>"
+            "<i>Expand to configure:</i> Optuna (auto-tuning), SHAP (model explanation), SMOTE (oversampling)."
+        )
+        advanced_layout = QHBoxLayout()
+        advanced_layout.setContentsMargins(8, 8, 8, 8)
+        advanced_layout.setSpacing(8)
+
+        # Create feature badges
+        self.optunaBadge = self._create_feature_badge(
+            "optuna",
+            "Optuna - Automatic hyperparameter optimization using Bayesian optimization",
+            "modern/ux_optuna.png",
+            self._deps.get("optuna", False)
+        )
+        self.shapBadge = self._create_feature_badge(
+            "shap",
+            "SHAP - Model explainability showing feature importance and decision reasoning",
+            "modern/ux_shap.png",
+            self._deps.get("shap", False)
+        )
+        self.smoteBadge = self._create_feature_badge(
+            "smote",
+            "SMOTE - Synthetic oversampling to handle imbalanced training data",
+            "modern/ux_smote.png",
+            self._deps.get("imblearn", False)
+        )
+
+        advanced_layout.addWidget(self.optunaBadge)
+        advanced_layout.addWidget(self.shapBadge)
+        advanced_layout.addWidget(self.smoteBadge)
+        advanced_layout.addStretch()
+
+        advanced_group.setLayout(advanced_layout)
+        root.addWidget(advanced_group)
 
         run_row = QHBoxLayout()
         run_row.setSpacing(3)
@@ -3818,11 +4790,213 @@ class QuickClassificationPanel(QWidget):
         icon_label.setScaledContents(True)
         return icon_label
 
+    def _create_feature_badge(self, name, description, icon_path, enabled):
+        # type: (str, str, str, bool) -> QToolButton
+        """Create a checkable badge button for an advanced feature.
+
+        Parameters
+        ----------
+        name : str
+            Feature name (e.g., 'optuna', 'shap', 'smote')
+        description : str
+            Full description for tooltip
+        icon_path : str
+            Path to icon image
+        enabled : bool
+            Whether the feature dependencies are available
+
+        Returns
+        -------
+        QToolButton
+            Configured badge button
+        """
+        badge = QToolButton()
+        badge.setText(name.upper())
+        badge.setCheckable(True)
+        badge.setChecked(False)
+        badge.setMinimumHeight(32)
+        badge.setMinimumWidth(80)
+
+        # Try to load icon
+        full_icon_path = self._icon_asset_path(icon_path)
+        icon = QIcon(full_icon_path)
+
+        # Fallback to a generic icon or disabled state icon
+        if icon.isNull():
+            fallback_icon_path = self._icon_asset_path("modern/ux_quick.png")
+            icon = QIcon(fallback_icon_path)
+
+        if not icon.isNull():
+            badge.setIcon(icon)
+            # Qt5/Qt6 compatibility for ToolButtonStyle
+            if hasattr(Qt, "ToolButtonStyle"):
+                badge.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+            else:
+                badge.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+
+        # Set tooltip and state
+        if enabled:
+            tooltip = f"<b>{name.upper()}</b><br>{description}<br><br><i>Click to toggle</i>"
+            badge.setStyleSheet("")  # Normal style
+        else:
+            tooltip = f"<b>{name.upper()}</b><br>{description}<br><br><i>Not available - click to install dependencies</i>"
+            badge.setStyleSheet("QToolButton { color: gray; }")
+
+        badge.setToolTip(tooltip)
+        # Always keep badge enabled so clicks work even if dependencies missing initially
+        badge.setEnabled(True)
+
+        # Connect click handler that checks current dependency status (not cached)
+        badge.clicked.connect(lambda checked, n=name: self._on_feature_badge_clicked(n, checked))
+
+        return badge
+
+    def _configure_feature(self, feature_name):
+        # type: (str) -> None
+        """Open configuration dialog for an advanced feature.
+
+        Parameters
+        ----------
+        feature_name : str
+            Name of the feature ('optuna', 'shap', 'smote')
+        """
+        # Placeholder for configuration dialogs - to be implemented
+        QMessageBox.information(
+            self,
+            f"{feature_name.upper()} Configuration",
+            f"Configuration dialog for {feature_name.upper()} will be implemented here.\n\n"
+            f"This will allow you to customize:\n"
+            f"- Optuna: trials count, optimization metric, search space\n"
+            f"- SHAP: explanation depth, sample size, visualization options\n"
+            f"- SMOTE: sampling strategy, k-neighbors, random state"
+        )
+
+    def _prompt_install_dependencies(self, features):
+        # type: (List[str]) -> None
+        """Prompt user to install missing dependencies for advanced features.
+
+        Parameters
+        ----------
+        features : list of str
+            List of feature names requiring installation
+        """
+        if not self._installer or not hasattr(self._installer, "_try_install_dependencies"):
+            QMessageBox.warning(
+                self,
+                "Installation Not Available",
+                "Dependency installer is not available in this context.\n\n"
+                "Please use the plugin settings to install dependencies."
+            )
+            return
+
+        # Map feature names to package names
+        feature_map = {
+            "optuna": "optuna",
+            "shap": "shap",
+            "smote": "imbalanced-learn"
+        }
+
+        packages = [feature_map.get(f, f) for f in features if f in feature_map]
+        package_list = ", ".join(packages)
+
+        reply = QMessageBox.question(
+            self,
+            "Install Advanced Features",
+            f"The following packages are required:<br><br>"
+            f"<code>{package_list}</code><br><br>"
+            f"Install the full dzetsaka dependency bundle now?<br>"
+            f"(includes all ML algorithms and advanced features)",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            # Install full bundle
+            if self._installer._try_install_dependencies([]):
+                QMessageBox.information(
+                    self,
+                    "Installation Successful",
+                    "Dependencies installed successfully.\n\nPlease restart QGIS to load new libraries.",
+                )
+                # Refresh dependency status
+                self._deps = check_dependency_availability()
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Installation Failed",
+                    "Failed to install dependencies. Please check the QGIS message log for details."
+                )
+
+    def _on_feature_badge_clicked(self, feature_name, checked):
+        # type: (str, bool) -> None
+        """Handle feature badge clicks with fresh dependency check.
+
+        Parameters
+        ----------
+        feature_name : str
+            Feature name (optuna, shap, smote)
+        checked : bool
+            Whether the badge was checked or unchecked
+        """
+        # Check current dependency status (not cached)
+        current_deps = check_dependency_availability()
+
+        # Map feature names to dependency keys
+        dep_map = {
+            "optuna": "optuna",
+            "shap": "shap",
+            "smote": "imblearn"
+        }
+
+        dep_key = dep_map.get(feature_name)
+        if not dep_key:
+            return
+
+        # If dependency is missing, prompt installation
+        if not current_deps.get(dep_key, False):
+            # Uncheck the badge since we can't use it
+            sender = self.sender()
+            if sender:
+                sender.blockSignals(True)
+                sender.setChecked(False)
+                sender.blockSignals(False)
+
+            # Prompt for installation
+            self._prompt_install_dependencies([feature_name])
+            return
+
+        # Dependency is available, update state
+        self._on_feature_badge_toggled(checked)
+
+    def _on_feature_badge_toggled(self, checked):
+        # type: (bool) -> None
+        """Update internal recipe extra params when feature badges are toggled.
+
+        Parameters
+        ----------
+        checked : bool
+            Whether the badge was checked or unchecked
+        """
+        # Ensure _recipe_extra_params exists
+        if not hasattr(self, "_recipe_extra_params"):
+            self._recipe_extra_params = {}
+
+        # Update the corresponding parameter based on which badge was toggled
+        sender = self.sender()
+        if sender == self.optunaBadge:
+            self._recipe_extra_params["USE_OPTUNA"] = checked
+        elif sender == self.shapBadge:
+            self._recipe_extra_params["COMPUTE_SHAP"] = checked
+        elif sender == self.smoteBadge:
+            self._recipe_extra_params["USE_SMOTE"] = checked
+
     def _browse_raster(self):
         # type: () -> None
         path, _f = QFileDialog.getOpenFileName(self, "Select raster", "", "GeoTIFF (*.tif *.tiff)")
         if path:
             self.rasterLineEdit.setText(path)
+            # Show recipe recommendations based on raster characteristics
+            self._show_recipe_recommendations(path)
 
     def _browse_vector(self):
         # type: () -> None
@@ -4021,6 +5195,91 @@ class QuickClassificationPanel(QWidget):
         )
         self.classifierCombo.setCurrentIndex(0)
 
+    def _build_recipe_tooltip(self, recipe):
+        # type: (Dict[str, object]) -> str
+        """Build a detailed tooltip for a recipe."""
+        name = recipe.get("name", "Unnamed Recipe")
+        is_template = is_builtin_recipe(recipe)
+        metadata = recipe.get("metadata", {})
+        category = metadata.get("category", "Custom") if isinstance(metadata, dict) else "Custom"
+        description = recipe.get("description", "No description available")
+
+        # Get classifier info
+        classifier = recipe.get("classifier", {})
+        classifier_code = str(classifier.get("code", "GMM"))
+        classifier_name = classifier_code
+        for code, name_str, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
+            if code == classifier_code:
+                classifier_name = name_str
+                break
+
+        # Build feature list
+        extra = recipe.get("extraParam", {})
+        features = []
+        if extra.get("USE_OPTUNA"):
+            features.append("Optuna")
+        if extra.get("COMPUTE_SHAP"):
+            features.append("SHAP")
+        if extra.get("USE_SMOTE"):
+            features.append("SMOTE")
+        if extra.get("USE_CLASS_WEIGHTS"):
+            features.append("Class Weights")
+        if extra.get("USE_NESTED_CV") or recipe.get("validation", {}).get("nested_cv"):
+            features.append("Nested CV")
+
+        # Build tooltip
+        icon = "📦" if is_template else "⚙️"
+        tooltip_parts = [f"{icon} {name}"]
+
+        if is_template:
+            tooltip_parts.append("")
+            tooltip_parts.append(f"Category: {category}")
+
+        tooltip_parts.append(f"Algorithm: {classifier_name}")
+
+        if features:
+            tooltip_parts.append(f"Features: {', '.join(features)}")
+
+        if is_template:
+            expected_runtime = metadata.get("typical_runtime", "") if isinstance(metadata, dict) else ""
+            typical_accuracy = metadata.get("expected_accuracy_range", "") if isinstance(metadata, dict) else ""
+            use_cases = metadata.get("use_cases", []) if isinstance(metadata, dict) else []
+            best_for = ", ".join(use_cases) if use_cases else ""
+
+            if expected_runtime:
+                tooltip_parts.append(f"Expected runtime: {expected_runtime}")
+            if typical_accuracy:
+                tooltip_parts.append(f"Typical accuracy: {typical_accuracy}")
+            if best_for:
+                tooltip_parts.append("")
+                tooltip_parts.append(f"Best for: {best_for}")
+
+        # Add required dependencies
+        deps_required = []
+        for code, _name, needs_sk, needs_xgb, needs_lgb, needs_cb in _CLASSIFIER_META:
+            if code == classifier_code:
+                if needs_sk:
+                    deps_required.append("scikit-learn")
+                if needs_xgb:
+                    deps_required.append("XGBoost")
+                if needs_lgb:
+                    deps_required.append("LightGBM")
+                if needs_cb:
+                    deps_required.append("CatBoost")
+                break
+        if extra.get("USE_OPTUNA"):
+            deps_required.append("Optuna")
+        if extra.get("COMPUTE_SHAP"):
+            deps_required.append("SHAP")
+        if extra.get("USE_SMOTE"):
+            deps_required.append("imbalanced-learn")
+
+        if deps_required:
+            tooltip_parts.append("")
+            tooltip_parts.append(f"Requires: {', '.join(set(deps_required))}")
+
+        return "\n".join(tooltip_parts)
+
     def _quick_extra_params(self):
         # type: () -> Dict[str, object]
         report_enabled = bool(self.reportCheck.isChecked()) if hasattr(self, "reportCheck") else True
@@ -4051,6 +5310,15 @@ class QuickClassificationPanel(QWidget):
             # Override report settings based on current UI state
             defaults["GENERATE_REPORT_BUNDLE"] = report_enabled
             defaults["OPEN_REPORT_IN_BROWSER"] = report_enabled and self._open_report_in_browser
+
+        # Override advanced feature settings from badge states (if badges exist and are enabled)
+        if hasattr(self, "optunaBadge") and self.optunaBadge.isEnabled():
+            defaults["USE_OPTUNA"] = self.optunaBadge.isChecked()
+        if hasattr(self, "shapBadge") and self.shapBadge.isEnabled():
+            defaults["COMPUTE_SHAP"] = self.shapBadge.isChecked()
+        if hasattr(self, "smoteBadge") and self.smoteBadge.isEnabled():
+            defaults["USE_SMOTE"] = self.smoteBadge.isChecked()
+
         return defaults
 
     def _refresh_recipe_combo(self, preferred_name=""):
@@ -4058,21 +5326,94 @@ class QuickClassificationPanel(QWidget):
         current_name = preferred_name.strip() if preferred_name else ""
         if not current_name:
             current_name = self.recipeCombo.currentText().strip() if self.recipeCombo.count() else ""
+        # Strip emoji prefix if present
+        for prefix in ["📦 ", "⚙️ "]:
+            if current_name.startswith(prefix):
+                current_name = current_name[len(prefix):]
+                break
+
         self.recipeCombo.blockSignals(True)
         self.recipeCombo.clear()
+
+        # Group recipes by category
+        templates_by_category = {"Beginner": [], "Intermediate": [], "Advanced": []}
+        user_recipes = []
+
         for recipe in self._recipes:
-            name = str(recipe.get("name", "Unnamed Recipe"))
-            self.recipeCombo.addItem(name, name)
+            is_template = is_builtin_recipe(recipe)
+            if is_template:
+                metadata = recipe.get("metadata", {})
+                category = metadata.get("category", "intermediate") if isinstance(metadata, dict) else "intermediate"
+                category = category.capitalize()
+                if category in templates_by_category:
+                    templates_by_category[category].append(recipe)
+                else:
+                    templates_by_category["Intermediate"].append(recipe)
+            else:
+                user_recipes.append(recipe)
+
+        # Add templates by category with separators
+        for category in ["Beginner", "Intermediate", "Advanced"]:
+            category_recipes = templates_by_category[category]
+            if category_recipes:
+                # Add category separator
+                separator_item = f"--- {category} Templates ---"
+                self.recipeCombo.addItem(separator_item, None)
+                # Disable separator item
+                model = self.recipeCombo.model()
+                if model:
+                    item = model.item(self.recipeCombo.count() - 1)
+                    if item:
+                        item.setEnabled(False)
+                        item.setFlags(item.flags() & ~Qt.ItemIsSelectable)
+
+                # Add recipes in this category
+                for recipe in category_recipes:
+                    name = str(recipe.get("name", "Unnamed Recipe"))
+                    display_name = f"📦 {name}"
+                    self.recipeCombo.addItem(display_name, name)
+                    # Add tooltip with detailed info
+                    tooltip = self._build_recipe_tooltip(recipe)
+                    self.recipeCombo.setItemData(self.recipeCombo.count() - 1, tooltip, Qt.ToolTipRole)
+
+        # Add user recipes separator if there are user recipes
+        if user_recipes:
+            separator_item = "--- My Recipes ---"
+            self.recipeCombo.addItem(separator_item, None)
+            model = self.recipeCombo.model()
+            if model:
+                item = model.item(self.recipeCombo.count() - 1)
+                if item:
+                    item.setEnabled(False)
+                    item.setFlags(item.flags() & ~Qt.ItemIsSelectable)
+
+            for recipe in user_recipes:
+                name = str(recipe.get("name", "Unnamed Recipe"))
+                display_name = f"⚙️ {name}"
+                self.recipeCombo.addItem(display_name, name)
+                tooltip = self._build_recipe_tooltip(recipe)
+                self.recipeCombo.setItemData(self.recipeCombo.count() - 1, tooltip, Qt.ToolTipRole)
+
         self.recipeCombo.addItem("+ Add custom model/recipe...", self._recipe_add_action_value)
+
         restore_index = 0
         if current_name:
-            idx = self.recipeCombo.findText(current_name)
-            if idx >= 0:
-                restore_index = idx
+            # Search for matching recipe by data (original name without emoji)
+            for i in range(self.recipeCombo.count()):
+                if self.recipeCombo.itemData(i) == current_name:
+                    restore_index = i
+                    break
+
         self.recipeCombo.setCurrentIndex(restore_index)
         self._previous_recipe_index = restore_index
         self.recipeCombo.blockSignals(False)
         self._apply_selected_recipe(restore_index)
+
+    def reload_recipes_from_settings(self, preferred_name=""):
+        # type: (str) -> None
+        """Reload recipes from QSettings (e.g., after external updates) and refresh combo."""
+        self._recipes = load_recipes(QSettings())
+        self._refresh_recipe_combo(preferred_name=preferred_name)
 
     def _build_recipe_seed_from_quick_state(self):
         # type: () -> Dict[str, object]
@@ -4127,6 +5468,17 @@ class QuickClassificationPanel(QWidget):
         if not name:
             return
 
+        # Check if trying to overwrite a template
+        existing_recipe = next((r for r in self._recipes if str(r.get("name", "")).strip() == name), None)
+        if existing_recipe and is_builtin_recipe(existing_recipe):
+            QMessageBox.warning(
+                self,
+                "Cannot Overwrite Template",
+                f"'{name}' is a built-in template and cannot be overwritten.\n\n"
+                "Please choose a different name for your custom recipe.",
+            )
+            return
+
         already_exists = any(str(r.get("name", "")).strip() == name for r in self._recipes)
         if already_exists:
             overwrite = QMessageBox.question(
@@ -4139,10 +5491,15 @@ class QuickClassificationPanel(QWidget):
             if overwrite != QMessageBox.StandardButton.Yes:
                 return
 
+        # Ensure it's marked as user recipe (remove template metadata)
+        if "metadata" in recipe and isinstance(recipe["metadata"], dict):
+            recipe["metadata"]["is_template"] = False
         updated = [r for r in self._recipes if str(r.get("name", "")).strip() != name]
         updated.append(recipe)
         self._recipes = updated
         save_recipes(QSettings(), self._recipes)
+        # Notify other components
+        notify_recipes_updated()
         self._refresh_recipe_combo(preferred_name=name)
         if dialog.run_requested():
             self._emit_config()
@@ -4183,6 +5540,19 @@ class QuickClassificationPanel(QWidget):
         # Store recipe's extraParam so it's used when emitting config
         self._recipe_extra_params = dict(extra) if extra else {}
 
+        # Update feature badges based on recipe settings
+        if hasattr(self, "optunaBadge"):
+            use_optuna = bool(extra.get("USE_OPTUNA", False))
+            self.optunaBadge.setChecked(use_optuna)
+
+        if hasattr(self, "shapBadge"):
+            use_shap = bool(extra.get("COMPUTE_SHAP", False))
+            self.shapBadge.setChecked(use_shap)
+
+        if hasattr(self, "smoteBadge"):
+            use_smote = bool(extra.get("USE_SMOTE", False))
+            self.smoteBadge.setChecked(use_smote)
+
         report_enabled = bool(extra.get("GENERATE_REPORT_BUNDLE", False) or post.get("confusion_matrix", False))
         if hasattr(self, "reportCheck"):
             self.reportCheck.setChecked(report_enabled)
@@ -4193,6 +5563,199 @@ class QuickClassificationPanel(QWidget):
         except (TypeError, ValueError):
             split_percent = 75
         self._quick_split_percent = max(10, min(100, split_percent))
+
+    def _export_recipe(self):
+        # type: () -> None
+        """Export current recipe to a .dzrecipe or .json file."""
+        # Get current recipe from combo or build from current state
+        recipe = None
+        current_value = self.recipeCombo.currentData()
+        if current_value != self._recipe_add_action_value:
+            name = self.recipeCombo.currentText()
+            for r in self._recipes:
+                if r.get("name") == name:
+                    recipe = normalize_recipe(dict(r))
+                    break
+
+        # If no recipe selected or "Add custom" is selected, build from current UI state
+        if recipe is None:
+            recipe = self._build_recipe_seed_from_quick_state()
+            recipe["name"] = "Custom Recipe"
+
+        # Ask for export location
+        default_name = str(recipe.get("name", "recipe")).replace(" ", "_") + ".dzrecipe"
+        path, _filter = QFileDialog.getSaveFileName(
+            self,
+            "Export Recipe",
+            default_name,
+            "dzetsaka Recipe (*.dzrecipe);;JSON Files (*.json)"
+        )
+        if not path:
+            return
+
+        # Write recipe to file
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(recipe, f, indent=2, ensure_ascii=False)
+
+            QMessageBox.information(
+                self,
+                "Recipe Exported",
+                f"Recipe exported successfully to:<br><br><code>{path}</code><br><br>"
+                "You can share this file with colleagues or import it later."
+            )
+        except Exception as exc:
+            QMessageBox.warning(
+                self,
+                "Export Failed",
+                f"Failed to export recipe:<br><br>{exc!s}"
+            )
+
+    def _import_recipe(self):
+        # type: () -> None
+        """Import recipe from a .dzrecipe or .json file."""
+        # Ask for file to import
+        path, _filter = QFileDialog.getOpenFileName(
+            self,
+            "Import Recipe",
+            "",
+            "dzetsaka Recipe (*.dzrecipe);;JSON Files (*.json);;All Files (*)"
+        )
+        if not path:
+            return
+
+        # Read and parse JSON
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                recipe = json.load(f)
+        except Exception as exc:
+            QMessageBox.warning(
+                self,
+                "Import Failed",
+                f"Failed to read recipe file:<br><br>{exc!s}"
+            )
+            return
+
+        # Handle wrapped format (recipes array)
+        if isinstance(recipe, dict) and "recipes" in recipe and isinstance(recipe.get("recipes"), list):
+            recipes_list = recipe.get("recipes") or []
+            if not recipes_list:
+                QMessageBox.warning(self, "Import Failed", "No recipes found in file.")
+                return
+            recipe = recipes_list[0]
+        elif isinstance(recipe, list):
+            if not recipe:
+                QMessageBox.warning(self, "Import Failed", "Recipe list is empty.")
+                return
+            recipe = recipe[0]
+
+        if not isinstance(recipe, dict):
+            QMessageBox.warning(
+                self,
+                "Import Failed",
+                "Recipe file must contain a JSON object or recipe list."
+            )
+            return
+
+        # Validate schema - check required fields
+        if "name" not in recipe:
+            recipe["name"] = "Imported Recipe"
+        if "classifier" not in recipe or not isinstance(recipe.get("classifier"), dict):
+            QMessageBox.warning(
+                self,
+                "Invalid Recipe",
+                "Recipe is missing required 'classifier' field."
+            )
+            return
+        if "extraParam" not in recipe:
+            recipe["extraParam"] = {}
+
+        # Normalize recipe (adds missing fields, upgrades to v2 if needed)
+        recipe = normalize_recipe(recipe)
+
+        # Check dependencies
+        is_valid, missing = validate_recipe_dependencies(recipe)
+        if not is_valid and missing:
+            reply = QMessageBox.question(
+                self,
+                "Dependencies Missing",
+                (
+                    f"This recipe requires missing dependencies:<br><br>"
+                    f"<code>{', '.join(missing)}</code><br><br>"
+                    f"Full bundle to install: <code>{_full_bundle_label()}</code><br><br>"
+                    "Would you like to install the full dependency bundle now?"
+                ),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes,
+            )
+
+            if reply == QMessageBox.StandardButton.Yes:
+                if self._installer and hasattr(self._installer, "_try_install_dependencies"):
+                    to_install = _full_dependency_bundle()
+                    if self._installer._try_install_dependencies(to_install):
+                        QMessageBox.information(
+                            self,
+                            "Installation Successful",
+                            "Dependencies installed successfully.<br><br>"
+                            "<b>Important:</b> Please restart QGIS to load new libraries."
+                        )
+                        self._deps = check_dependency_availability()
+                        self._update_dep_status(self.classifierCombo.currentIndex())
+                    else:
+                        QMessageBox.warning(
+                            self,
+                            "Installation Failed",
+                            "Failed to install dependencies. You can still import the recipe,<br>"
+                            "but some features may not work until dependencies are installed."
+                        )
+                else:
+                    QMessageBox.warning(
+                        self,
+                        "Cannot Install",
+                        "Dependency installer not available. Install manually with:<br><br>"
+                        "<code>python -m pip install dzetsaka[full]</code><br><br>"
+                        "Then restart QGIS."
+                    )
+
+        # Check if recipe with same name exists
+        name = str(recipe.get("name", "Imported Recipe")).strip()
+        already_exists = any(str(r.get("name", "")).strip() == name for r in self._recipes)
+        if already_exists:
+            overwrite = QMessageBox.question(
+                self,
+                "Recipe Exists",
+                f"A recipe named '{name}' already exists. Overwrite it?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if overwrite != QMessageBox.StandardButton.Yes:
+                # Ask for new name
+                new_name, ok = QInputDialog.getText(
+                    self,
+                    "Rename Recipe",
+                    "Enter a new name for the imported recipe:",
+                    text=f"{name} (imported)"
+                )
+                if not ok or not new_name.strip():
+                    return
+                name = new_name.strip()
+                recipe["name"] = name
+
+        # Add to recipe list
+        updated = [r for r in self._recipes if str(r.get("name", "")).strip() != name]
+        updated.append(recipe)
+        self._recipes = updated
+        save_recipes(QSettings(), self._recipes)
+        # Notify other components
+        notify_recipes_updated()
+        self._refresh_recipe_combo(preferred_name=name)
+
+        QMessageBox.information(
+            self,
+            "Recipe Imported",
+            f"Recipe '{name}' imported successfully!<br><br>"
+            "The recipe is now available in the recipe dropdown."
+        )
 
     def _emit_config(self):
         # type: () -> None
@@ -4288,6 +5851,79 @@ class QuickClassificationPanel(QWidget):
             "split_percent": self._quick_split_percent,
         }
         self.classificationRequested.emit(config)
+
+    def _show_recipe_recommendations(self, raster_path):
+        # type: (str) -> None
+        """Show recipe recommendations based on raster characteristics.
+
+        Parameters
+        ----------
+        raster_path : str
+            Path to the raster file to analyze
+
+        """
+        # Check if recommender is available and enabled
+        if not _RECOMMENDER_AVAILABLE:
+            return
+
+        settings = QSettings()
+        if not settings.value("/dzetsaka/show_recommendations", True, bool):
+            return
+
+        # Check if we have any recipes
+        if not self._recipes:
+            return
+
+        try:
+            # Analyze the raster
+            analyzer = RasterAnalyzer()
+            raster_info = analyzer.analyze_raster(raster_path)
+
+            # Check for errors
+            if raster_info.get("error"):
+                # Silently fail - don't interrupt user workflow
+                return
+
+            # Get recommendations
+            recommender = RecipeRecommender()
+            recommendations = recommender.recommend(raster_info, self._recipes)
+
+            # Only show dialog if we have good recommendations
+            if not recommendations or recommendations[0][1] < 40:
+                # No good recommendations, skip
+                return
+
+            # Show recommendation dialog
+            dialog = RecommendationDialog(recommendations, raster_info, self)
+            dialog.recipeSelected.connect(self._apply_recommended_recipe)
+            dialog.exec_()
+
+        except Exception:
+            # Silently fail - recommendations are a nice-to-have feature
+            pass
+
+    def _apply_recommended_recipe(self, recipe):
+        # type: (Dict[str, object]) -> None
+        """Apply a recommended recipe to the current configuration.
+
+        Parameters
+        ----------
+        recipe : Dict[str, object]
+            Recipe dictionary to apply
+
+        """
+        try:
+            # Find the recipe in the combo box
+            recipe_name = recipe.get("name", "")
+            for i in range(self.recipeCombo.count()):
+                if self.recipeCombo.itemText(i) == recipe_name:
+                    self.recipeCombo.setCurrentIndex(i)
+                    # This will trigger _on_recipe_selected which applies the recipe
+                    break
+
+        except Exception:
+            # If something goes wrong, just skip
+            pass
 
 
 class ClassificationDashboardDock(QDockWidget):

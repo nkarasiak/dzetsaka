@@ -6,6 +6,21 @@
 dzetsaka <img src="https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/icon.png" alt="dzetsaka logo" width="30px"/> is very fast and easy to use but also a **powerful classification plugin for Qgis**. Initially based on Gaussian Mixture Model classifier developed by [Mathieu Fauvel](http://fauvel.mathieu.free.fr), this plugin now supports **12 machine learning algorithms** including advanced gradient boosting methods like XGBoost, LightGBM, and CatBoost. This plugin is a more generalist tool than [Historical Map](https://github.com/lennepkade/HistoricalMap) which was dedicated to classify forests from old maps.
 This plugin has by developped by [Nicolas Karasiak](https://github.com/nkarasiak/dzetsaka).
 
+## QGIS vs core runtime
+
+The QGIS plugin UI now lives under `src/dzetsaka/qgis`, and everything that previously imported from `dzetsaka.presentation.qgis` is rerouted through a tiny shim (`src/dzetsaka/presentation/qgis/__init__.py`). The heavy ML logic (classification, training, SHAP, Optuna, SMOTE) is part of the shared `dzetsaka` package and can run without QGIS, which opens the door to CLI or batch usage. See `docs/runtime_split.md` for the high-level architecture and to understand how imports resolve.
+
+## CLI usage
+
+Install dzetsaka with `pip install -e .` (or build/distribute the wheel) and call the CLI commands:
+
+```
+dzetsaka classify --raster input.tif --model model.pkl --output classification.tif
+dzetsaka train --raster train.tif --vector train.shp --model model.pkl
+```
+
+Both commands accept the same `--nodata`, `--confidence`, `--classifier`, and `--matrix-path` arguments that the QGIS UI exposes and print progress feedback to stdout. Supply JSON for `--extra` or point to a file with `@extras.json` to activate SHAP explainability, Optuna, SMOTE, or any other advanced flag recognized by `scripts/classification_pipeline.py`.
+
 You can [download samples](https://github.com/lennepkade/dzetsaka/archive/docs.zip) to test the plugin on your own.
 
 ## What does dzetsaka mean ?

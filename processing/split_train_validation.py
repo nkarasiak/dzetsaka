@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from dzetsaka.presentation.qgis.processing.algorithms.split_train_validation import SplitTrain
+from dzetsaka.qgis.processing.algorithms.split_train_validation import SplitTrain
 
 __all__ = ["SplitTrain"]

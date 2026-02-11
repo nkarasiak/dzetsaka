@@ -1,0 +1,9 @@
+LICENSE
+pyproject.toml
+readme.md
+dzetsaka.egg-info/PKG-INFO
+dzetsaka.egg-info/SOURCES.txt
+dzetsaka.egg-info/dependency_links.txt
+dzetsaka.egg-info/entry_points.txt
+dzetsaka.egg-info/requires.txt
+dzetsaka.egg-info/top_level.txt

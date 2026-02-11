@@ -11,6 +11,9 @@ Author:
 
 """
 
+import sys
+import types
+
 import numpy as np
 import pytest
 
@@ -155,6 +158,44 @@ class TestOptunaOptimizer:
         from catboost import CatBoostClassifier
 
         assert isinstance(clf, CatBoostClassifier)
+
+    @skip_if_no_optuna
+    @skip_if_no_sklearn
+    def test_catboost_wrapper_provides_sklearn_tags(self, monkeypatch):
+        """Ensure the CatBoost wrapper exposes ``__sklearn_tags__`` even without sklearn."""
+        from scripts.optimization import optuna_optimizer as optuna_module
+
+        class StubCatBoostClassifier:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+
+        monkeypatch.setitem(
+            sys.modules,
+            "catboost",
+            types.SimpleNamespace(CatBoostClassifier=StubCatBoostClassifier),
+        )
+
+        class DummyBaseEstimator:
+            @classmethod
+            def __sklearn_tags__(cls):
+                return {"requires_fit": True}
+
+        monkeypatch.setattr(optuna_module, "BaseEstimator", DummyBaseEstimator)
+
+        optimizer = optuna_module.OptunaOptimizer("CB", n_trials=1)
+        params = {
+            "iterations": 5,
+            "depth": 2,
+            "learning_rate": 0.1,
+            "l2_leaf_reg": 3,
+            "loss_function": "MultiClass",
+            "random_seed": 0,
+            "verbose": False,
+            "allow_writing_files": False,
+        }
+        classifier = optimizer._create_classifier("CB", params)
+        assert hasattr(classifier.__class__, "__sklearn_tags__")
+        assert classifier.__class__.__sklearn_tags__() == {"requires_fit": True}
 
     def test_optimize_workflow(self):
         """Test full optimization workflow with synthetic data."""

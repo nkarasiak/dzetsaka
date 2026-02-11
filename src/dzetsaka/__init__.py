@@ -26,7 +26,7 @@ if _PLUGIN_ROOT.exists():
 
 def classFactory(iface):  # pylint: disable=invalid-name
     """QGIS plugin factory bridge for direct ``src/dzetsaka`` imports."""
-    from .presentation.qgis.plugin import classFactory as _factory
+    from .qgis.plugin import classFactory as _factory
 
     return _factory(iface)
 

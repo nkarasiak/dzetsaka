@@ -12,7 +12,9 @@ def predict(tau, model, xT, yT):
     """Predict using GMM model with different tau values."""
     err = np.zeros(tau.size)
     for j, t in enumerate(tau):
-        yp = model.predict(xT, tau=t)[0]
+        yp = model.predict(xT, tau=t)
+        if isinstance(yp, tuple):
+            yp = yp[0]
         eq = np.where(yp.ravel() == yT.ravel())[0]
         err[j] = eq.size * 100.0 / yT.size
     return err
@@ -188,46 +190,40 @@ class GMMR:
         d = xt.shape[1]  # Number of features
 
         TAU = self.tau if tau is None else tau
+        TAU = float(TAU)
+        regularization = max(TAU, 0.0)
+        epsilon = np.finfo(np.float64).eps
 
-        # Precompute all inverse covariances, log determinants, and constants
         invCovs = np.empty((C, d, d))
         csts = np.empty(C)
-
         for c in range(C):
-            Lr = self.L[c, :] + TAU
+            Lr = self.L[c, :] + regularization
+            Lr = np.maximum(Lr, epsilon)
             temp = self.Q[c, :, :] * (1.0 / Lr)
             invCovs[c] = np.dot(temp, self.Q[c, :, :].T)
             logdet = np.sum(np.log(Lr))
             csts[c] = logdet - 2.0 * np.log(self.prop[c].item())
 
-        # Vectorized discriminant computation using einsum
-        # xtc shape: (nt, C, d) - centered data for each class
-        xtc = xt[:, np.newaxis, :] - self.mean  # Broadcasting: (nt, 1, d) - (C, d)
+        K = np.empty((nt, C))
+        for c in range(C):
+            delta = xt - self.mean[c]
+            projection = np.dot(delta, invCovs[c])
+            K[:, c] = np.sum(delta * projection, axis=1) + csts[c]
 
-        # Compute quadratic form: sum_ij(xtc_i * invCov_ij * xtc_j) for each sample and class
-        # Using einsum: 'nci,cij,ncj->nc' means:
-        # n=samples, c=classes, i,j=features
-        K = np.einsum('nci,cij,ncj->nc', xtc, invCovs, xtc) + csts
+        yp_idx = np.argmin(K, axis=1)
+        yp = self.classnum[yp_idx]
 
-        yp = np.argmin(K, 1)
-
-        if confidenceMap is None:
-            # Assign the label save in classnum to the minimum value of K
-            yp = self.classnum[yp]
-
+        if not confidenceMap:
             return yp
 
-        else:
-            K *= -0.5
-            K[K > E_MAX], K[K < -E_MAX] = E_MAX, -E_MAX
-            np.exp(K, out=K)
-            K /= K.sum(axis=1).reshape(nt, 1)
-            K = K[np.arange(len(K)), yp]
-            # K = sp.diag(K[:,yp])
+        logits = -0.5 * K
+        logits[logits > E_MAX] = E_MAX
+        logits[logits < -E_MAX] = -E_MAX
+        np.exp(logits, out=logits)
+        logits /= logits.sum(axis=1, keepdims=True)
+        confidences = logits[np.arange(nt), yp_idx]
 
-            yp = self.classnum[yp]
-
-            return yp, K
+        return yp, confidences
 
     def compute_inverse_logdet(self, c, tau):
         """Compute inverse covariance matrix and log determinant."""
@@ -277,10 +273,10 @@ class GMMR:
             err : the estimated error with cross validation for all tau's value.
         """
         # Initialization
-        np = tau.size  # Number of parameters to test
+        num_tau = tau.size  # Number of parameters to test
         cv = CV()  # Initialization of the indices for the cross validation
-        cv.split_data_class(y)
-        err = np.zeros(np)  # Initialization of the errors
+        cv.split_data_class(y, v)
+        err = np.zeros(num_tau)  # Initialization of the errors
 
         # Create GMM model for each fold
         model_cv = []
