@@ -21,6 +21,7 @@ EXCLUDED_DIR_NAMES = {
     ".venv",
     "__pycache__",
     "build",
+    "data",
     "dist",
     "docs",
     "htmlcov",

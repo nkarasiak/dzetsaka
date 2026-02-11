@@ -4689,8 +4689,8 @@ class QuickClassificationPanel(QWidget):
     def _setup_ui(self):
         # type: () -> None
         root = QVBoxLayout()
-        root.setContentsMargins(4, 4, 4, 4)
-        root.setSpacing(3)
+        root.setContentsMargins(8, 8, 8, 8)
+        root.setSpacing(6)
         root.setAlignment(_qt_align_top())
 
         raster_row = QHBoxLayout()
@@ -4795,9 +4795,7 @@ class QuickClassificationPanel(QWidget):
         self.fieldStatusLabel.setVisible(False)
         root.addWidget(self.fieldStatusLabel)
 
-        # Add Check Data Quality button
-        quality_btn_row = QHBoxLayout()
-        quality_btn_row.setSpacing(3)
+        # Prepare Check Data Quality button (placed next to main run action)
         self.checkQualityBtn = QPushButton("Check Data Quality")
         self.checkQualityBtn.setToolTip(
             "<b>Check Training Data Quality</b><br>"
@@ -4817,10 +4815,6 @@ class QuickClassificationPanel(QWidget):
         self.checkQualityBtn.setEnabled(_QUALITY_CHECKER_AVAILABLE)
         if not _QUALITY_CHECKER_AVAILABLE:
             self.checkQualityBtn.setToolTip("Quality checker not available (module import failed)")
-        quality_btn_row.addStretch()
-        quality_btn_row.addWidget(self.checkQualityBtn)
-        quality_btn_row.addStretch()
-        root.addLayout(quality_btn_row)
 
         self.vectorLineEdit.editingFinished.connect(self._on_vector_path_edited)
         self._on_vector_changed()
@@ -4847,34 +4841,6 @@ class QuickClassificationPanel(QWidget):
             "<i>Create custom:</i> Select '+ Add custom recipe...' to save current settings."
         )
         classifier_row.addWidget(self.recipeCombo)
-
-        # Export recipe button
-        self.exportRecipeBtn = QToolButton()
-        self.exportRecipeBtn.setText("Export...")
-        self.exportRecipeBtn.setToolTip(
-            "<b>Export Recipe</b><br>"
-            "Save the current recipe configuration to a .dzrecipe file for sharing or backup.<br><br>"
-            "<i>Use:</i> Share recipes with colleagues or back up your custom configurations."
-        )
-        export_icon = QIcon(":/plugins/dzetsaka/img/save.svg")
-        if not export_icon.isNull():
-            self.exportRecipeBtn.setIcon(export_icon)
-        self.exportRecipeBtn.clicked.connect(self._export_recipe)
-        classifier_row.addWidget(self.exportRecipeBtn)
-
-        # Import recipe button
-        self.importRecipeBtn = QToolButton()
-        self.importRecipeBtn.setText("Import...")
-        self.importRecipeBtn.setToolTip(
-            "<b>Import Recipe</b><br>"
-            "Load a recipe configuration from a .dzrecipe or .json file.<br><br>"
-            "<i>Use:</i> Import recipes shared by colleagues or from the dzetsaka community."
-        )
-        import_icon = QIcon(":/plugins/dzetsaka/img/open.svg")
-        if not import_icon.isNull():
-            self.importRecipeBtn.setIcon(import_icon)
-        self.importRecipeBtn.clicked.connect(self._import_recipe)
-        classifier_row.addWidget(self.importRecipeBtn)
 
         # Keep classifier combo as internal state (not shown in default dashboard).
         self.classifierCombo = QComboBox()
@@ -4934,8 +4900,13 @@ class QuickClassificationPanel(QWidget):
         self.reportCheck.setChecked(True)
         self.reportCheck.setToolTip("Generate a full classification report bundle (HTML + CSV/JSON + heatmaps).")
         run_row.addWidget(self.reportCheck)
+        run_row.addWidget(self.checkQualityBtn)
         run_row.addStretch()
-        self.runButton = QPushButton("Run classification")
+        self.runButton = QPushButton("Fit + Predict")
+        self.runButton.setToolTip(
+            "<b>Fit + Predict</b><br>"
+            "Train the selected model with your labeled vector data, then classify the raster."
+        )
         run_icon_path = self._icon_asset_path("modern/ux_run.png")
         run_icon = QIcon(run_icon_path)
         if run_icon.isNull():
@@ -4980,7 +4951,7 @@ class QuickClassificationPanel(QWidget):
                     current_tooltip + "<br><br><i>Keyboard shortcut: Ctrl+Shift+Q</i>"
                 )
 
-        # Shortcut for Run Classification: Ctrl+Return
+        # Shortcut for Fit + Predict: Ctrl+Return
         if hasattr(self, 'runButton'):
             run_shortcut = QShortcut(QKeySequence("Ctrl+Return"), self)
             run_shortcut.activated.connect(self._emit_config)
@@ -5465,6 +5436,34 @@ class QuickClassificationPanel(QWidget):
     def _build_recipe_tooltip(self, recipe):
         # type: (Dict[str, object]) -> str
         """Build a detailed tooltip for a recipe."""
+
+        def _accuracy_label(value):
+            # type: (object) -> str
+            if value is None:
+                return ""
+            text = str(value).strip().lower()
+            if not text:
+                return ""
+            if "highest" in text:
+                return "Highest"
+            if "high" in text:
+                return "High"
+            if "medium" in text:
+                return "Medium"
+            if "low" in text or "baseline" in text:
+                return "Baseline"
+            nums = [float(n) for n in re.findall(r"\d+(?:\.\d+)?", text)]
+            if nums:
+                avg = sum(nums) / len(nums)
+                if avg >= 92:
+                    return "Highest"
+                if avg >= 85:
+                    return "High"
+                if avg >= 75:
+                    return "Medium"
+                return "Baseline"
+            return ""
+
         name = recipe.get("name", "Unnamed Recipe")
         is_template = is_builtin_recipe(recipe)
         metadata = recipe.get("metadata", {})
@@ -5508,15 +5507,17 @@ class QuickClassificationPanel(QWidget):
             tooltip_parts.append(f"Features: {', '.join(features)}")
 
         if is_template:
-            expected_runtime = metadata.get("typical_runtime", "") if isinstance(metadata, dict) else ""
-            typical_accuracy = metadata.get("expected_accuracy_range", "") if isinstance(metadata, dict) else ""
+            accuracy_range = metadata.get("expected_accuracy_range", "") if isinstance(metadata, dict) else ""
+            accuracy_class = (
+                recipe.get("expected_accuracy_class", "")
+                or (metadata.get("expected_accuracy_class", "") if isinstance(metadata, dict) else "")
+            )
+            accuracy_profile = _accuracy_label(accuracy_class) or _accuracy_label(accuracy_range)
             use_cases = metadata.get("use_cases", []) if isinstance(metadata, dict) else []
             best_for = ", ".join(use_cases) if use_cases else ""
 
-            if expected_runtime:
-                tooltip_parts.append(f"Expected runtime: {expected_runtime}")
-            if typical_accuracy:
-                tooltip_parts.append(f"Typical accuracy: {typical_accuracy}")
+            if accuracy_profile:
+                tooltip_parts.append(f"Accuracy profile: {accuracy_profile}")
             if best_for:
                 tooltip_parts.append("")
                 tooltip_parts.append(f"Best for: {best_for}")
