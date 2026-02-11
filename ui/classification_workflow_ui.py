@@ -3028,8 +3028,19 @@ class DataInputPage(QWizardPage):
         except Exception:
             pass  # Fallback if status bar not available
 
+        # Resolve checker class from module at call time to avoid stale in-session imports.
+        checker_cls = TrainingDataQualityChecker
+        try:
+            import importlib
+            import ui.training_data_quality_checker as _tdq_mod
+
+            _tdq_mod = importlib.reload(_tdq_mod)
+            checker_cls = getattr(_tdq_mod, "TrainingDataQualityChecker", TrainingDataQualityChecker)
+        except Exception:
+            pass
+
         # Open the quality checker dialog
-        dialog = TrainingDataQualityChecker(
+        dialog = checker_cls(
             vector_path=vector_path,
             class_field=class_field,
             parent=self
@@ -5998,8 +6009,19 @@ class QuickClassificationPanel(QWidget):
         except Exception:
             pass
 
+        # Resolve checker class from module at call time to avoid stale in-session imports.
+        checker_cls = TrainingDataQualityChecker
+        try:
+            import importlib
+            import ui.training_data_quality_checker as _tdq_mod
+
+            _tdq_mod = importlib.reload(_tdq_mod)
+            checker_cls = getattr(_tdq_mod, "TrainingDataQualityChecker", TrainingDataQualityChecker)
+        except Exception:
+            pass
+
         # Open the quality checker dialog
-        dialog = TrainingDataQualityChecker(
+        dialog = checker_cls(
             vector_path=vector_path,
             class_field=class_field,
             parent=self

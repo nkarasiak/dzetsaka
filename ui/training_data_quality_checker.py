@@ -203,13 +203,6 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
         warning_count = sum(1 for issue in self.issues if issue.severity == DataQualityIssue.SEVERITY_WARNING)
         info_count = sum(1 for issue in self.issues if issue.severity == DataQualityIssue.SEVERITY_INFO)
 
-        if not self.issues:
-            success_label = QLabel("✅ <b>No issues found</b>")
-            success_label.setStyleSheet("color: #27ae60; font-size: 11pt;")
-            summary_layout.addWidget(success_label)
-            summary_layout.addStretch()
-            return summary_widget
-
         counts = {
             "all": len(self.issues),
             "critical": error_count,
