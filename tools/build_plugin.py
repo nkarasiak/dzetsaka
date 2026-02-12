@@ -5,11 +5,36 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import re
 import zipfile
 from pathlib import Path
 
 DEFAULT_OUTPUT = "dzetsaka.zip"
 PLUGIN_DIR_NAME = "dzetsaka"
+
+INCLUDED_TOP_LEVEL_DIRS = {
+    "config",
+    "domain",
+    "factories",
+    "img",
+    "processing",
+    "scripts",
+    "services",
+    "src",
+    "ui",
+}
+
+INCLUDED_TOP_LEVEL_FILES = {
+    "__init__.py",
+    "classifier_config.py",
+    "config.txt",
+    "constants.py",
+    "dzetsaka.py",
+    "dzetsaka_provider.py",
+    "icon.png",
+    "metadata.txt",
+    "resources.py",
+}
 
 EXCLUDED_DIR_NAMES = {
     ".git",
@@ -44,11 +69,43 @@ EXCLUDED_FILE_PATTERNS = [
 
 EXCLUDED_PATH_PATTERNS = [
     "*.egg-info/*",
-    "img/*",
 ]
 
 
-def _is_excluded(rel_path: Path) -> bool:
+def _resource_image_paths(repo_root: Path) -> set[str]:
+    qrc_file = repo_root / "resources.qrc"
+    if not qrc_file.exists():
+        return set()
+    content = qrc_file.read_text(encoding="utf-8")
+    return {
+        match.group(1)
+        for match in re.finditer(r"<file>([^<]+)</file>", content)
+        if match.group(1).startswith("img/")
+    }
+
+
+def _is_included(rel_path: Path, qrc_images: set[str]) -> bool:
+    parts = rel_path.parts
+    if not parts:
+        return False
+
+    top_level = parts[0]
+    if len(parts) == 1:
+        return top_level in INCLUDED_TOP_LEVEL_FILES
+    if top_level not in INCLUDED_TOP_LEVEL_DIRS:
+        return False
+
+    path_posix = rel_path.as_posix()
+    if top_level != "img":
+        return True
+
+    # Keep images embedded via resources.py (resources.qrc source of truth).
+    return path_posix in qrc_images
+
+
+def _is_excluded(rel_path: Path, qrc_images: set[str]) -> bool:
+    if not _is_included(rel_path, qrc_images):
+        return True
     parts = rel_path.parts
     if any(part in EXCLUDED_DIR_NAMES for part in parts[:-1]):
         return True
@@ -64,12 +121,13 @@ def _is_excluded(rel_path: Path) -> bool:
 
 
 def build_plugin_zip(repo_root: Path, output_zip: Path) -> int:
+    qrc_images = _resource_image_paths(repo_root)
     files = []
     for path in repo_root.rglob("*"):
         if not path.is_file():
             continue
         rel = path.relative_to(repo_root)
-        if _is_excluded(rel):
+        if _is_excluded(rel, qrc_images):
             continue
         files.append(rel)
 

@@ -1,605 +1,785 @@
 {
-  "recipes": [
-    {
-      "name": "Quick Test",
-      "description": "Fastest baseline for quick testing. GMM classifier with no advanced features. Ideal for rapid iteration and sanity checks.",
-      "version": 1,
-      "schema_version": 2,
-      "provenance": {
-        "source": "builtin",
-        "author": "dzetsaka",
-        "created_at": "2026-02-09",
-        "updated_at": "2026-02-09"
-      },
-      "constraints": {
-        "offline_compatible": true,
-        "requires_gpu": false
-      },
-      "compat": {
-        "min_plugin_version": "5.0.0",
-        "max_plugin_version": ""
-      },
-      "expected_runtime_class": "fast",
-      "expected_accuracy_class": "medium",
-      "dataset_fingerprint": "",
-      "signature": "",
-      "preprocessing": {},
-      "features": {
-        "bands": "all"
-      },
-      "classifier": {
-        "code": "GMM",
-        "name": "Gaussian Mixture Model"
-      },
-      "postprocess": {
-        "confidence_map": false,
-        "save_model": false,
-        "confusion_matrix": true
-      },
-      "validation": {
-        "split_percent": 70,
-        "nested_cv": false,
-        "nested_inner_cv": 3,
-        "nested_outer_cv": 5,
-        "cv_mode": "RANDOM_SPLIT"
-      },
-      "extraParam": {
-        "USE_OPTUNA": false,
-        "OPTUNA_TRIALS": 100,
-        "COMPUTE_SHAP": false,
-        "SHAP_OUTPUT": "",
-        "SHAP_SAMPLE_SIZE": 1000,
-        "USE_SMOTE": false,
-        "SMOTE_K_NEIGHBORS": 5,
-        "USE_CLASS_WEIGHTS": false,
-        "CLASS_WEIGHT_STRATEGY": "balanced",
-        "CUSTOM_CLASS_WEIGHTS": {},
-        "USE_NESTED_CV": false,
-        "NESTED_INNER_CV": 3,
-        "NESTED_OUTER_CV": 5,
-        "CV_MODE": "RANDOM_SPLIT",
-        "GENERATE_REPORT_BUNDLE": false,
-        "OPEN_REPORT_IN_BROWSER": false
-      },
-      "metadata": {
-        "is_template": true,
-        "category": "beginner",
-        "expected_bands": "any",
-        "typical_runtime": "<1 minute",
-        "expected_accuracy_range": "60-75%",
-        "use_cases": [
-          "Quick sanity check",
-          "Testing workflow",
-          "Baseline comparison",
-          "Educational demonstrations"
-        ]
-      }
-    },
-    {
-      "name": "Forest Mapping (Landsat)",
-      "description": "Random Forest optimized for forest classification from Landsat imagery. Uses SMOTE for rare forest classes and polygon group CV to prevent spatial leakage.",
-      "version": 1,
-      "schema_version": 2,
-      "provenance": {
-        "source": "builtin",
-        "author": "dzetsaka",
-        "created_at": "2026-02-09",
-        "updated_at": "2026-02-09"
-      },
-      "constraints": {
-        "offline_compatible": true,
-        "requires_gpu": false
-      },
-      "compat": {
-        "min_plugin_version": "5.0.0",
-        "max_plugin_version": ""
-      },
-      "expected_runtime_class": "medium",
-      "expected_accuracy_class": "high",
-      "dataset_fingerprint": "",
-      "signature": "",
-      "preprocessing": {},
-      "features": {
-        "bands": "all"
-      },
-      "classifier": {
-        "code": "RF",
-        "name": "Random Forest"
-      },
-      "postprocess": {
-        "confidence_map": true,
-        "save_model": true,
-        "confusion_matrix": true
-      },
-      "validation": {
-        "split_percent": 75,
-        "nested_cv": false,
-        "nested_inner_cv": 3,
-        "nested_outer_cv": 5,
-        "cv_mode": "POLYGON_GROUP"
-      },
-      "extraParam": {
-        "USE_OPTUNA": false,
-        "OPTUNA_TRIALS": 100,
-        "COMPUTE_SHAP": false,
-        "SHAP_OUTPUT": "",
-        "SHAP_SAMPLE_SIZE": 1000,
-        "USE_SMOTE": true,
-        "SMOTE_K_NEIGHBORS": 5,
-        "USE_CLASS_WEIGHTS": true,
-        "CLASS_WEIGHT_STRATEGY": "balanced",
-        "CUSTOM_CLASS_WEIGHTS": {},
-        "USE_NESTED_CV": false,
-        "NESTED_INNER_CV": 3,
-        "NESTED_OUTER_CV": 5,
-        "CV_MODE": "POLYGON_GROUP",
-        "GENERATE_REPORT_BUNDLE": true,
-        "OPEN_REPORT_IN_BROWSER": true
-      },
-      "metadata": {
-        "is_template": true,
-        "category": "intermediate",
-        "expected_bands": "4-8 bands (Landsat 7/8)",
-        "typical_runtime": "3-8 minutes",
-        "expected_accuracy_range": "75-88%",
-        "use_cases": [
-          "Forest/non-forest classification",
-          "Tree species mapping",
-          "Deforestation monitoring",
-          "Landsat time series analysis"
-        ]
-      }
-    },
-    {
-      "name": "Crop Classification (Sentinel-2)",
-      "description": "XGBoost with Optuna hyperparameter optimization and SHAP explainability. Optimized for agricultural crop type mapping with 10-13 band Sentinel-2 imagery.",
-      "version": 1,
-      "schema_version": 2,
-      "provenance": {
-        "source": "builtin",
-        "author": "dzetsaka",
-        "created_at": "2026-02-09",
-        "updated_at": "2026-02-09"
-      },
-      "constraints": {
-        "offline_compatible": true,
-        "requires_gpu": false
-      },
-      "compat": {
-        "min_plugin_version": "5.0.0",
-        "max_plugin_version": ""
-      },
-      "expected_runtime_class": "medium",
-      "expected_accuracy_class": "high",
-      "dataset_fingerprint": "",
-      "signature": "",
-      "preprocessing": {},
-      "features": {
-        "bands": "all"
-      },
-      "classifier": {
-        "code": "XGB",
-        "name": "XGBoost"
-      },
-      "postprocess": {
-        "confidence_map": true,
-        "save_model": true,
-        "confusion_matrix": true
-      },
-      "validation": {
-        "split_percent": 75,
-        "nested_cv": false,
-        "nested_inner_cv": 3,
-        "nested_outer_cv": 5,
-        "cv_mode": "POLYGON_GROUP"
-      },
-      "extraParam": {
-        "USE_OPTUNA": true,
-        "OPTUNA_TRIALS": 150,
-        "COMPUTE_SHAP": true,
-        "SHAP_OUTPUT": "",
-        "SHAP_SAMPLE_SIZE": 1500,
-        "USE_SMOTE": false,
-        "SMOTE_K_NEIGHBORS": 5,
-        "USE_CLASS_WEIGHTS": true,
-        "CLASS_WEIGHT_STRATEGY": "balanced",
-        "CUSTOM_CLASS_WEIGHTS": {},
-        "USE_NESTED_CV": false,
-        "NESTED_INNER_CV": 3,
-        "NESTED_OUTER_CV": 5,
-        "CV_MODE": "POLYGON_GROUP",
-        "GENERATE_REPORT_BUNDLE": true,
-        "OPEN_REPORT_IN_BROWSER": true
-      },
-      "metadata": {
-        "is_template": true,
-        "category": "intermediate",
-        "expected_bands": "10-13 bands (Sentinel-2)",
-        "typical_runtime": "8-15 minutes",
-        "expected_accuracy_range": "80-92%",
-        "use_cases": [
-          "Crop type classification",
-          "Agricultural land use mapping",
-          "Sentinel-2 time series",
-          "Multi-temporal crop monitoring"
-        ]
-      }
-    },
-    {
-      "name": "Urban/Rural Land Use",
-      "description": "SVM classifier optimized for high-resolution urban/rural land use classification. Uses class weights to balance built-up vs. natural areas.",
-      "version": 1,
-      "schema_version": 2,
-      "provenance": {
-        "source": "builtin",
-        "author": "dzetsaka",
-        "created_at": "2026-02-09",
-        "updated_at": "2026-02-09"
-      },
-      "constraints": {
-        "offline_compatible": true,
-        "requires_gpu": false
-      },
-      "compat": {
-        "min_plugin_version": "5.0.0",
-        "max_plugin_version": ""
-      },
-      "expected_runtime_class": "medium",
-      "expected_accuracy_class": "high",
-      "dataset_fingerprint": "",
-      "signature": "",
-      "preprocessing": {},
-      "features": {
-        "bands": "all"
-      },
-      "classifier": {
-        "code": "SVM",
-        "name": "Support Vector Machine"
-      },
-      "postprocess": {
-        "confidence_map": false,
-        "save_model": true,
-        "confusion_matrix": true
-      },
-      "validation": {
-        "split_percent": 70,
-        "nested_cv": false,
-        "nested_inner_cv": 3,
-        "nested_outer_cv": 5,
-        "cv_mode": "POLYGON_GROUP"
-      },
-      "extraParam": {
-        "USE_OPTUNA": false,
-        "OPTUNA_TRIALS": 100,
-        "COMPUTE_SHAP": false,
-        "SHAP_OUTPUT": "",
-        "SHAP_SAMPLE_SIZE": 1000,
-        "USE_SMOTE": false,
-        "SMOTE_K_NEIGHBORS": 5,
-        "USE_CLASS_WEIGHTS": true,
-        "CLASS_WEIGHT_STRATEGY": "balanced",
-        "CUSTOM_CLASS_WEIGHTS": {},
-        "USE_NESTED_CV": false,
-        "NESTED_INNER_CV": 3,
-        "NESTED_OUTER_CV": 5,
-        "CV_MODE": "POLYGON_GROUP",
-        "GENERATE_REPORT_BUNDLE": true,
-        "OPEN_REPORT_IN_BROWSER": true
-      },
-      "metadata": {
-        "is_template": true,
-        "category": "intermediate",
-        "expected_bands": "3-8 bands (RGB, NIR, or high-res multispectral)",
-        "typical_runtime": "5-12 minutes",
-        "expected_accuracy_range": "78-89%",
-        "use_cases": [
-          "Urban land cover mapping",
-          "Built-up area extraction",
-          "Land use/land cover classification",
-          "High-resolution imagery analysis"
-        ]
-      }
-    },
-    {
-      "name": "Water Detection",
-      "description": "GMM baseline optimized for fast water body extraction. Simple probabilistic approach for quick water/non-water binary classification.",
-      "version": 1,
-      "schema_version": 2,
-      "provenance": {
-        "source": "builtin",
-        "author": "dzetsaka",
-        "created_at": "2026-02-09",
-        "updated_at": "2026-02-09"
-      },
-      "constraints": {
-        "offline_compatible": true,
-        "requires_gpu": false
-      },
-      "compat": {
-        "min_plugin_version": "5.0.0",
-        "max_plugin_version": ""
-      },
-      "expected_runtime_class": "fast",
-      "expected_accuracy_class": "medium",
-      "dataset_fingerprint": "",
-      "signature": "",
-      "preprocessing": {},
-      "features": {
-        "bands": "all"
-      },
-      "classifier": {
-        "code": "GMM",
-        "name": "Gaussian Mixture Model"
-      },
-      "postprocess": {
-        "confidence_map": true,
-        "save_model": true,
-        "confusion_matrix": true
-      },
-      "validation": {
-        "split_percent": 80,
-        "nested_cv": false,
-        "nested_inner_cv": 3,
-        "nested_outer_cv": 5,
-        "cv_mode": "RANDOM_SPLIT"
-      },
-      "extraParam": {
-        "USE_OPTUNA": false,
-        "OPTUNA_TRIALS": 100,
-        "COMPUTE_SHAP": false,
-        "SHAP_OUTPUT": "",
-        "SHAP_SAMPLE_SIZE": 1000,
-        "USE_SMOTE": false,
-        "SMOTE_K_NEIGHBORS": 5,
-        "USE_CLASS_WEIGHTS": false,
-        "CLASS_WEIGHT_STRATEGY": "balanced",
-        "CUSTOM_CLASS_WEIGHTS": {},
-        "USE_NESTED_CV": false,
-        "NESTED_INNER_CV": 3,
-        "NESTED_OUTER_CV": 5,
-        "CV_MODE": "RANDOM_SPLIT",
-        "GENERATE_REPORT_BUNDLE": true,
-        "OPEN_REPORT_IN_BROWSER": false
-      },
-      "metadata": {
-        "is_template": true,
-        "category": "beginner",
-        "expected_bands": "2-6 bands (NIR and SWIR preferred)",
-        "typical_runtime": "1-3 minutes",
-        "expected_accuracy_range": "70-85%",
-        "use_cases": [
-          "Water body detection",
-          "Binary water/non-water classification",
-          "Flood extent mapping",
-          "Lake/river extraction"
-        ]
-      }
-    },
-    {
-      "name": "Hyperspectral Analysis",
-      "description": "Extra Trees classifier optimized for hyperspectral imagery (>10 bands). Includes SHAP explainability to identify most informative spectral bands.",
-      "version": 1,
-      "schema_version": 2,
-      "provenance": {
-        "source": "builtin",
-        "author": "dzetsaka",
-        "created_at": "2026-02-09",
-        "updated_at": "2026-02-09"
-      },
-      "constraints": {
-        "offline_compatible": true,
-        "requires_gpu": false
-      },
-      "compat": {
-        "min_plugin_version": "5.0.0",
-        "max_plugin_version": ""
-      },
-      "expected_runtime_class": "medium",
-      "expected_accuracy_class": "high",
-      "dataset_fingerprint": "",
-      "signature": "",
-      "preprocessing": {},
-      "features": {
-        "bands": "all"
-      },
-      "classifier": {
-        "code": "ET",
-        "name": "Extra Trees"
-      },
-      "postprocess": {
-        "confidence_map": true,
-        "save_model": true,
-        "confusion_matrix": true
-      },
-      "validation": {
-        "split_percent": 75,
-        "nested_cv": false,
-        "nested_inner_cv": 3,
-        "nested_outer_cv": 5,
-        "cv_mode": "POLYGON_GROUP"
-      },
-      "extraParam": {
-        "USE_OPTUNA": false,
-        "OPTUNA_TRIALS": 100,
-        "COMPUTE_SHAP": true,
-        "SHAP_OUTPUT": "",
-        "SHAP_SAMPLE_SIZE": 2000,
-        "USE_SMOTE": false,
-        "SMOTE_K_NEIGHBORS": 5,
-        "USE_CLASS_WEIGHTS": true,
-        "CLASS_WEIGHT_STRATEGY": "balanced",
-        "CUSTOM_CLASS_WEIGHTS": {},
-        "USE_NESTED_CV": false,
-        "NESTED_INNER_CV": 3,
-        "NESTED_OUTER_CV": 5,
-        "CV_MODE": "POLYGON_GROUP",
-        "GENERATE_REPORT_BUNDLE": true,
-        "OPEN_REPORT_IN_BROWSER": true
-      },
-      "metadata": {
-        "is_template": true,
-        "category": "advanced",
-        "expected_bands": ">10 bands (hyperspectral or multi-temporal stacks)",
-        "typical_runtime": "10-20 minutes",
-        "expected_accuracy_range": "82-94%",
-        "use_cases": [
-          "Hyperspectral classification",
-          "Band importance analysis",
-          "Multi-temporal image stacks",
-          "Fine spectral discrimination"
-        ]
-      }
-    },
-    {
-      "name": "Large Dataset Fast",
-      "description": "LightGBM optimized for speed on large datasets (>1GB). Fast training with histogram-based gradient boosting, minimal overhead.",
-      "version": 1,
-      "schema_version": 2,
-      "provenance": {
-        "source": "builtin",
-        "author": "dzetsaka",
-        "created_at": "2026-02-09",
-        "updated_at": "2026-02-09"
-      },
-      "constraints": {
-        "offline_compatible": true,
-        "requires_gpu": false
-      },
-      "compat": {
-        "min_plugin_version": "5.0.0",
-        "max_plugin_version": ""
-      },
-      "expected_runtime_class": "fast",
-      "expected_accuracy_class": "high",
-      "dataset_fingerprint": "",
-      "signature": "",
-      "preprocessing": {},
-      "features": {
-        "bands": "all"
-      },
-      "classifier": {
-        "code": "LGB",
-        "name": "LightGBM"
-      },
-      "postprocess": {
-        "confidence_map": false,
-        "save_model": true,
-        "confusion_matrix": true
-      },
-      "validation": {
-        "split_percent": 70,
-        "nested_cv": false,
-        "nested_inner_cv": 3,
-        "nested_outer_cv": 5,
-        "cv_mode": "RANDOM_SPLIT"
-      },
-      "extraParam": {
-        "USE_OPTUNA": false,
-        "OPTUNA_TRIALS": 100,
-        "COMPUTE_SHAP": false,
-        "SHAP_OUTPUT": "",
-        "SHAP_SAMPLE_SIZE": 1000,
-        "USE_SMOTE": false,
-        "SMOTE_K_NEIGHBORS": 5,
-        "USE_CLASS_WEIGHTS": true,
-        "CLASS_WEIGHT_STRATEGY": "balanced",
-        "CUSTOM_CLASS_WEIGHTS": {},
-        "USE_NESTED_CV": false,
-        "NESTED_INNER_CV": 3,
-        "NESTED_OUTER_CV": 5,
-        "CV_MODE": "RANDOM_SPLIT",
-        "GENERATE_REPORT_BUNDLE": false,
-        "OPEN_REPORT_IN_BROWSER": false
-      },
-      "metadata": {
-        "is_template": true,
-        "category": "intermediate",
-        "expected_bands": "any",
-        "typical_runtime": "3-8 minutes",
-        "expected_accuracy_range": "78-90%",
-        "use_cases": [
-          "Large raster files (>1GB)",
-          "High-resolution imagery",
-          "Speed-critical workflows",
-          "Production pipelines"
-        ]
-      }
-    },
-    {
-      "name": "Publication Quality",
-      "description": "Comprehensive CatBoost pipeline with Optuna (300 trials), Nested CV, SHAP explainability, and full reporting. CatBoost provides state-of-the-art accuracy with minimal tuning. Designed for rigorous scientific publications requiring maximum reproducibility and validation.",
-      "version": 1,
-      "schema_version": 2,
-      "provenance": {
-        "source": "builtin",
-        "author": "dzetsaka",
-        "created_at": "2026-02-09",
-        "updated_at": "2026-02-09"
-      },
-      "constraints": {
-        "offline_compatible": true,
-        "requires_gpu": false
-      },
-      "compat": {
-        "min_plugin_version": "5.0.0",
-        "max_plugin_version": ""
-      },
-      "expected_runtime_class": "slow",
-      "expected_accuracy_class": "very_high",
-      "dataset_fingerprint": "",
-      "signature": "",
-      "preprocessing": {},
-      "features": {
-        "bands": "all"
-      },
-      "classifier": {
-        "code": "CB",
-        "name": "CatBoost"
-      },
-      "postprocess": {
-        "confidence_map": true,
-        "save_model": true,
-        "confusion_matrix": true
-      },
-      "validation": {
-        "split_percent": 75,
-        "nested_cv": true,
-        "nested_inner_cv": 3,
-        "nested_outer_cv": 5,
-        "cv_mode": "POLYGON_GROUP"
-      },
-      "extraParam": {
-        "USE_OPTUNA": true,
-        "OPTUNA_TRIALS": 300,
-        "COMPUTE_SHAP": true,
-        "SHAP_OUTPUT": "",
-        "SHAP_SAMPLE_SIZE": 2500,
-        "USE_SMOTE": false,
-        "SMOTE_K_NEIGHBORS": 5,
-        "USE_CLASS_WEIGHTS": true,
-        "CLASS_WEIGHT_STRATEGY": "balanced",
-        "CUSTOM_CLASS_WEIGHTS": {},
-        "USE_NESTED_CV": true,
-        "NESTED_INNER_CV": 3,
-        "NESTED_OUTER_CV": 5,
-        "CV_MODE": "POLYGON_GROUP",
-        "GENERATE_REPORT_BUNDLE": true,
-        "OPEN_REPORT_IN_BROWSER": true
-      },
-      "metadata": {
-        "is_template": true,
-        "category": "advanced",
-        "expected_bands": "any",
-        "typical_runtime": "30-90 minutes",
-        "expected_accuracy_range": "90-98%",
-        "use_cases": [
-          "Scientific publications",
-          "Rigorous validation studies",
-          "Benchmark comparisons",
-          "Maximum reproducibility workflows",
-          "State-of-the-art accuracy requirements"
-        ]
-      }
-    }
-  ]
+    "recipes":  [
+                    {
+                        "name":  "Quick Baseline",
+                        "description":  "Fast sanity check with minimal setup.",
+                        "version":  1,
+                        "schema_version":  2,
+                        "provenance":  {
+                                           "source":  "builtin",
+                                           "author":  "dzetsaka",
+                                           "created_at":  "2026-02-09",
+                                           "updated_at":  "2026-02-09"
+                                       },
+                        "constraints":  {
+                                            "offline_compatible":  true,
+                                            "requires_gpu":  false
+                                        },
+                        "compat":  {
+                                       "min_plugin_version":  "5.0.0",
+                                       "max_plugin_version":  ""
+                                   },
+                        "expected_runtime_class":  "fast",
+                        "expected_accuracy_class":  "medium",
+                        "dataset_fingerprint":  "",
+                        "signature":  "",
+                        "preprocessing":  {
+
+                                          },
+                        "features":  {
+                                         "bands":  "all"
+                                     },
+                        "classifier":  {
+                                           "code":  "GMM",
+                                           "name":  "Gaussian Mixture Model"
+                                       },
+                        "postprocess":  {
+                                            "confidence_map":  false,
+                                            "save_model":  false,
+                                            "confusion_matrix":  true
+                                        },
+                        "validation":  {
+                                           "split_percent":  70,
+                                           "nested_cv":  false,
+                                           "nested_inner_cv":  3,
+                                           "nested_outer_cv":  5,
+                                           "cv_mode":  "RANDOM_SPLIT"
+                                       },
+                        "extraParam":  {
+                                           "USE_OPTUNA":  false,
+                                           "OPTUNA_TRIALS":  100,
+                                           "COMPUTE_SHAP":  false,
+                                           "SHAP_OUTPUT":  "",
+                                           "SHAP_SAMPLE_SIZE":  1000,
+                                           "USE_SMOTE":  false,
+                                           "SMOTE_K_NEIGHBORS":  5,
+                                           "USE_CLASS_WEIGHTS":  false,
+                                           "CLASS_WEIGHT_STRATEGY":  "balanced",
+                                           "CUSTOM_CLASS_WEIGHTS":  {
+
+                                                                    },
+                                           "USE_NESTED_CV":  false,
+                                           "NESTED_INNER_CV":  3,
+                                           "NESTED_OUTER_CV":  5,
+                                           "CV_MODE":  "RANDOM_SPLIT",
+                                           "GENERATE_REPORT_BUNDLE":  false,
+                                           "OPEN_REPORT_IN_BROWSER":  false
+                                       },
+                        "metadata":  {
+                                         "is_template":  true,
+                                         "category":  "beginner",
+                                         "expected_bands":  "any",
+                                         "typical_runtime":  "\u003c1 minute",
+                                         "expected_accuracy_range":  "60-75%",
+                                         "use_cases":  [
+                                                           "Quick sanity checks",
+                                                           "Workflow smoke tests",
+                                                           "Baseline comparisons"
+                                                       ]
+                                     }
+                    },
+                    {
+                        "name":  "Balanced Production",
+                        "description":  "Reliable CatBoost default for day-to-day mapping.",
+                        "version":  1,
+                        "schema_version":  2,
+                        "provenance":  {
+                                           "source":  "builtin",
+                                           "author":  "dzetsaka",
+                                           "created_at":  "2026-02-09",
+                                           "updated_at":  "2026-02-09"
+                                       },
+                        "constraints":  {
+                                            "offline_compatible":  true,
+                                            "requires_gpu":  false
+                                        },
+                        "compat":  {
+                                       "min_plugin_version":  "5.0.0",
+                                       "max_plugin_version":  ""
+                                   },
+                        "expected_runtime_class":  "medium",
+                        "expected_accuracy_class":  "high",
+                        "dataset_fingerprint":  "",
+                        "signature":  "",
+                        "preprocessing":  {
+
+                                          },
+                        "features":  {
+                                         "bands":  "all"
+                                     },
+                        "classifier":  {
+                                           "code":  "CB",
+                                           "name":  "CatBoost"
+                                       },
+                        "postprocess":  {
+                                            "confidence_map":  true,
+                                            "save_model":  true,
+                                            "confusion_matrix":  true
+                                        },
+                        "validation":  {
+                                           "split_percent":  75,
+                                           "nested_cv":  false,
+                                           "nested_inner_cv":  3,
+                                           "nested_outer_cv":  5,
+                                           "cv_mode":  "POLYGON_GROUP"
+                                       },
+                        "extraParam":  {
+                                           "USE_OPTUNA":  false,
+                                           "OPTUNA_TRIALS":  100,
+                                           "COMPUTE_SHAP":  false,
+                                           "SHAP_OUTPUT":  "",
+                                           "SHAP_SAMPLE_SIZE":  1000,
+                                           "USE_SMOTE":  false,
+                                           "SMOTE_K_NEIGHBORS":  5,
+                                           "USE_CLASS_WEIGHTS":  true,
+                                           "CLASS_WEIGHT_STRATEGY":  "balanced",
+                                           "CUSTOM_CLASS_WEIGHTS":  {
+
+                                                                    },
+                                           "USE_NESTED_CV":  false,
+                                           "NESTED_INNER_CV":  3,
+                                           "NESTED_OUTER_CV":  5,
+                                           "CV_MODE":  "POLYGON_GROUP",
+                                           "GENERATE_REPORT_BUNDLE":  true,
+                                           "OPEN_REPORT_IN_BROWSER":  true
+                                       },
+                        "metadata":  {
+                                         "is_template":  true,
+                                         "category":  "intermediate",
+                                         "expected_bands":  "any",
+                                         "typical_runtime":  "4-10 minutes",
+                                         "expected_accuracy_range":  "82-92%",
+                                         "use_cases":  [
+                                                           "General land-cover production",
+                                                           "Routine mapping jobs",
+                                                           "Balanced quality vs compute"
+                                                       ]
+                                     }
+                    },
+                    {
+                        "name":  "Accuracy Priority",
+                        "description":  "Tuned CatBoost profile focused on predictive quality.",
+                        "version":  1,
+                        "schema_version":  2,
+                        "provenance":  {
+                                           "source":  "builtin",
+                                           "author":  "dzetsaka",
+                                           "created_at":  "2026-02-09",
+                                           "updated_at":  "2026-02-09"
+                                       },
+                        "constraints":  {
+                                            "offline_compatible":  true,
+                                            "requires_gpu":  false
+                                        },
+                        "compat":  {
+                                       "min_plugin_version":  "5.0.0",
+                                       "max_plugin_version":  ""
+                                   },
+                        "expected_runtime_class":  "medium",
+                        "expected_accuracy_class":  "high",
+                        "dataset_fingerprint":  "",
+                        "signature":  "",
+                        "preprocessing":  {
+
+                                          },
+                        "features":  {
+                                         "bands":  "all"
+                                     },
+                        "classifier":  {
+                                           "code":  "CB",
+                                           "name":  "CatBoost"
+                                       },
+                        "postprocess":  {
+                                            "confidence_map":  true,
+                                            "save_model":  true,
+                                            "confusion_matrix":  true
+                                        },
+                        "validation":  {
+                                           "split_percent":  75,
+                                           "nested_cv":  false,
+                                           "nested_inner_cv":  3,
+                                           "nested_outer_cv":  5,
+                                           "cv_mode":  "POLYGON_GROUP"
+                                       },
+                        "extraParam":  {
+                                           "USE_OPTUNA":  true,
+                                           "OPTUNA_TRIALS":  200,
+                                           "COMPUTE_SHAP":  true,
+                                           "SHAP_OUTPUT":  "",
+                                           "SHAP_SAMPLE_SIZE":  1800,
+                                           "USE_SMOTE":  false,
+                                           "SMOTE_K_NEIGHBORS":  5,
+                                           "USE_CLASS_WEIGHTS":  true,
+                                           "CLASS_WEIGHT_STRATEGY":  "balanced",
+                                           "CUSTOM_CLASS_WEIGHTS":  {
+
+                                                                    },
+                                           "USE_NESTED_CV":  false,
+                                           "NESTED_INNER_CV":  3,
+                                           "NESTED_OUTER_CV":  5,
+                                           "CV_MODE":  "POLYGON_GROUP",
+                                           "GENERATE_REPORT_BUNDLE":  true,
+                                           "OPEN_REPORT_IN_BROWSER":  true
+                                       },
+                        "metadata":  {
+                                         "is_template":  true,
+                                         "category":  "intermediate",
+                                         "expected_bands":  "any",
+                                         "typical_runtime":  "10-20 minutes",
+                                         "expected_accuracy_range":  "86-94%",
+                                         "use_cases":  [
+                                                           "Best possible predictive accuracy",
+                                                           "Hard class boundaries",
+                                                           "Model selection benchmarks"
+                                                       ]
+                                     }
+                    },
+                    {
+                        "name":  "Spatially Robust",
+                        "description":  "Spatially safer validation for transferable land-use models.",
+                        "version":  1,
+                        "schema_version":  2,
+                        "provenance":  {
+                                           "source":  "builtin",
+                                           "author":  "dzetsaka",
+                                           "created_at":  "2026-02-09",
+                                           "updated_at":  "2026-02-09"
+                                       },
+                        "constraints":  {
+                                            "offline_compatible":  true,
+                                            "requires_gpu":  false
+                                        },
+                        "compat":  {
+                                       "min_plugin_version":  "5.0.0",
+                                       "max_plugin_version":  ""
+                                   },
+                        "expected_runtime_class":  "medium",
+                        "expected_accuracy_class":  "high",
+                        "dataset_fingerprint":  "",
+                        "signature":  "",
+                        "preprocessing":  {
+
+                                          },
+                        "features":  {
+                                         "bands":  "all"
+                                     },
+                        "classifier":  {
+                                           "code":  "SVM",
+                                           "name":  "Support Vector Machine"
+                                       },
+                        "postprocess":  {
+                                            "confidence_map":  false,
+                                            "save_model":  true,
+                                            "confusion_matrix":  true
+                                        },
+                        "validation":  {
+                                           "split_percent":  70,
+                                           "nested_cv":  false,
+                                           "nested_inner_cv":  3,
+                                           "nested_outer_cv":  5,
+                                           "cv_mode":  "POLYGON_GROUP"
+                                       },
+                        "extraParam":  {
+                                           "USE_OPTUNA":  false,
+                                           "OPTUNA_TRIALS":  100,
+                                           "COMPUTE_SHAP":  false,
+                                           "SHAP_OUTPUT":  "",
+                                           "SHAP_SAMPLE_SIZE":  1000,
+                                           "USE_SMOTE":  false,
+                                           "SMOTE_K_NEIGHBORS":  5,
+                                           "USE_CLASS_WEIGHTS":  true,
+                                           "CLASS_WEIGHT_STRATEGY":  "balanced",
+                                           "CUSTOM_CLASS_WEIGHTS":  {
+
+                                                                    },
+                                           "USE_NESTED_CV":  false,
+                                           "NESTED_INNER_CV":  3,
+                                           "NESTED_OUTER_CV":  5,
+                                           "CV_MODE":  "POLYGON_GROUP",
+                                           "GENERATE_REPORT_BUNDLE":  true,
+                                           "OPEN_REPORT_IN_BROWSER":  true
+                                       },
+                        "metadata":  {
+                                         "is_template":  true,
+                                         "category":  "intermediate",
+                                         "expected_bands":  "any",
+                                         "typical_runtime":  "6-15 minutes",
+                                         "expected_accuracy_range":  "78-90%",
+                                         "use_cases":  [
+                                                           "Spatial transferability checks",
+                                                           "Leakage-resistant validation",
+                                                           "Land-use map generalization"
+                                                       ]
+                                     }
+                    },
+                    {
+                        "name":  "Imbalance Aware",
+                        "description":  "Better handling for skewed class distributions.",
+                        "version":  1,
+                        "schema_version":  2,
+                        "provenance":  {
+                                           "source":  "builtin",
+                                           "author":  "dzetsaka",
+                                           "created_at":  "2026-02-09",
+                                           "updated_at":  "2026-02-09"
+                                       },
+                        "constraints":  {
+                                            "offline_compatible":  true,
+                                            "requires_gpu":  false
+                                        },
+                        "compat":  {
+                                       "min_plugin_version":  "5.0.0",
+                                       "max_plugin_version":  ""
+                                   },
+                        "expected_runtime_class":  "fast",
+                        "expected_accuracy_class":  "medium",
+                        "dataset_fingerprint":  "",
+                        "signature":  "",
+                        "preprocessing":  {
+
+                                          },
+                        "features":  {
+                                         "bands":  "all"
+                                     },
+                        "classifier":  {
+                                           "code":  "GMM",
+                                           "name":  "Gaussian Mixture Model"
+                                       },
+                        "postprocess":  {
+                                            "confidence_map":  true,
+                                            "save_model":  true,
+                                            "confusion_matrix":  true
+                                        },
+                        "validation":  {
+                                           "split_percent":  80,
+                                           "nested_cv":  false,
+                                           "nested_inner_cv":  3,
+                                           "nested_outer_cv":  5,
+                                           "cv_mode":  "RANDOM_SPLIT"
+                                       },
+                        "extraParam":  {
+                                           "USE_OPTUNA":  false,
+                                           "OPTUNA_TRIALS":  100,
+                                           "COMPUTE_SHAP":  false,
+                                           "SHAP_OUTPUT":  "",
+                                           "SHAP_SAMPLE_SIZE":  1000,
+                                           "USE_SMOTE":  false,
+                                           "SMOTE_K_NEIGHBORS":  5,
+                                           "USE_CLASS_WEIGHTS":  false,
+                                           "CLASS_WEIGHT_STRATEGY":  "balanced",
+                                           "CUSTOM_CLASS_WEIGHTS":  {
+
+                                                                    },
+                                           "USE_NESTED_CV":  false,
+                                           "NESTED_INNER_CV":  3,
+                                           "NESTED_OUTER_CV":  5,
+                                           "CV_MODE":  "RANDOM_SPLIT",
+                                           "GENERATE_REPORT_BUNDLE":  true,
+                                           "OPEN_REPORT_IN_BROWSER":  false
+                                       },
+                        "metadata":  {
+                                         "is_template":  true,
+                                         "category":  "beginner",
+                                         "expected_bands":  "any",
+                                         "typical_runtime":  "1-3 minutes",
+                                         "expected_accuracy_range":  "70-85%",
+                                         "use_cases":  [
+                                                           "Rare class detection",
+                                                           "Binary map extraction",
+                                                           "Fast imbalanced baselines"
+                                                       ]
+                                     }
+                    },
+                    {
+                        "name":  "Hyperspectral Precision",
+                        "description":  "High-dimensional spectral discrimination with interpretability.",
+                        "version":  1,
+                        "schema_version":  2,
+                        "provenance":  {
+                                           "source":  "builtin",
+                                           "author":  "dzetsaka",
+                                           "created_at":  "2026-02-09",
+                                           "updated_at":  "2026-02-09"
+                                       },
+                        "constraints":  {
+                                            "offline_compatible":  true,
+                                            "requires_gpu":  false
+                                        },
+                        "compat":  {
+                                       "min_plugin_version":  "5.0.0",
+                                       "max_plugin_version":  ""
+                                   },
+                        "expected_runtime_class":  "medium",
+                        "expected_accuracy_class":  "high",
+                        "dataset_fingerprint":  "",
+                        "signature":  "",
+                        "preprocessing":  {
+
+                                          },
+                        "features":  {
+                                         "bands":  "all"
+                                     },
+                        "classifier":  {
+                                           "code":  "ET",
+                                           "name":  "Extra Trees"
+                                       },
+                        "postprocess":  {
+                                            "confidence_map":  true,
+                                            "save_model":  true,
+                                            "confusion_matrix":  true
+                                        },
+                        "validation":  {
+                                           "split_percent":  75,
+                                           "nested_cv":  false,
+                                           "nested_inner_cv":  3,
+                                           "nested_outer_cv":  5,
+                                           "cv_mode":  "POLYGON_GROUP"
+                                       },
+                        "extraParam":  {
+                                           "USE_OPTUNA":  false,
+                                           "OPTUNA_TRIALS":  100,
+                                           "COMPUTE_SHAP":  true,
+                                           "SHAP_OUTPUT":  "",
+                                           "SHAP_SAMPLE_SIZE":  2000,
+                                           "USE_SMOTE":  false,
+                                           "SMOTE_K_NEIGHBORS":  5,
+                                           "USE_CLASS_WEIGHTS":  true,
+                                           "CLASS_WEIGHT_STRATEGY":  "balanced",
+                                           "CUSTOM_CLASS_WEIGHTS":  {
+
+                                                                    },
+                                           "USE_NESTED_CV":  false,
+                                           "NESTED_INNER_CV":  3,
+                                           "NESTED_OUTER_CV":  5,
+                                           "CV_MODE":  "POLYGON_GROUP",
+                                           "GENERATE_REPORT_BUNDLE":  true,
+                                           "OPEN_REPORT_IN_BROWSER":  true
+                                       },
+                        "metadata":  {
+                                         "is_template":  true,
+                                         "category":  "advanced",
+                                         "expected_bands":  "\u003e10 bands (hyperspectral or stacked)",
+                                         "typical_runtime":  "10-20 minutes",
+                                         "expected_accuracy_range":  "82-94%",
+                                         "use_cases":  [
+                                                           "Hyperspectral classification",
+                                                           "Band importance analysis",
+                                                           "Fine spectral separability"
+                                                       ]
+                                     }
+                    },
+                    {
+                        "name":  "Large-Scale Fast",
+                        "description":  "Throughput-oriented profile for big rasters.",
+                        "version":  1,
+                        "schema_version":  2,
+                        "provenance":  {
+                                           "source":  "builtin",
+                                           "author":  "dzetsaka",
+                                           "created_at":  "2026-02-09",
+                                           "updated_at":  "2026-02-09"
+                                       },
+                        "constraints":  {
+                                            "offline_compatible":  true,
+                                            "requires_gpu":  false
+                                        },
+                        "compat":  {
+                                       "min_plugin_version":  "5.0.0",
+                                       "max_plugin_version":  ""
+                                   },
+                        "expected_runtime_class":  "fast",
+                        "expected_accuracy_class":  "medium",
+                        "dataset_fingerprint":  "",
+                        "signature":  "",
+                        "preprocessing":  {
+
+                                          },
+                        "features":  {
+                                         "bands":  "all"
+                                     },
+                        "classifier":  {
+                                           "code":  "GMM",
+                                           "name":  "Gaussian Mixture Model"
+                                       },
+                        "postprocess":  {
+                                            "confidence_map":  false,
+                                            "save_model":  true,
+                                            "confusion_matrix":  true
+                                        },
+                        "validation":  {
+                                           "split_percent":  70,
+                                           "nested_cv":  false,
+                                           "nested_inner_cv":  3,
+                                           "nested_outer_cv":  5,
+                                           "cv_mode":  "RANDOM_SPLIT"
+                                       },
+                        "extraParam":  {
+                                           "USE_OPTUNA":  false,
+                                           "OPTUNA_TRIALS":  100,
+                                           "COMPUTE_SHAP":  false,
+                                           "SHAP_OUTPUT":  "",
+                                           "SHAP_SAMPLE_SIZE":  1000,
+                                           "USE_SMOTE":  false,
+                                           "SMOTE_K_NEIGHBORS":  5,
+                                           "USE_CLASS_WEIGHTS":  false,
+                                           "CLASS_WEIGHT_STRATEGY":  "balanced",
+                                           "CUSTOM_CLASS_WEIGHTS":  {
+
+                                                                    },
+                                           "USE_NESTED_CV":  false,
+                                           "NESTED_INNER_CV":  3,
+                                           "NESTED_OUTER_CV":  5,
+                                           "CV_MODE":  "RANDOM_SPLIT",
+                                           "GENERATE_REPORT_BUNDLE":  false,
+                                           "OPEN_REPORT_IN_BROWSER":  false
+                                       },
+                        "metadata":  {
+                                         "is_template":  true,
+                                         "category":  "intermediate",
+                                         "expected_bands":  "any",
+                                         "typical_runtime":  "2-6 minutes",
+                                         "expected_accuracy_range":  "68-82%",
+                                         "use_cases":  [
+                                                           "Large raster files",
+                                                           "Fast first-pass outputs",
+                                                           "CPU-limited environments"
+                                                       ]
+                                     }
+                    },
+                    {
+                        "name":  "Publication Grade",
+                        "description":  "Rigorous validation, explainability, and reporting.",
+                        "version":  1,
+                        "schema_version":  2,
+                        "provenance":  {
+                                           "source":  "builtin",
+                                           "author":  "dzetsaka",
+                                           "created_at":  "2026-02-09",
+                                           "updated_at":  "2026-02-09"
+                                       },
+                        "constraints":  {
+                                            "offline_compatible":  true,
+                                            "requires_gpu":  false
+                                        },
+                        "compat":  {
+                                       "min_plugin_version":  "5.0.0",
+                                       "max_plugin_version":  ""
+                                   },
+                        "expected_runtime_class":  "slow",
+                        "expected_accuracy_class":  "very_high",
+                        "dataset_fingerprint":  "",
+                        "signature":  "",
+                        "preprocessing":  {
+
+                                          },
+                        "features":  {
+                                         "bands":  "all"
+                                     },
+                        "classifier":  {
+                                           "code":  "CB",
+                                           "name":  "CatBoost"
+                                       },
+                        "postprocess":  {
+                                            "confidence_map":  true,
+                                            "save_model":  true,
+                                            "confusion_matrix":  true
+                                        },
+                        "validation":  {
+                                           "split_percent":  75,
+                                           "nested_cv":  true,
+                                           "nested_inner_cv":  3,
+                                           "nested_outer_cv":  5,
+                                           "cv_mode":  "POLYGON_GROUP"
+                                       },
+                        "extraParam":  {
+                                           "USE_OPTUNA":  true,
+                                           "OPTUNA_TRIALS":  300,
+                                           "COMPUTE_SHAP":  true,
+                                           "SHAP_OUTPUT":  "",
+                                           "SHAP_SAMPLE_SIZE":  2500,
+                                           "USE_SMOTE":  false,
+                                           "SMOTE_K_NEIGHBORS":  5,
+                                           "USE_CLASS_WEIGHTS":  true,
+                                           "CLASS_WEIGHT_STRATEGY":  "balanced",
+                                           "CUSTOM_CLASS_WEIGHTS":  {
+
+                                                                    },
+                                           "USE_NESTED_CV":  true,
+                                           "NESTED_INNER_CV":  3,
+                                           "NESTED_OUTER_CV":  5,
+                                           "CV_MODE":  "POLYGON_GROUP",
+                                           "GENERATE_REPORT_BUNDLE":  true,
+                                           "OPEN_REPORT_IN_BROWSER":  true
+                                       },
+                        "metadata":  {
+                                         "is_template":  true,
+                                         "category":  "advanced",
+                                         "expected_bands":  "any",
+                                         "typical_runtime":  "30-90 minutes",
+                                         "expected_accuracy_range":  "90-98%",
+                                         "use_cases":  [
+                                                           "Scientific publications",
+                                                           "Rigorous validation studies",
+                                                           "Maximum reproducibility workflows"
+                                                       ]
+                                     }
+                    },
+                    {
+                        "name":  "Explainable Report",
+                        "description":  "Decision transparency first, with SHAP-focused outputs.",
+                        "version":  1,
+                        "schema_version":  2,
+                        "provenance":  {
+                                           "source":  "builtin",
+                                           "author":  "dzetsaka",
+                                           "created_at":  "2026-02-09",
+                                           "updated_at":  "2026-02-09"
+                                       },
+                        "constraints":  {
+                                            "offline_compatible":  true,
+                                            "requires_gpu":  false
+                                        },
+                        "compat":  {
+                                       "min_plugin_version":  "5.0.0",
+                                       "max_plugin_version":  ""
+                                   },
+                        "expected_runtime_class":  "medium",
+                        "expected_accuracy_class":  "high",
+                        "dataset_fingerprint":  "",
+                        "signature":  "",
+                        "preprocessing":  {
+
+                                          },
+                        "features":  {
+                                         "bands":  "all"
+                                     },
+                        "classifier":  {
+                                           "code":  "CB",
+                                           "name":  "CatBoost"
+                                       },
+                        "postprocess":  {
+                                            "confidence_map":  true,
+                                            "save_model":  true,
+                                            "confusion_matrix":  true
+                                        },
+                        "validation":  {
+                                           "split_percent":  70,
+                                           "nested_cv":  false,
+                                           "nested_inner_cv":  3,
+                                           "nested_outer_cv":  5,
+                                           "cv_mode":  "POLYGON_GROUP"
+                                       },
+                        "extraParam":  {
+                                           "USE_OPTUNA":  false,
+                                           "OPTUNA_TRIALS":  100,
+                                           "COMPUTE_SHAP":  true,
+                                           "SHAP_OUTPUT":  "",
+                                           "SHAP_SAMPLE_SIZE":  2000,
+                                           "USE_SMOTE":  false,
+                                           "SMOTE_K_NEIGHBORS":  5,
+                                           "USE_CLASS_WEIGHTS":  true,
+                                           "CLASS_WEIGHT_STRATEGY":  "balanced",
+                                           "CUSTOM_CLASS_WEIGHTS":  {
+
+                                                                    },
+                                           "USE_NESTED_CV":  false,
+                                           "NESTED_INNER_CV":  3,
+                                           "NESTED_OUTER_CV":  5,
+                                           "CV_MODE":  "POLYGON_GROUP",
+                                           "GENERATE_REPORT_BUNDLE":  true,
+                                           "OPEN_REPORT_IN_BROWSER":  true
+                                       },
+                        "metadata":  {
+                                         "is_template":  true,
+                                         "category":  "intermediate",
+                                         "expected_bands":  "any",
+                                         "typical_runtime":  "8-18 minutes",
+                                         "expected_accuracy_range":  "82-92%",
+                                         "use_cases":  [
+                                                           "Model explanation",
+                                                           "Feature effect reporting",
+                                                           "Stakeholder-facing deliverables"
+                                                       ]
+                                     }
+                    },
+                    {
+                        "name":  "Change Monitoring Ready",
+                        "description":  "Stable, repeatable setup for multi-date comparisons.",
+                        "version":  1,
+                        "schema_version":  2,
+                        "provenance":  {
+                                           "source":  "builtin",
+                                           "author":  "dzetsaka",
+                                           "created_at":  "2026-02-09",
+                                           "updated_at":  "2026-02-09"
+                                       },
+                        "constraints":  {
+                                            "offline_compatible":  true,
+                                            "requires_gpu":  false
+                                        },
+                        "compat":  {
+                                       "min_plugin_version":  "5.0.0",
+                                       "max_plugin_version":  ""
+                                   },
+                        "expected_runtime_class":  "medium",
+                        "expected_accuracy_class":  "high",
+                        "dataset_fingerprint":  "",
+                        "signature":  "",
+                        "preprocessing":  {
+
+                                          },
+                        "features":  {
+                                         "bands":  "all"
+                                     },
+                        "classifier":  {
+                                           "code":  "CB",
+                                           "name":  "CatBoost"
+                                       },
+                        "postprocess":  {
+                                            "confidence_map":  true,
+                                            "save_model":  true,
+                                            "confusion_matrix":  true
+                                        },
+                        "validation":  {
+                                           "split_percent":  75,
+                                           "nested_cv":  false,
+                                           "nested_inner_cv":  3,
+                                           "nested_outer_cv":  5,
+                                           "cv_mode":  "POLYGON_GROUP"
+                                       },
+                        "extraParam":  {
+                                           "USE_OPTUNA":  false,
+                                           "OPTUNA_TRIALS":  100,
+                                           "COMPUTE_SHAP":  false,
+                                           "SHAP_OUTPUT":  "",
+                                           "SHAP_SAMPLE_SIZE":  1500,
+                                           "USE_SMOTE":  false,
+                                           "SMOTE_K_NEIGHBORS":  5,
+                                           "USE_CLASS_WEIGHTS":  true,
+                                           "CLASS_WEIGHT_STRATEGY":  "balanced",
+                                           "CUSTOM_CLASS_WEIGHTS":  {
+
+                                                                    },
+                                           "USE_NESTED_CV":  false,
+                                           "NESTED_INNER_CV":  3,
+                                           "NESTED_OUTER_CV":  5,
+                                           "CV_MODE":  "POLYGON_GROUP",
+                                           "GENERATE_REPORT_BUNDLE":  true,
+                                           "OPEN_REPORT_IN_BROWSER":  false
+                                       },
+                        "metadata":  {
+                                         "is_template":  true,
+                                         "category":  "advanced",
+                                         "expected_bands":  "any",
+                                         "typical_runtime":  "12-25 minutes",
+                                         "expected_accuracy_range":  "84-93%",
+                                         "use_cases":  [
+                                                           "Multi-date monitoring",
+                                                           "Consistent reruns over time",
+                                                           "Model persistence workflows"
+                                                       ]
+                                     }
+                    }
+                ]
 }
+

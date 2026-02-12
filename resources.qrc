@@ -16,5 +16,11 @@
     <file>img/table.png</file>
     <file>img/settings.png</file>
     <file>img/iconHM.png</file>
+    <file>img/modern/ux_classifier.png</file>
+    <file>img/modern/ux_label.png</file>
+    <file>img/modern/ux_quick.png</file>
+    <file>img/modern/ux_raster.png</file>
+    <file>img/modern/ux_run.png</file>
+    <file>img/modern/ux_vector.png</file>
   </qresource>
 </RCC>

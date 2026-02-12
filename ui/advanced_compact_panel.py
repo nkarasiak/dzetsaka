@@ -3,7 +3,7 @@ import tempfile
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from qgis.PyQt.QtCore import pyqtSignal
-from qgis.PyQt.QtGui import QPixmap
+from qgis.PyQt.QtGui import QIcon, QPixmap
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -451,6 +451,9 @@ class AdvancedCompactPanel(QWidget):
     def _icon_asset_path(self, icon_path):
         if icon_path.startswith(":/"):
             return icon_path
+        resource_path = f":/plugins/dzetsaka/img/{icon_path}"
+        if not QIcon(resource_path).isNull():
+            return resource_path
         return os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "img", icon_path))
 
     def _icon_label(self, icon_path, tooltip, fallback_resource=None):

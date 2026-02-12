@@ -5791,6 +5791,9 @@ class QuickClassificationPanel(QWidget):
         # type: (str) -> str
         if icon_path.startswith(":/"):
             return icon_path
+        resource_path = f":/plugins/dzetsaka/img/{icon_path}"
+        if not QIcon(resource_path).isNull():
+            return resource_path
         return os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "img", icon_path))
 
     def _icon_label(self, icon_path, tooltip, fallback_resource=None):
