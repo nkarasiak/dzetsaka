@@ -11,7 +11,7 @@ name=dzetsaka : AI-Powered Remote Sensing Classification
 qgisMinimumVersion=3.0
 supportsQt6=True
 description=AI for Earth Observation and remote sensing classification for QGIS with 12 ML algorithms, Optuna optimization, SHAP explainability, and imbalance-aware validation.
-version=5.0.0
+version=0.5.0
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -42,7 +42,7 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
-    5.0.0
+    0.5.0
       * NEW: Guided Classification Dialog - step-by-step QWizard interface (Input, Algorithm, Advanced Options, Output, Review)
       * NEW: Algorithm Comparison Panel - colour-coded table of all 12 classifiers with feature and dependency status
       * NEW: Smart Defaults button auto-enables Optuna/SHAP/SMOTE when packages are available
