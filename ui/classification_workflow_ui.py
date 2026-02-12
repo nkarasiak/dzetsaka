@@ -880,6 +880,15 @@ def load_recipes(settings):
         "Imbalanced Fast (RF + SMOTE + Weights)",
         "Satellite Enterprise · CatBoost · Optuna, SHAP, Class weights, Nested CV · 65% Polygon Group",
         "Explain & Report · CatBoost · SHAP · 70% Polygon Group",
+        # Visual recipe shop names replaced by the new 10-profile naming system
+        "Quick Test",
+        "Forest Mapping",
+        "Crop Classification",
+        "Urban/Rural Land Use",
+        "Water Detection",
+        "Hyperspectral Analysis",
+        "Large Dataset Fast",
+        "Publication Quality",
     }
     user_recipes = [r for r in user_recipes if str(r.get("name", "")) not in removed_builtin_names]
 
@@ -4702,6 +4711,7 @@ class RecipeHubDialog(QDialog):
         self._current_recipe_name = str(current_recipe_name or "").strip()
         self._active_category = ""
         self._active_chip = "ALL"
+        self._preset_focus = ""
         self._recipes = [normalize_recipe(dict(r)) for r in (recipes or []) if isinstance(r, dict)]
         self._category_items = {}  # type: Dict[str, List[Dict[str, object]]]
 
@@ -4980,6 +4990,8 @@ class RecipeHubDialog(QDialog):
     def _accuracy_rank(self, recipe):
         # type: (Dict[str, object]) -> int
         value = str(recipe.get("expected_accuracy_class", "")).lower()
+        if "very_high" in value or "highest" in value:
+            return 4
         if "high" in value:
             return 3
         if "medium" in value:
@@ -5026,12 +5038,26 @@ class RecipeHubDialog(QDialog):
             return not is_builtin_recipe(recipe)
         return self._active_chip in tags
 
-    def _set_active_chip(self, key):
-        # type: (str) -> None
+    def _set_active_chip(self, key, clear_preset=True):
+        # type: (str, bool) -> None
+        if clear_preset:
+            self._preset_focus = ""
         self._active_chip = key
         for chip_key, btn in self.chipButtons.items():
             btn.setChecked(chip_key == key)
         self._rebuild_recipe_list()
+
+    def _apply_preset_focus(self, recipes):
+        # type: (List[Dict[str, object]]) -> List[Dict[str, object]]
+        if not recipes:
+            return []
+        if self._preset_focus == "FAST":
+            best_runtime = min(self._runtime_rank(r) for r in recipes)
+            return [r for r in recipes if self._runtime_rank(r) == best_runtime]
+        if self._preset_focus == "QUALITY":
+            best_quality = max(self._accuracy_rank(r) for r in recipes)
+            return [r for r in recipes if self._accuracy_rank(r) == best_quality]
+        return recipes
 
     def _update_stats_pill(self):
         # type: () -> None
@@ -5045,7 +5071,12 @@ class RecipeHubDialog(QDialog):
         shown = self.recipeList.count()
         chip = self.chipButtons.get(self._active_chip)
         chip_label = chip.text() if chip else "All"
-        self.statsLabel.setText(f"{shown} / {total} recipes | {category} | Filter: {chip_label}")
+        preset_label = ""
+        if self._preset_focus == "FAST":
+            preset_label = " | Preset: Fast"
+        elif self._preset_focus == "QUALITY":
+            preset_label = " | Preset: Highest quality"
+        self.statsLabel.setText(f"{shown} / {total} recipes | {category} | Filter: {chip_label}{preset_label}")
 
     def _build_recipe_card_widget(self, recipe):
         # type: (Dict[str, object]) -> QWidget
@@ -5101,6 +5132,7 @@ class RecipeHubDialog(QDialog):
         search_term = self.searchEdit.text().strip().lower()
         base_recipes = list(self._recipes) if search_term else self._recipes_for_category(self._active_category)
         recipes = self._sort_recipes(base_recipes)
+        recipes = self._apply_preset_focus(recipes)
         for recipe in recipes:
             if not self._passes_chip_filter(recipe):
                 continue
@@ -5124,6 +5156,7 @@ class RecipeHubDialog(QDialog):
 
     def _on_category_changed(self, row):
         # type: (int) -> None
+        self._preset_focus = ""
         if row < 0 or row >= len(getattr(self, "_categories", [])):
             self._active_category = "All"
             self._rebuild_recipe_list()
@@ -5133,6 +5166,7 @@ class RecipeHubDialog(QDialog):
 
     def _on_search_changed(self, _text):
         # type: (str) -> None
+        self._preset_focus = ""
         # Search always operates on All recipes; keep All selected while filtering.
         if self.searchEdit.text().strip() and self.categoryList.count() > 0 and self.categoryList.currentRow() != 0:
             self.categoryList.setCurrentRow(0)
@@ -5141,6 +5175,7 @@ class RecipeHubDialog(QDialog):
 
     def _on_sort_changed(self, _index):
         # type: (int) -> None
+        self._preset_focus = ""
         self._rebuild_recipe_list()
 
     def _ensure_all_category_selected(self):
@@ -5157,7 +5192,8 @@ class RecipeHubDialog(QDialog):
         idx = self.sortCombo.findText("Fastest")
         if idx >= 0:
             self.sortCombo.setCurrentIndex(idx)
-        self._set_active_chip("ALL")
+        self._preset_focus = "FAST"
+        self._set_active_chip("ALL", clear_preset=False)
         self._rebuild_recipe_list()
         if self.recipeList.count() > 0:
             self.recipeList.setCurrentRow(0)
@@ -5169,7 +5205,8 @@ class RecipeHubDialog(QDialog):
         idx = self.sortCombo.findText("Highest Accuracy")
         if idx >= 0:
             self.sortCombo.setCurrentIndex(idx)
-        self._set_active_chip("ALL")
+        self._preset_focus = "QUALITY"
+        self._set_active_chip("ALL", clear_preset=False)
         self._rebuild_recipe_list()
         if self.recipeList.count() > 0:
             self.recipeList.setCurrentRow(0)
@@ -5200,11 +5237,18 @@ class RecipeHubDialog(QDialog):
         if extra.get("USE_NESTED_CV") or recipe.get("validation", {}).get("nested_cv"):
             features.append("Nested CV")
         features_text = ", ".join(features) if features else "Baseline"
+        guidance = ""
+        if classifier_code == "CB":
+            guidance = (
+                "<br><span style='color:#2f6f44;'>"
+                "CatBoost typically delivers stronger accuracy than Random Forest with efficient CPU usage."
+                "</span>"
+            )
         return (
             f"<b>{name}</b><br>"
             f"<span style='color:#2f4f6a;'><b>{classifier_name}</b> | {category}</span><br>"
             f"<span style='color:#5f748a;'>Features: {features_text}</span><br><br>"
-            f"{description}<br><br>"
+            f"{description}{guidance}<br><br>"
             f"<span style='color:#7c8ea1;'>Tip: double-click recipe card to apply instantly.</span>"
         )
 
@@ -5632,6 +5676,11 @@ class QuickClassificationPanel(QWidget):
         self.checkQualityBtn.setEnabled(_QUALITY_CHECKER_AVAILABLE)
         if not _QUALITY_CHECKER_AVAILABLE:
             self.checkQualityBtn.setToolTip("Quality checker not available (module import failed)")
+        self.checkQualityBtn.setObjectName("quickInlineAction")
+        self.checkQualityBtn.setText("Quality…")
+        self.checkQualityBtn.setMinimumHeight(24)
+        self.checkQualityBtn.setMaximumWidth(110)
+        field_row.addWidget(self.checkQualityBtn)
 
         self.vectorLineEdit.editingFinished.connect(self._on_vector_path_edited)
         self._on_vector_changed()
@@ -5672,11 +5721,6 @@ class QuickClassificationPanel(QWidget):
         classifier_row.addWidget(self.recipeHubBtn)
         root.addLayout(classifier_row)
 
-        self.currentRecipeLabel = QLabel("Current: none")
-        self.currentRecipeLabel.setObjectName("currentRecipeLabel")
-        self.currentRecipeLabel.setStyleSheet("color: #6b7280; font-size: 11px;")
-        root.addWidget(self.currentRecipeLabel)
-
         # Keep classifier combo as internal state (not shown in default dashboard).
         self.classifierCombo = QComboBox()
         for _code, name, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
@@ -5693,11 +5737,14 @@ class QuickClassificationPanel(QWidget):
         self.reportCheck.setChecked(True)
         self.reportCheck.setToolTip("Generate a full classification report bundle (HTML + CSV/JSON + heatmaps).")
         run_row.addWidget(self.reportCheck)
-        run_row.addWidget(self.checkQualityBtn)
         run_row.addStretch()
-        self.runButton = QPushButton("Fit + Predict")
+        self.runButton = QPushButton("Run Classification")
+        self.runButton.setObjectName("quickPrimaryAction")
+        self.runButton.setDefault(True)
+        self.runButton.setAutoDefault(True)
+        self.runButton.setMinimumHeight(30)
         self.runButton.setToolTip(
-            "<b>Fit + Predict</b><br>"
+            "<b>Run Classification</b><br>"
             "Train the selected model with your labeled vector data, then classify the raster."
         )
         run_icon_path = self._icon_asset_path("modern/ux_run.png")
@@ -5708,6 +5755,34 @@ class QuickClassificationPanel(QWidget):
         self.runButton.clicked.connect(self._emit_config)
         run_row.addWidget(self.runButton)
         root.addLayout(run_row)
+
+        # Make primary action visually obvious in quick mode.
+        self.setStyleSheet(
+            """
+            QPushButton#quickPrimaryAction {
+                background-color: #2b7cd3;
+                color: white;
+                border: 1px solid #1f5fa0;
+                border-radius: 3px;
+                font-weight: 700;
+                padding: 4px 14px;
+            }
+            QPushButton#quickPrimaryAction:hover {
+                background-color: #2369b3;
+            }
+            QPushButton#quickPrimaryAction:pressed {
+                background-color: #1b548f;
+            }
+            QPushButton#quickInlineAction {
+                background-color: #f6f6f6;
+                color: #2f2f2f;
+                border: 1px solid #c8c8c8;
+                border-radius: 3px;
+                font-weight: 400;
+                padding: 2px 8px;
+            }
+            """
+        )
 
         self.setLayout(root)
         self._refresh_recipe_combo()
@@ -5744,7 +5819,7 @@ class QuickClassificationPanel(QWidget):
                     current_tooltip + "<br><br><i>Keyboard shortcut: Ctrl+Shift+Q</i>"
                 )
 
-        # Shortcut for Fit + Predict: Ctrl+Return
+        # Shortcut for Run Classification: Ctrl+Return
         if hasattr(self, 'runButton'):
             run_shortcut = QShortcut(QKeySequence("Ctrl+Return"), self)
             run_shortcut.activated.connect(self._emit_config)
@@ -6324,7 +6399,14 @@ class QuickClassificationPanel(QWidget):
                 tooltip_parts.append(f"Accuracy profile: {accuracy_profile}")
             if best_for:
                 tooltip_parts.append("")
-                tooltip_parts.append(f"Best for: {best_for}")
+                tooltip_parts.append(f"Example contexts: {best_for}")
+                tooltip_parts.append("Use-case tags are guidance only, not strict algorithm constraints.")
+            if classifier_code == "CB":
+                tooltip_parts.append("")
+                tooltip_parts.append(
+                    "Note: CatBoost often outperforms Random Forest on tabular remote-sensing tasks "
+                    "while staying compute-efficient on CPU."
+                )
 
         # Add required dependencies
         deps_required = []
@@ -6374,14 +6456,15 @@ class QuickClassificationPanel(QWidget):
             "REPORT_OUTPUT_DIR": "",
             "REPORT_LABEL_COLUMN": "",
             "REPORT_LABEL_MAP": "",
-            "OPEN_REPORT_IN_BROWSER": report_enabled and self._open_report_in_browser,
+            # In Quick mode, "Report" implies opening the generated HTML report.
+            "OPEN_REPORT_IN_BROWSER": report_enabled,
         }
         # Merge recipe's extraParam if a recipe was applied
         if hasattr(self, "_recipe_extra_params") and self._recipe_extra_params:
             defaults.update(self._recipe_extra_params)
             # Override report settings based on current UI state
             defaults["GENERATE_REPORT_BUNDLE"] = report_enabled
-            defaults["OPEN_REPORT_IN_BROWSER"] = report_enabled and self._open_report_in_browser
+            defaults["OPEN_REPORT_IN_BROWSER"] = report_enabled
 
         return defaults
 
@@ -6570,9 +6653,6 @@ class QuickClassificationPanel(QWidget):
         if selected is None:
             return
         self._previous_recipe_index = self.recipeCombo.currentIndex()
-        if hasattr(self, "currentRecipeLabel"):
-            self.currentRecipeLabel.setText(f"Current: {name}")
-
         classifier = selected.get("classifier", {})
         classifier_code = str(classifier.get("code", "GMM"))
         for i, (code, _n, _sk, _xgb, _lgb, _cb) in enumerate(_CLASSIFIER_META):
@@ -6834,31 +6914,40 @@ class QuickClassificationPanel(QWidget):
                             "Report mode requires the full dzetsaka dependency bundle.<br><br>"
                             f"Missing now: <code>{', '.join(missing_bundle)}</code><br>"
                             f"Bundle to install: <code>{_full_bundle_label()}</code><br><br>"
-                            "Install now?"
+                            "Install now?<br><br>"
+                            "<i>Choose No to continue without report mode.</i>"
                         ),
                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                        QMessageBox.StandardButton.Yes,
+                        QMessageBox.StandardButton.No,
                     )
-                    if reply != QMessageBox.StandardButton.Yes:
-                        return
-                    if not self._installer._try_install_dependencies(_full_dependency_bundle()):
-                        QMessageBox.warning(
-                            self,
-                            "Dependencies Missing",
-                            "Could not install full dependency bundle required for report mode.",
-                        )
-                        return
-                    self._deps = check_dependency_availability()
+                    if reply == QMessageBox.StandardButton.Yes:
+                        if not self._installer._try_install_dependencies(_full_dependency_bundle()):
+                            QMessageBox.warning(
+                                self,
+                                "Dependencies Missing",
+                                "Could not install full dependency bundle required for report mode.",
+                            )
+                            return
+                        self._deps = check_dependency_availability()
+                    else:
+                        # Allow baseline execution by disabling report mode for this run.
+                        self.reportCheck.setChecked(False)
                 else:
-                    QMessageBox.warning(
+                    reply = QMessageBox.question(
                         self,
                         "Dependencies Missing",
                         (
                             "Report mode requires the full dependency bundle, but installer is unavailable.\n\n"
-                            f"Required bundle: {_full_bundle_label()}"
+                            f"Required bundle: {_full_bundle_label()}\n\n"
+                            "Continue without report mode?"
                         ),
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        QMessageBox.StandardButton.Yes,
                     )
-                    return
+                    if reply == QMessageBox.StandardButton.Yes:
+                        self.reportCheck.setChecked(False)
+                    else:
+                        return
 
         missing_required, _missing_optional = self._get_missing_dependencies()
         if missing_required:

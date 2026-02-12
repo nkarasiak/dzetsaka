@@ -1,12 +1,13 @@
 """Vector dataset train/validation splitting utilities.
 
 This module provides functionality to split vector datasets for machine learning
-training and validation using scikit-learn's stratified splitting.
+training and validation using stratified splitting.
 """
 
 from __future__ import annotations
 
 import os
+import random
 import tempfile
 from typing import Any
 
@@ -14,8 +15,6 @@ try:
     from osgeo import ogr
 except ImportError:
     import ogr  # type: ignore[no-redef]
-
-from sklearn.model_selection import train_test_split
 
 OGR_BACKEND: Any | None = None
 _DEFAULT_OGR = ogr
@@ -27,7 +26,6 @@ def _get_ogr():
 
 def count_polygons_per_class(vector_path: str, class_field: str) -> dict[Any, int]:
     """Count how many vector features per class exist in a layer."""
-
     ds = _get_ogr().Open(vector_path)
     if ds is None:
         return {}
@@ -55,8 +53,7 @@ def split_vector_stratified(
     """Split vector dataset into train/validation subsets using stratified sampling.
 
     Creates two new shapefiles by splitting the input vector layer's features
-    while maintaining class distribution (stratified split). Uses scikit-learn's
-    train_test_split for robust, reproducible splitting.
+    while maintaining class distribution (stratified split).
 
     Args:
         vector_path: Path to input vector file (shapefile, GeoJSON, etc.)
@@ -99,6 +96,7 @@ def split_vector_stratified(
         ...     train_percent=100,
         ...     use_percent=False
         ... )
+
     """
     if use_percent and not (1 <= train_percent <= 99):
         raise ValueError(f"train_percent must be between 1 and 99 when use_percent=True, got {train_percent}")
@@ -133,30 +131,22 @@ def split_vector_stratified(
 
     # Calculate split parameters based on mode
     if use_percent:
-        # train_percent is percentage - convert to train_size for sklearn
+        # train_percent is percentage - convert to train_size ratio
         train_size = train_percent / 100.0
         validation_size = 1.0 - train_size
     else:
         # train_percent is absolute count
         train_size = int(train_percent)
-        validation_size = None  # Let sklearn calculate based on train_size
+        validation_size = None  # Let splitter calculate based on train_size
 
-    # Perform stratified split using scikit-learn
-    if validation_size is not None:
-        train_feats, validation_feats = train_test_split(
-            features,
-            train_size=train_size,
-            test_size=validation_size,
-            stratify=labels,
-            random_state=0,  # Fixed seed for reproducibility
-        )
-    else:
-        train_feats, validation_feats = train_test_split(
-            features,
-            train_size=train_size,
-            stratify=labels,
-            random_state=0,  # Fixed seed for reproducibility
-        )
+    # Perform reproducible stratified split.
+    train_feats, validation_feats = _stratified_split(
+        features=features,
+        labels=labels,
+        train_size=train_size,
+        test_size=validation_size,
+        random_state=0,
+    )
 
     # Determine output paths
     if train_output and validation_output:
@@ -200,6 +190,7 @@ def _write_shapefile_subset(
 
     Raises:
         RuntimeError: If shapefile creation fails
+
     """
     # Remove existing file if present
     if os.path.exists(output_path):
@@ -237,3 +228,143 @@ def _write_shapefile_subset(
         out_feat = None
 
     out_ds = None  # Close and flush
+
+
+def _stratified_split(
+    features: list[Any],
+    labels: list[Any],
+    train_size: float | int,
+    test_size: float | int | None = None,
+    random_state: int = 0,
+) -> tuple[list[Any], list[Any]]:
+    """Split features into stratified train/test subsets.
+
+    This keeps plugin startup independent from optional ML dependencies while
+    preserving deterministic, class-balanced splitting for vector sampling.
+    """
+    if len(features) != len(labels):
+        raise ValueError("features and labels must have the same length")
+    if len(features) < 2:
+        raise ValueError("Need at least two samples to split")
+
+    n_samples = len(features)
+    n_train, n_test = _resolve_split_sizes(
+        n_samples=n_samples,
+        train_size=train_size,
+        test_size=test_size,
+    )
+
+    class_to_indices: dict[Any, list[int]] = {}
+    for idx, label in enumerate(labels):
+        class_to_indices.setdefault(label, []).append(idx)
+
+    if len(class_to_indices) < 2:
+        raise ValueError("Need at least two classes for stratified splitting")
+
+    min_class_count = min(len(indices) for indices in class_to_indices.values())
+    if min_class_count < 2:
+        raise ValueError("The least populated class has fewer than 2 samples")
+
+    n_classes = len(class_to_indices)
+    if n_train < n_classes or n_test < n_classes:
+        raise ValueError("train/test split too small to keep all classes in both subsets")
+
+    train_counts = _allocate_train_counts(class_to_indices, n_train, n_samples)
+    rng = random.Random(random_state)
+
+    train_indices: list[int] = []
+    test_indices: list[int] = []
+    for label, indices in class_to_indices.items():
+        shuffled = list(indices)
+        rng.shuffle(shuffled)
+        split_at = train_counts[label]
+        train_indices.extend(shuffled[:split_at])
+        test_indices.extend(shuffled[split_at:])
+
+    rng.shuffle(train_indices)
+    rng.shuffle(test_indices)
+
+    train_features = [features[idx] for idx in train_indices]
+    test_features = [features[idx] for idx in test_indices]
+    return train_features, test_features
+
+
+def _resolve_split_sizes(
+    n_samples: int,
+    train_size: float | int,
+    test_size: float | int | None,
+) -> tuple[int, int]:
+    """Resolve validated absolute train/test sizes."""
+    n_train = _resolve_size(train_size, n_samples, "train_size")
+    if test_size is None:
+        n_test = n_samples - n_train
+    else:
+        n_test = _resolve_size(test_size, n_samples, "test_size")
+        if n_train + n_test != n_samples:
+            raise ValueError("train_size and test_size must sum to total number of samples")
+
+    if n_train <= 0 or n_test <= 0:
+        raise ValueError("train and test subsets must both be non-empty")
+    return n_train, n_test
+
+
+def _resolve_size(size: float | int, n_samples: int, name: str) -> int:
+    """Convert a ratio/count split parameter to an absolute integer count."""
+    if isinstance(size, float):
+        if not 0.0 < size < 1.0:
+            raise ValueError(f"{name} as float must be in (0, 1), got {size}")
+        resolved = round(size * n_samples)
+    else:
+        resolved = int(size)
+
+    if not 0 < resolved < n_samples:
+        raise ValueError(f"{name} must be between 1 and {n_samples - 1}, got {size}")
+    return resolved
+
+
+def _allocate_train_counts(class_to_indices: dict[Any, list[int]], n_train: int, n_total: int) -> dict[Any, int]:
+    """Allocate train counts per class using largest remainder rounding."""
+    counts = {label: len(indices) for label, indices in class_to_indices.items()}
+    base: dict[Any, int] = {}
+    remainders: list[tuple[float, Any]] = []
+
+    for label, count in counts.items():
+        expected = (count * n_train) / n_total
+        assigned = int(expected)
+        assigned = max(1, min(count - 1, assigned))
+        base[label] = assigned
+        remainders.append((expected - int(expected), label))
+
+    assigned_total = sum(base.values())
+    delta = n_train - assigned_total
+
+    if delta > 0:
+        for _, label in sorted(remainders, reverse=True):
+            if delta == 0:
+                break
+            if base[label] < counts[label] - 1:
+                base[label] += 1
+                delta -= 1
+    elif delta < 0:
+        for _, label in sorted(remainders):
+            if delta == 0:
+                break
+            if base[label] > 1:
+                base[label] -= 1
+                delta += 1
+
+    if delta != 0:
+        for label, count in counts.items():
+            if delta == 0:
+                break
+            while delta > 0 and base[label] < count - 1:
+                base[label] += 1
+                delta -= 1
+            while delta < 0 and base[label] > 1:
+                base[label] -= 1
+                delta += 1
+
+    if delta != 0:
+        raise ValueError("Unable to satisfy stratified split constraints for the requested sizes")
+
+    return base

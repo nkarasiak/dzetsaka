@@ -16,7 +16,7 @@ ogr_module = types.ModuleType("ogr")
 sys.modules["ogr"] = ogr_module
 
 osgeo_module = types.ModuleType("osgeo")
-setattr(osgeo_module, "ogr", ogr_module)
+osgeo_module.ogr = ogr_module
 sys.modules["osgeo"] = osgeo_module
 sys.modules["osgeo.ogr"] = ogr_module
 ogr_module.Open = lambda path: None
@@ -71,6 +71,7 @@ def _patch_open(features):
 
 
 def test_count_polygons_per_class_returns_empty_when_dataset_missing() -> None:
+    """Return empty counts when OGR cannot open the input dataset."""
     _patch_open(None)
     vector_split = _reload_vector_split()
     vector_split.OGR_BACKEND = ogr_module
@@ -78,6 +79,7 @@ def test_count_polygons_per_class_returns_empty_when_dataset_missing() -> None:
 
 
 def test_count_polygons_per_class_aggregates_labels() -> None:
+    """Aggregate feature counts by class label."""
     features = [_Feature(1), _Feature(1), _Feature(2)]
     _patch_open(features)
     vector_split = _reload_vector_split()
@@ -86,8 +88,47 @@ def test_count_polygons_per_class_aggregates_labels() -> None:
 
 
 def test_count_polygons_per_class_skips_empty_labels() -> None:
+    """Ignore empty and null class labels."""
     features = [_Feature(1), _Feature(None), _Feature("")]
     _patch_open(features)
     vector_split = _reload_vector_split()
     vector_split.OGR_BACKEND = ogr_module
     assert vector_split.count_polygons_per_class("path", "class") == {1: 1}
+
+
+def test_stratified_split_balances_classes_and_is_deterministic() -> None:
+    """Produce reproducible, balanced train/validation splits."""
+    vector_split = _reload_vector_split()
+    features = list(range(10))
+    labels = [1] * 5 + [2] * 5
+
+    train_1, valid_1 = vector_split._stratified_split(features, labels, train_size=0.6, test_size=0.4, random_state=7)
+    train_2, valid_2 = vector_split._stratified_split(features, labels, train_size=0.6, test_size=0.4, random_state=7)
+
+    assert train_1 == train_2
+    assert valid_1 == valid_2
+    assert len(train_1) == 6
+    assert len(valid_1) == 4
+
+    train_labels = [labels[i] for i in train_1]
+    valid_labels = [labels[i] for i in valid_1]
+    assert train_labels.count(1) == 3
+    assert train_labels.count(2) == 3
+    assert valid_labels.count(1) == 2
+    assert valid_labels.count(2) == 2
+
+
+def test_stratified_split_rejects_singleton_class() -> None:
+    """Reject stratified splitting when a class has a single sample."""
+    vector_split = _reload_vector_split()
+    features = list(range(5))
+    labels = [1, 1, 1, 1, 2]
+
+    try:
+        vector_split._stratified_split(features, labels, train_size=0.6, test_size=0.4, random_state=0)
+        raised = False
+    except ValueError as exc:
+        raised = True
+        assert "least populated class" in str(exc)
+
+    assert raised is True
