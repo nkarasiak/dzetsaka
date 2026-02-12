@@ -9,9 +9,17 @@ import numpy as np
 import pytest
 
 
+def _safe_find_spec(module_name: str):
+    """Return module spec when available, tolerating incomplete test stubs."""
+    try:
+        return importlib.util.find_spec(module_name)
+    except (ValueError, ImportError):
+        return None
+
+
 def _ensure_geospatial_stubs():
     """Inject minimal GDAL/OGR/QGIS modules when unavailable."""
-    if importlib.util.find_spec("osgeo") is None:
+    if _safe_find_spec("osgeo") is None:
         gdal_stub = types.ModuleType("gdal")
         for const in (
             "GDT_Byte",
@@ -47,7 +55,7 @@ def _ensure_geospatial_stubs():
         sys.modules["ogr"] = ogr_stub
         sys.modules["osgeo"] = osgeo_stub
 
-    if importlib.util.find_spec("qgis") is None:
+    if _safe_find_spec("qgis") is None:
         qtcore = types.ModuleType("qgis.PyQt.QtCore")
         class QtShape:
             WaitCursor = 0

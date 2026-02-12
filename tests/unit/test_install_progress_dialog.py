@@ -139,10 +139,11 @@ class TestInstallProgressDialog:
 
 # This test requires QGIS, so it will be skipped if QGIS is not available
 try:
+    import pytestqt
     from qgis.PyQt.QtCore import Qt
 
     # Import for fixture usage
     pytest_plugins = ["pytestqt"]
 except ImportError:
-    # Skip all tests if PyQt is not available
-    pytestmark = pytest.mark.skip("PyQt not available")
+    # Skip all tests if PyQt or pytest-qt is not available
+    pytestmark = pytest.mark.skip("PyQt/pytest-qt not available")

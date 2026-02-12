@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+
+pytest.importorskip("qgis")
+qgis_core = pytest.importorskip("qgis.core")
+if not getattr(qgis_core, "QgsApplication", None) or not getattr(qgis_core, "QgsTask", None):
+    pytest.skip("Real QGIS core API is unavailable", allow_module_level=True)
 
 
 @pytest.mark.unit

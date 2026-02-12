@@ -7,9 +7,10 @@ for custom widget classes.
 import pytest
 
 # Skip if QGIS environment is not available
-pytest.importorskip("qgis.PyQt.QtWidgets")
-
-from qgis.PyQt.QtWidgets import QApplication
+qtwidgets = pytest.importorskip("qgis.PyQt.QtWidgets")
+if not hasattr(qtwidgets, "QApplication"):
+    pytest.skip("QGIS QtWidgets QApplication is unavailable", allow_module_level=True)
+QApplication = qtwidgets.QApplication
 
 from ui.validated_widgets import ValidatedDoubleSpinBox, ValidatedLineEdit, ValidatedSpinBox
 

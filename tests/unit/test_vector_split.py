@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import sys
 import types
+from importlib.machinery import ModuleSpec
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -13,10 +14,12 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 ogr_module = types.ModuleType("ogr")
+ogr_module.__spec__ = ModuleSpec("ogr", loader=None)
 sys.modules["ogr"] = ogr_module
 
 osgeo_module = types.ModuleType("osgeo")
 osgeo_module.ogr = ogr_module
+osgeo_module.__spec__ = ModuleSpec("osgeo", loader=None)
 sys.modules["osgeo"] = osgeo_module
 sys.modules["osgeo.ogr"] = ogr_module
 ogr_module.Open = lambda path: None

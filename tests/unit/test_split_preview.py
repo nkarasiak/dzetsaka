@@ -10,7 +10,7 @@ except ImportError:
 from dzetsaka.infrastructure.geo.vector_split import count_polygons_per_class, split_vector_stratified
 
 
-@pytest.mark.skipif(ogr is None, reason="OGR/GDAL not available")
+@pytest.mark.skipif(ogr is None or not hasattr(ogr, "GetDriverByName"), reason="OGR/GDAL not available")
 def test_split_preview_basic(tmp_path):
     """Test basic split preview computation."""
     # Create a simple test shapefile with 3 classes
@@ -60,7 +60,7 @@ def test_split_preview_basic(tmp_path):
     assert 2 <= test_counts[1] <= 4
 
 
-@pytest.mark.skipif(ogr is None, reason="OGR/GDAL not available")
+@pytest.mark.skipif(ogr is None or not hasattr(ogr, "GetDriverByName"), reason="OGR/GDAL not available")
 def test_split_preview_imbalanced(tmp_path):
     """Test split preview with imbalanced classes."""
     shapefile_path = str(tmp_path / "test_imbalanced.shp")
@@ -97,7 +97,7 @@ def test_split_preview_imbalanced(tmp_path):
     assert max_count / min_count == 10.0  # Exactly 10:1 ratio
 
 
-@pytest.mark.skipif(ogr is None, reason="OGR/GDAL not available")
+@pytest.mark.skipif(ogr is None or not hasattr(ogr, "GetDriverByName"), reason="OGR/GDAL not available")
 def test_split_preview_small_test_set(tmp_path):
     """Test split preview with small test set."""
     shapefile_path = str(tmp_path / "test_small.shp")

@@ -2,7 +2,7 @@ import json
 import sys
 import types
 from importlib import import_module
-from pathlib import Path
+from importlib.machinery import ModuleSpec
 
 stub_accuracy = types.ModuleType("accuracy_index")
 stub_gdal = types.ModuleType("gdal")
@@ -12,6 +12,10 @@ stub_osgeo = types.ModuleType("osgeo")
 stub_osgeo.gdal = stub_gdal
 stub_osgeo.ogr = stub_ogr
 stub_osgeo.gdal_array = stub_gdal_array
+stub_osgeo.__spec__ = ModuleSpec("osgeo", loader=None)
+stub_gdal.__spec__ = ModuleSpec("osgeo.gdal", loader=None)
+stub_ogr.__spec__ = ModuleSpec("osgeo.ogr", loader=None)
+stub_gdal_array.__spec__ = ModuleSpec("osgeo.gdal_array", loader=None)
 for const in (
     "GA_ReadOnly",
     "GA_Update",
@@ -31,32 +35,32 @@ for const in (
 
 
 class _DummyDataset:
-    def __init__(self, *args, **kwargs):  # noqa: ARG002
+    def __init__(self, *args, **kwargs):
         pass
 
-    def GetRasterBand(self, *args, **kwargs):  # noqa: ARG002
+    def GetRasterBand(self, *args, **kwargs):
         return None
 
-    def GetGeoTransform(self):  # noqa: ARG002
+    def GetGeoTransform(self):
         return (0, 1, 0, 0, 0, -1)
 
-    def GetProjection(self):  # noqa: ARG002
+    def GetProjection(self):
         return ""
 
 
-def _dummy_open(*args, **kwargs):  # noqa: ARG002
+def _dummy_open(*args, **kwargs):
     return _DummyDataset()
 
 
 class _DummyDriver:
-    def Create(self, *args, **kwargs):  # noqa: ARG002
+    def Create(self, *args, **kwargs):
         return _DummyDataset()
 
-    def Delete(self, *args, **kwargs):  # noqa: ARG002
+    def Delete(self, *args, **kwargs):
         return None
 
 
-def _dummy_driver_by_name(*args, **kwargs):  # noqa: ARG002
+def _dummy_driver_by_name(*args, **kwargs):
     return _DummyDriver()
 
 
@@ -84,37 +88,37 @@ class _DummyQt:
     WaitCursor = 1
 
 class _DummyQCursor:
-    def __init__(self, *args, **kwargs):  # noqa: ARG002
+    def __init__(self, *args, **kwargs):
         pass
 
 class _DummyQProgressBar:
-    def __init__(self, *args, **kwargs):  # noqa: ARG002
+    def __init__(self, *args, **kwargs):
         pass
 
-    def setValue(self, value):  # noqa: ARG002
+    def setValue(self, value):
         return None
 
-    def setMaximum(self, value):  # noqa: ARG002
+    def setMaximum(self, value):
         return None
 
 class _DummyQApplication:
     @staticmethod
-    def setOverrideCursor(cursor):  # noqa: ARG002
+    def setOverrideCursor(cursor):
         return None
 
 class _DummyWidget:
     def layout(self):
         class Layout:
-            def addWidget(self_inner, widget):  # noqa: ARG002
+            def addWidget(self_inner, widget):
                 return None
 
         return Layout()
 
 class _DummyMessageBar:
-    def createMessage(self, title, text):  # noqa: ARG002
+    def createMessage(self, title, text):
         return _DummyWidget()
 
-    def pushWidget(self, widget):  # noqa: ARG002
+    def pushWidget(self, widget):
         return None
 
 class _DummyIface:

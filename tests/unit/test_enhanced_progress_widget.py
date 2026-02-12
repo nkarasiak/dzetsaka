@@ -5,9 +5,10 @@ import time
 import pytest
 
 # These tests require QGIS environment
-pytest.importorskip("qgis")
-
-from qgis.PyQt.QtWidgets import QApplication
+qtwidgets = pytest.importorskip("qgis.PyQt.QtWidgets")
+if not hasattr(qtwidgets, "QApplication"):
+    pytest.skip("QGIS QtWidgets QApplication is unavailable", allow_module_level=True)
+QApplication = qtwidgets.QApplication
 
 from dzetsaka.qgis.task_runner import (
     PROGRESS_STAGES,

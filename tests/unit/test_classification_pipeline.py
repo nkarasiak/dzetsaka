@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import sys
 import types
+from importlib.machinery import ModuleSpec
 from pathlib import Path
 
 import numpy as np
@@ -18,6 +19,9 @@ if str(ROOT) not in sys.path:
 osgeo = types.ModuleType("osgeo")
 osgeo.gdal = types.ModuleType("osgeo.gdal")
 osgeo.ogr = types.ModuleType("osgeo.ogr")
+osgeo.__spec__ = ModuleSpec("osgeo", loader=None)
+osgeo.gdal.__spec__ = ModuleSpec("osgeo.gdal", loader=None)
+osgeo.ogr.__spec__ = ModuleSpec("osgeo.ogr", loader=None)
 sys.modules["osgeo"] = osgeo
 sys.modules["osgeo.gdal"] = osgeo.gdal
 sys.modules["osgeo.ogr"] = osgeo.ogr
@@ -50,7 +54,6 @@ classification_pipeline_spec.loader.exec_module(classification_pipeline)
 
 def _new_learn_model() -> classification_pipeline.LearnModel:
     """Create a lightweight LearnModel instance without running ``__init__``."""
-
     return classification_pipeline.LearnModel.__new__(classification_pipeline.LearnModel)
 
 

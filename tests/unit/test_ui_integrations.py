@@ -13,10 +13,21 @@ Author:
 
 import os
 import sys
-from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+
+pytest.importorskip("qgis")
+qgis_mod = sys.modules.get("qgis")
+qgis_core = pytest.importorskip("qgis.core")
+qtcore = pytest.importorskip("qgis.PyQt.QtCore")
+qtwidgets = pytest.importorskip("qgis.PyQt.QtWidgets")
+if not getattr(qgis_mod, "__file__", None):
+    pytest.skip("Real QGIS package is unavailable", allow_module_level=True)
+if not getattr(qgis_core, "QgsApplication", None):
+    pytest.skip("Real QGIS core API is unavailable", allow_module_level=True)
+if not getattr(qtcore, "QSettings", None) or not getattr(qtwidgets, "QApplication", None):
+    pytest.skip("Real QGIS Qt bindings are unavailable", allow_module_level=True)
 
 
 # Test fixtures
@@ -200,8 +211,8 @@ class TestThemeSupportIntegration:
     def test_welcome_wizard_inherits_theme_aware(self):
         """Test that WelcomeWizard inherits from ThemeAwareWidget."""
         pytest.importorskip("qgis.PyQt.QtWidgets")
-        from ui.welcome_wizard import WelcomeWizard
         from ui.theme_support import ThemeAwareWidget
+        from ui.welcome_wizard import WelcomeWizard
 
         assert issubclass(WelcomeWizard, ThemeAwareWidget), \
             "WelcomeWizard should inherit from ThemeAwareWidget"
@@ -227,8 +238,8 @@ class TestThemeSupportIntegration:
     def test_quality_checker_inherits_theme_aware(self):
         """Test that TrainingDataQualityChecker inherits from ThemeAwareWidget."""
         pytest.importorskip("qgis.PyQt.QtWidgets")
-        from ui.training_data_quality_checker import TrainingDataQualityChecker
         from ui.theme_support import ThemeAwareWidget
+        from ui.training_data_quality_checker import TrainingDataQualityChecker
 
         assert issubclass(TrainingDataQualityChecker, ThemeAwareWidget), \
             "TrainingDataQualityChecker should inherit from ThemeAwareWidget"
