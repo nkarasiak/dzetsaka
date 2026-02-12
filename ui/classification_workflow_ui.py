@@ -5850,21 +5850,6 @@ class QuickClassificationPanel(QWidget):
                 break
         icon_label.setPixmap(pix)
         icon_label.setScaledContents(True)
-        try:
-            from dzetsaka.logging import create_logger
-
-            logger = create_logger("dzetsaka.icon-debug")
-            if selected_candidate:
-                logger.debug(
-                    f"QuickPanel icon loaded: icon='{icon_path}' tooltip='{tooltip}' selected='{selected_candidate}'"
-                )
-            else:
-                logger.warning(
-                    f"QuickPanel icon missing: icon='{icon_path}' tooltip='{tooltip}' candidates={candidates} "
-                    f"plugin_root='{self._plugin_root_dir()}'"
-                )
-        except Exception:
-            pass
         return icon_label
 
     def _setup_shortcuts(self):
