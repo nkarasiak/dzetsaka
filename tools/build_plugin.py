@@ -32,6 +32,7 @@ INCLUDED_TOP_LEVEL_FILES = {
     "dzetsaka.py",
     "dzetsaka_provider.py",
     "icon.png",
+    "LICENSE",
     "metadata.txt",
     "resources.py",
 }
