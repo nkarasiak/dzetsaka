@@ -99,6 +99,10 @@ def _is_included(rel_path: Path, qrc_images: set[str]) -> bool:
     if top_level != "img":
         return True
 
+    # Keep modern UI icons on disk as a fallback for direct file loading.
+    if path_posix.startswith("img/modern/"):
+        return True
+
     # Keep images embedded via resources.py (resources.qrc source of truth).
     return path_posix in qrc_images
 

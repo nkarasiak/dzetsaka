@@ -5791,19 +5791,46 @@ class QuickClassificationPanel(QWidget):
         # type: (str) -> str
         if icon_path.startswith(":/"):
             return icon_path
-        resource_path = f":/plugins/dzetsaka/img/{icon_path}"
-        if not QIcon(resource_path).isNull():
-            return resource_path
         return os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "img", icon_path))
+
+    def _resource_to_file_path(self, resource_path):
+        # type: (str) -> Optional[str]
+        prefix = ":/plugins/dzetsaka/"
+        if not resource_path.startswith(prefix):
+            return None
+        rel = resource_path[len(prefix):]
+        return os.path.normpath(os.path.join(os.path.dirname(__file__), "..", rel))
 
     def _icon_label(self, icon_path, tooltip, fallback_resource=None):
         # type: (str, str, Optional[str]) -> QLabel
         icon_label = QLabel()
         icon_label.setFixedSize(15, 15)
         icon_label.setToolTip(tooltip)
-        pix = QPixmap(self._icon_asset_path(icon_path))
-        if pix.isNull() and fallback_resource:
-            pix = QPixmap(fallback_resource)
+        candidates = []
+        if icon_path.startswith(":/"):
+            candidates.append(icon_path)
+            fs_path = self._resource_to_file_path(icon_path)
+            if fs_path:
+                candidates.append(fs_path)
+        else:
+            resource_path = f":/plugins/dzetsaka/img/{icon_path}"
+            candidates.append(resource_path)
+            fs_from_resource = self._resource_to_file_path(resource_path)
+            if fs_from_resource:
+                candidates.append(fs_from_resource)
+            candidates.append(self._icon_asset_path(icon_path))
+        if fallback_resource:
+            candidates.append(fallback_resource)
+            fs_fallback = self._resource_to_file_path(fallback_resource)
+            if fs_fallback:
+                candidates.append(fs_fallback)
+
+        pix = QPixmap()
+        for candidate in candidates:
+            candidate_pix = QPixmap(candidate)
+            if not candidate_pix.isNull():
+                pix = candidate_pix
+                break
         icon_label.setPixmap(pix)
         icon_label.setScaledContents(True)
         return icon_label

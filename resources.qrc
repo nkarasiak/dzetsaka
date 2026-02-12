@@ -1,5 +1,5 @@
 <!DOCTYPE RCC><RCC version="1.0">
-<qresource>
+<qresource prefix="/plugins/dzetsaka">
     <file>img/icon.png</file>
     <file>img/dzetsaka_settings.png</file>
     <file>img/confidence.png</file>
