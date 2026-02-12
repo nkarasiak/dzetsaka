@@ -5,6 +5,7 @@ Tests cover:
 - Advanced regularization (Ledoit-Wolf, OAS)
 - Streaming data workflows
 """
+
 import numpy as np
 import pytest
 

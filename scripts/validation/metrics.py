@@ -21,7 +21,7 @@ Example Usage:
     >>> print(report)
     >>>
     >>> # Generate ROC curves
-    >>> metrics.plot_roc_curves(y_true, y_proba, ['Class0', 'Class1'], 'roc.png')
+    >>> metrics.plot_roc_curves(y_true, y_proba, ["Class0", "Class1"], "roc.png")
 
 Author:
 -------
@@ -32,6 +32,7 @@ License:
 GNU General Public License v2.0 or later
 
 """
+
 import importlib.util
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -82,7 +83,7 @@ class ValidationMetrics:
     -------
     >>> metrics = ValidationMetrics()
     >>> report = metrics.compute_per_class_metrics(y_true, y_pred)
-    >>> metrics.plot_roc_curves(y_true, y_proba, class_names, 'roc.png')
+    >>> metrics.plot_roc_curves(y_true, y_proba, class_names, "roc.png")
 
     """
 
@@ -196,9 +197,7 @@ class ValidationMetrics:
 
         Example
         -------
-        >>> auc_scores = ValidationMetrics.plot_roc_curves(
-        ...     y_true, y_proba, ['Water', 'Forest', 'Urban'], 'roc.png'
-        ... )
+        >>> auc_scores = ValidationMetrics.plot_roc_curves(y_true, y_proba, ["Water", "Forest", "Urban"], "roc.png")
 
         """
         if not SKLEARN_AVAILABLE or not MATPLOTLIB_AVAILABLE:
@@ -292,9 +291,7 @@ class ValidationMetrics:
 
         Example
         -------
-        >>> curves = ValidationMetrics.plot_learning_curves(
-        ...     model, X, y, 'learning_curves.png'
-        ... )
+        >>> curves = ValidationMetrics.plot_learning_curves(model, X, y, "learning_curves.png")
         >>> print(f"Final validation score: {curves['val_scores_mean'][-1]:.3f}")
 
         """

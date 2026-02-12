@@ -47,7 +47,7 @@ class MinimalDemo(QWidget):
             "• Green/default border = valid\n"
             "• Orange border = warning (valid but high)\n"
             "• Red border = invalid\n"
-            "• Hover to see tooltip with details"
+            "• Hover to see tooltip with details",
         )
         instructions.setWordWrap(True)
         layout.addWidget(instructions)

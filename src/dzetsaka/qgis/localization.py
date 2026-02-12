@@ -8,4 +8,3 @@ from qgis.PyQt.QtCore import QCoreApplication
 def tr(message: str) -> str:
     """Translate a message string in dzetsaka context."""
     return QCoreApplication.translate("dzetsaka", message)
-

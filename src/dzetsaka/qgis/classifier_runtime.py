@@ -51,12 +51,9 @@ def ensure_classifier_runtime_ready(
         ),
         QMessageBox.StandardButton.Ok,
     )
-    plugin.log.warning(
-        f"{source_label} blocked: classifier {classifier_code} missing runtime deps: {missing_list}"
-    )
+    plugin.log.warning(f"{source_label} blocked: classifier {classifier_code} missing runtime deps: {missing_list}")
 
     if fallback_to_gmm:
         plugin.settings.setValue("/dzetsaka/classifier", "Gaussian Mixture Model")
         plugin.classifier = "Gaussian Mixture Model"
     return False
-

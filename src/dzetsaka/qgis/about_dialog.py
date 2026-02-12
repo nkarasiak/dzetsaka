@@ -29,7 +29,7 @@ def show_about_dialog(plugin) -> None:
                 120,
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
-            )
+            ),
         )
     layout.addWidget(logo)
 
@@ -42,7 +42,7 @@ def show_about_dialog(plugin) -> None:
     about = QLabel(
         "dzetsaka is an AI-powered remote sensing classification plugin for QGIS. "
         "It provides modern machine learning workflows, advanced optimization, "
-        "guided UI/UX, reusable recipes, and rich report generation."
+        "guided UI/UX, reusable recipes, and rich report generation.",
     )
     about.setWordWrap(True)
     about.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
@@ -51,7 +51,7 @@ def show_about_dialog(plugin) -> None:
     author = QLabel(
         "Nicolas Karasiak, data scientist, researcher.<br>"
         "Available on X: <a href='https://x.com/nkarasiak'>@nkarasiak</a><br>"
-        "LinkedIn: <a href='https://www.linkedin.com/in/nicolas-karasiak/'>nicolas-karasiak</a>"
+        "LinkedIn: <a href='https://www.linkedin.com/in/nicolas-karasiak/'>nicolas-karasiak</a>",
     )
     author.setOpenExternalLinks(True)
     author.setWordWrap(True)
@@ -62,4 +62,3 @@ def show_about_dialog(plugin) -> None:
     layout.addWidget(buttons)
 
     dialog.exec()
-

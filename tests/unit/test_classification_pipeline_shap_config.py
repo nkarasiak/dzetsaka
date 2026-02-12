@@ -57,6 +57,7 @@ def _ensure_geospatial_stubs():
 
     if _safe_find_spec("qgis") is None:
         qtcore = types.ModuleType("qgis.PyQt.QtCore")
+
         class QtShape:
             WaitCursor = 0
 
@@ -76,6 +77,7 @@ def _ensure_geospatial_stubs():
         qtcore.QThread = QThreadStub
 
         qtgui = types.ModuleType("qgis.PyQt.QtGui")
+
         class QCursorStub:
             def __init__(self, *args, **kwargs):
                 pass
@@ -198,9 +200,7 @@ def test_extract_shap_settings_defaults():
 
 @pytest.mark.unit
 def test_run_config_reflects_shap_flags(tmp_path):
-    shap_enabled, shap_sample_size = _extract_shap_settings(
-        {"COMPUTE_SHAP": True, "SHAP_SAMPLE_SIZE": 123}
-    )
+    shap_enabled, shap_sample_size = _extract_shap_settings({"COMPUTE_SHAP": True, "SHAP_SAMPLE_SIZE": 123})
 
     config_meta = {
         "classifier_code": "RF",

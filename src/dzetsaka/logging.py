@@ -21,33 +21,25 @@ _recent_log_lines: deque[str] = deque(maxlen=1200)
 class Logger(Protocol):
     """Simple logger protocol that mirrors qgis logging semantics."""
 
-    def info(self, message: Any) -> None:
-        ...
+    def info(self, message: Any) -> None: ...
 
-    def warning(self, message: Any) -> None:
-        ...
+    def warning(self, message: Any) -> None: ...
 
-    def error(self, message: Any) -> None:
-        ...
+    def error(self, message: Any) -> None: ...
 
-    def exception(self, message: Any, exc: BaseException | None = None) -> None:
-        ...
+    def exception(self, message: Any, exc: BaseException | None = None) -> None: ...
 
 
 class FeedbackProtocol(Protocol):
     """Minimal feedback interface used by dzetsaka workflows."""
 
-    def setProgress(self, value: float | int) -> None:
-        ...
+    def setProgress(self, value: float | int) -> None: ...
 
-    def setProgressText(self, message: str) -> None:
-        ...
+    def setProgressText(self, message: str) -> None: ...
 
 
 LoggerFactory = Callable[[str], Logger]
-IssuePopupHandler = Callable[
-    [str, str, Any, Optional[str], Optional[Any]], None
-]
+IssuePopupHandler = Callable[[str, str, Any, Optional[str], Optional[Any]], None]
 ErrorHandler = Callable[[str, Any, Optional[str]], None]
 
 
@@ -230,6 +222,8 @@ def _default_error_handler(title: str, message: Any, context: str | None) -> Non
 
 _issue_popup_handler: IssuePopupHandler = _default_issue_popup_handler
 _error_handler: ErrorHandler = _default_error_handler
+
+
 def _logger_factory(tag):
     return PythonLogger(tag)
 
@@ -277,7 +271,7 @@ class PythonLogger:
         if not self._logger.handlers:
             handler = logging.StreamHandler()
             handler.setFormatter(
-                logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+                logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"),
             )
             self._logger.addHandler(handler)
         self._logger.setLevel(logging.INFO)

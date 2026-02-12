@@ -67,7 +67,10 @@ def test_confirm_polygon_group_split_fallbacks_when_needed(monkeypatch) -> None:
     )
 
     assert result == (True, True)
-    assert ("warning", "Spatial CV disabled because some classes lack enough polygons; falling back to random split.") in log.records
+    assert (
+        "warning",
+        "Spatial CV disabled because some classes lack enough polygons; falling back to random split.",
+    ) in log.records
 
 
 def test_confirm_polygon_group_split_cancels_when_user_says_no(monkeypatch) -> None:

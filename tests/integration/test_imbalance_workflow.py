@@ -3,6 +3,7 @@
 Tests the end-to-end integration of SMOTE, class weights, and
 nested CV with different classifiers.
 """
+
 import numpy as np
 import pytest
 
@@ -47,7 +48,9 @@ except ImportError:
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(not SKLEARN_AVAILABLE or not CLASS_WEIGHTS_AVAILABLE, reason="sklearn or class weights not available")
+@pytest.mark.skipif(
+    not SKLEARN_AVAILABLE or not CLASS_WEIGHTS_AVAILABLE, reason="sklearn or class weights not available",
+)
 class TestClassWeightsWithModels:
     """Test class weights integration with actual models."""
 
@@ -176,9 +179,7 @@ class TestSMOTEWithModels:
         y_train = np.array([0] * 180 + [1] * 20)  # Ratio = 9.0
 
         # Should apply SMOTE (ratio > threshold)
-        X_result, y_result, applied = apply_smote_if_needed(
-            X_train, y_train, threshold=1.5
-        )
+        X_result, y_result, applied = apply_smote_if_needed(X_train, y_train, threshold=1.5)
 
         assert applied is True
 
@@ -191,7 +192,9 @@ class TestSMOTEWithModels:
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(not SKLEARN_AVAILABLE or not CLASS_WEIGHTS_AVAILABLE, reason="sklearn or class weights not available")
+@pytest.mark.skipif(
+    not SKLEARN_AVAILABLE or not CLASS_WEIGHTS_AVAILABLE, reason="sklearn or class weights not available",
+)
 class TestCombinedImbalanceHandling:
     """Test combined SMOTE + class weights strategies."""
 
@@ -236,7 +239,9 @@ class TestCombinedImbalanceHandling:
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(not SKLEARN_AVAILABLE or not CLASS_WEIGHTS_AVAILABLE, reason="sklearn or class weights not available")
+@pytest.mark.skipif(
+    not SKLEARN_AVAILABLE or not CLASS_WEIGHTS_AVAILABLE, reason="sklearn or class weights not available",
+)
 class TestImbalanceImpactOnMetrics:
     """Test that imbalance handling improves metrics."""
 

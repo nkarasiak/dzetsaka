@@ -76,9 +76,7 @@ ERROR_MSG_MISSING_SKLEARN = (
     "pip install scikit-learn"
 )
 ERROR_MSG_MISSING_XGBOOST = (
-    "Missing dependency: xgboost. "
-    "Please install it using the plugin's dependency installer or run: "
-    "pip install xgboost"
+    "Missing dependency: xgboost. Please install it using the plugin's dependency installer or run: pip install xgboost"
 )
 ERROR_MSG_MISSING_LIGHTGBM = (
     "Missing dependency: lightgbm. "

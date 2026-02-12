@@ -42,9 +42,7 @@ def test_split_preview_basic(tmp_path):
     assert class_counts == {1: 10, 2: 10, 3: 10}
 
     # Test split function
-    train_path, test_path = split_vector_stratified(
-        shapefile_path, "class", train_percent=75, use_percent=True
-    )
+    train_path, test_path = split_vector_stratified(shapefile_path, "class", train_percent=75, use_percent=True)
 
     train_counts = count_polygons_per_class(train_path, "class")
     test_counts = count_polygons_per_class(test_path, "class")
@@ -123,9 +121,7 @@ def test_split_preview_small_test_set(tmp_path):
     ds = None
 
     # Split with 80% train, 20% test = 2 samples per class in test
-    train_path, test_path = split_vector_stratified(
-        shapefile_path, "class", train_percent=80, use_percent=True
-    )
+    train_path, test_path = split_vector_stratified(shapefile_path, "class", train_percent=80, use_percent=True)
 
     test_counts = count_polygons_per_class(test_path, "class")
 

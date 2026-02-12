@@ -60,6 +60,7 @@ except Exception:
     try:
         from dzetsaka.scripts import progress_bar
     except Exception:
+
         class _NoOpProgressBar:
             """Fallback progress bar for non-QGIS contexts (tests/CLI)."""
 
@@ -109,6 +110,7 @@ class OptunaOptimizationError(RuntimeError):
 
 class PolygonCoverageInsufficientError(RuntimeError):
     """Raised when polygon-based CV cannot run because some classes lack polygons."""
+
 
 # Try to import SHAP explainer (optional)
 try:
@@ -741,14 +743,14 @@ def _write_report_bundle(
 
             rows.append(
                 "<tr>"
-                + f"<td style='text-align:center;'>{html.escape(str(cls_val))}</td>"
-                + f"<td style='text-align:left;'>{html.escape(str(names[i]))}</td>"
+                 f"<td style='text-align:center;'>{html.escape(str(cls_val))}</td>"
+                 f"<td style='text-align:left;'>{html.escape(str(names[i]))}</td>"
                 + metric_cell(precision)
                 + metric_cell(recall)
                 + metric_cell(f1)
                 + f"<td style='text-align:right;'>{support}</td>"
                 + f"<td style='text-align:right;color:var(--muted);font-size:12px;'>{support_pct:.1f}%</td>"
-                + "</tr>"
+                + "</tr>",
             )
         return (
             "<table>"
@@ -774,7 +776,7 @@ def _write_report_bundle(
             handle.write(
                 f"{cls_val},{class_names[i]},{summary_metrics['precision_per_class'][i]:.6f},"
                 f"{summary_metrics['recall_per_class'][i]:.6f},{summary_metrics['f1_per_class'][i]:.6f},"
-                f"{summary_metrics['support_per_class'][i]}\n"
+                f"{summary_metrics['support_per_class'][i]}\n",
             )
 
     metrics_json = os.path.join(report_dir, "metrics.json")
@@ -1004,7 +1006,7 @@ def _write_report_bundle(
                 f"<td>{html.escape(str(names[i]))}</td>"
                 f"<td>{count}</td>"
                 f"<td>{percentage:.1f}%</td>"
-                "</tr>"
+                "</tr>",
             )
         return (
             "<table>"
@@ -1046,20 +1048,14 @@ def _write_report_bundle(
             color = colors[i % len(colors)]
 
             if pct >= 0.999999:
-                wedges.append(
-                    f"<circle cx='{cx}' cy='{cy}' r='{r}' fill='{color}' stroke='white' stroke-width='1' />"
-                )
+                wedges.append(f"<circle cx='{cx}' cy='{cy}' r='{r}' fill='{color}' stroke='white' stroke-width='1' />")
             else:
                 x1 = cx + r * math.cos(math.radians(start_angle))
                 y1 = cy + r * math.sin(math.radians(start_angle))
                 x2 = cx + r * math.cos(math.radians(end_angle))
                 y2 = cy + r * math.sin(math.radians(end_angle))
                 large_arc = 1 if sweep > 180.0 else 0
-                path = (
-                    f"M {cx:.2f} {cy:.2f} "
-                    f"L {x1:.2f} {y1:.2f} "
-                    f"A {r:.2f} {r:.2f} 0 {large_arc} 1 {x2:.2f} {y2:.2f} Z"
-                )
+                path = f"M {cx:.2f} {cy:.2f} L {x1:.2f} {y1:.2f} A {r:.2f} {r:.2f} 0 {large_arc} 1 {x2:.2f} {y2:.2f} Z"
                 wedges.append(f"<path d=\"{path}\" fill='{color}' stroke='white' stroke-width='1' />")
 
             legend_rows.append(
@@ -1067,7 +1063,7 @@ def _write_report_bundle(
                 f"<td><span class='legend-dot' style='background:{color};'></span>{html.escape(str(names[i]))}</td>"
                 f"<td>{count}</td>"
                 f"<td>{pct * 100.0:.1f}%</td>"
-                "</tr>"
+                "</tr>",
             )
             start_angle = end_angle
 
@@ -1080,7 +1076,7 @@ def _write_report_bundle(
         )
 
     def _generate_classification_abstract(
-        summary_metrics: Dict[str, Any], config_meta: Dict[str, Any], class_values: List[Any], class_names: List[str]
+        summary_metrics: Dict[str, Any], config_meta: Dict[str, Any], class_values: List[Any], class_names: List[str],
     ) -> str:
         """Generate an AI-style executive summary of classification results."""
         # 1. Classify accuracy level
@@ -1144,17 +1140,17 @@ def _write_report_bundle(
             if imbalance_ratio > 10:
                 insights.append(
                     f"Severe class imbalance detected (ratio {imbalance_ratio:.1f}:1). "
-                    "Consider resampling techniques or class-weighted training."
+                    "Consider resampling techniques or class-weighted training.",
                 )
             elif imbalance_ratio > 5:
                 insights.append(
                     f"Moderate class imbalance detected (ratio {imbalance_ratio:.1f}:1). "
-                    "Monitor minority class performance."
+                    "Monitor minority class performance.",
                 )
 
             if min_support < 10:
                 insights.append(
-                    f"Warning: Minority class has only {min_support} samples, which may lead to unreliable metrics."
+                    f"Warning: Minority class has only {min_support} samples, which may lead to unreliable metrics.",
                 )
 
         # Validation method assessment
@@ -1162,12 +1158,12 @@ def _write_report_bundle(
         if split_mode == "RANDOM_SPLIT":
             insights.append(
                 "Note: Random split validation may overestimate accuracy for spatial data. "
-                "Consider using POLYGON_GROUP mode to avoid spatial leakage."
+                "Consider using POLYGON_GROUP mode to avoid spatial leakage.",
             )
         elif split_mode == "POLYGON_GROUP":
             insights.append(
                 "Polygon-based validation provides realistic accuracy for spatial data "
-                "by preventing spatial autocorrelation bias."
+                "by preventing spatial autocorrelation bias.",
             )
 
         # 5. Build HTML
@@ -1211,7 +1207,7 @@ def _write_report_bundle(
             f"<tr><th>F1 micro</th><td>{_fmt_metric(summary_metrics.get('f1_micro', 0.0))}</td></tr>",
             f"<tr><th>OA (CONF)</th><td>{_fmt_metric(summary_metrics.get('overall_accuracy_conf', 0.0))}</td></tr>",
             f"<tr><th>F1 mean (CONF)</th><td>{_fmt_metric(summary_metrics.get('f1_mean_conf', 0.0))}</td></tr>",
-        ]
+        ],
     )
     run_config_pretty = html.escape(json.dumps(rerun_config, indent=2, default=str))
     matrix_display = str(rerun_config.get("matrix_path", "")).strip() or "<auto-generated at run time>"
@@ -1284,7 +1280,7 @@ def _write_report_bundle(
             ".pie-legend th,.pie-legend td{text-align:left;}"
             ".legend-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle;}"
             "@media (max-width:700px){.pie-wrap{grid-template-columns:1fr;}.pie-svg{max-width:220px;}}"
-            "</style></head><body><div class='wrap'>"
+            "</style></head><body><div class='wrap'>",
         )
         handle.write("<div class='hero'><span class='pill'>dzetsaka report bundle</span>")
         handle.write("<h1>Classification Report</h1>")
@@ -1293,7 +1289,7 @@ def _write_report_bundle(
             f"Generated on <b>{html.escape(str(config_meta.get('execution_date', '')))}</b> | "
             f"Validation samples: <b>{total_samples:,}</b> | "
             f"Classes: <b>{len(class_values)}</b>"
-            "</p>"
+            "</p>",
         )
         handle.write("</div>")
 
@@ -1359,13 +1355,13 @@ def _write_report_bundle(
             handle.write("<strong>⚠ Warning:</strong> Random splitting does not account for spatial autocorrelation. ")
             handle.write("When pixels from the same polygon appear in both training and validation sets, the model ")
             handle.write(
-                "can exploit spatial proximity (not spectral information) to achieve artificially high accuracy. "
+                "can exploit spatial proximity (not spectral information) to achieve artificially high accuracy. ",
             )
             handle.write(
-                "This leads to <em>overly optimistic</em> performance estimates that don't generalize to new areas. "
+                "This leads to <em>overly optimistic</em> performance estimates that don't generalize to new areas. ",
             )
             handle.write(
-                "<strong>Recommendation:</strong> Use POLYGON_GROUP mode for realistic spatial validation.</p>"
+                "<strong>Recommendation:</strong> Use POLYGON_GROUP mode for realistic spatial validation.</p>",
             )
         else:
             handle.write(f"<p>Validation configuration: {html.escape(str(split_config))}</p>")
@@ -1381,18 +1377,10 @@ def _write_report_bundle(
                 optuna_stats.get("n_complete", 0) + optuna_stats.get("n_pruned", 0) + optuna_stats.get("n_failed", 0)
             )
             best_score = optuna_stats.get("best_value", 0.0)
-            handle.write(
-                f"<p><strong>Bayesian optimization with Optuna</strong>: Explored {n_trials} hyperparameter "
-            )
-            handle.write(
-                "combinations using Tree-structured Parzen Estimator (TPE) algorithm. "
-            )
-            handle.write(
-                f"Best cross-validation F1-weighted score: <strong>{best_score:.4f}</strong>. "
-            )
-            handle.write(
-                "TPE intelligently samples the parameter space, focusing on promising regions and pruning "
-            )
+            handle.write(f"<p><strong>Bayesian optimization with Optuna</strong>: Explored {n_trials} hyperparameter ")
+            handle.write("combinations using Tree-structured Parzen Estimator (TPE) algorithm. ")
+            handle.write(f"Best cross-validation F1-weighted score: <strong>{best_score:.4f}</strong>. ")
+            handle.write("TPE intelligently samples the parameter space, focusing on promising regions and pruning ")
             handle.write("poor-performing trials early (2-10x faster than exhaustive grid search).</p>")
 
             # Show best parameters found by Optuna
@@ -1400,35 +1388,33 @@ def _write_report_bundle(
                 handle.write("<p><strong>Optimal hyperparameters discovered:</strong></p>")
                 handle.write("<ul style='margin:4px 0 12px 20px;'>")
                 for key, value in sorted(best_hyperparameters.items()):
-                    handle.write(f"<li><code>{html.escape(str(key))}</code> = <code>{html.escape(str(value))}</code></li>")
+                    handle.write(
+                        f"<li><code>{html.escape(str(key))}</code> = <code>{html.escape(str(value))}</code></li>",
+                    )
                 handle.write("</ul>")
 
         elif optimization_method == "grid_search":
             grid_combinations = config_meta.get("grid_search_combinations")
             if grid_combinations:
+                handle.write("<p><strong>Grid Search with cross-validation</strong>: Systematically tested ")
                 handle.write(
-                    "<p><strong>Grid Search with cross-validation</strong>: Systematically tested "
+                    f"<strong>{grid_combinations} different hyperparameter combinations</strong> using stratified ",
                 )
-                handle.write(
-                    f"<strong>{grid_combinations} different hyperparameter combinations</strong> using stratified "
-                )
-                handle.write(
-                    "K-fold cross-validation with F1-weighted scoring to find the optimal configuration.</p>"
-                )
+                handle.write("K-fold cross-validation with F1-weighted scoring to find the optimal configuration.</p>")
             else:
                 handle.write(
-                    "<p><strong>Grid Search with cross-validation</strong>: Systematically evaluated hyperparameter "
+                    "<p><strong>Grid Search with cross-validation</strong>: Systematically evaluated hyperparameter ",
                 )
-                handle.write(
-                    "combinations using stratified K-fold cross-validation with F1-weighted scoring.</p>"
-                )
+                handle.write("combinations using stratified K-fold cross-validation with F1-weighted scoring.</p>")
 
             # Show best parameters found by Grid Search
             if best_hyperparameters:
                 handle.write("<p><strong>Best hyperparameters found:</strong></p>")
                 handle.write("<ul style='margin:4px 0 12px 20px;'>")
                 for key, value in sorted(best_hyperparameters.items()):
-                    handle.write(f"<li><code>{html.escape(str(key))}</code> = <code>{html.escape(str(value))}</code></li>")
+                    handle.write(
+                        f"<li><code>{html.escape(str(key))}</code> = <code>{html.escape(str(value))}</code></li>",
+                    )
                 handle.write("</ul>")
         else:
             handle.write("<p>Default hyperparameters were used (no optimization performed).</p>")
@@ -1443,7 +1429,7 @@ def _write_report_bundle(
             if imbalance_ratio > 5:
                 handle.write(f"<p>The dataset exhibits class imbalance (ratio {imbalance_ratio:.1f}:1). ")
                 handle.write(
-                    "Class-weighted training or resampling techniques (SMOTE) can help improve minority class performance."
+                    "Class-weighted training or resampling techniques (SMOTE) can help improve minority class performance.",
                 )
                 handle.write("</p>")
             else:
@@ -1456,14 +1442,14 @@ def _write_report_bundle(
         if shap_config.get("enabled"):
             handle.write("<h3>Explainability Analysis</h3>")
             handle.write(
-                "<p><strong>SHAP (SHapley Additive exPlanations)</strong> was computed to quantify feature importance. "
+                "<p><strong>SHAP (SHapley Additive exPlanations)</strong> was computed to quantify feature importance. ",
             )
             handle.write(
-                f"SHAP values were calculated on {shap_config.get('sample_size', 1000):,} randomly sampled training pixels, "
+                f"SHAP values were calculated on {shap_config.get('sample_size', 1000):,} randomly sampled training pixels, ",
             )
             handle.write("providing a game-theoretic measure of each feature's marginal contribution to predictions. ")
             handle.write(
-                "This method accounts for feature interactions and provides consistent, interpretable importance scores.</p>"
+                "This method accounts for feature interactions and provides consistent, interpretable importance scores.</p>",
             )
 
         handle.write("</div>")
@@ -1476,19 +1462,19 @@ def _write_report_bundle(
         handle.write("<div class='intro-grid'>")
         handle.write(
             "<div class='intro-item'><div class='intro-label'>Algorithm</div>"
-            f"<div class='intro-value'>{html.escape(str(config_meta.get('classifier_name', config_meta.get('classifier_code', 'Unknown'))))}</div></div>"
+            f"<div class='intro-value'>{html.escape(str(config_meta.get('classifier_name', config_meta.get('classifier_code', 'Unknown'))))}</div></div>",
         )
         handle.write(
             f"<div class='intro-item'><div class='intro-label'>Optimization Method</div>"
-            f"<div class='intro-value'>{html.escape(str(opt_method))}</div></div>"
+            f"<div class='intro-value'>{html.escape(str(opt_method))}</div></div>",
         )
         handle.write(
             f"<div class='intro-item'><div class='intro-label'>Validation Mode</div>"
-            f"<div class='intro-value'>{html.escape(str(config_meta.get('split_mode', 'Unknown')))}</div></div>"
+            f"<div class='intro-value'>{html.escape(str(config_meta.get('split_mode', 'Unknown')))}</div></div>",
         )
         handle.write(
             f"<div class='intro-item'><div class='intro-label'>Split Configuration</div>"
-            f"<div class='intro-value'>{html.escape(str(config_meta.get('split_config', 'N/A')))}</div></div>"
+            f"<div class='intro-value'>{html.escape(str(config_meta.get('split_config', 'N/A')))}</div></div>",
         )
         handle.write("</div>")
         handle.write("<h3 style='margin-top:16px;margin-bottom:8px;'>Hyperparameters</h3>")
@@ -1499,7 +1485,7 @@ def _write_report_bundle(
         optuna_stats = config_meta.get("optuna_stats")
         if optuna_stats and optimization_method == "optuna":
             handle.write(
-                "<div class='intro' style='background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border-color:#bae6fd;'>"
+                "<div class='intro' style='background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border-color:#bae6fd;'>",
             )
             handle.write("<h3>🔬 Hyperparameter Optimization Details</h3>")
             handle.write("<p><strong>Method:</strong> Bayesian optimization using Optuna (TPE algorithm)</p>")
@@ -1508,10 +1494,10 @@ def _write_report_bundle(
             handle.write(f"{optuna_stats.get('n_failed', 0)} failed</p>")
             handle.write(f"<p><strong>Best trial:</strong> #{optuna_stats.get('best_trial', 0)} ")
             handle.write(
-                f"with cross-validation score of <strong>{optuna_stats.get('best_value', 0.0):.4f}</strong></p>"
+                f"with cross-validation score of <strong>{optuna_stats.get('best_value', 0.0):.4f}</strong></p>",
             )
             handle.write(
-                "<p><strong>Search strategy:</strong> Tree-structured Parzen Estimator (TPE) with median pruning. "
+                "<p><strong>Search strategy:</strong> Tree-structured Parzen Estimator (TPE) with median pruning. ",
             )
             handle.write("Optuna intelligently samples the hyperparameter space, focusing on promising regions and ")
             handle.write("pruning poor-performing trials early. This is 2-10x faster than exhaustive GridSearchCV.</p>")
@@ -1525,7 +1511,7 @@ def _write_report_bundle(
         if feature_importance and shap_enabled:
             # SHAP was enabled and succeeded
             handle.write(
-                "<div class='intro' style='background:linear-gradient(135deg,#fdf4ff 0%,#fae8ff 100%);border-color:#f0abfc;'>"
+                "<div class='intro' style='background:linear-gradient(135deg,#fdf4ff 0%,#fae8ff 100%);border-color:#f0abfc;'>",
             )
             handle.write("<h3>🎯 Feature Importance (SHAP Analysis)</h3>")
             handle.write("<p><strong>Method:</strong> SHAP (SHapley Additive exPlanations) values computed on ")
@@ -1551,7 +1537,7 @@ def _write_report_bundle(
                 handle.write(f"<td style='text-align:right;'><code>{importance_val:.4f}</code></td>")
                 handle.write("<td style='text-align:left;'>")
                 handle.write(
-                    f"<div style='background:#a855f7;height:12px;width:{bar_width}%;border-radius:2px;'></div>"
+                    f"<div style='background:#a855f7;height:12px;width:{bar_width}%;border-radius:2px;'></div>",
                 )
                 handle.write("</td></tr>")
 
@@ -1559,20 +1545,22 @@ def _write_report_bundle(
         elif shap_enabled and not feature_importance:
             # SHAP was requested but failed or produced no results
             handle.write(
-                "<div class='intro' style='background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);border-color:#fbbf24;'>"
+                "<div class='intro' style='background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);border-color:#fbbf24;'>",
             )
             handle.write("<h3>⚠️ SHAP Explainability</h3>")
             handle.write("<p><strong>Status:</strong> SHAP analysis was requested but did not produce results.</p>")
             handle.write("<p><strong>Possible reasons:</strong></p>")
             handle.write("<ul style='margin:8px 0 8px 20px;'>")
-            handle.write("<li>SHAP library may not be installed (install with: <code>pip install shap>=0.41.0</code>)</li>")
             handle.write(
-                "<li>The selected classifier may not be compatible with SHAP (GMM has limited SHAP support)</li>"
+                "<li>SHAP library may not be installed (install with: <code>pip install shap>=0.41.0</code>)</li>",
+            )
+            handle.write(
+                "<li>The selected classifier may not be compatible with SHAP (GMM has limited SHAP support)</li>",
             )
             handle.write("<li>An error occurred during SHAP computation (check the QGIS log for details)</li>")
             handle.write("</ul>")
             handle.write(
-                "<p><strong>Recommendation:</strong> Use Random Forest (RF), XGBoost (XGB), or LightGBM (LGB) "
+                "<p><strong>Recommendation:</strong> Use Random Forest (RF), XGBoost (XGB), or LightGBM (LGB) ",
             )
             handle.write("for best SHAP compatibility.</p>")
             handle.write("</div>")
@@ -1628,7 +1616,7 @@ def _write_report_bundle(
             if key == "matrix_path" and not str(value).strip():
                 value = matrix_display
             handle.write(
-                f"<tr><th style='width:180px;'>{html.escape(label)}</th><td style='text-align:left;word-break:break-all;'>{html.escape(str(value))}</td></tr>"
+                f"<tr><th style='width:180px;'>{html.escape(label)}</th><td style='text-align:left;word-break:break-all;'>{html.escape(str(value))}</td></tr>",
             )
         handle.write("</tbody></table></div>")
 
@@ -1637,7 +1625,7 @@ def _write_report_bundle(
         handle.write(
             "<p class='muted'>Use this JSON as reference for reproducibility. "
             "In dzetsaka, reruns are managed through Expert mode recipe tools "
-            "(Save Current / Gallery / JSON import), not by pasting this block directly.</p>"
+            "(Save Current / Gallery / JSON import), not by pasting this block directly.</p>",
         )
         handle.write("<pre>")
         handle.write(run_config_pretty)
@@ -1790,7 +1778,7 @@ class LearnModel:
 
         except Exception as e:
             self._handle_data_loading_error(e, class_field, feedback, progress)
-            return None
+            return
 
         [n, d] = X.shape
         C = int(Y.max())
@@ -1808,7 +1796,7 @@ class LearnModel:
             Y = Y[finite_mask]
             if X.size == 0 or Y.size == 0:
                 _report(report, "Error: No valid training labels remain after filtering.")
-                return None
+                return
 
         # Cleanup handled in _load_and_prepare_data method
         # os.remove(filename)
@@ -1927,13 +1915,12 @@ class LearnModel:
                         report,
                         "Missing dependency: joblib. Please install with: pip install joblib",
                     )
-                    return None
-                else:
-                    _report(
-                        report,
-                        "Missing scikit-learn dependency for {classifier}. Please install with: pip install scikit-learn. Error: {e}",
-                    )
-                    return None
+                    return
+                _report(
+                    report,
+                    "Missing scikit-learn dependency for {classifier}. Please install with: pip install scikit-learn. Error: {e}",
+                )
+                return
 
             try:
                 if extraParam and "param_algo" in extraParam:
@@ -2078,7 +2065,7 @@ class LearnModel:
 
                     if importlib.util.find_spec("xgboost") is None:
                         _report(report, "XGBoost not found. Install with: pip install xgboost")
-                        return None
+                        return
                     xgb_wrapper = _get_xgboost_wrapper()
                     if xgb_wrapper is None:
                         _report(
@@ -2086,7 +2073,7 @@ class LearnModel:
                             "XGBoost requires a usable scikit-learn runtime for label encoding. "
                             "Install with: pip install scikit-learn and restart QGIS.",
                         )
-                        return None
+                        return
 
                     config = CLASSIFIER_CONFIGS["XGB"]
                     param_grid = config["param_grid"]
@@ -2105,7 +2092,7 @@ class LearnModel:
 
                     if importlib.util.find_spec("lightgbm") is None:
                         _report(report, "LightGBM not found. Install with: pip install lightgbm")
-                        return None
+                        return
                     lgb_wrapper = _get_lightgbm_wrapper()
                     if lgb_wrapper is None:
                         _report(
@@ -2113,7 +2100,7 @@ class LearnModel:
                             "LightGBM requires a usable scikit-learn runtime for label encoding. "
                             "Install with: pip install scikit-learn and restart QGIS.",
                         )
-                        return None
+                        return
 
                     config = CLASSIFIER_CONFIGS["LGB"]
                     param_grid = config["param_grid"]
@@ -2128,7 +2115,7 @@ class LearnModel:
 
                     if importlib.util.find_spec("catboost") is None:
                         _report(report, "CatBoost not found. Install with: pip install catboost")
-                        return None
+                        return
                     cb_wrapper = _get_catboost_wrapper()
                     if cb_wrapper is None:
                         _report(
@@ -2136,7 +2123,7 @@ class LearnModel:
                             "CatBoost requires a usable scikit-learn runtime for label encoding. "
                             "Install with: pip install scikit-learn and restart QGIS.",
                         )
-                        return None
+                        return
 
                     config = CLASSIFIER_CONFIGS["CB"]
                     param_grid = config["param_grid"].copy()
@@ -2249,12 +2236,12 @@ class LearnModel:
                 _report(report, "Import error for classifier " + classifier + ": " + str(e))
                 if feedback == "gui":
                     progress.reset()
-                return None
+                return
             except Exception as e:
                 _report(report, "Error initializing classifier " + classifier + ": " + str(e))
                 if feedback == "gui":
                     progress.reset()
-                return None
+                return
 
             if feedback == "gui":
                 progress.prgBar.setValue(30)
@@ -2266,13 +2253,13 @@ class LearnModel:
                 _report(report, "Error: No training data found. Check your training samples.")
                 if feedback == "gui":
                     progress.reset()
-                return None
+                return
 
             if x.shape[0] != y.shape[0]:
                 _report(report, "Error: Mismatch between feature data and labels. Check your training data.")
                 if feedback == "gui":
                     progress.reset()
-                return None
+                return
 
             # Check for any NaN or infinite values
             if np.any(np.isnan(x)) or np.any(np.isinf(x)):
@@ -2388,7 +2375,7 @@ class LearnModel:
 
                     # Run optimization
                     best_params = optimizer.optimize(
-                        X=x_search, y=y_search, cv=cv_search, scoring="f1_weighted", groups=groups_search
+                        X=x_search, y=y_search, cv=cv_search, scoring="f1_weighted", groups=groups_search,
                     )
                     selected_hyperparameters = dict(best_params)
                     optimization_method = "optuna"
@@ -2521,7 +2508,7 @@ class LearnModel:
                     )
                     if feedback == "gui":
                         progress.reset()
-                    return None
+                    return
                 except ValueError as e:
                     _report(
                         report,
@@ -2531,12 +2518,12 @@ class LearnModel:
                     )
                     if feedback == "gui":
                         progress.reset()
-                    return None
+                    return
                 except Exception as e:
                     _report(report, "Training error: " + str(e))
                     if feedback == "gui":
                         progress.reset()
-                    return None
+                    return
 
             if isinstance(SPLIT, str):
                 CM = []
@@ -3071,7 +3058,7 @@ class LearnModel:
         """Setup progress feedback based on feedback type."""
         if feedback == "gui":
             return progress_bar.ProgressBar("Learning...", 100)
-        elif feedback is not None and hasattr(feedback, "setProgress"):
+        if feedback is not None and hasattr(feedback, "setProgress"):
             feedback.setProgressText("Learning...")
             feedback.setProgress(0)
             return None
@@ -3141,7 +3128,7 @@ class LearnModel:
                     X, Y, coords, distanceArray = self._prepare_sloo_data(raster_path, ROI, extraParam, feedback)
                 elif split_config == "STAND":
                     X, Y, STDs = self._prepare_stand_data(
-                        raster_path, vector_path, ROI, class_field, extraParam, feedback
+                        raster_path, vector_path, ROI, class_field, extraParam, feedback,
                     )
                 elif cv_mode == "POLYGON_GROUP" and isinstance(split_config, (int, float)):
                     # Use polygon-based CV: extract polygon IDs for StratifiedGroupKFold
@@ -3286,11 +3273,7 @@ class LearnModel:
         class_polygons: dict[Any, set[Any]] = {}
         for label, polygon_id in zip(y, polygon_groups):
             class_polygons.setdefault(label, set()).add(polygon_id)
-        return [
-            (label, len(polygons))
-            for label, polygons in class_polygons.items()
-            if len(polygons) < min_polygons
-        ]
+        return [(label, len(polygons)) for label, polygons in class_polygons.items() if len(polygons) < min_polygons]
 
     def _ensure_polygon_group_counts(self, y, polygon_groups, min_polygons):
         """Raise if any class has fewer than `min_polygons` polygons."""
@@ -3301,7 +3284,7 @@ class LearnModel:
         cls_msgs = ", ".join(f"{cls} ({count})" for cls, count in insufficient)
         raise PolygonCoverageInsufficientError(
             "Polygon-based cross-validation requires each class to span "
-            f"at least {min_polygons} polygons. Classes with too few polygons: {cls_msgs}."
+            f"at least {min_polygons} polygons. Classes with too few polygons: {cls_msgs}.",
         )
 
     def _handle_data_loading_error(self, error: Exception, class_field: str, feedback, progress) -> None:
@@ -3410,7 +3393,7 @@ class ClassifyImage:
             _report(self.report, "Model variables not properly loaded")
             return None
         # try:
-        predictedImage = self.predict_image(
+        return self.predict_image(
             raster_path,
             output_path,
             tree,
@@ -3425,7 +3408,6 @@ class ClassifyImage:
         # except:
         #   QgsMessageLog.logMessage("Problem while predicting "+raster_path+" in temp"+rasterTemp)
 
-        return predictedImage
 
     def _load_model(self, model_path: str) -> Tuple[Any, np.ndarray, np.ndarray, str]:
         """Load pickled model with proper error handling.

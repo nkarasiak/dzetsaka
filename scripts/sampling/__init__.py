@@ -19,7 +19,7 @@ Example:
     >>> X_balanced, y_balanced = sampler.fit_resample(X_train, y_train)
     >>>
     >>> # Or use class weights
-    >>> weights = compute_class_weights(y_train, strategy='balanced')
+    >>> weights = compute_class_weights(y_train, strategy="balanced")
     >>> rf = RandomForestClassifier(class_weight=weights)
 
 """

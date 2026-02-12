@@ -13,6 +13,7 @@ Author:
     Nicolas Karasiak
 
 """
+
 from typing import Optional
 
 
@@ -26,7 +27,6 @@ class DzetsakaException(Exception):  # noqa: N818
     and distinguish from specific error types.
 
     """
-
 
 
 class ConfigurationError(DzetsakaException):
@@ -90,7 +90,7 @@ class ProjectionMismatchError(DzetsakaException):
     """
 
     def __init__(
-        self, raster_crs: str, vector_crs: str, raster_path: Optional[str] = None, vector_path: Optional[str] = None
+        self, raster_crs: str, vector_crs: str, raster_path: Optional[str] = None, vector_path: Optional[str] = None,
     ):
         self.raster_crs = raster_crs
         self.vector_crs = vector_crs
@@ -123,9 +123,7 @@ class InsufficientSamplesError(DzetsakaException):
 
     """
 
-    def __init__(
-        self, class_id: int, sample_count: int, minimum: int = 5, class_distribution: Optional[dict] = None
-    ):
+    def __init__(self, class_id: int, sample_count: int, minimum: int = 5, class_distribution: Optional[dict] = None):
         self.class_id = class_id
         self.sample_count = sample_count
         self.minimum = minimum
@@ -134,9 +132,7 @@ class InsufficientSamplesError(DzetsakaException):
         message = f"Class {class_id} has only {sample_count} samples (minimum: {minimum})"
 
         if class_distribution:
-            distribution_str = ", ".join(
-                f"Class {k}: {v} samples" for k, v in sorted(class_distribution.items())
-            )
+            distribution_str = ", ".join(f"Class {k}: {v} samples" for k, v in sorted(class_distribution.items()))
             message += f"\nFull distribution: {distribution_str}"
 
         super().__init__(message)
@@ -294,7 +290,7 @@ class MemoryError(DzetsakaException):
     """
 
     def __init__(
-        self, operation: str, required_memory_mb: Optional[float] = None, available_memory_mb: Optional[float] = None
+        self, operation: str, required_memory_mb: Optional[float] = None, available_memory_mb: Optional[float] = None,
     ):
         self.operation = operation
         self.required_memory_mb = required_memory_mb

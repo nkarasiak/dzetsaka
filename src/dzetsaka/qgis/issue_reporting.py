@@ -21,4 +21,3 @@ def show_standard_issue_popup(
         context=context,
         parent=plugin,
     )
-

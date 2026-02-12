@@ -13,7 +13,7 @@ _MODULE_PATH = os.path.abspath(
         "domain",
         "value_objects",
         "recipe_schema_v2.py",
-    )
+    ),
 )
 _SPEC = importlib.util.spec_from_file_location("_recipe_schema_v2_test", _MODULE_PATH)
 _MOD = importlib.util.module_from_spec(_SPEC)

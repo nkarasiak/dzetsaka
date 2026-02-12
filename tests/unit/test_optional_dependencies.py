@@ -25,8 +25,9 @@ def _load_dzetsaka_script_module(name: str, rel_path: str):
     spec.loader.exec_module(module)
     return module
 
+
 optuna_optimizer_mod = _load_dzetsaka_script_module(
-    "dzetsaka.scripts.optimization.optuna_optimizer", Path("scripts") / "optimization" / "optuna_optimizer.py"
+    "dzetsaka.scripts.optimization.optuna_optimizer", Path("scripts") / "optimization" / "optuna_optimizer.py",
 )
 
 
@@ -60,5 +61,7 @@ def test_catboost_classifier_exposes_sklearn_tags() -> None:
     OptunaOptimizer = optuna_optimizer_mod.OptunaOptimizer
 
     optimizer = OptunaOptimizer(classifier_code="CB", n_trials=1, random_seed=0, verbose=False)
-    clf = optimizer._create_classifier("CB", {"iterations": 1, "depth": 1, "learning_rate": 0.1, "loss_function": "MultiClass"})
+    clf = optimizer._create_classifier(
+        "CB", {"iterations": 1, "depth": 1, "learning_rate": 0.1, "loss_function": "MultiClass"},
+    )
     assert hasattr(clf, "__sklearn_tags__") or hasattr(clf.__class__, "__sklearn_tags__")

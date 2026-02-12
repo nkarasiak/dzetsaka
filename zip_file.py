@@ -55,7 +55,7 @@ def main() -> int:
             print(message)
             return 1
 
-    output_zip = (Path(args.output).resolve() if args.output else repo_root.parent / f"dzetsaka_{version}.zip")
+    output_zip = Path(args.output).resolve() if args.output else repo_root.parent / f"dzetsaka_{version}.zip"
     count = build_plugin_zip(repo_root=repo_root, output_zip=output_zip)
     print(f"Created {output_zip} with {count} files")
     return 0

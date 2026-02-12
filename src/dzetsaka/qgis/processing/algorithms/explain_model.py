@@ -81,7 +81,7 @@ All dzetsaka algorithms are supported:
 - Use sample_size=1000-2000 for production
 - Visualize output in QGIS with "Singleband pseudocolor" style
 - Darker/higher values = more important features
-"""
+""",
         )
 
     def name(self):
@@ -106,7 +106,7 @@ All dzetsaka algorithms are supported:
                 self.INPUT_MODEL,
                 self.tr("Trained model file (.model)"),
                 extension="model",
-            )
+            ),
         )
 
         # Input raster (same one used for training)
@@ -121,14 +121,12 @@ All dzetsaka algorithms are supported:
                 minValue=100,
                 maxValue=10000,
                 defaultValue=1000,
-            )
+            ),
         )
 
         # Output importance raster
         self.addParameter(
-            QgsProcessingParameterRasterDestination(
-                self.OUTPUT_IMPORTANCE, self.tr("Output feature importance raster")
-            )
+            QgsProcessingParameterRasterDestination(self.OUTPUT_IMPORTANCE, self.tr("Output feature importance raster")),
         )
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -138,7 +136,7 @@ All dzetsaka algorithms are supported:
             feedback.reportError(
                 "SHAP library is not installed. "
                 "Please install it using: pip install shap>=0.41.0\n"
-                "Or install dzetsaka with explainability support: pip install dzetsaka[explainability]"
+                "Or install dzetsaka with explainability support: pip install dzetsaka[explainability]",
             )
             show_error_dialog(
                 "dzetsaka Explain Model Error",
@@ -191,7 +189,7 @@ All dzetsaka algorithms are supported:
         feedback.pushInfo(f"Raster has {n_bands} bands")
 
         # Generate feature names
-        feature_names = [f"Band_{i+1}" for i in range(n_bands)]
+        feature_names = [f"Band_{i + 1}" for i in range(n_bands)]
 
         # Create ModelExplainer
         feedback.pushInfo("Creating SHAP explainer...")

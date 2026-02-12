@@ -49,7 +49,7 @@ def execute_dashboard_config(plugin, config) -> None:
         ):
             return
         if not plugin._ensure_classifier_runtime_ready(
-            classifier_code, source_label="Dashboard", fallback_to_gmm=False
+            classifier_code, source_label="Dashboard", fallback_to_gmm=False,
         ):
             return
 
@@ -58,7 +58,7 @@ def execute_dashboard_config(plugin, config) -> None:
             temp_folder = tempfile.mkdtemp()
             output_raster_path = os.path.join(temp_folder, plugin._default_output_name(raster_path, classifier_code))
 
-    # Reporting defaults: if enabled and folder is empty, use output-map folder/name.
+        # Reporting defaults: if enabled and folder is empty, use output-map folder/name.
         if bool(extra_param.get("GENERATE_REPORT_BUNDLE", False)):
             output_base = os.path.splitext(os.path.basename(output_raster_path))[0]
             output_dir = os.path.dirname(output_raster_path) or os.getcwd()
@@ -105,7 +105,7 @@ def execute_dashboard_config(plugin, config) -> None:
         confidence_map = config.get("confidence_map", "") or None
 
         plugin.log.info(
-            f"[Dashboard] Starting {'training and ' if do_training else ''}classification with {classifier_code}"
+            f"[Dashboard] Starting {'training and ' if do_training else ''}classification with {classifier_code}",
         )
         plugin._start_classification_task(
             description=f"dzetsaka Dashboard: {classifier_code} classification",

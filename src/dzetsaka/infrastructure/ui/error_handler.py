@@ -10,6 +10,7 @@ from typing import Optional, Tuple
 
 try:
     from qgis.PyQt.QtWidgets import QMessageBox
+
     _QT_AVAILABLE = True
 except ImportError:
     _QT_AVAILABLE = False
@@ -34,7 +35,7 @@ class ErrorGuide:
             "<li>Click the <b>Browse</b> button to select a shapefile or GeoPackage</li>"
             "<li>Or select a loaded layer from the dropdown (if using QGIS)</li>"
             "</ul>"
-            "<p><i>Supported formats:</i> Shapefile (.shp), GeoPackage (.gpkg)</p>"
+            "<p><i>Supported formats:</i> Shapefile (.shp), GeoPackage (.gpkg)</p>",
         )
 
     @staticmethod
@@ -58,7 +59,7 @@ class ErrorGuide:
             "<li>Field must contain <b>numeric values</b> (integers)</li>"
             "<li>Example values: 1 (Forest), 2 (Water), 3 (Urban)</li>"
             "<li>Do NOT use text labels ('forest', 'water')</li>"
-            "</ul>"
+            "</ul>",
         )
 
     @staticmethod
@@ -95,13 +96,13 @@ class ErrorGuide:
             "</ol>"
             "<p><i>Recommended:</i> Aim for 50-100 samples per class for reliable results.</p>".format(
                 need_more=minimum - sample_count
-            )
+            ),
         )
 
     @staticmethod
-    def severe_class_imbalance(dominant_class: str, dominant_count: int,
-                             minority_class: str, minority_count: int,
-                             ratio: float, parent=None) -> None:
+    def severe_class_imbalance(
+        dominant_class: str, dominant_count: int, minority_class: str, minority_count: int, ratio: float, parent=None
+    ) -> None:
         """Show warning for severe class imbalance.
 
         Parameters
@@ -137,7 +138,7 @@ class ErrorGuide:
             "<li><b>Use SMOTE:</b> Enable 'Use SMOTE' in Advanced Options to synthetically balance classes</li>"
             "<li><b>Adjust class weights:</b> Some algorithms support weighted classes (see algorithm documentation)</li>"
             "</ol>"
-            "<p><b>Quick fix:</b> Check the 'Use SMOTE' checkbox in Advanced Options before running classification.</p>"
+            "<p><b>Quick fix:</b> Check the 'Use SMOTE' checkbox in Advanced Options before running classification.</p>",
         )
 
     @staticmethod
@@ -171,12 +172,11 @@ class ErrorGuide:
             "<li>Verify the file exists at the specified location</li>"
             "<li>Click 'Browse Model' to select the correct file</li>"
             "<li>If the model was deleted, retrain and save a new model</li>"
-            "</ol>"
+            "</ol>",
         )
 
     @staticmethod
-    def band_count_mismatch(raster_path: str, raster_bands: int,
-                           model_bands: int, parent=None) -> None:
+    def band_count_mismatch(raster_path: str, raster_bands: int, model_bands: int, parent=None) -> None:
         """Show error when raster band count doesn't match model.
 
         Parameters
@@ -209,7 +209,7 @@ class ErrorGuide:
             "<li><b>Retrain model:</b> Train a new model using {raster_bands}-band imagery</li>"
             "<li><b>Stack/subset bands:</b> Use QGIS to create a {model_bands}-band raster</li>"
             "</ol>"
-            "<p><i>Tip:</i> Always use the same satellite/sensor for training and classification.</p>"
+            "<p><i>Tip:</i> Always use the same satellite/sensor for training and classification.</p>",
         )
 
     @staticmethod
@@ -256,7 +256,7 @@ class ErrorGuide:
             f"<p><i>Installation command:</i><br><code>{install_cmd}</code></p>"
             "<p><b>Note:</b> Installation may take a few minutes. "
             "The plugin will attempt to install automatically.</p>",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
         should_install = reply == QMessageBox.StandardButton.Yes
@@ -289,11 +289,7 @@ class ErrorGuide:
         else:
             # Fallback for unknown error types
             if _QT_AVAILABLE:
-                QMessageBox.warning(
-                    kwargs.get("parent"),
-                    "Error",
-                    f"An error occurred: {error_type}"
-                )
+                QMessageBox.warning(kwargs.get("parent"), "Error", f"An error occurred: {error_type}")
 
 
 # Convenience function

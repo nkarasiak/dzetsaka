@@ -28,6 +28,7 @@ License:
 GNU General Public License v2.0 or later
 
 """
+
 from typing import Dict, Optional, Tuple, Union
 
 import numpy as np
@@ -385,5 +386,4 @@ def apply_smote_if_needed(
     if sampler.should_apply_smote(y, threshold=threshold):
         X_resampled, y_resampled = sampler.fit_resample(X, y)
         return X_resampled, y_resampled, True
-    else:
-        return X, y, False
+    return X, y, False

@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 # import scipy as sp
+import os
+
 import numpy as np
 
 try:
@@ -119,11 +121,7 @@ def open_data(filename):
 
     # Read all bands at once using GDAL's ReadAsArray on the dataset
     # This is more efficient than reading band by band
-    im = (
-        data.GetRasterBand(1).ReadAsArray().astype(dt)
-        if d == 1
-        else data.ReadAsArray().transpose(1, 2, 0).astype(dt)
-    )
+    im = data.GetRasterBand(1).ReadAsArray().astype(dt) if d == 1 else data.ReadAsArray().transpose(1, 2, 0).astype(dt)
 
     GeoTransform = data.GetGeoTransform()
     Projection = data.GetProjection()
@@ -235,6 +233,7 @@ def create_empty_tiff(outname, im, d, GeoTransform, Projection):
     """
     Old function that cannot manage to write on each band outside the script
     """
+    return None
 
 
 #    if d==1:
@@ -359,9 +358,7 @@ def get_samples_from_roi(raster_name, roi_name, stand_name=False, getCoords=Fals
                 # This is more efficient than reading band by band
                 block_data = raster.ReadAsArray(j, i, cols, lines)  # Shape: (d, lines, cols)
                 Xtp = (
-                    block_data[t].reshape(-1, 1)
-                    if d == 1
-                    else block_data[:, t[0], t[1]].T
+                    block_data[t].reshape(-1, 1) if d == 1 else block_data[:, t[0], t[1]].T
                 )  # Shape: (n_pixels, d) for multi-band
                 try:
                     X = np.concatenate((X, Xtp))
@@ -396,12 +393,10 @@ def get_samples_from_roi(raster_name, roi_name, stand_name=False, getCoords=Fals
     if stand_name:
         if not getCoords:
             return X, Y, STD
-        else:
-            return X, Y, STD, coords
-    elif getCoords:
+        return X, Y, STD, coords
+    if getCoords:
         return X, Y, coords
-    else:
-        return X, Y
+    return X, Y
 
 
 # NumPy to GDAL datatype mapping for efficient lookup
@@ -684,8 +679,7 @@ def scale(x, M=None, m=None):
 
     if minMax:
         return xs, M, m
-    else:
-        return xs
+    return xs
 
 
 if __name__ == "__main__":

@@ -64,7 +64,7 @@ class SplitTrain(QgsProcessingAlgorithm):
             QgsProcessingParameterVectorLayer(
                 self.INPUT_LAYER,
                 "Input layer",
-            )
+            ),
         )
         # TABLE / COLUMN
         self.addParameter(
@@ -73,7 +73,7 @@ class SplitTrain(QgsProcessingAlgorithm):
                 "Field (column must have classification number (e.g. '1' forest, '2' water...))",
                 parentLayerParameterName=self.INPUT_LAYER,
                 optional=False,
-            )
+            ),
         )  # save model
 
         # Train algorithm
@@ -84,7 +84,7 @@ class SplitTrain(QgsProcessingAlgorithm):
                 "Select method for splitting dataset",
                 self.METHOD_VALUES,
                 0,
-            )
+            ),
         )
 
         # SPLIT %
@@ -97,7 +97,7 @@ class SplitTrain(QgsProcessingAlgorithm):
                 minValue=1,
                 maxValue=99999,
                 defaultValue=50,
-            )
+            ),
         )
 
         # SAVE AS
@@ -130,7 +130,7 @@ class SplitTrain(QgsProcessingAlgorithm):
             # VALUE is validation size. For percentage mode, convert to train percent.
             # For absolute mode we keep VALUE and delegate exact handling downstream.
             train_value = 100 - VALUE if use_percent else VALUE
-                # We'll need to adjust the logic in the call
+            # We'll need to adjust the logic in the call
 
             try:
                 # Call new scikit-learn based splitting function

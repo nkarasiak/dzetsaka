@@ -94,9 +94,7 @@ class RasterOT:
 
         if self.feedback:
             self.report.progress(10)
-            self.report.info(
-                "Learning Optimal Transport with " + str(self.transportAlgorithm) + " algorithm."
-            )
+            self.report.info("Learning Optimal Transport with " + str(self.transportAlgorithm) + " algorithm.")
 
         # check if label is 1d
         if ys is not None and len(ys.shape) > 1:
@@ -369,6 +367,5 @@ class RasterOT:
         transp[~np.isfinite(transp)] = 0
 
         # compute transported samples
-        transp_Xt = np.dot(transp, self.transportModel.xs_)
+        return np.dot(transp, self.transportModel.xs_)
 
-        return transp_Xt

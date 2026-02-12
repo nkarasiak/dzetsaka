@@ -109,4 +109,3 @@ def start_classification_task(
     plugin._active_classification_task = task
     QgsApplication.taskManager().addTask(task)
     plugin.log.info(f"Task submitted to QGIS task manager: {description}")
-

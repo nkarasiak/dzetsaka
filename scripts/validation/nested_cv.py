@@ -16,7 +16,7 @@ Example Usage:
     >>> from scripts.validation.nested_cv import NestedCrossValidator
     >>>
     >>> validator = NestedCrossValidator(inner_cv=3, outer_cv=5)
-    >>> results = validator.evaluate(X, y, 'RF', param_grid)
+    >>> results = validator.evaluate(X, y, "RF", param_grid)
     >>> print(f"Mean accuracy: {results['mean_score']:.3f} ± {results['std_score']:.3f}")
 
 Author:
@@ -28,6 +28,7 @@ License:
 GNU General Public License v2.0 or later
 
 """
+
 from typing import Any, Callable, Dict, Optional
 
 import numpy as np
@@ -104,12 +105,12 @@ class NestedCrossValidator:
     -------
     >>> # Standard nested CV with GridSearchCV
     >>> validator = NestedCrossValidator(inner_cv=3, outer_cv=5)
-    >>> param_grid = {'n_estimators': [50, 100], 'max_depth': [5, 10]}
-    >>> results = validator.evaluate(X, y, 'RF', param_grid)
+    >>> param_grid = {"n_estimators": [50, 100], "max_depth": [5, 10]}
+    >>> results = validator.evaluate(X, y, "RF", param_grid)
     >>>
     >>> # Faster nested CV with Optuna
     >>> validator = NestedCrossValidator(use_optuna=True, n_trials=50)
-    >>> results = validator.evaluate(X, y, 'RF', param_grid)
+    >>> results = validator.evaluate(X, y, "RF", param_grid)
 
     """
 
@@ -177,7 +178,7 @@ class NestedCrossValidator:
 
         Example
         -------
-        >>> results = validator.evaluate(X, y, 'RF', param_grid)
+        >>> results = validator.evaluate(X, y, "RF", param_grid)
         >>> print(f"Performance: {results['mean_score']:.3f} ± {results['std_score']:.3f}")
         >>> print(f"Best params: {results['best_params_per_fold'][0]}")
 
@@ -220,7 +221,6 @@ class NestedCrossValidator:
 
         # Outer loop: Model evaluation
         for current_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y), start=1):
-
             # Split data
             X_train, X_test = X[train_idx], X[test_idx]
             y_train, y_test = y[train_idx], y[test_idx]
@@ -262,7 +262,7 @@ class NestedCrossValidator:
                 progress_callback(progress_pct)
 
         # Compute summary statistics
-        results = {
+        return {
             "outer_scores": outer_scores,
             "mean_score": float(np.mean(outer_scores)),
             "std_score": float(np.std(outer_scores)),
@@ -270,7 +270,6 @@ class NestedCrossValidator:
             "inner_scores_per_fold": inner_scores_per_fold,
         }
 
-        return results
 
     def _tune_with_gridsearch(
         self,
@@ -416,7 +415,7 @@ def perform_nested_cv(
 
     Example
     -------
-    >>> results = perform_nested_cv(X, y, 'RF', param_grid)
+    >>> results = perform_nested_cv(X, y, "RF", param_grid)
     >>> print(f"Performance: {results['mean_score']:.3f}")
 
     """

@@ -15,7 +15,7 @@ Example Usage:
     >>> from scripts.sampling.class_weights import compute_class_weights
     >>>
     >>> # Automatic balanced weights
-    >>> weights = compute_class_weights(y_train, strategy='balanced')
+    >>> weights = compute_class_weights(y_train, strategy="balanced")
     >>> print(weights)  # {0: 0.5, 1: 4.5}  (class 1 is minority)
     >>>
     >>> # Use with Random Forest
@@ -31,6 +31,7 @@ License:
 GNU General Public License v2.0 or later
 
 """
+
 from typing import Dict, Optional
 
 import numpy as np
@@ -108,8 +109,8 @@ def compute_class_weights(
     Example
     -------
     >>> # Dataset: 900 samples class 0, 100 samples class 1
-    >>> y = np.array([0]*900 + [1]*100)
-    >>> weights = compute_class_weights(y, strategy='balanced')
+    >>> y = np.array([0] * 900 + [1] * 100)
+    >>> weights = compute_class_weights(y, strategy="balanced")
     >>> print(weights)
     {0: 0.556, 1: 5.0}  # Class 1 weighted 9x higher
 
@@ -126,7 +127,7 @@ def compute_class_weights(
         # All classes weighted equally
         return {int(cls): 1.0 for cls in unique_classes}
 
-    elif strategy == "balanced":
+    if strategy == "balanced":
         if SKLEARN_AVAILABLE:
             # Use sklearn's compute_class_weight
             weights_array = compute_class_weight(
@@ -135,22 +136,20 @@ def compute_class_weights(
                 y=y,
             )
             return {int(cls): float(weight) for cls, weight in zip(unique_classes, weights_array)}
-        else:
-            # Manual balanced weight computation
-            # weight = n_samples / (n_classes * class_count)
-            n_samples = len(y)
-            n_classes = len(unique_classes)
+        # Manual balanced weight computation
+        # weight = n_samples / (n_classes * class_count)
+        n_samples = len(y)
+        n_classes = len(unique_classes)
 
-            weights = {}
-            for cls in unique_classes:
-                class_count = np.sum(y == cls)
-                weight = n_samples / (n_classes * class_count)
-                weights[int(cls)] = float(weight)
+        weights = {}
+        for cls in unique_classes:
+            class_count = np.sum(y == cls)
+            weight = n_samples / (n_classes * class_count)
+            weights[int(cls)] = float(weight)
 
-            return weights
+        return weights
 
-    else:
-        raise ValueError(f"Unknown strategy: {strategy}. Use 'balanced', 'uniform', or 'custom'")
+    raise ValueError(f"Unknown strategy: {strategy}. Use 'balanced', 'uniform', or 'custom'")
 
 
 def apply_class_weights_to_model(
@@ -180,7 +179,7 @@ def apply_class_weights_to_model(
     Example
     -------
     >>> weights = {0: 0.5, 1: 4.5}
-    >>> params = apply_class_weights_to_model('RF', weights)
+    >>> params = apply_class_weights_to_model("RF", weights)
     >>> rf = RandomForestClassifier(**params)
 
     """
@@ -189,7 +188,7 @@ def apply_class_weights_to_model(
         return {"class_weight": class_weights}
 
     # XGBoost (binary only - uses scale_pos_weight)
-    elif model_code == "XGB":
+    if model_code == "XGB":
         # For binary classification, compute scale_pos_weight
         if len(class_weights) == 2:
             classes = sorted(class_weights.keys())
@@ -197,22 +196,20 @@ def apply_class_weights_to_model(
             # or equivalently: count_class_0 / count_class_1
             weight_ratio = class_weights[classes[1]] / class_weights[classes[0]]
             return {"scale_pos_weight": weight_ratio}
-        else:
-            # For multiclass, XGBoost doesn't support class weights directly
-            # Would need to use sample_weight in fit() instead
-            return {}
+        # For multiclass, XGBoost doesn't support class weights directly
+        # Would need to use sample_weight in fit() instead
+        return {}
 
     # LightGBM (accepts dict with 'balanced' string or dict)
-    elif model_code == "LGB":
+    if model_code == "LGB":
         return {"class_weight": class_weights}
 
     # GMM doesn't support class weights
-    elif model_code == "GMM":
+    if model_code == "GMM":
         return {}
 
-    else:
-        # Unknown model - return empty dict
-        return {}
+    # Unknown model - return empty dict
+    return {}
 
 
 def get_imbalance_ratio(y: np.ndarray) -> float:
@@ -232,7 +229,7 @@ def get_imbalance_ratio(y: np.ndarray) -> float:
 
     Example
     -------
-    >>> y = np.array([0]*900 + [1]*100)
+    >>> y = np.array([0] * 900 + [1] * 100)
     >>> ratio = get_imbalance_ratio(y)
     >>> print(ratio)  # 9.0 (class 0 is 9x larger)
 
@@ -298,7 +295,7 @@ def recommend_strategy(
     Example
     -------
     >>> strategy = recommend_strategy(y_train)
-    >>> if strategy == 'class_weights':
+    >>> if strategy == "class_weights":
     ...     weights = compute_class_weights(y_train)
     >>> elif strategy == 'smote':
     ...     # Apply SMOTE then class weights
@@ -309,10 +306,9 @@ def recommend_strategy(
 
     if ratio < threshold:
         return "none"
-    elif ratio < 5.0:
+    if ratio < 5.0:
         return "class_weights"
-    else:
-        return "smote"  # Severe imbalance
+    return "smote"  # Severe imbalance
 
 
 def print_class_distribution(
@@ -330,7 +326,7 @@ def print_class_distribution(
 
     Example
     -------
-    >>> print_class_distribution(y_train, {0: 'Water', 1: 'Forest'})
+    >>> print_class_distribution(y_train, {0: "Water", 1: "Forest"})
     Class Distribution:
       Water (0): 900 samples (90.0%)
       Forest (1): 100 samples (10.0%)

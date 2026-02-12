@@ -44,8 +44,7 @@ def try_install_dependencies(plugin, missing_deps):
     requested_deps = normalized_missing_deps
     missing_deps = FULL_DEPENDENCY_BUNDLE.copy()
     plugin.log.info(
-        "All-dependencies install mode enabled. "
-        f"Requested={requested_deps!r}, full bundle target={missing_deps!r}"
+        f"All-dependencies install mode enabled. Requested={requested_deps!r}, full bundle target={missing_deps!r}",
     )
 
     from qgis.PyQt.QtCore import QEventLoop, QProcess
@@ -82,8 +81,7 @@ def try_install_dependencies(plugin, missing_deps):
                 f.write(constraints_text)
             runtime_constraint_args = ["-c", runtime_constraints_file]
             plugin.log.info(
-                "Using runtime pip constraints to keep scientific stack stable: "
-                f"{', '.join(pinned_packages)}"
+                f"Using runtime pip constraints to keep scientific stack stable: {', '.join(pinned_packages)}",
             )
     except Exception as constraints_err:
         plugin.log.warning(f"Could not prepare runtime pip constraints: {constraints_err!s}")
@@ -146,7 +144,7 @@ def try_install_dependencies(plugin, missing_deps):
                 def handle_timeout():
                     timed_out["value"] = True
                     progress_dialog.append_output(
-                        f"\n⚠ Command timed out after {int(timeout_ms / 1000)}s, terminating...\n"
+                        f"\n⚠ Command timed out after {int(timeout_ms / 1000)}s, terminating...\n",
                     )
                     process.terminate()
                     process.waitForFinished(3000)
@@ -268,7 +266,7 @@ def try_install_dependencies(plugin, missing_deps):
         python_candidates = validate_python_candidates(find_python_candidates())
         plugin.log.info(f"Installing {package}. Python candidates: {python_candidates!r}")
         progress_dialog.append_output(
-            "Python candidates: " + (", ".join(python_candidates) if python_candidates else "<none found>")
+            "Python candidates: " + (", ".join(python_candidates) if python_candidates else "<none found>"),
         )
 
         # Check for cancellation before starting
@@ -303,7 +301,7 @@ def try_install_dependencies(plugin, missing_deps):
                 (["py", *pip_args], "pip via py"),
                 (["python3", *pip_args], "pip via python3"),
                 (["python", *pip_args], "pip via python"),
-            ]
+            ],
         )
 
         last_output = ""
@@ -355,7 +353,7 @@ def try_install_dependencies(plugin, missing_deps):
             "    pip3 install --user scikit-learn\n"
             "  Option 2 - Install via apt directly:\n"
             "    sudo apt install python3-sklearn\n"
-            "  Then restart QGIS."
+            "  Then restart QGIS.",
         )
         return False
 
@@ -423,7 +421,7 @@ def try_install_dependencies(plugin, missing_deps):
                                 if idx is not None:
                                     collecting_targets.add(targets[idx])
                                     progress_dialog.status_label.setText(
-                                        f"Installing bundle... detected {len(collecting_targets)}/{len(targets)} packages"
+                                        f"Installing bundle... detected {len(collecting_targets)}/{len(targets)} packages",
                                     )
                             elif "Successfully installed" in line:
                                 suffix = line.split("Successfully installed", 1)[1]
@@ -438,7 +436,7 @@ def try_install_dependencies(plugin, missing_deps):
                                     progress_dialog.set_current_package(target_name, idx)
                                     progress_dialog.mark_package_complete()
                                     progress_dialog.status_label.setText(
-                                        f"Installing bundle... completed {len(completed_targets)}/{len(targets)}"
+                                        f"Installing bundle... completed {len(completed_targets)}/{len(targets)}",
                                     )
 
                 process.readyReadStandardOutput.connect(handle_output)
@@ -467,7 +465,7 @@ def try_install_dependencies(plugin, missing_deps):
                 def handle_timeout():
                     timed_out["value"] = True
                     progress_dialog.append_output(
-                        f"\n⚠ Command timed out after {int(timeout_ms / 1000)}s, terminating...\n"
+                        f"\n⚠ Command timed out after {int(timeout_ms / 1000)}s, terminating...\n",
                     )
                     process.terminate()
                     process.waitForFinished(3000)
@@ -580,7 +578,7 @@ def try_install_dependencies(plugin, missing_deps):
         python_candidates = validate_python_candidates(find_python_candidates())
         plugin.log.info(f"Installing bundle {targets}. Python candidates: {python_candidates!r}")
         progress_dialog.append_output(
-            "Python candidates: " + (", ".join(python_candidates) if python_candidates else "<none found>")
+            "Python candidates: " + (", ".join(python_candidates) if python_candidates else "<none found>"),
         )
 
         if progress_dialog.was_cancelled():
@@ -613,7 +611,7 @@ def try_install_dependencies(plugin, missing_deps):
                 (["py", *pip_args], "pip bundle via py"),
                 (["python3", *pip_args], "pip bundle via python3"),
                 (["python", *pip_args], "pip bundle via python"),
-            ]
+            ],
         )
 
         last_output = ""
@@ -696,7 +694,7 @@ def try_install_dependencies(plugin, missing_deps):
         progress.show()
 
         progress.append_output(
-            "Installing full dependency bundle. First try: one pip command for all missing packages.\n"
+            "Installing full dependency bundle. First try: one pip command for all missing packages.\n",
         )
 
         success_count = 0
@@ -712,15 +710,11 @@ def try_install_dependencies(plugin, missing_deps):
         bundle_progress_captured = False
         if unresolved_packages:
             progress.status_label.setText("Phase 1/3: Resolve and prepare installer...")
-            progress.append_output(
-                "Bundle install attempt for: " + ", ".join(unresolved_packages) + "\n"
-            )
+            progress.append_output("Bundle install attempt for: " + ", ".join(unresolved_packages) + "\n")
             progress.status_label.setText("Phase 2/3: Installing dependency bundle...")
             bundle_ok = install_package_bundle(unresolved_packages, progress)
             if not bundle_ok:
-                progress.append_output(
-                    "Bundle install failed. Falling back to per-package installation.\n"
-                )
+                progress.append_output("Bundle install failed. Falling back to per-package installation.\n")
             else:
                 bundle_progress_captured = True
                 progress.append_output("Bundle install completed. Verifying each dependency...\n")
@@ -747,9 +741,7 @@ def try_install_dependencies(plugin, missing_deps):
             if not bundle_progress_captured:
                 progress.set_current_package(display_name, i)
             else:
-                progress.status_label.setText(
-                    f"Phase 3/3: Verifying {display_name}... ({i + 1}/{len(missing_deps)})"
-                )
+                progress.status_label.setText(f"Phase 3/3: Verifying {display_name}... ({i + 1}/{len(missing_deps)})")
 
             targets = [package_name]
             # Deduplicate while preserving order
@@ -791,11 +783,10 @@ def try_install_dependencies(plugin, missing_deps):
                                 if not sklearn_ok:
                                     plugin.log.warning(
                                         "scikit-learn install command succeeded but runtime check failed: "
-                                        f"{sklearn_details}"
+                                        f"{sklearn_details}",
                                     )
                                     progress.append_output(
-                                        "✗ scikit-learn is still unusable after install "
-                                        f"({sklearn_details})\n"
+                                        f"✗ scikit-learn is still unusable after install ({sklearn_details})\n",
                                     )
                                     continue
                                 progress.append_output(f"  Verified: {sklearn_details}\n")
@@ -806,7 +797,7 @@ def try_install_dependencies(plugin, missing_deps):
                                 plugin.log.info(f"Verified {import_target} import.")
                             plugin.log.info(
                                 f"Checking condition: target={target}, package_name={package_name}, "
-                                f"dep_installed={dep_installed}"
+                                f"dep_installed={dep_installed}",
                             )
                             if target == package_name and not dep_installed:
                                 success_count += 1
@@ -815,7 +806,7 @@ def try_install_dependencies(plugin, missing_deps):
                                 progress.append_output(f"✓ success_count = {success_count}\n")
                         except ImportError as import_error:
                             plugin.log.warning(
-                                f"Package {target} install command succeeded but import failed: {import_error}"
+                                f"Package {target} install command succeeded but import failed: {import_error}",
                             )
                             progress.append_output("✗ Package not importable after install attempt\n")
                     else:
@@ -837,20 +828,19 @@ def try_install_dependencies(plugin, missing_deps):
 
         if success_count == len(missing_deps):
             return True
-        else:
-            plugin._show_github_issue_popup(
-                error_title="Installation Incomplete",
-                error_type="Dependency Installation Error",
-                error_message=(
-                    f"Only {success_count} of {len(missing_deps)} dependencies were installed successfully.\n"
-                    "Manual fallback examples:\n"
-                    "  pip install --user scikit-learn\n"
-                    "  pip install --user xgboost lightgbm catboost optuna shap imbalanced-learn\n"
-                ),
-                context=f"Missing dependencies requested: {', '.join(missing_deps)}",
-            )
-            progress.close()
-            return False
+        plugin._show_github_issue_popup(
+            error_title="Installation Incomplete",
+            error_type="Dependency Installation Error",
+            error_message=(
+                f"Only {success_count} of {len(missing_deps)} dependencies were installed successfully.\n"
+                "Manual fallback examples:\n"
+                "  pip install --user scikit-learn\n"
+                "  pip install --user xgboost lightgbm catboost optuna shap imbalanced-learn\n"
+            ),
+            context=f"Missing dependencies requested: {', '.join(missing_deps)}",
+        )
+        progress.close()
+        return False
 
     except Exception as e:
         plugin.log.error(f"Error during dependency installation: {e!s}")
@@ -911,8 +901,7 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
     requested_deps = normalized_missing_deps
     packages = FULL_DEPENDENCY_BUNDLE.copy()
     plugin.log.info(
-        "All-dependencies install mode enabled (async). "
-        f"Requested={requested_deps!r}, full bundle target={packages!r}"
+        f"All-dependencies install mode enabled (async). Requested={requested_deps!r}, full bundle target={packages!r}",
     )
 
     # Build conservative constraints from the live runtime
@@ -942,8 +931,7 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
             with open(runtime_constraints_file, "w", encoding="utf-8") as f:
                 f.write(constraints_text)
             plugin.log.info(
-                "Using runtime pip constraints to keep scientific stack stable: "
-                f"{', '.join(pinned_packages)}"
+                f"Using runtime pip constraints to keep scientific stack stable: {', '.join(pinned_packages)}",
             )
     except Exception as constraints_err:
         plugin.log.warning(f"Could not prepare runtime pip constraints: {constraints_err!s}")
@@ -1033,4 +1021,3 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
     # Submit to task manager
     QgsApplication.taskManager().addTask(task)
     plugin.log.info(f"Dependency installation task submitted: {len(package_order)} packages")
-

@@ -102,6 +102,3 @@ def save_settings(gui) -> None:
             if gui.classifier != selected_classifier:
                 gui.settings.setValue("/dzetsaka/classifier", selected_classifier)
                 gui.classifier = selected_classifier
-
-
-

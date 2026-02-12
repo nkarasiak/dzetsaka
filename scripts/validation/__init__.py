@@ -16,12 +16,12 @@ Example:
     >>>
     >>> # Nested CV evaluation
     >>> validator = NestedCrossValidator(inner_cv=3, outer_cv=5)
-    >>> results = validator.evaluate(X, y, 'RF', param_grid)
+    >>> results = validator.evaluate(X, y, "RF", param_grid)
     >>> print(f"Mean accuracy: {results['mean_score']:.3f}")
     >>>
     >>> # Enhanced metrics
     >>> report = ValidationMetrics.compute_per_class_metrics(y_true, y_pred)
-    >>> print(report['overall']['accuracy'])
+    >>> print(report["overall"]["accuracy"])
 
 """
 

@@ -76,25 +76,18 @@ def split_vector_stratified(
 
     Example:
         >>> # Using temp directory with percentage (default)
-        >>> train_shp, valid_shp = split_vector_stratified(
-        ...     "training_data.shp",
-        ...     "class",
-        ...     train_percent=70
-        ... )
+        >>> train_shp, valid_shp = split_vector_stratified("training_data.shp", "class", train_percent=70)
         >>> # Specifying output paths
         >>> train_shp, valid_shp = split_vector_stratified(
         ...     "training_data.shp",
         ...     "class",
         ...     train_percent=70,
         ...     train_output="/path/to/train.shp",
-        ...     validation_output="/path/to/valid.shp"
+        ...     validation_output="/path/to/valid.shp",
         ... )
         >>> # Using absolute count
         >>> train_shp, valid_shp = split_vector_stratified(
-        ...     "training_data.shp",
-        ...     "class",
-        ...     train_percent=100,
-        ...     use_percent=False
+        ...     "training_data.shp", "class", train_percent=100, use_percent=False
         ... )
 
     """

@@ -266,7 +266,7 @@ class TaskFeedbackAdapter:
                 progress = PROGRESS_STAGES["training"]["start"] + (trial_progress * stage_range / 100)
                 self.enhanced_widget.set_progress(progress, 100, sub_task)
                 return
-            elif param_match:
+            if param_match:
                 current, total = param_match.groups()
                 sub_task = f"Testing parameter set {current}/{total}"
                 # Calculate progress within training stage
@@ -275,8 +275,7 @@ class TaskFeedbackAdapter:
                 progress = PROGRESS_STAGES["training"]["start"] + (param_progress * stage_range / 100)
                 self.enhanced_widget.set_progress(progress, 100, sub_task)
                 return
-            else:
-                sub_task = message
+            sub_task = message
 
         # SHAP stage
         elif any(keyword in message_lower for keyword in ["shap", "explainability", "explaining"]):
@@ -427,7 +426,7 @@ class ClassificationTask(QgsTask):
                 if self.enhanced_widget:
                     self.enhanced_widget.set_main_task(f"Training {classifier_name}...")
                     self.enhanced_widget.set_progress(
-                        PROGRESS_STAGES["training"]["start"], 100, "Preparing training data..."
+                        PROGRESS_STAGES["training"]["start"], 100, "Preparing training data...",
                     )
 
                 run_training(
@@ -467,7 +466,7 @@ class ClassificationTask(QgsTask):
             if self.enhanced_widget:
                 self.enhanced_widget.set_main_task("Classifying raster...")
                 self.enhanced_widget.set_progress(
-                    PROGRESS_STAGES["classifying"]["start"], 100, "Loading model and preparing data..."
+                    PROGRESS_STAGES["classifying"]["start"], 100, "Loading model and preparing data...",
                 )
 
             prediction_result = run_classification(

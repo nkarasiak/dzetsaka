@@ -10,6 +10,7 @@ from typing import Optional
 
 try:
     from qgis.core import Qgis, QgsMessageLog
+
     _QGIS_AVAILABLE = True
 except ImportError:
     _QGIS_AVAILABLE = False
@@ -45,12 +46,7 @@ class StatusBarMessenger:
         """
         if self.iface and hasattr(self.iface, "messageBar"):
             if _QGIS_AVAILABLE:
-                self.iface.messageBar().pushMessage(
-                    "dzetsaka",
-                    message,
-                    level=Qgis.Success,
-                    duration=duration
-                )
+                self.iface.messageBar().pushMessage("dzetsaka", message, level=Qgis.Success, duration=duration)
         self._log_message(message, "INFO")
 
     def info(self, message: str, duration: int = DURATION_MEDIUM):
@@ -65,12 +61,7 @@ class StatusBarMessenger:
         """
         if self.iface and hasattr(self.iface, "messageBar"):
             if _QGIS_AVAILABLE:
-                self.iface.messageBar().pushMessage(
-                    "dzetsaka",
-                    message,
-                    level=Qgis.Info,
-                    duration=duration
-                )
+                self.iface.messageBar().pushMessage("dzetsaka", message, level=Qgis.Info, duration=duration)
         self._log_message(message, "INFO")
 
     def warning(self, message: str, duration: int = DURATION_LONG):
@@ -85,12 +76,7 @@ class StatusBarMessenger:
         """
         if self.iface and hasattr(self.iface, "messageBar"):
             if _QGIS_AVAILABLE:
-                self.iface.messageBar().pushMessage(
-                    "dzetsaka",
-                    message,
-                    level=Qgis.Warning,
-                    duration=duration
-                )
+                self.iface.messageBar().pushMessage("dzetsaka", message, level=Qgis.Warning, duration=duration)
         self._log_message(message, "WARNING")
 
     def error(self, message: str, duration: int = DURATION_LONG):
@@ -105,12 +91,7 @@ class StatusBarMessenger:
         """
         if self.iface and hasattr(self.iface, "messageBar"):
             if _QGIS_AVAILABLE:
-                self.iface.messageBar().pushMessage(
-                    "dzetsaka",
-                    message,
-                    level=Qgis.Critical,
-                    duration=duration
-                )
+                self.iface.messageBar().pushMessage("dzetsaka", message, level=Qgis.Critical, duration=duration)
         self._log_message(message, "ERROR")
 
     def clear(self):
@@ -129,11 +110,7 @@ class StatusBarMessenger:
             Log level (INFO, WARNING, ERROR)
         """
         if _QGIS_AVAILABLE:
-            qgis_level = {
-                "INFO": Qgis.Info,
-                "WARNING": Qgis.Warning,
-                "ERROR": Qgis.Critical
-            }.get(level, Qgis.Info)
+            qgis_level = {"INFO": Qgis.Info, "WARNING": Qgis.Warning, "ERROR": Qgis.Critical}.get(level, Qgis.Info)
             QgsMessageLog.logMessage(message, "dzetsaka", level=qgis_level)
 
 
@@ -160,7 +137,9 @@ def show_quality_check_completed(iface, issue_count: int):
     elif issue_count == 1:
         messenger.warning("⚠ Training data quality check found 1 issue. Review recommendations.", duration=5)
     else:
-        messenger.warning(f"⚠ Training data quality check found {issue_count} issues. Review recommendations.", duration=5)
+        messenger.warning(
+            f"⚠ Training data quality check found {issue_count} issues. Review recommendations.", duration=5
+        )
 
 
 def show_batch_classification_started(iface, raster_count: int):
@@ -208,10 +187,16 @@ def show_batch_classification_completed(iface, success_count: int, total_count: 
     """
     messenger = StatusBarMessenger(iface)
     if success_count == total_count:
-        messenger.success(f"✓ Batch classification complete! {success_count}/{total_count} rasters processed successfully.", duration=10)
+        messenger.success(
+            f"✓ Batch classification complete! {success_count}/{total_count} rasters processed successfully.",
+            duration=10,
+        )
     else:
         failed_count = total_count - success_count
-        messenger.warning(f"⚠ Batch classification complete with errors: {success_count}/{total_count} successful, {failed_count} failed.", duration=10)
+        messenger.warning(
+            f"⚠ Batch classification complete with errors: {success_count}/{total_count} successful, {failed_count} failed.",
+            duration=10,
+        )
 
 
 def show_confidence_analysis_ready(iface):

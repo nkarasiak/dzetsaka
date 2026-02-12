@@ -30,12 +30,14 @@ import numpy as np
 try:
     from sklearn.base import BaseEstimator
 except ImportError:  # pragma: no cover
+
     class BaseEstimator:
         """Minimal BaseEstimator stub that exposes ``__sklearn_tags__``."""
 
         @classmethod
         def __sklearn_tags__(cls):
             return {}
+
 
 # Conditional imports
 try:
@@ -169,14 +171,12 @@ class OptunaOptimizer:
                 clf = self._create_classifier(self.classifier_code, params)
             except Exception as e:
                 self.log.warning(f"Failed to create classifier with params {params}: {e}")
-                raise optuna.TrialPruned() from e
+                raise optuna.TrialPruned from e
 
             # Evaluate with cross-validation
             try:
                 with warnings.catch_warnings():
-                    warnings.filterwarnings(
-                        "ignore", message=".*feature names.*", category=UserWarning
-                    )
+                    warnings.filterwarnings("ignore", message=".*feature names.*", category=UserWarning)
                     scores = cross_val_score(clf, X, y, cv=cv_splitter, scoring=scoring, n_jobs=1, groups=groups)
                 mean_score = scores.mean()
 
@@ -185,13 +185,13 @@ class OptunaOptimizer:
 
                 # Check if trial should be pruned
                 if trial.should_prune():
-                    raise optuna.TrialPruned()
+                    raise optuna.TrialPruned
 
                 return mean_score
 
             except Exception as e:
                 self.log.warning(f"Trial failed with params {params}: {e}")
-                raise optuna.TrialPruned() from e
+                raise optuna.TrialPruned from e
 
         # Create study with TPE sampler and median pruner
         self.study = optuna.create_study(
@@ -202,15 +202,15 @@ class OptunaOptimizer:
 
         # Run optimization
         self.log.info(
-            f"Starting Optuna optimization for {self.classifier_code}: {self.n_trials} trials, scoring={scoring}"
+            f"Starting Optuna optimization for {self.classifier_code}: {self.n_trials} trials, scoring={scoring}",
         )
 
         self.study.optimize(
-            objective, n_trials=self.n_trials, timeout=self.timeout, n_jobs=self.n_jobs, show_progress_bar=self.verbose
+            objective, n_trials=self.n_trials, timeout=self.timeout, n_jobs=self.n_jobs, show_progress_bar=self.verbose,
         )
 
         self.log.info(
-            f"Optimization complete. Best score: {self.study.best_value:.4f}, Best params: {self.study.best_params}"
+            f"Optimization complete. Best score: {self.study.best_value:.4f}, Best params: {self.study.best_params}",
         )
 
         return self.study.best_params
@@ -241,7 +241,7 @@ class OptunaOptimizer:
                 "random_state": self.random_seed,
             }
 
-        elif classifier_code == "SVM":
+        if classifier_code == "SVM":
             return {
                 "C": trial.suggest_float("C", 0.1, 100.0, log=True),
                 "gamma": trial.suggest_categorical("gamma", ["scale", "auto"])
@@ -251,7 +251,7 @@ class OptunaOptimizer:
                 "random_state": self.random_seed,
             }
 
-        elif classifier_code == "KNN":
+        if classifier_code == "KNN":
             return {
                 "n_neighbors": trial.suggest_int("n_neighbors", 1, 30),
                 "weights": trial.suggest_categorical("weights", ["uniform", "distance"]),
@@ -259,7 +259,7 @@ class OptunaOptimizer:
                 "leaf_size": trial.suggest_int("leaf_size", 10, 50),
             }
 
-        elif classifier_code == "XGB":
+        if classifier_code == "XGB":
             return {
                 "n_estimators": trial.suggest_int("n_estimators", 50, 500, step=50),
                 "max_depth": trial.suggest_int("max_depth", 3, 15),
@@ -272,7 +272,7 @@ class OptunaOptimizer:
                 "eval_metric": "logloss",
             }
 
-        elif classifier_code == "LGB":
+        if classifier_code == "LGB":
             return {
                 "n_estimators": trial.suggest_int("n_estimators", 50, 500, step=50),
                 "num_leaves": trial.suggest_int("num_leaves", 20, 150),
@@ -285,7 +285,7 @@ class OptunaOptimizer:
                 "verbose": -1,
             }
 
-        elif classifier_code == "CB":
+        if classifier_code == "CB":
             return {
                 "iterations": trial.suggest_int("iterations", 50, 500, step=50),
                 "depth": trial.suggest_int("depth", 4, 10),
@@ -297,7 +297,7 @@ class OptunaOptimizer:
                 "allow_writing_files": False,
             }
 
-        elif classifier_code == "ET":
+        if classifier_code == "ET":
             return {
                 "n_estimators": trial.suggest_int("n_estimators", 50, 500, step=50),
                 "max_depth": trial.suggest_int("max_depth", 3, 30),
@@ -307,7 +307,7 @@ class OptunaOptimizer:
                 "random_state": self.random_seed,
             }
 
-        elif classifier_code == "GBC":
+        if classifier_code == "GBC":
             return {
                 "n_estimators": trial.suggest_int("n_estimators", 50, 500, step=50),
                 "max_depth": trial.suggest_int("max_depth", 3, 15),
@@ -318,7 +318,7 @@ class OptunaOptimizer:
                 "random_state": self.random_seed,
             }
 
-        elif classifier_code == "LR":
+        if classifier_code == "LR":
             return {
                 "C": trial.suggest_float("C", 0.001, 100.0, log=True),
                 "penalty": trial.suggest_categorical("penalty", ["l1", "l2", "elasticnet", None]),
@@ -327,7 +327,7 @@ class OptunaOptimizer:
                 "random_state": self.random_seed,
             }
 
-        elif classifier_code == "MLP":
+        if classifier_code == "MLP":
             n_layers = trial.suggest_int("n_layers", 1, 3)
             hidden_layer_sizes = tuple(trial.suggest_int(f"layer_{i}_size", 50, 300, step=50) for i in range(n_layers))
 
@@ -340,12 +340,11 @@ class OptunaOptimizer:
                 "random_state": self.random_seed,
             }
 
-        elif classifier_code == "NB":
+        if classifier_code == "NB":
             # Naive Bayes has minimal hyperparameters
             return {"var_smoothing": trial.suggest_float("var_smoothing", 1e-10, 1e-6, log=True)}
 
-        else:
-            raise ValueError(f"Unknown classifier code: {classifier_code}")
+        raise ValueError(f"Unknown classifier code: {classifier_code}")
 
     def _create_classifier(self, classifier_code: str, params: dict[str, Any]) -> Any:
         """Create classifier instance with given parameters.
@@ -382,17 +381,17 @@ class OptunaOptimizer:
 
             return RandomForestClassifier(**params)
 
-        elif classifier_code == "SVM":
+        if classifier_code == "SVM":
             from sklearn.svm import SVC
 
             return SVC(**params)
 
-        elif classifier_code == "KNN":
+        if classifier_code == "KNN":
             from sklearn.neighbors import KNeighborsClassifier
 
             return KNeighborsClassifier(**params)
 
-        elif classifier_code == "XGB":
+        if classifier_code == "XGB":
             try:
                 from xgboost import XGBClassifier
 
@@ -416,6 +415,7 @@ class OptunaOptimizer:
 
             classifier_cls = CatBoostClassifier
             if BaseEstimator is not None:
+
                 class _CatBoostSklearnCompanion(CatBoostClassifier, BaseEstimator):
                     # Place BaseEstimator on the right so __sklearn_tags__ is available to sklearn.clone
                     pass

@@ -39,7 +39,7 @@ def test_signal_disconnection_in_unload():
     plugin.tr = Mock(return_value="&dzetsaka")
 
     # Mock QgsApplication
-    with patch('dzetsaka.qgis.unload_utils.QgsApplication') as mock_qgs_app:
+    with patch("dzetsaka.qgis.unload_utils.QgsApplication") as mock_qgs_app:
         mock_registry = Mock()
         mock_qgs_app.processingRegistry.return_value = mock_registry
 
@@ -70,13 +70,9 @@ def test_signal_disconnection_handles_exceptions():
 
     plugin.dashboard_dock = Mock()
     plugin.dashboard_dock.classificationRequested = Mock()
-    plugin.dashboard_dock.classificationRequested.disconnect = Mock(
-        side_effect=TypeError("Signal not connected")
-    )
+    plugin.dashboard_dock.classificationRequested.disconnect = Mock(side_effect=TypeError("Signal not connected"))
     plugin.dashboard_dock.closingRequested = Mock()
-    plugin.dashboard_dock.closingRequested.disconnect = Mock(
-        side_effect=RuntimeError("Signal already disconnected")
-    )
+    plugin.dashboard_dock.closingRequested.disconnect = Mock(side_effect=RuntimeError("Signal already disconnected"))
     plugin.dashboard_dock.close = Mock()
 
     plugin.dashboard_toolbar_action = None  # Test None action
@@ -86,7 +82,7 @@ def test_signal_disconnection_handles_exceptions():
     plugin.iface = Mock()
     plugin.tr = Mock(return_value="&dzetsaka")
 
-    with patch('dzetsaka.qgis.unload_utils.QgsApplication'):
+    with patch("dzetsaka.qgis.unload_utils.QgsApplication"):
         # Should not raise exception
         unload_plugin(plugin)
 
@@ -113,14 +109,14 @@ def test_dependency_install_task_structure():
     )
 
     # Verify it has required QgsTask methods
-    assert hasattr(task, 'run'), "Task must have run() method"
-    assert hasattr(task, 'finished'), "Task must have finished() method"
+    assert hasattr(task, "run"), "Task must have run() method"
+    assert hasattr(task, "finished"), "Task must have finished() method"
     assert callable(task.run), "run() must be callable"
     assert callable(task.finished), "finished() must be callable"
 
     # Verify it has progress tracking
-    assert hasattr(task, 'setProgress'), "Task must support setProgress()"
-    assert hasattr(task, 'isCanceled'), "Task must support isCanceled()"
+    assert hasattr(task, "setProgress"), "Task must support setProgress()"
+    assert hasattr(task, "isCanceled"), "Task must support isCanceled()"
 
 
 @pytest.mark.unit
@@ -153,7 +149,7 @@ def test_classification_task_checks_cancellation():
     task.isCanceled = Mock(return_value=True)
 
     # Run should return False when cancelled
-    with patch('dzetsaka.qgis.task_runner.run_classification'):
+    with patch("dzetsaka.qgis.task_runner.run_classification"):
         result = task.run()
         assert result is False, "Task should return False when cancelled"
 
@@ -177,9 +173,9 @@ def test_async_dependency_installer_uses_callback():
         callback_called["value"] = True
 
     # Mock the task creation and submission
-    with patch('dzetsaka.qgis.dependency_installer.DependencyInstallTask'), \
-         patch('dzetsaka.qgis.dependency_installer.QgsApplication'):
-
+    with patch("dzetsaka.qgis.dependency_installer.DependencyInstallTask"), patch(
+        "dzetsaka.qgis.dependency_installer.QgsApplication",
+    ):
         try_install_dependencies_async(plugin, ["test-package"], on_complete)
 
         # Verify logger was called (task was created)

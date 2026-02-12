@@ -55,5 +55,3 @@ def classify_image(
         NODATA=nodata,
         feedback=feedback,
     )
-
-

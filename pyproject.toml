@@ -200,6 +200,20 @@ select = [
     "PIE",    # flake8-pie
     "T20",    # flake8-print
     "RUF",    # Ruff-specific rules
+    "A",      # flake8-builtins
+    "ARG",    # flake8-unused-arguments
+    "BLE",    # flake8-blind-except
+    "COM",    # flake8-commas
+    "EM",     # flake8-errmsg
+    "ERA",    # eradicate
+    "G",      # flake8-logging-format
+    "ISC",    # flake8-implicit-str-concat
+    "PERF",   # Perflint
+    "PTH",    # flake8-use-pathlib
+    "Q",      # flake8-quotes
+    "RET",    # flake8-return
+    "RSE",    # flake8-raise
+    "TRY",    # tryceratops
 ]
 
 ignore = [
@@ -228,6 +242,9 @@ unfixable = []
 
 # Allow unused variables when underscore-prefixed
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
 
 [tool.ruff.lint.per-file-ignores]
 # Tests can use magic values, assertions, and print statements

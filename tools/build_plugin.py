@@ -79,9 +79,7 @@ def _resource_image_paths(repo_root: Path) -> set[str]:
         return set()
     content = qrc_file.read_text(encoding="utf-8")
     return {
-        match.group(1)
-        for match in re.finditer(r"<file>([^<]+)</file>", content)
-        if match.group(1).startswith("img/")
+        match.group(1) for match in re.finditer(r"<file>([^<]+)</file>", content) if match.group(1).startswith("img/")
     }
 
 

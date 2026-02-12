@@ -186,7 +186,7 @@ def test_quickstart_page_color_darkening():
     # Test the static method logic without instantiation
     # Color darkening formula: multiply RGB by 0.9
     hex_color = "#4CAF50"
-    hex_color = hex_color.lstrip('#')
+    hex_color = hex_color.lstrip("#")
     r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
     r, g, b = int(r * 0.9), int(g * 0.9), int(b * 0.9)
     darkened = f"#{r:02x}{g:02x}{b:02x}"

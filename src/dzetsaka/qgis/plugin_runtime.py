@@ -348,18 +348,15 @@ class DzetsakaGUI(QDialog):
                 from dzetsaka.ui.batch_classification_dialog import BatchClassificationDialog
             except ImportError:
                 from qgis.PyQt.QtWidgets import QMessageBox
+
                 QMessageBox.warning(
                     self.iface.mainWindow(),
                     "Batch Classification",
-                    "Batch classification dialog is not available. Please check that all files are installed correctly."
+                    "Batch classification dialog is not available. Please check that all files are installed correctly.",
                 )
                 return
 
-            dialog = BatchClassificationDialog(
-                parent=self.iface.mainWindow(),
-                iface=self.iface,
-                plugin=self
-            )
+            dialog = BatchClassificationDialog(parent=self.iface.mainWindow(), iface=self.iface, plugin=self)
             try:
                 dialog.exec_()
             except AttributeError:
@@ -541,13 +538,10 @@ class DzetsakaGUI(QDialog):
             from dzetsaka.logging import show_error_dialog
 
             show_error_dialog(error_title, details)
+
+
 # Qt6 enum compatibility (QGIS 4 / PyQt6)
 try:
     _LEFT_DOCK_AREA = Qt.LeftDockWidgetArea
 except AttributeError:
     _LEFT_DOCK_AREA = Qt.DockWidgetArea.LeftDockWidgetArea
-
-
-
-
-

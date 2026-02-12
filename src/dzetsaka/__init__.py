@@ -28,4 +28,3 @@ def classFactory(iface):  # pylint: disable=invalid-name
     from .qgis import plugin as _plugin_module
 
     return _plugin_module.classFactory(iface)
-

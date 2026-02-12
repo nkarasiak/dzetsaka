@@ -15,4 +15,3 @@ def load_module_from_path(module_name: str, module_path: Path):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
-

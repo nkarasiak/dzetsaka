@@ -60,7 +60,7 @@ class TrainAlgorithm(QgsProcessingAlgorithm):
                        \n \
                        <h4>SVM</h4> \
                        e.g. : dict(gamma=2.0**np.arange(-4,4), C=10.0**np.arange(-2,5)) \n \
-                       More information : http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html "
+                       More information : http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html ",
         )
 
     def name(self):
@@ -89,7 +89,7 @@ class TrainAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterVectorLayer(
                 self.INPUT_LAYER,
                 "Input layer",
-            )
+            ),
         )
         # TABLE / COLUMN
         self.addParameter(
@@ -98,7 +98,7 @@ class TrainAlgorithm(QgsProcessingAlgorithm):
                 "Field (column must have classification number (e.g. '1' forest, '2' water...))",
                 parentLayerParameterName=self.INPUT_LAYER,
                 optional=False,
-            )
+            ),
         )  # save model
 
         # Train algorithm
@@ -115,20 +115,20 @@ class TrainAlgorithm(QgsProcessingAlgorithm):
                 minValue=0,
                 maxValue=100,
                 defaultValue=50,
-            )
+            ),
         )
 
         # SAVE AS
         # SAVE MODEL
         self.addParameter(
-            QgsProcessingParameterFileDestination(self.OUTPUT_MODEL, self.tr("Output model (to use for classifying)"))
+            QgsProcessingParameterFileDestination(self.OUTPUT_MODEL, self.tr("Output model (to use for classifying)")),
         )
 
         # SAVE CONFUSION MATRIX
         self.addParameter(
             QgsProcessingParameterFileDestination(
-                self.OUTPUT_MATRIX, self.tr("Output confusion matrix"), fileFilter="csv"
-            )
+                self.OUTPUT_MATRIX, self.tr("Output confusion matrix"), fileFilter="csv",
+            ),
         )  # ,
         # ext='csv'))
         # PARAM GRID
@@ -137,7 +137,7 @@ class TrainAlgorithm(QgsProcessingAlgorithm):
                 self.PARAMGRID,
                 self.tr("Parameters for the hyperparameters of the algorithm"),
                 optional=True,
-            )
+            ),
         )
 
     def processAlgorithm(self, parameters, context, feedback):

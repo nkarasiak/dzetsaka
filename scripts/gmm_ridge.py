@@ -287,7 +287,8 @@ class GMMR(BaseEstimator, ClassifierMixin):
                     f"Class {label} has only {n_samples} samples but needs "
                     f"at least {min_samples_required} for reliable covariance estimation. "
                     f"Consider increasing regularization (tau) or collecting more samples.",
-                    UserWarning, stacklevel=2,
+                    UserWarning,
+                    stacklevel=2,
                 )
 
         # Initialize storage
@@ -340,13 +341,14 @@ class GMMR(BaseEstimator, ClassifierMixin):
                         f"Class {cR} has ill-conditioned covariance matrix "
                         f"(condition number: {condition_number:.2e}). "
                         f"Consider increasing tau parameter.",
-                        UserWarning, stacklevel=2,
+                        UserWarning,
+                        stacklevel=2,
                     )
 
         return self
 
     def predict(
-        self, xt: np.ndarray, tau: Optional[float] = None, confidenceMap: Optional[bool] = None
+        self, xt: np.ndarray, tau: Optional[float] = None, confidenceMap: Optional[bool] = None,
     ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
         """Predict class labels for samples.
 
@@ -381,9 +383,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         xt = check_array(xt, dtype=np.float64)
 
         if xt.shape[1] != self.n_features_in_:
-            raise ValueError(
-                f"X has {xt.shape[1]} features but model was trained on {self.n_features_in_} features"
-            )
+            raise ValueError(f"X has {xt.shape[1]} features but model was trained on {self.n_features_in_} features")
 
         MAX = np.finfo(np.float64).max
         E_MAX = np.log(MAX)
@@ -512,9 +512,8 @@ class GMMR(BaseEstimator, ClassifierMixin):
         # Stable softmax
         logits_max = np.max(logits, axis=1, keepdims=True)
         exp_logits = np.exp(logits - logits_max)
-        proba = exp_logits / np.sum(exp_logits, axis=1, keepdims=True)
+        return exp_logits / np.sum(exp_logits, axis=1, keepdims=True)
 
-        return proba
 
     def compute_inverse_logdet(self, c: int, tau: float) -> Tuple[np.ndarray, float]:
         """Compute inverse covariance matrix and log determinant for a class.
@@ -606,7 +605,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         return L + P
 
     def cross_validation(
-        self, x: np.ndarray, y: np.ndarray, tau: np.ndarray, v: int = 5, n_jobs: int = -1
+        self, x: np.ndarray, y: np.ndarray, tau: np.ndarray, v: int = 5, n_jobs: int = -1,
     ) -> Tuple[float, np.ndarray]:
         """Perform cross-validation to find optimal tau parameter.
 
@@ -641,11 +640,10 @@ class GMMR(BaseEstimator, ClassifierMixin):
         # Use sklearn if available for better stratification
         if SKLEARN_AVAILABLE:
             return self._cross_validation_sklearn(x, y, tau, v)
-        else:
-            return self._cross_validation_legacy(x, y, tau, v, n_jobs)
+        return self._cross_validation_legacy(x, y, tau, v, n_jobs)
 
     def _cross_validation_sklearn(
-        self, x: np.ndarray, y: np.ndarray, tau: np.ndarray, v: int
+        self, x: np.ndarray, y: np.ndarray, tau: np.ndarray, v: int,
     ) -> Tuple[float, np.ndarray]:
         """Cross-validation using sklearn's StratifiedKFold."""
         from sklearn.base import clone
@@ -675,7 +673,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         return tau[best_idx], err
 
     def _cross_validation_legacy(
-        self, x: np.ndarray, y: np.ndarray, tau: np.ndarray, v: int, n_jobs: int
+        self, x: np.ndarray, y: np.ndarray, tau: np.ndarray, v: int, n_jobs: int,
     ) -> Tuple[float, np.ndarray]:
         """Legacy cross-validation with multiprocessing."""
         num_tau = tau.size
@@ -722,7 +720,9 @@ class GMMR(BaseEstimator, ClassifierMixin):
 
                 for i in range(v):
                     test_idx = np.array(fold_indices[i])
-                    processes.append(pool.apply_async(_predict_worker, args=(tau, model_cv[i], x[test_idx], y[test_idx])))
+                    processes.append(
+                        pool.apply_async(_predict_worker, args=(tau, model_cv[i], x[test_idx], y[test_idx])),
+                    )
 
                 pool.close()
                 pool.join()
@@ -769,7 +769,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         Examples
         --------
         >>> model = GMMR().fit(X, y)
-        >>> importance = model.get_feature_importance(method='discriminative')
+        >>> importance = model.get_feature_importance(method="discriminative")
         >>> print(f"Most important feature: {importance.argmax()}")
 
         """
@@ -824,7 +824,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         >>> model = GMMR().fit(X, y)
         >>> diag = model.get_covariance_diagnostics()
         >>> print(f"Condition numbers: {diag['condition_numbers']}")
-        >>> if any(diag['condition_numbers'] > 1e10):
+        >>> if any(diag["condition_numbers"] > 1e10):
         ...     print("Warning: Some classes have ill-conditioned covariances!")
 
         """
@@ -931,9 +931,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
 
         # Validate features
         if X.shape[1] != self.n_features_in_:
-            raise ValueError(
-                f"X has {X.shape[1]} features but model expects {self.n_features_in_} features"
-            )
+            raise ValueError(f"X has {X.shape[1]} features but model expects {self.n_features_in_} features")
 
         C = len(self.classes_)
 
@@ -1009,7 +1007,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
             # Standard ridge: Cov + tau * I
             return cov + self.tau * np.eye(d)
 
-        elif self.reg_type == "ledoit_wolf":
+        if self.reg_type == "ledoit_wolf":
             # Ledoit-Wolf shrinkage
             shrinkage = self._ledoit_wolf_shrinkage(cov, n_samples)
 
@@ -1024,7 +1022,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
 
             return (1 - shrinkage) * cov + shrinkage * target
 
-        elif self.reg_type == "oas":
+        if self.reg_type == "oas":
             # Oracle Approximating Shrinkage
             shrinkage = self._oas_shrinkage(cov, n_samples)
 
@@ -1037,12 +1035,11 @@ class GMMR(BaseEstimator, ClassifierMixin):
 
             return (1 - shrinkage) * cov + shrinkage * target
 
-        elif self.reg_type == "empirical":
+        if self.reg_type == "empirical":
             # No regularization
             return cov
 
-        else:
-            raise ValueError(f"Unknown reg_type: {self.reg_type}. Use 'ridge', 'ledoit_wolf', 'oas', or 'empirical'")
+        raise ValueError(f"Unknown reg_type: {self.reg_type}. Use 'ridge', 'ledoit_wolf', 'oas', or 'empirical'")
 
     def _ledoit_wolf_shrinkage(self, cov: np.ndarray, n_samples: int) -> float:
         """Compute Ledoit-Wolf optimal shrinkage intensity.
@@ -1080,9 +1077,8 @@ class GMMR(BaseEstimator, ClassifierMixin):
 
         # Shrinkage intensity
         shrinkage = min(delta_bar / (delta + 1e-10), 1.0)
-        shrinkage = max(shrinkage, 0.0)
+        return max(shrinkage, 0.0)
 
-        return shrinkage
 
     def _oas_shrinkage(self, cov: np.ndarray, n_samples: int) -> float:
         """Compute Oracle Approximating Shrinkage intensity.
@@ -1114,15 +1110,11 @@ class GMMR(BaseEstimator, ClassifierMixin):
         trace_cov = np.trace(cov)
 
         # OAS formula
-        rho = min(
-            ((1 - 2 / d) * trace_cov2 + trace_cov**2) / ((n + 1 - 2 / d) * (trace_cov2 - trace_cov**2 / d)),
-            1.0
-        )
+        rho = min(((1 - 2 / d) * trace_cov2 + trace_cov**2) / ((n + 1 - 2 / d) * (trace_cov2 - trace_cov**2 / d)), 1.0)
 
         # Ensure shrinkage is in [0, 1]
-        shrinkage = max(min(rho, 1.0), 0.0)
+        return max(min(rho, 1.0), 0.0)
 
-        return shrinkage
 
     def __getstate__(self) -> Dict[str, Any]:
         """Get state for pickle serialization."""

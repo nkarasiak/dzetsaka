@@ -2,6 +2,7 @@
 
 Tests the SMOTESampler class and related utility functions.
 """
+
 import numpy as np
 import pytest
 

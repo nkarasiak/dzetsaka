@@ -102,7 +102,7 @@ CSV file with:
 - Use SMOTE for datasets with >2x class imbalance
 - Larger outer_cv gives more reliable performance estimates
 - Compare nested CV results with standard training for reference
-"""
+""",
         )
 
     def name(self):
@@ -123,7 +123,7 @@ CSV file with:
             QgsProcessingParameterVectorLayer(
                 self.INPUT_LAYER,
                 self.tr("Training layer"),
-            )
+            ),
         )
 
         # Class field
@@ -133,7 +133,7 @@ CSV file with:
                 self.tr("Class field"),
                 parentLayerParameterName=self.INPUT_LAYER,
                 optional=False,
-            )
+            ),
         )
 
         # Classifier selection
@@ -148,7 +148,7 @@ CSV file with:
                 minValue=2,
                 maxValue=10,
                 defaultValue=3,
-            )
+            ),
         )
 
         # Outer CV folds
@@ -160,7 +160,7 @@ CSV file with:
                 minValue=3,
                 maxValue=10,
                 defaultValue=5,
-            )
+            ),
         )
 
         # Use SMOTE
@@ -170,7 +170,7 @@ CSV file with:
                 self.tr("Apply SMOTE oversampling"),
                 ["No", "Yes"],
                 defaultValue=0,
-            )
+            ),
         )
 
         # Use class weights
@@ -180,7 +180,7 @@ CSV file with:
                 self.tr("Apply class weights"),
                 ["No", "Yes"],
                 defaultValue=0,
-            )
+            ),
         )
 
         # Output results file
@@ -189,7 +189,7 @@ CSV file with:
                 self.OUTPUT_RESULTS,
                 self.tr("Output results file"),
                 fileFilter="CSV (*.csv)",
-            )
+            ),
         )
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -288,4 +288,3 @@ CSV file with:
         common = metadata_helpers.get_common_tags()
         specific = metadata_helpers.get_algorithm_specific_tags("validation")
         return common + specific
-

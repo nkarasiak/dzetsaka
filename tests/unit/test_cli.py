@@ -81,15 +81,18 @@ qtcore = types.ModuleType("qgis.PyQt.QtCore")
 qtgui = types.ModuleType("qgis.PyQt.QtGui")
 qtwidgets = types.ModuleType("qgis.PyQt.QtWidgets")
 
+
 class _DummyQt:
     class CursorShape:
         WaitCursor = 1
 
     WaitCursor = 1
 
+
 class _DummyQCursor:
     def __init__(self, *args, **kwargs):
         pass
+
 
 class _DummyQProgressBar:
     def __init__(self, *args, **kwargs):
@@ -101,10 +104,12 @@ class _DummyQProgressBar:
     def setMaximum(self, value):
         return None
 
+
 class _DummyQApplication:
     @staticmethod
     def setOverrideCursor(cursor):
         return None
+
 
 class _DummyWidget:
     def layout(self):
@@ -114,6 +119,7 @@ class _DummyWidget:
 
         return Layout()
 
+
 class _DummyMessageBar:
     def createMessage(self, title, text):
         return _DummyWidget()
@@ -121,9 +127,11 @@ class _DummyMessageBar:
     def pushWidget(self, widget):
         return None
 
+
 class _DummyIface:
     def messageBar(self):
         return _DummyMessageBar()
+
 
 qtcore.Qt = _DummyQt
 qtgui.QCursor = _DummyQCursor
@@ -168,7 +176,7 @@ def test_classify_command_calls_use_case(monkeypatch, tmp_path):
             "conf.tif",
             "--nodata",
             "42",
-        ]
+        ],
     )
 
     assert rc == 0
@@ -210,7 +218,7 @@ def test_train_command_parses_extra_params(monkeypatch, tmp_path):
             "RF",
             "--extra",
             f"@{extra_file}",
-        ]
+        ],
     )
 
     assert rc == 0

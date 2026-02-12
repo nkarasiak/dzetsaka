@@ -80,7 +80,6 @@ def listToStr(fileName, sep=" "):
     return strList
 
 
-
 def _run_command(command, report=None):
     """Run external command safely without shell interpolation."""
     args = shlex.split(command)
@@ -402,4 +401,3 @@ if __name__ == "__main__":
         n_spectral_bands,
         resampled_image,
     )
-

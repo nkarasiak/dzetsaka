@@ -22,8 +22,14 @@ try:
     # Track which keys we inject so we can clean them up afterwards and avoid
     # polluting sys.modules for tests that run later in the same session.
     _STUB_KEYS = (
-        "qgis", "qgis.PyQt", "qgis.PyQt.QtCore", "qgis.PyQt.QtWidgets", "qgis.PyQt.QtGui",
-        "ui", "ui.classification_workflow_ui", "ui.comparison_panel",
+        "qgis",
+        "qgis.PyQt",
+        "qgis.PyQt.QtCore",
+        "qgis.PyQt.QtWidgets",
+        "qgis.PyQt.QtGui",
+        "ui",
+        "ui.classification_workflow_ui",
+        "ui.comparison_panel",
     )
     _inserted_keys = [k for k in _STUB_KEYS if k not in sys.modules]
 
@@ -47,10 +53,25 @@ try:
     _pyqt_core.Qt = type("Qt", (), {"ItemIsEditable": 0})()
     _pyqt_widgets = type(sys)("qgis.PyQt.QtWidgets")
     for _cls_name in (
-        "QCheckBox", "QComboBox", "QDialog", "QDialogButtonBox",
-        "QFileDialog", "QGroupBox", "QHBoxLayout", "QLabel", "QLineEdit",
-        "QMessageBox", "QPushButton", "QSpinBox", "QTableWidget", "QTableWidgetItem",
-        "QTextEdit", "QVBoxLayout", "QWidget", "QWizard", "QWizardPage",
+        "QCheckBox",
+        "QComboBox",
+        "QDialog",
+        "QDialogButtonBox",
+        "QFileDialog",
+        "QGroupBox",
+        "QHBoxLayout",
+        "QLabel",
+        "QLineEdit",
+        "QMessageBox",
+        "QPushButton",
+        "QSpinBox",
+        "QTableWidget",
+        "QTableWidgetItem",
+        "QTextEdit",
+        "QVBoxLayout",
+        "QWidget",
+        "QWizard",
+        "QWizardPage",
     ):
         setattr(_pyqt_widgets, _cls_name, _FakeWidget)
     _pyqt_gui = type(sys)("qgis.PyQt.QtGui")
@@ -69,7 +90,7 @@ try:
 
     # --- Load classification_workflow_ui with __package__ = 'ui' so relative imports work ---
     _workflow_spec = importlib.util.spec_from_file_location(
-        "ui.classification_workflow_ui", os.path.join(_UI_DIR, "classification_workflow_ui.py")
+        "ui.classification_workflow_ui", os.path.join(_UI_DIR, "classification_workflow_ui.py"),
     )
     _workflow_mod = importlib.util.module_from_spec(_workflow_spec)
     _workflow_mod.__package__ = "ui"
@@ -85,7 +106,7 @@ try:
 
     # --- Load comparison_panel ---
     _panel_spec = importlib.util.spec_from_file_location(
-        "ui.comparison_panel", os.path.join(_UI_DIR, "comparison_panel.py")
+        "ui.comparison_panel", os.path.join(_UI_DIR, "comparison_panel.py"),
     )
     _panel_mod = importlib.util.module_from_spec(_panel_spec)
     _panel_mod.__package__ = "ui"
@@ -196,9 +217,7 @@ class TestBuildComparisonData:
 
     def _no_deps(self):
         """Return deps dict with nothing available."""
-        return dict.fromkeys(
-            ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False
-        )
+        return dict.fromkeys(("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False)
 
     def test_returns_eleven_rows(self):
         """Always returns 12 rows."""
@@ -289,5 +308,3 @@ class TestBuildComparisonData:
         assert "state-of-the-art" in rec_map["XGB"].lower()
         assert "fastest gradient boosting" in rec_map["LGB"].lower()
         assert "best default parameters" in rec_map["CB"].lower()
-
-

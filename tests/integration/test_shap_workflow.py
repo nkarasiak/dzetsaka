@@ -3,6 +3,7 @@
 Tests the end-to-end integration of SHAP explainability with LearnModel
 and the Processing algorithm.
 """
+
 import os
 import pickle
 import tempfile
@@ -104,7 +105,7 @@ class TestSHAPWorkflowWithRealModel:
         # Create explainer
         explainer = ModelExplainer(
             model=model,
-            feature_names=[f"Band_{i+1}" for i in range(5)],
+            feature_names=[f"Band_{i + 1}" for i in range(5)],
         )
 
         # Compute importance
@@ -113,7 +114,7 @@ class TestSHAPWorkflowWithRealModel:
 
         # Validate workflow
         assert len(importance) == 5
-        assert all(f"Band_{i+1}" in importance for i in range(5))
+        assert all(f"Band_{i + 1}" in importance for i in range(5))
         assert all(0 <= v <= 1 for v in importance.values())
 
         # Verify sum to 1.0 (normalized)

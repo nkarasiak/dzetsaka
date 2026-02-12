@@ -28,7 +28,7 @@ class RandomInSubset:
             from sklearn.model_selection import train_test_split
         except ImportError as e:
             raise ImportError(
-                "scikit-learn is required for train/test split functionality. Install with: pip install scikit-learn"
+                "scikit-learn is required for train/test split functionality. Install with: pip install scikit-learn",
             ) from e
 
         number = number / 100.0 if percent else int(number)
@@ -304,7 +304,7 @@ class DistanceCV:
                                         "len validate before split ("
                                         + format(self.minTrain, fmt)
                                         + ") : "
-                                        + str(len(validate))
+                                        + str(len(validate)),
                                     )
                                 validate = CT[distanceROI <= distToCut]
 
@@ -415,7 +415,7 @@ class DistanceCV:
                                 len(trained) - initTrain,
                                 CTdistTrain,
                                 CTdistValid,
-                            ]
+                            ],
                         )
 
                     if self.verbose:
@@ -457,11 +457,11 @@ class DistanceCV:
                 """
                 if self.stats and self.stats is True:
                     return validation, train, Cstats
-                else:
-                    return validation, train
+                return validation, train
 
         else:
-            raise StopIteration()
+            raise StopIteration
+        return None
 
 
 def distMatrix(inCoords, distanceMetric=False):
@@ -613,8 +613,7 @@ class StandCV:
 
             self.iterPos += 1
             return train, validation
-        else:
-            raise StopIteration()
+        raise StopIteration
 
 
 def readFieldVector(inShape, inField, inStand=False, getFeatures=False):
@@ -653,13 +652,10 @@ def readFieldVector(inShape, inField, inStand=False, getFeatures=False):
     if inStand:
         if getFeatures:
             return Features, Stands, srs, getFeaturesList
-        else:
-            return Features, Stands, srs
-    else:
-        if getFeatures is True:
-            return Features, srs, getFeaturesList
-        else:
-            return Features, srs
+        return Features, Stands, srs
+    if getFeatures is True:
+        return Features, srs, getFeaturesList
+    return Features, srs
 
 
 def saveToShape(array, srs, outShapeFile):
@@ -746,14 +742,13 @@ def readROIFromVector(vector, roiprefix, *args):
 
         if len(args) > 0:
             return ROIvalues, ROIlevels
-        else:
-            return ROIvalues
-    else:
-        from dzetsaka.logging import Reporter
+        return ROIvalues
+    from dzetsaka.logging import Reporter
 
-        report = Reporter.from_feedback(None, tag="Dzetsaka/Vector")
-        report.error(f'ROI field "{roiprefix}" do not exists. These fields are available : ')
-        report.info(listFields)
+    report = Reporter.from_feedback(None, tag="Dzetsaka/Vector")
+    report.error(f'ROI field "{roiprefix}" do not exists. These fields are available : ')
+    report.info(listFields)
+    return None
 
 
 if __name__ == "__main__":
@@ -792,9 +787,9 @@ if __name__ == "__main__":
 
     """
 
-    import function_dataraster
-
     import tempfile
+
+    import function_dataraster
 
     roi_path = os.path.join(tempfile.gettempdir(), "roi.tif")
     function_dataraster.rasterize(in_raster, in_vector, in_field, roi_path)

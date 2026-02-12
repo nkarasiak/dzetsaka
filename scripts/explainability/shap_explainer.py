@@ -18,10 +18,7 @@ Example Usage:
     >>> from scripts.explainability.shap_explainer import ModelExplainer
     >>>
     >>> # Create explainer from trained model
-    >>> explainer = ModelExplainer(
-    ...     model=trained_model,
-    ...     feature_names=['B1', 'B2', 'B3', 'NDVI']
-    ... )
+    >>> explainer = ModelExplainer(model=trained_model, feature_names=["B1", "B2", "B3", "NDVI"])
     >>>
     >>> # Get feature importance
     >>> importance = explainer.get_feature_importance(X_sample)
@@ -29,10 +26,7 @@ Example Usage:
     >>>
     >>> # Generate raster importance map
     >>> explainer.create_importance_raster(
-    ...     raster_path='image.tif',
-    ...     output_path='importance.tif',
-    ...     sample_size=1000,
-    ...     progress_callback=my_callback
+    ...     raster_path="image.tif", output_path="importance.tif", sample_size=1000, progress_callback=my_callback
     ... )
 
 Author:
@@ -44,6 +38,7 @@ License:
 GNU General Public License v2.0 or later
 
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -92,6 +87,7 @@ def _safe_tqdm_environment():
         # Restore original values (even if they were None)
         sys.stderr = original_stderr
         sys.stdout = original_stdout
+
 
 # Try to import from dzetsaka modules
 try:
@@ -164,7 +160,7 @@ class ModelExplainer:
 
     Example
     -------
-    >>> explainer = ModelExplainer(rf_model, ['B1', 'B2', 'B3'])
+    >>> explainer = ModelExplainer(rf_model, ["B1", "B2", "B3"])
     >>> importance = explainer.get_feature_importance(X_test[:100])
     >>> print(f"Most important: {max(importance, key=importance.get)}")
 
@@ -234,7 +230,7 @@ class ModelExplainer:
             if bg_data is None:
                 raise ValueError(
                     "background_data is required for KernelExplainer (non-tree models). "
-                    "Provide it at init or when calling get_feature_importance()."
+                    "Provide it at init or when calling get_feature_importance().",
                 )
 
             # Sample background data if too large (max 100 samples for performance)
@@ -333,7 +329,7 @@ class ModelExplainer:
             raise ValueError(f"Unknown aggregate_method: {aggregate_method}. Use 'mean_abs', 'mean', or 'max_abs'")
         if hasattr(self.model, "n_features_in_") and X_sample.shape[1] != int(self.model.n_features_in_):
             raise ValueError(
-                f"X_sample has {X_sample.shape[1]} features, but model expects {self.model.n_features_in_}."
+                f"X_sample has {X_sample.shape[1]} features, but model expects {self.model.n_features_in_}.",
             )
 
         # Create explainer if not already created
@@ -388,9 +384,13 @@ class ModelExplainer:
         elif shap_array.ndim == 3:
             # SHAP returns either [classes, samples, features] or [samples, features, classes].
             if shap_array.shape[-1] == n_features:
-                per_sample_feature = np.abs(shap_array).mean(axis=0) if aggregate_method != "mean" else shap_array.mean(axis=0)
+                per_sample_feature = (
+                    np.abs(shap_array).mean(axis=0) if aggregate_method != "mean" else shap_array.mean(axis=0)
+                )
             elif shap_array.shape[1] == n_features:
-                per_sample_feature = np.abs(shap_array).mean(axis=2) if aggregate_method != "mean" else shap_array.mean(axis=2)
+                per_sample_feature = (
+                    np.abs(shap_array).mean(axis=2) if aggregate_method != "mean" else shap_array.mean(axis=2)
+                )
             else:
                 feature_axis = int(np.argmin(np.abs(np.array(shap_array.shape) - n_features)))
                 reduce_axes = tuple(ax for ax in range(shap_array.ndim) if ax != feature_axis)
@@ -426,12 +426,8 @@ class ModelExplainer:
 
         # Create dictionary mapping feature names to importance
         # Convert to native Python floats so sorting/logging works with scalars
-        importance_dict = {
-            name: float(value)
-            for name, value in zip(self.feature_names, importance_values.tolist())
-        }
+        return {name: float(value) for name, value in zip(self.feature_names, importance_values.tolist())}
 
-        return importance_dict
 
     def create_importance_raster(
         self,
@@ -482,10 +478,7 @@ class ModelExplainer:
         ...     print(f"Progress: {pct}%")
         >>>
         >>> explainer.create_importance_raster(
-        ...     'image.tif',
-        ...     'importance.tif',
-        ...     sample_size=500,
-        ...     progress_callback=progress
+        ...     "image.tif", "importance.tif", sample_size=500, progress_callback=progress
         ... )
 
         """
@@ -670,7 +663,9 @@ class ModelExplainer:
 
                 # Write band
                 band.WriteArray(band_data)
-                band.SetDescription(f"Importance: {self.feature_names[band_idx] if self.feature_names else f'Band {band_idx + 1}'}")
+                band.SetDescription(
+                    f"Importance: {self.feature_names[band_idx] if self.feature_names else f'Band {band_idx + 1}'}",
+                )
                 band.FlushCache()
 
                 if progress_callback:

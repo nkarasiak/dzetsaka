@@ -193,9 +193,8 @@ class DependencyInstallTask(QgsTask):
                 if result.returncode == 0:
                     self.log.info("Bundle installation succeeded")
                     return True
-                else:
-                    self.log.warning(f"Bundle install failed with exit code {result.returncode}")
-                    self.log.warning(f"stderr: {result.stderr[:500]}")
+                self.log.warning(f"Bundle install failed with exit code {result.returncode}")
+                self.log.warning(f"stderr: {result.stderr[:500]}")
 
             except subprocess.TimeoutExpired:
                 self.log.warning(f"Bundle install timed out with {py}")

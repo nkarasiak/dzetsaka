@@ -2,6 +2,7 @@
 
 Ensures NumPy deprecation warnings are not raised during predict/BIC.
 """
+
 import warnings
 
 import numpy as np

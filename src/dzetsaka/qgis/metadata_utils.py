@@ -18,4 +18,3 @@ def read_plugin_version(plugin_dir: str, logger=None) -> str:
         if logger is not None:
             logger.warning(f"Unable to read plugin version from metadata.txt: {exc}")
     return "unknown"
-

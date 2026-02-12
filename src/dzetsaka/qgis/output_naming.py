@@ -19,4 +19,3 @@ def default_output_name(in_raster_path: str, classifier_code: str) -> str:
         code = "CLASS"
     classifier_label = _CLASSIFIER_CODE_TO_LABEL.get(code, code)
     return f"{base_name}_{classifier_label}.tif"
-

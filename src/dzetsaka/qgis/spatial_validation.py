@@ -19,11 +19,7 @@ def find_classes_with_insufficient_polygons(
     min_polygons: int = 2,
 ) -> dict[Any, int]:
     """Return classes that appear in fewer than ``min_polygons`` samples."""
-    return {
-        class_label: polygons
-        for class_label, polygons in class_counts.items()
-        if polygons < min_polygons
-    }
+    return {class_label: polygons for class_label, polygons in class_counts.items() if polygons < min_polygons}
 
 
 def confirm_polygon_group_split(
@@ -32,7 +28,7 @@ def confirm_polygon_group_split(
     vector_path: str,
     class_field: str,
     min_polygons: int = 2,
-    log = None,
+    log=None,
 ) -> tuple[bool, bool]:
     """Prompt the user before running polygon-based cross-validation.
 
@@ -85,9 +81,7 @@ def confirm_polygon_group_split(
 
     if reply == QMessageBox.StandardButton.Yes:
         if log:
-            log.warning(
-                "Spatial CV disabled because some classes lack enough polygons; falling back to random split."
-            )
+            log.warning("Spatial CV disabled because some classes lack enough polygons; falling back to random split.")
         return True, True
 
     if log:

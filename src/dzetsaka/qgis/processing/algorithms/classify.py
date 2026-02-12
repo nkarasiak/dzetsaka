@@ -41,10 +41,10 @@ class ClassifyAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterRasterLayer(self.INPUT_MASK, self.tr("Mask raster"), optional=True))
         self.addParameter(QgsProcessingParameterFile(self.INPUT_MODEL, self.tr("Model learned")))
         self.addParameter(
-            QgsProcessingParameterRasterDestination(self.OUTPUT_RASTER, self.tr("Output raster"), optional=False)
+            QgsProcessingParameterRasterDestination(self.OUTPUT_RASTER, self.tr("Output raster"), optional=False),
         )
         self.addParameter(
-            QgsProcessingParameterRasterDestination(self.CONFIDENCE_RASTER, self.tr("Confidence raster"), optional=True)
+            QgsProcessingParameterRasterDestination(self.CONFIDENCE_RASTER, self.tr("Confidence raster"), optional=True),
         )
 
     def processAlgorithm(self, parameters, context, feedback):

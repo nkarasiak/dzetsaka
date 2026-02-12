@@ -78,7 +78,7 @@ class OptimizationMethodsWidget(QWidget):
         self.optunaTrials.setSingleStep(10)
         self.optunaTrials.setEnabled(False)
         self.optunaTrials.setToolTip(
-            "Number of Optuna trials to run. Higher values find better hyperparameters but take longer to compute."
+            "Number of Optuna trials to run. Higher values find better hyperparameters but take longer to compute.",
         )
 
         layout.addWidget(trials_label, 1, 0)
@@ -116,7 +116,7 @@ class OptimizationMethodsWidget(QWidget):
         self.shapSampleSize.setEnabled(False)
         self.shapSampleSize.setToolTip(
             "Number of samples to use for SHAP value computation. "
-            "Larger samples provide more accurate explanations but take longer."
+            "Larger samples provide more accurate explanations but take longer.",
         )
 
         layout.addWidget(sample_label, 1, 0)
@@ -152,7 +152,7 @@ class OptimizationMethodsWidget(QWidget):
         self.smoteK.setEnabled(False)
         self.smoteK.setToolTip(
             "Number of nearest neighbors for SMOTE. Lower values create more "
-            "distinct synthetic samples; higher values create smoother distributions."
+            "distinct synthetic samples; higher values create smoother distributions.",
         )
 
         layout.addWidget(k_label, 1, 0)
@@ -228,10 +228,9 @@ class OptimizationMethodsWidget(QWidget):
 
         if max_time < 1:
             return f"{min_time * 60:.0f}-{max_time * 60:.0f} sec"
-        elif max_time < 60:
+        if max_time < 60:
             return f"{min_time:.0f}-{max_time:.0f} min"
-        else:
-            return f"{min_time / 60:.1f}-{max_time / 60:.1f} hr"
+        return f"{min_time / 60:.1f}-{max_time / 60:.1f} hr"
 
     @staticmethod
     def _estimate_shap_time(samples):
@@ -250,8 +249,7 @@ class OptimizationMethodsWidget(QWidget):
 
         if max_time < 60:
             return f"{min_time:.0f}-{max_time:.0f} sec"
-        else:
-            return f"{min_time / 60:.1f}-{max_time / 60:.1f} min"
+        return f"{min_time / 60:.1f}-{max_time / 60:.1f} min"
 
 
 # Example usage in QuickClassificationPanel
@@ -306,4 +304,3 @@ def example_replacement():
     # self.optunaTrials.setValue(100)
     # self.optunaTrials.setSingleStep(10)
     # self.optunaTrials.setToolTip("Number of Optuna optimization trials")
-

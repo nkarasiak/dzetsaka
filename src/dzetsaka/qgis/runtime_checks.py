@@ -22,4 +22,3 @@ def check_sklearn_usable() -> tuple[bool, str]:
         return False, f"not importable: {e}"
     except Exception as e:
         return False, f"imported but unusable: {e}"
-

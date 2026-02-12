@@ -14,7 +14,7 @@ Example:
     >>> from scripts.explainability import ModelExplainer, SHAP_AVAILABLE
     >>>
     >>> if SHAP_AVAILABLE:
-    ...     explainer = ModelExplainer(model, feature_names=['B1', 'B2', 'B3'])
+    ...     explainer = ModelExplainer(model, feature_names=["B1", "B2", "B3"])
     ...     importance = explainer.get_feature_importance(X_test)
     ... else:
     ...     print("Install SHAP with: pip install shap>=0.41.0")

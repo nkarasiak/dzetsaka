@@ -47,4 +47,3 @@ def get_icon_path(plugin_dir: str, icon_name: str) -> str:
     if not icon.isNull():
         return resource_path
     return file_path
-

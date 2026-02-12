@@ -58,4 +58,3 @@ def validate_classification_request(
         plugin.log.warning(f"{source_label} validation failed: {' | '.join(errors)}")
         return False
     return True
-

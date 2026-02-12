@@ -48,9 +48,21 @@ try:
     _pyqt_core.pyqtSignal = _FakeSignal
     _pyqt_widgets = type(sys)("qgis.PyQt.QtWidgets")
     for _cls_name in (
-        "QCheckBox", "QComboBox", "QFileDialog", "QGroupBox", "QHBoxLayout",
-        "QLabel", "QLineEdit", "QMessageBox", "QPushButton", "QSpinBox", "QTextEdit",
-        "QVBoxLayout", "QWidget", "QWizard", "QWizardPage",
+        "QCheckBox",
+        "QComboBox",
+        "QFileDialog",
+        "QGroupBox",
+        "QHBoxLayout",
+        "QLabel",
+        "QLineEdit",
+        "QMessageBox",
+        "QPushButton",
+        "QSpinBox",
+        "QTextEdit",
+        "QVBoxLayout",
+        "QWidget",
+        "QWizard",
+        "QWizardPage",
     ):
         setattr(_pyqt_widgets, _cls_name, _FakeWidget)
     _pyqt.QtCore = _pyqt_core
@@ -81,7 +93,9 @@ try:
 except Exception:
     pass
 
-pytestmark = pytest.mark.skipif(not WORKFLOW_MODULE_AVAILABLE, reason="classification_workflow_ui helpers not importable")
+pytestmark = pytest.mark.skipif(
+    not WORKFLOW_MODULE_AVAILABLE, reason="classification_workflow_ui helpers not importable",
+)
 
 
 # ===========================================================================
@@ -404,16 +418,12 @@ class TestAlgorithmPageLogic:
 
     def test_classifier_available_gmm_always(self):
         """GMM is always available regardless of deps."""
-        no_deps = dict.fromkeys(
-            ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False
-        )
+        no_deps = dict.fromkeys(("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False)
         assert _classifier_available("GMM", no_deps) is True
 
     def test_classifier_available_rf_needs_sklearn(self):
         """RF is available only when sklearn is True."""
-        deps_no = dict.fromkeys(
-            ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False
-        )
+        deps_no = dict.fromkeys(("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False)
         assert _classifier_available("RF", deps_no) is False
         deps_yes = dict(deps_no)
         deps_yes["sklearn"] = True
@@ -421,36 +431,28 @@ class TestAlgorithmPageLogic:
 
     def test_classifier_available_xgb_needs_xgboost(self):
         """XGB is available only when xgboost is True."""
-        deps = dict.fromkeys(
-            ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False
-        )
+        deps = dict.fromkeys(("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False)
         assert _classifier_available("XGB", deps) is False
         deps["xgboost"] = True
         assert _classifier_available("XGB", deps) is True
 
     def test_classifier_available_lgb_needs_lightgbm(self):
         """LGB is available only when lightgbm is True."""
-        deps = dict.fromkeys(
-            ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False
-        )
+        deps = dict.fromkeys(("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False)
         assert _classifier_available("LGB", deps) is False
         deps["lightgbm"] = True
         assert _classifier_available("LGB", deps) is True
 
     def test_classifier_available_cb_needs_catboost(self):
         """CB is available only when catboost is True."""
-        deps = dict.fromkeys(
-            ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False
-        )
+        deps = dict.fromkeys(("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False)
         assert _classifier_available("CB", deps) is False
         deps["catboost"] = True
         assert _classifier_available("CB", deps) is True
 
     def test_unknown_code_returns_false(self):
         """An unknown classifier code is never available."""
-        deps = dict.fromkeys(
-            ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), True
-        )
+        deps = dict.fromkeys(("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), True)
         assert _classifier_available("UNKNOWN", deps) is False
 
 
@@ -599,5 +601,3 @@ class TestOutputPageLogic:
         cfg = self._make_output_config(confusion_matrix="/data/mat.csv", split_percent=70)
         assert cfg["split_percent"] == 70
         assert cfg["confusion_matrix"] == "/data/mat.csv"
-
-

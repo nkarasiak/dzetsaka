@@ -79,7 +79,9 @@ class TestQualityCheckerIntegration:
         assert hasattr(data_page, "_check_data_quality"), "DataInputPage should have _check_data_quality method"
 
         quick_panel = QuickClassificationPanel()
-        assert hasattr(quick_panel, "_check_data_quality"), "QuickClassificationPanel should have _check_data_quality method"
+        assert hasattr(quick_panel, "_check_data_quality"), (
+            "QuickClassificationPanel should have _check_data_quality method"
+        )
 
     @patch("ui.classification_workflow_ui.TrainingDataQualityChecker")
     def test_quality_checker_opens_with_correct_params(self, mock_checker_class):
@@ -151,6 +153,7 @@ class TestConfidenceAnalysisIntegration:
 
         # Create a temporary file to simulate confidence map
         import tempfile
+
         with tempfile.NamedTemporaryFile(suffix=".tif", delete=False) as f:
             confidence_path = f.name
 
@@ -205,8 +208,9 @@ class TestThemeSupportIntegration:
         from ui.classification_workflow_ui import ClassificationSetupDialog
         from ui.theme_support import ThemeAwareWidget
 
-        assert issubclass(ClassificationSetupDialog, ThemeAwareWidget), \
+        assert issubclass(ClassificationSetupDialog, ThemeAwareWidget), (
             "ClassificationSetupDialog should inherit from ThemeAwareWidget"
+        )
 
     def test_welcome_wizard_inherits_theme_aware(self):
         """Test that WelcomeWizard inherits from ThemeAwareWidget."""
@@ -214,8 +218,7 @@ class TestThemeSupportIntegration:
         from ui.theme_support import ThemeAwareWidget
         from ui.welcome_wizard import WelcomeWizard
 
-        assert issubclass(WelcomeWizard, ThemeAwareWidget), \
-            "WelcomeWizard should inherit from ThemeAwareWidget"
+        assert issubclass(WelcomeWizard, ThemeAwareWidget), "WelcomeWizard should inherit from ThemeAwareWidget"
 
     def test_results_explorer_inherits_theme_aware(self):
         """Test that ResultsExplorerDock inherits from ThemeAwareWidget."""
@@ -223,8 +226,9 @@ class TestThemeSupportIntegration:
         from ui.results_explorer_dock import ResultsExplorerDock
         from ui.theme_support import ThemeAwareWidget
 
-        assert issubclass(ResultsExplorerDock, ThemeAwareWidget), \
+        assert issubclass(ResultsExplorerDock, ThemeAwareWidget), (
             "ResultsExplorerDock should inherit from ThemeAwareWidget"
+        )
 
     def test_batch_dialog_inherits_theme_aware(self):
         """Test that BatchClassificationDialog inherits from ThemeAwareWidget."""
@@ -232,8 +236,9 @@ class TestThemeSupportIntegration:
         from ui.batch_classification_dialog import BatchClassificationDialog
         from ui.theme_support import ThemeAwareWidget
 
-        assert issubclass(BatchClassificationDialog, ThemeAwareWidget), \
+        assert issubclass(BatchClassificationDialog, ThemeAwareWidget), (
             "BatchClassificationDialog should inherit from ThemeAwareWidget"
+        )
 
     def test_quality_checker_inherits_theme_aware(self):
         """Test that TrainingDataQualityChecker inherits from ThemeAwareWidget."""
@@ -241,8 +246,9 @@ class TestThemeSupportIntegration:
         from ui.theme_support import ThemeAwareWidget
         from ui.training_data_quality_checker import TrainingDataQualityChecker
 
-        assert issubclass(TrainingDataQualityChecker, ThemeAwareWidget), \
+        assert issubclass(TrainingDataQualityChecker, ThemeAwareWidget), (
             "TrainingDataQualityChecker should inherit from ThemeAwareWidget"
+        )
 
     def test_confidence_widget_inherits_theme_aware(self):
         """Test that ConfidenceAnalysisWidget inherits from ThemeAwareWidget."""
@@ -250,8 +256,9 @@ class TestThemeSupportIntegration:
         from ui.confidence_analysis_widget import ConfidenceAnalysisWidget
         from ui.theme_support import ThemeAwareWidget
 
-        assert issubclass(ConfidenceAnalysisWidget, ThemeAwareWidget), \
+        assert issubclass(ConfidenceAnalysisWidget, ThemeAwareWidget), (
             "ConfidenceAnalysisWidget should inherit from ThemeAwareWidget"
+        )
 
 
 class TestKeyboardShortcuts:
@@ -271,8 +278,9 @@ class TestKeyboardShortcuts:
         from ui.classification_workflow_ui import ClassificationSetupDialog
 
         dialog = ClassificationSetupDialog()
-        assert hasattr(dialog, "_setup_dialog_shortcuts"), \
+        assert hasattr(dialog, "_setup_dialog_shortcuts"), (
             "ClassificationSetupDialog should have _setup_dialog_shortcuts method"
+        )
 
     def test_quality_check_shortcut_tooltip_updated(self):
         """Test that quality check button tooltip mentions keyboard shortcut."""
@@ -281,10 +289,11 @@ class TestKeyboardShortcuts:
 
         panel = QuickClassificationPanel()
 
-        if hasattr(panel, 'checkQualityBtn'):
+        if hasattr(panel, "checkQualityBtn"):
             tooltip = panel.checkQualityBtn.toolTip()
-            assert "Ctrl+Shift+Q" in tooltip or "shortcut" in tooltip.lower(), \
+            assert "Ctrl+Shift+Q" in tooltip or "shortcut" in tooltip.lower(), (
                 "Quality check button tooltip should mention keyboard shortcut"
+            )
 
     def test_run_button_shortcut_tooltip_updated(self):
         """Test that run button tooltip mentions keyboard shortcut."""
@@ -293,10 +302,11 @@ class TestKeyboardShortcuts:
 
         panel = QuickClassificationPanel()
 
-        if hasattr(panel, 'runButton'):
+        if hasattr(panel, "runButton"):
             tooltip = panel.runButton.toolTip()
-            assert "Ctrl+Return" in tooltip or "shortcut" in tooltip.lower(), \
+            assert "Ctrl+Return" in tooltip or "shortcut" in tooltip.lower(), (
                 "Run button tooltip should mention keyboard shortcut"
+            )
 
 
 class TestResultsExplorerQualityChecker:
@@ -308,6 +318,7 @@ class TestResultsExplorerQualityChecker:
 
         # Create a temporary file to simulate training vector
         import tempfile
+
         with tempfile.NamedTemporaryFile(suffix=".shp", delete=False) as f:
             vector_path = f.name
 
@@ -325,8 +336,7 @@ class TestResultsExplorerQualityChecker:
             dock = ResultsExplorerDock(result)
 
             # Check that quick actions were created (method should have been called)
-            assert hasattr(dock, "_check_training_data"), \
-                "ResultsExplorerDock should have _check_training_data method"
+            assert hasattr(dock, "_check_training_data"), "ResultsExplorerDock should have _check_training_data method"
 
         finally:
             # Cleanup
@@ -339,6 +349,7 @@ class TestResultsExplorerQualityChecker:
         pytest.importorskip("qgis.PyQt.QtWidgets")
 
         import tempfile
+
         with tempfile.NamedTemporaryFile(suffix=".shp", delete=False) as f:
             vector_path = f.name
 
@@ -369,4 +380,3 @@ class TestResultsExplorerQualityChecker:
 
 # Integration test markers
 pytestmark = pytest.mark.integration
-
