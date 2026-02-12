@@ -479,6 +479,11 @@ class AdvancedCompactPanel(QWidget):
         icon_label.setFixedSize(15, 15)
         icon_label.setToolTip(tooltip)
         candidates = []
+        if fallback_resource:
+            candidates.append(fallback_resource)
+            fs_fallback = self._resource_to_file_path(fallback_resource)
+            if fs_fallback:
+                candidates.append(fs_fallback)
         if icon_path.startswith(":/"):
             candidates.append(icon_path)
             fs_path = self._resource_to_file_path(icon_path)
@@ -491,20 +496,32 @@ class AdvancedCompactPanel(QWidget):
             if fs_from_resource:
                 candidates.append(fs_from_resource)
             candidates.append(self._icon_asset_path(icon_path))
-        if fallback_resource:
-            candidates.append(fallback_resource)
-            fs_fallback = self._resource_to_file_path(fallback_resource)
-            if fs_fallback:
-                candidates.append(fs_fallback)
 
         pix = QPixmap()
+        selected_candidate = None
         for candidate in candidates:
             candidate_pix = QPixmap(candidate)
             if not candidate_pix.isNull():
                 pix = candidate_pix
+                selected_candidate = candidate
                 break
         icon_label.setPixmap(pix)
         icon_label.setScaledContents(True)
+        try:
+            from dzetsaka.logging import create_logger
+
+            logger = create_logger("dzetsaka.icon-debug")
+            if selected_candidate:
+                logger.info(
+                    f"AdvancedPanel icon loaded: icon='{icon_path}' tooltip='{tooltip}' selected='{selected_candidate}'"
+                )
+            else:
+                logger.warning(
+                    f"AdvancedPanel icon missing: icon='{icon_path}' tooltip='{tooltip}' candidates={candidates} "
+                    f"plugin_root='{self._plugin_root_dir()}'"
+                )
+        except Exception:
+            pass
         return icon_label
 
     def _on_vector_changed(self):

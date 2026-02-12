@@ -5822,6 +5822,11 @@ class QuickClassificationPanel(QWidget):
         icon_label.setFixedSize(15, 15)
         icon_label.setToolTip(tooltip)
         candidates = []
+        if fallback_resource:
+            candidates.append(fallback_resource)
+            fs_fallback = self._resource_to_file_path(fallback_resource)
+            if fs_fallback:
+                candidates.append(fs_fallback)
         if icon_path.startswith(":/"):
             candidates.append(icon_path)
             fs_path = self._resource_to_file_path(icon_path)
@@ -5834,11 +5839,6 @@ class QuickClassificationPanel(QWidget):
             if fs_from_resource:
                 candidates.append(fs_from_resource)
             candidates.append(self._icon_asset_path(icon_path))
-        if fallback_resource:
-            candidates.append(fallback_resource)
-            fs_fallback = self._resource_to_file_path(fallback_resource)
-            if fs_fallback:
-                candidates.append(fs_fallback)
 
         pix = QPixmap()
         selected_candidate = None

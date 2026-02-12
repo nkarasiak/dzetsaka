@@ -6,9 +6,9 @@
 dzetsaka <img src="https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/icon.png" alt="dzetsaka logo" width="30px"/> is very fast and easy to use but also a **powerful classification plugin for Qgis**. Initially based on Gaussian Mixture Model classifier developed by [Mathieu Fauvel](http://fauvel.mathieu.free.fr), this plugin now supports **12 machine learning algorithms** including advanced gradient boosting methods like XGBoost, LightGBM, and CatBoost. This plugin is a more generalist tool than [Historical Map](https://github.com/lennepkade/HistoricalMap) which was dedicated to classify forests from old maps.
 This plugin has by developped by [Nicolas Karasiak](https://github.com/nkarasiak/dzetsaka).
 Somewhere between writing too much Python and caring about every sentient being on the map, I built dzetsaka, a QGIS plugin that puts machine learning classification one click away from your raster.
-## 🚀 What's New In 1.0.0 (Awesome Milestone)
+## 🚀 What's New In 5.0.0 (Awesome Milestone)
 
-Version **1.0.0** is a major leap in capability and usability:
+Version **5.0.0** is a major leap in capability and usability:
 
 - **12 production-ready ML algorithms** from classic baselines to modern boosting methods.
 - **Major optimization upgrades** for faster training/inference and improved runtime behavior.

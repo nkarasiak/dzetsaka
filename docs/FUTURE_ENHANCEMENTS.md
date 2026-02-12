@@ -630,7 +630,7 @@ model_data = {
     'model': model,
     'scaler': scaler,
     'feature_names': feature_names,
-    'version': '1.0.0'
+    'version': '5.0.0'
 }
 pickle.dump(model_data, open('model.pkl', 'wb'))
 ```
