@@ -22,7 +22,6 @@ keywords = [
     "gis",
     "image-classification",
     "xgboost",
-    "lightgbm",
     "catboost",
     "random-forest",
 ]
@@ -46,10 +45,15 @@ dependencies = [
     "numpy>=1.19.0",
     "gdal==3.10.1",
     "PyQt6>=6.2.0",
+    "scikit-learn>=1.0.0",
+    "joblib>=1.0.0",
+    "xgboost>=1.5.0",
     "seaborn>=0.11.0",
+    "matplotlib>=3.5.0",
     "optuna>=3.0.0",
     "shap>=0.47.0",
     "catboost>=1.2.0",
+    "imbalanced-learn>=0.10.0",
     "numba>=0.55.2",
 ]
 
@@ -63,7 +67,6 @@ sklearn = [
 # Advanced gradient boosting algorithms
 advanced = [
     "xgboost>=1.5.0",
-    "lightgbm>=3.2.0",
     "catboost>=1.2.0",
 ]
 
@@ -93,7 +96,6 @@ full = [
     "scikit-learn>=1.0.0",
     "joblib>=1.0.0",
     "xgboost>=1.5.0",
-    "lightgbm>=3.2.0",
     "catboost>=1.2.0",
     "optuna>=3.0.0",
     "shap>=0.41.0",
@@ -244,7 +246,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.lint.isort]
 known-first-party = ["dzetsaka"]
-known-third-party = ["qgis", "osgeo", "PyQt6", "numpy", "sklearn", "xgboost", "lightgbm", "catboost"]
+known-third-party = ["qgis", "osgeo", "PyQt6", "numpy", "sklearn", "xgboost", "catboost"]
 
 [tool.ruff.format]
 # Like Black, use double quotes for strings
@@ -312,7 +314,6 @@ module = [
     "PyQt6.*",
     "sklearn.*",
     "xgboost.*",
-    "lightgbm.*",
     "catboost.*",
     "optuna.*",
     "shap.*"
@@ -341,7 +342,6 @@ markers = [
     "qgis: marks tests that require QGIS",
     "sklearn: marks tests that require scikit-learn",
     "xgboost: marks tests that require XGBoost",
-    "lightgbm: marks tests that require LightGBM",
     "catboost: marks tests that require CatBoost",
 ]
 

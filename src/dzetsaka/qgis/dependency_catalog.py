@@ -5,7 +5,6 @@ from __future__ import annotations
 FULL_DEPENDENCY_BUNDLE = [
     "scikit-learn",
     "xgboost",
-    "lightgbm",
     "catboost",
     "optuna",
     "shap",

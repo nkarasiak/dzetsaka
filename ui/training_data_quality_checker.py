@@ -122,7 +122,7 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
 
         # Set dialog properties
         self.setWindowTitle("Training Data Quality Report")
-        self.setMinimumSize(700, 500)
+        self.setMinimumSize(560, 380)
         self.setModal(False)  # Allow user to interact with QGIS while viewing
 
         # Run analysis
@@ -134,11 +134,11 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
     def _setup_ui(self):
         """Set up the user interface."""
         layout = QVBoxLayout(self)
-        layout.setSpacing(15)
-        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(8)
+        layout.setContentsMargins(8, 8, 8, 8)
 
         # Header section
-        header_label = QLabel(f"<h2>📋 Training Data Quality Report</h2>")
+        header_label = QLabel("📋 <b>Training Data Quality Report</b>")
         layout.addWidget(header_label)
 
         file_label = QLabel(f"<b>Vector:</b> {Path(self.vector_path).name}<br><b>Class field:</b> {self.class_field}")
@@ -157,7 +157,8 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
 
             issues_container = QWidget()
             self._issues_layout = QVBoxLayout(issues_container)
-            self._issues_layout.setSpacing(10)
+            self._issues_layout.setSpacing(6)
+            self._issues_layout.setContentsMargins(0, 0, 0, 0)
             issues_scroll.setWidget(issues_container)
             layout.addWidget(issues_scroll, 1)  # Stretch to fill available space
             self._rebuild_issue_list()
@@ -166,6 +167,8 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
             success_group = QGroupBox()
             success_group.setStyleSheet("background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 4px;")
             success_layout = QVBoxLayout(success_group)
+            success_layout.setContentsMargins(8, 8, 8, 8)
+            success_layout.setSpacing(4)
 
             success_label = QLabel("✅ <b>All checks passed!</b><br>Your training data looks good and ready for classification.")
             success_label.setWordWrap(True)
@@ -193,6 +196,8 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
         """Create summary status widget showing counts by severity."""
         summary_widget = QGroupBox("Filters")
         summary_layout = QHBoxLayout(summary_widget)
+        summary_layout.setContentsMargins(8, 8, 8, 8)
+        summary_layout.setSpacing(6)
 
         # Count issues by severity
         error_count = sum(
@@ -274,14 +279,15 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
             QGroupBox {{
                 border: 2px solid {issue.get_color()};
                 border-radius: 6px;
-                margin-top: 10px;
-                padding: 10px;
+                margin-top: 4px;
+                padding: 6px;
                 background-color: #f9f9f9;
             }}
         """)
 
         layout = QVBoxLayout(issue_group)
-        layout.setSpacing(8)
+        layout.setSpacing(4)
+        layout.setContentsMargins(6, 6, 6, 6)
 
         # Title with icon
         title_label = QLabel(f"{issue.get_icon()} <b style='font-size: 11pt;'>{issue.title}</b>")
@@ -290,14 +296,14 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
         # Description
         desc_label = QLabel(issue.description)
         desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("color: #555; margin-left: 20px;")
+        desc_label.setStyleSheet("color: #555; margin-left: 8px;")
         layout.addWidget(desc_label)
 
         # Recommendation
         rec_label = QLabel(f"<b>💡 Recommendation:</b> {issue.recommendation}")
         rec_label.setWordWrap(True)
         rec_label.setStyleSheet(
-            f"color: {issue.get_color()}; font-weight: bold; margin-left: 20px; margin-top: 5px; padding: 8px; "
+            f"color: {issue.get_color()}; font-weight: bold; margin-left: 8px; margin-top: 2px; padding: 6px; "
             f"background-color: rgba(52, 152, 219, 0.1); border-radius: 4px;"
         )
         layout.addWidget(rec_label)
