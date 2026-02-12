@@ -81,19 +81,19 @@ changelog=
       * 🎯 NEW: USE_OPTUNA and OPTUNA_TRIALS parameters (fully backward compatible)
       * 📝 ENHANCED: Comprehensive type hints and docstrings for new modules
       * 🔧 ENHANCED: Intelligent trial pruning and parallel execution for Optuna
-      * 📊 PERFORMANCE: 2-5% accuracy improvement from superior parameter combinations
+      * 📊 PERFORMANCE: 2-5%% accuracy improvement from superior parameter combinations
       * 🏁 PERFORMANCE: Random Forest ~3x faster, SVM ~5-8x faster, MLP ~4-6x faster
       * 🔍 IMPROVED: Better error messages with actionable suggestions
       * FIX: Improved auto-install for Debian/Ubuntu systems where pip module is not available
       * FIX: Auto-install now tries multiple methods: pip module, ensurepip bootstrap, apt via pkexec
       * FIX: Installation failure dialog now shows manual installation commands directly
       * COMPAT: Full QGIS 4.0 forward compatibility - migrated all PyQt5 imports to qgis.PyQt
-      * PERF: Vectorized scale() functions - ~60% CPU reduction for data normalization
-      * PERF: Vectorized Shannon entropy calculation - ~95% speedup (minutes to seconds)
-      * PERF: Vectorized raster band reading with GDAL ReadAsArray() - ~30% I/O improvement
-      * PERF: Optimized GMM prediction with NumPy einsum - ~40% CPU reduction
-      * PERF: Vectorized geodesic distance matrix computation - ~50% speedup
-      * PERF: Replaced repeated array concatenation with pre-allocation - ~30% memory reduction
+      * PERF: Vectorized scale() functions - ~60%% CPU reduction for data normalization
+      * PERF: Vectorized Shannon entropy calculation - ~95%% speedup (minutes to seconds)
+      * PERF: Vectorized raster band reading with GDAL ReadAsArray() - ~30%% I/O improvement
+      * PERF: Optimized GMM prediction with NumPy einsum - ~40%% CPU reduction
+      * PERF: Vectorized geodesic distance matrix computation - ~50%% speedup
+      * PERF: Replaced repeated array concatenation with pre-allocation - ~30%% memory reduction
       * PERF: Replaced if-elif chains with dict lookups for GDAL/NumPy type conversion
       * FIX: Robust layer source path extraction using QgsProviderRegistry (handles GeoPackage, etc.)
       * CODE: Added get_layer_source_path() helper for safe URI parsing
@@ -156,6 +156,7 @@ experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
+
 
 
 
