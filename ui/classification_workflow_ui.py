@@ -5855,7 +5855,7 @@ class QuickClassificationPanel(QWidget):
 
             logger = create_logger("dzetsaka.icon-debug")
             if selected_candidate:
-                logger.info(
+                logger.debug(
                     f"QuickPanel icon loaded: icon='{icon_path}' tooltip='{tooltip}' selected='{selected_candidate}'"
                 )
             else:
@@ -7193,3 +7193,4 @@ class ClassificationDashboardDock(QDockWidget):
     def closeEvent(self, event):
         self.closingRequested.emit()
         event.accept()
+
