@@ -55,9 +55,9 @@ except ImportError:
 
 # Import theme support
 try:
-    from ui.theme_support import ThemeAwareWidget, apply_matplotlib_theme
+    from .theme_support import ThemeAwareWidget, apply_matplotlib_theme
     _THEME_SUPPORT_AVAILABLE = True
-except ImportError:
+except Exception:
     _THEME_SUPPORT_AVAILABLE = False
     # Fallback: create empty mixin class
     class ThemeAwareWidget:

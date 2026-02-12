@@ -54,6 +54,7 @@ import contextlib
 import base64
 import html
 import json
+import math
 import os
 import pickle
 import tempfile
@@ -977,6 +978,72 @@ def _write_report_bundle(
             f"<td colspan='2'>Total</td><td>{total}</td><td>100.0%</td></tr>" + "</tbody></table>"
         )
 
+    def _class_distribution_pie_svg(values: List[Any], names: List[str], support: List[int]) -> str:
+        total = sum(int(v) for v in support)
+        if total <= 0:
+            return "<p class='muted'>Pie chart unavailable (no sample distribution data).</p>"
+
+        colors = [
+            "#2563eb",
+            "#059669",
+            "#d97706",
+            "#dc2626",
+            "#7c3aed",
+            "#0891b2",
+            "#ca8a04",
+            "#db2777",
+            "#0f766e",
+            "#7c2d12",
+        ]
+        cx, cy, r = 120, 120, 92
+        start_angle = -90.0
+        wedges: List[str] = []
+        legend_rows: List[str] = []
+
+        for i, cls_val in enumerate(values):
+            count = int(support[i])
+            if count <= 0:
+                continue
+
+            pct = count / total
+            sweep = pct * 360.0
+            end_angle = start_angle + sweep
+            color = colors[i % len(colors)]
+
+            if pct >= 0.999999:
+                wedges.append(
+                    f"<circle cx='{cx}' cy='{cy}' r='{r}' fill='{color}' stroke='white' stroke-width='1' />"
+                )
+            else:
+                x1 = cx + r * math.cos(math.radians(start_angle))
+                y1 = cy + r * math.sin(math.radians(start_angle))
+                x2 = cx + r * math.cos(math.radians(end_angle))
+                y2 = cy + r * math.sin(math.radians(end_angle))
+                large_arc = 1 if sweep > 180.0 else 0
+                path = (
+                    f"M {cx:.2f} {cy:.2f} "
+                    f"L {x1:.2f} {y1:.2f} "
+                    f"A {r:.2f} {r:.2f} 0 {large_arc} 1 {x2:.2f} {y2:.2f} Z"
+                )
+                wedges.append(f"<path d=\"{path}\" fill='{color}' stroke='white' stroke-width='1' />")
+
+            legend_rows.append(
+                "<tr>"
+                f"<td><span class='legend-dot' style='background:{color};'></span>{html.escape(str(names[i]))}</td>"
+                f"<td>{count}</td>"
+                f"<td>{pct * 100.0:.1f}%</td>"
+                "</tr>"
+            )
+            start_angle = end_angle
+
+        return (
+            "<div class='pie-wrap'>"
+            f"<svg class='pie-svg' viewBox='0 0 240 240' role='img' aria-label='Class distribution pie chart'>{''.join(wedges)}</svg>"
+            "<table class='pie-legend'><thead><tr><th>Class</th><th>Samples</th><th>Percentage</th></tr></thead>"
+            f"<tbody>{''.join(legend_rows)}</tbody></table>"
+            "</div>"
+        )
+
     def _generate_classification_abstract(
         summary_metrics: Dict[str, Any], config_meta: Dict[str, Any], class_values: List[Any], class_names: List[str]
     ) -> str:
@@ -1177,6 +1244,12 @@ def _write_report_bundle(
             "ul{margin:8px 0;padding-left:24px;}"
             "li{margin:4px 0;}"
             ".section{margin-bottom:32px;}"
+            ".pie-wrap{display:grid;grid-template-columns:minmax(180px,260px) 1fr;gap:12px;align-items:center;margin-top:12px;}"
+            ".pie-svg{width:100%;height:auto;max-width:240px;justify-self:center;background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px;}"
+            ".pie-legend{margin-top:0;}"
+            ".pie-legend th,.pie-legend td{text-align:left;}"
+            ".legend-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle;}"
+            "@media (max-width:700px){.pie-wrap{grid-template-columns:1fr;}.pie-svg{max-width:220px;}}"
             "</style></head><body><div class='wrap'>"
         )
         handle.write("<div class='hero'><span class='pill'>dzetsaka report bundle</span>")
@@ -1481,6 +1554,7 @@ def _write_report_bundle(
         handle.write("<div class='card'><h3>📈 Sample Distribution</h3>")
         handle.write(f"<p style='margin:8px 0;'><strong>Total samples:</strong> {total_samples:,}</p>")
         handle.write(_class_distribution_html_table(class_values, class_names, support_per_class))
+        handle.write(_class_distribution_pie_svg(class_values, class_names, support_per_class))
         handle.write("</div>")
         handle.write("</div>")
 

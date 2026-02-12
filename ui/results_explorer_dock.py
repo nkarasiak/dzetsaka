@@ -51,22 +51,22 @@ except ImportError:
         gdal = None
 
 try:
-    from ui.confidence_analysis_widget import ConfidenceAnalysisWidget
+    from .confidence_analysis_widget import ConfidenceAnalysisWidget
     CONFIDENCE_WIDGET_AVAILABLE = True
 except ImportError:
     CONFIDENCE_WIDGET_AVAILABLE = False
 
 try:
-    from ui.training_data_quality_checker import TrainingDataQualityChecker
+    from .training_data_quality_checker import TrainingDataQualityChecker
     QUALITY_CHECKER_AVAILABLE = True
 except ImportError:
     QUALITY_CHECKER_AVAILABLE = False
 
 # Import theme support
 try:
-    from ui.theme_support import ThemeAwareWidget
+    from .theme_support import ThemeAwareWidget
     _THEME_SUPPORT_AVAILABLE = True
-except ImportError:
+except Exception:
     _THEME_SUPPORT_AVAILABLE = False
     # Fallback: create empty mixin class
     class ThemeAwareWidget:

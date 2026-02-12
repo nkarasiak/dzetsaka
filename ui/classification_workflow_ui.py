@@ -24,6 +24,7 @@ from qgis.PyQt.QtCore import QSettings, QSize, Qt, pyqtSignal
 from qgis.PyQt.QtGui import QColor, QIcon, QKeySequence, QPainter, QPixmap
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
+    QCompleter,
     QComboBox,
     QDialog,
     QDockWidget,
@@ -58,20 +59,20 @@ from qgis.PyQt.QtWidgets import (
 )
 
 # Import validated widgets for real-time validation feedback
-from ui.validated_widgets import ValidatedSpinBox, ValidatedDoubleSpinBox
+from .validated_widgets import ValidatedSpinBox, ValidatedDoubleSpinBox
 
 # Import training data quality checker
 try:
-    from ui.training_data_quality_checker import TrainingDataQualityChecker
+    from .training_data_quality_checker import TrainingDataQualityChecker
     _QUALITY_CHECKER_AVAILABLE = True
 except ImportError:
     _QUALITY_CHECKER_AVAILABLE = False
 
 # Import theme support
 try:
-    from ui.theme_support import ThemeAwareWidget
+    from .theme_support import ThemeAwareWidget
     _THEME_SUPPORT_AVAILABLE = True
-except ImportError:
+except Exception:
     _THEME_SUPPORT_AVAILABLE = False
     # Fallback: create empty mixin class
     class ThemeAwareWidget:
@@ -103,8 +104,8 @@ except Exception:
 # ---------------------------------------------------------------------------
 
 try:
-    from ui.recipe_recommender import RasterAnalyzer, RecipeRecommender
-    from ui.recommendation_dialog import RecommendationDialog
+    from .recipe_recommender import RasterAnalyzer, RecipeRecommender
+    from .recommendation_dialog import RecommendationDialog
     _RECOMMENDER_AVAILABLE = True
 except Exception:
     _RECOMMENDER_AVAILABLE = False
@@ -3032,7 +3033,7 @@ class DataInputPage(QWizardPage):
         checker_cls = TrainingDataQualityChecker
         try:
             import importlib
-            import ui.training_data_quality_checker as _tdq_mod
+            from . import training_data_quality_checker as _tdq_mod
 
             _tdq_mod = importlib.reload(_tdq_mod)
             checker_cls = getattr(_tdq_mod, "TrainingDataQualityChecker", TrainingDataQualityChecker)
@@ -5644,38 +5645,42 @@ class QuickClassificationPanel(QWidget):
                 fallback_resource=":/plugins/dzetsaka/img/filter.png",
             )
         )
-        classifier_row.addWidget(QLabel("Recipe:"))
         self.recipeCombo = QComboBox()
+        self.recipeCombo.setEditable(True)
+        self.recipeCombo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.recipeCombo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-        self.recipeCombo.setMinimumContentsLength(15)
-        self.recipeCombo.setMaximumWidth(300)
+        self.recipeCombo.setMinimumContentsLength(20)
+        self.recipeCombo.setMaximumWidth(360)
         self.recipeCombo.currentIndexChanged.connect(self._apply_selected_recipe)
+        if self.recipeCombo.lineEdit() is not None:
+            self.recipeCombo.lineEdit().setPlaceholderText("Select or search recipe...")
         self.recipeCombo.setToolTip(
             "<b>Classification Recipe</b><br>"
             "Pre-configured classifier preset including algorithm, parameters, and advanced features.<br><br>"
-            "<i>Use Recipe Hub</i> for recipe selection and management."
+            "<i>Type to search recipes</i>, then choose one from the dropdown.<br>"
+            "<i>Browse Hub</i> opens the full recipe catalog and management tools."
         )
-        self.recipeCombo.setVisible(False)
-
-        self.currentRecipeLabel = QLabel("No recipe selected")
-        self.currentRecipeLabel.setObjectName("currentRecipeLabel")
-        self.currentRecipeLabel.setStyleSheet("")
-        classifier_row.addWidget(self.currentRecipeLabel, 1)
+        classifier_row.addWidget(self.recipeCombo, 1)
 
         self.recipeHubBtn = QToolButton()
-        self.recipeHubBtn.setText("Recipe Hub")
+        self.recipeHubBtn.setText("Browse Hub")
         self.recipeHubBtn.setToolTip(
             "<b>Recipe Hub</b><br>"
             "Open the modern quad recipe hub with categories, recipe list, actions, and details."
         )
         self.recipeHubBtn.clicked.connect(self._open_recipe_hub)
         classifier_row.addWidget(self.recipeHubBtn)
+        root.addLayout(classifier_row)
+
+        self.currentRecipeLabel = QLabel("Current: none")
+        self.currentRecipeLabel.setObjectName("currentRecipeLabel")
+        self.currentRecipeLabel.setStyleSheet("color: #6b7280; font-size: 11px;")
+        root.addWidget(self.currentRecipeLabel)
 
         # Keep classifier combo as internal state (not shown in default dashboard).
         self.classifierCombo = QComboBox()
         for _code, name, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
             self.classifierCombo.addItem(name)
-        root.addLayout(classifier_row)
 
         self.depStatusLabel = QLabel()
         self.depStatusLabel.setVisible(False)
@@ -6013,7 +6018,7 @@ class QuickClassificationPanel(QWidget):
         checker_cls = TrainingDataQualityChecker
         try:
             import importlib
-            import ui.training_data_quality_checker as _tdq_mod
+            from . import training_data_quality_checker as _tdq_mod
 
             _tdq_mod = importlib.reload(_tdq_mod)
             checker_cls = getattr(_tdq_mod, "TrainingDataQualityChecker", TrainingDataQualityChecker)
@@ -6427,10 +6432,19 @@ class QuickClassificationPanel(QWidget):
 
         for recipe in self._recipes:
             name = str(recipe.get("name", "Unnamed Recipe"))
-            prefix = "📦 " if is_builtin_recipe(recipe) else "⚙️ "
-            self.recipeCombo.addItem(prefix + name, name)
+            self.recipeCombo.addItem(name, name)
             tooltip = self._build_recipe_tooltip(recipe)
             self.recipeCombo.setItemData(self.recipeCombo.count() - 1, tooltip, Qt.ToolTipRole)
+
+        # Enable in-field fuzzy search over recipe names.
+        try:
+            completer = QCompleter(self.recipeCombo.model(), self.recipeCombo)
+            completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+            completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+            completer.setFilterMode(Qt.MatchFlag.MatchContains)
+            self.recipeCombo.setCompleter(completer)
+        except Exception:
+            pass
 
         restore_index = 0
         if current_name:
@@ -6557,7 +6571,7 @@ class QuickClassificationPanel(QWidget):
             return
         self._previous_recipe_index = self.recipeCombo.currentIndex()
         if hasattr(self, "currentRecipeLabel"):
-            self.currentRecipeLabel.setText(name)
+            self.currentRecipeLabel.setText(f"Current: {name}")
 
         classifier = selected.get("classifier", {})
         classifier_code = str(classifier.get("code", "GMM"))

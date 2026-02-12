@@ -217,7 +217,7 @@ def show_batch_classification_completed(iface, success_count: int, total_count: 
 def show_confidence_analysis_ready(iface):
     """Show message when confidence analysis is ready."""
     messenger = StatusBarMessenger(iface)
-    messenger.info("Confidence map analysis ready. Check the Results Explorer.", duration=5)
+    messenger.info("Confidence map analysis ready. Open the HTML report for details.", duration=5)
 
 
 def show_dialog_opened(iface, dialog_name: str):

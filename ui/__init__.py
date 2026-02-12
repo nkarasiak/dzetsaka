@@ -4,7 +4,6 @@ from .dashboard_widget import (
     check_dependency_availability,
 )
 from .comparison_panel import AlgorithmComparisonPanel
-from .results_explorer_dock import ResultsExplorerDock, open_results_explorer
 from .validated_widgets import ValidatedDoubleSpinBox, ValidatedLineEdit, ValidatedSpinBox
 
 # Optional recommendation system (may not have GDAL available)
@@ -20,8 +19,6 @@ try:
         "ValidatedSpinBox",
         "ValidatedDoubleSpinBox",
         "ValidatedLineEdit",
-        "ResultsExplorerDock",
-        "open_results_explorer",
         "RasterAnalyzer",
         "RecipeRecommender",
         "RecommendationDialog",
@@ -35,8 +32,6 @@ except ImportError:
         "ValidatedSpinBox",
         "ValidatedDoubleSpinBox",
         "ValidatedLineEdit",
-        "ResultsExplorerDock",
-        "open_results_explorer",
     ]
 
 

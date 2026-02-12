@@ -43,9 +43,9 @@ except ImportError:
 
 # Import theme support
 try:
-    from ui.theme_support import ThemeAwareWidget
+    from .theme_support import ThemeAwareWidget
     _THEME_SUPPORT_AVAILABLE = True
-except ImportError:
+except Exception:
     _THEME_SUPPORT_AVAILABLE = False
     # Fallback: create empty mixin class
     class ThemeAwareWidget:

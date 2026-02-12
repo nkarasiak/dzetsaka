@@ -323,7 +323,7 @@ class DzetsakaGUI(QDialog):
     def open_batch_classification(self):
         """Open the batch classification dialog."""
         try:
-            from ui.batch_classification_dialog import BatchClassificationDialog
+            from dzetsaka.ui.batch_classification_dialog import BatchClassificationDialog
         except ImportError:
             from qgis.PyQt.QtWidgets import QMessageBox
             QMessageBox.warning(
