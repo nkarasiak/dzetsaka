@@ -53,37 +53,37 @@ changelog=
       * NEW: ui/comparison_panel.py - AlgorithmComparisonPanel QDialog with dependency-aware colouring
       * NEW: Standalone helper functions (check_dependency_availability, build_smart_defaults, build_review_summary)
     4.5.0
-      * ⚖️ NEW: SMOTE oversampling for imbalanced datasets (automatic ratio detection)
-      * 📊 NEW: Class weight computation (balanced, uniform, custom strategies)
-      * 🔄 NEW: Nested cross-validation for unbiased model evaluation
-      * 📈 NEW: Enhanced metrics (per-class F1, ROC curves, learning curves)
-      * 🗺️ NEW: "Nested Cross-Validation" processing algorithm for batch evaluation
-      * ⚙️ NEW: 8 new extraParam keys for imbalance handling and validation
-      * 🧠 ENHANCED: Automatic imbalance ratio detection and strategy recommendations
-      * 🛡️ ENHANCED: Cost-sensitive learning for all supported algorithms
-      * 📝 ENHANCED: Comprehensive unit and integration tests for imbalance handling
+      *  NEW: SMOTE oversampling for imbalanced datasets (automatic ratio detection)
+      *  NEW: Class weight computation (balanced, uniform, custom strategies)
+      *  NEW: Nested cross-validation for unbiased model evaluation
+      *  NEW: Enhanced metrics (per-class F1, ROC curves, learning curves)
+      *  NEW: "Nested Cross-Validation" processing algorithm for batch evaluation
+      *  NEW: 8 new extraParam keys for imbalance handling and validation
+      *  ENHANCED: Automatic imbalance ratio detection and strategy recommendations
+      *  ENHANCED: Cost-sensitive learning for all supported algorithms
+      *  ENHANCED: Comprehensive unit and integration tests for imbalance handling
     4.4.0
-      * 🔍 NEW: SHAP explainability - feature importance computation for model interpretability
-      * 📊 NEW: "Explain Model (SHAP)" processing algorithm - generate feature importance rasters
-      * 🎯 NEW: ModelExplainer class with automatic explainer selection (TreeExplainer/KernelExplainer)
-      * 🗺️ NEW: Feature importance raster generation - visualize which bands matter most
-      * ⚙️ NEW: COMPUTE_SHAP, SHAP_OUTPUT, SHAP_SAMPLE_SIZE parameters in extraParam
-      * 📦 NEW: scripts/explainability module with comprehensive SHAP integration
-      * 🌳 PERFORMANCE: Fast TreeExplainer for tree-based models (RF, XGB, LGB, ET, GBC)
-      * 🔄 PERFORMANCE: KernelExplainer fallback for other models (SVM, KNN, LR, NB, MLP)
-      * 📝 ENHANCED: Detailed help strings and usage examples for SHAP algorithm
-      * 🛡️ ENHANCED: Graceful fallback when SHAP unavailable with clear installation instructions
+      *  NEW: SHAP explainability - feature importance computation for model interpretability
+      *  NEW: "Explain Model (SHAP)" processing algorithm - generate feature importance rasters
+      *  NEW: ModelExplainer class with automatic explainer selection (TreeExplainer/KernelExplainer)
+      *  NEW: Feature importance raster generation - visualize which bands matter most
+      *  NEW: COMPUTE_SHAP, SHAP_OUTPUT, SHAP_SAMPLE_SIZE parameters in extraParam
+      *  NEW: scripts/explainability module with comprehensive SHAP integration
+      *  PERFORMANCE: Fast TreeExplainer for tree-based models (RF, XGB, LGB, ET, GBC)
+      *  PERFORMANCE: KernelExplainer fallback for other models (SVM, KNN, LR, NB, MLP)
+      *  ENHANCED: Detailed help strings and usage examples for SHAP algorithm
+      *  ENHANCED: Graceful fallback when SHAP unavailable with clear installation instructions
     4.3.0
-      * ⚡ NEW: Optuna hyperparameter optimization - 2-10x faster training with Bayesian optimization (TPE algorithm)
-      * 🏗️ NEW: Factory pattern for classifiers - clean, extensible registry replacing 700+ line if/elif chains
-      * 🛡️ NEW: Custom exception hierarchy with rich context (DataLoadError, ProjectionMismatchError, etc.)
-      * 📦 NEW: Clean architecture with separated modules (optimization, domain, factories)
-      * 🎯 NEW: USE_OPTUNA and OPTUNA_TRIALS parameters (fully backward compatible)
-      * 📝 ENHANCED: Comprehensive type hints and docstrings for new modules
-      * 🔧 ENHANCED: Intelligent trial pruning and parallel execution for Optuna
-      * 📊 PERFORMANCE: 2-5%% accuracy improvement from superior parameter combinations
-      * 🏁 PERFORMANCE: Random Forest ~3x faster, SVM ~5-8x faster, MLP ~4-6x faster
-      * 🔍 IMPROVED: Better error messages with actionable suggestions
+      *  NEW: Optuna hyperparameter optimization - 2-10x faster training with Bayesian optimization (TPE algorithm)
+      *  NEW: Factory pattern for classifiers - clean, extensible registry replacing 700+ line if/elif chains
+      *  NEW: Custom exception hierarchy with rich context (DataLoadError, ProjectionMismatchError, etc.)
+      *  NEW: Clean architecture with separated modules (optimization, domain, factories)
+      *  NEW: USE_OPTUNA and OPTUNA_TRIALS parameters (fully backward compatible)
+      *  ENHANCED: Comprehensive type hints and docstrings for new modules
+      *  ENHANCED: Intelligent trial pruning and parallel execution for Optuna
+      *  PERFORMANCE: 2-5%% accuracy improvement from superior parameter combinations
+      *  PERFORMANCE: Random Forest ~3x faster, SVM ~5-8x faster, MLP ~4-6x faster
+      *  IMPROVED: Better error messages with actionable suggestions
       * FIX: Improved auto-install for Debian/Ubuntu systems where pip module is not available
       * FIX: Auto-install now tries multiple methods: pip module, ensurepip bootstrap, apt via pkexec
       * FIX: Installation failure dialog now shows manual installation commands directly
@@ -98,24 +98,24 @@ changelog=
       * FIX: Robust layer source path extraction using QgsProviderRegistry (handles GeoPackage, etc.)
       * CODE: Added get_layer_source_path() helper for safe URI parsing
     4.2.2
-      * 🐛 FIX: Fixed import errors for splitTrain and trainAlgorithm class names
-      * 🐛 FIX: Fixed progress_bar.progressBar attribute error (corrected case to ProgressBar)
-      * 🐛 FIX: Restored missing toolbar icons by fixing Qt resources import
-      * 🐛 FIX: Fixed incorrect resource path in sieve_area.py 
-      * 🧹 ENHANCED: Applied ruff linting fixes and improved code quality
-      * 📝 ENHANCED: Added proper docstrings to sklearn fallback classes
-      * 🔧 ENHANCED: Better exception chaining for improved debugging
+      *  FIX: Fixed import errors for splitTrain and trainAlgorithm class names
+      *  FIX: Fixed progress_bar.progressBar attribute error (corrected case to ProgressBar)
+      *  FIX: Restored missing toolbar icons by fixing Qt resources import
+      *  FIX: Fixed incorrect resource path in sieve_area.py 
+      *  ENHANCED: Applied ruff linting fixes and improved code quality
+      *  ENHANCED: Added proper docstrings to sklearn fallback classes
+      *  ENHANCED: Better exception chaining for improved debugging
     4.2.0
-      * 🎯 NEW: 7 additional machine learning algorithms - XGBoost, LightGBM, Extra Trees, Gradient Boosting, Logistic Regression, Naive Bayes, MLP
-      * 🚀 NEW: Automatic dependency installation system - one-click install of scikit-learn, XGBoost, LightGBM
-      * ⚡ NEW: Automatic hyperparameter optimization with cross-validation grid search for all algorithms
-      * 🔧 NEW: Smart sparse label handling - automatically handles missing class labels (e.g., 0,1,3)
-      * 📊 NEW: GitHub issue integration - automatic error reporting templates with system info
-      * 🎨 IMPROVED: Better log levels (INFO vs WARNING) and more informative progress messages
-      * 🐛 FIX: Resolved parameter delegation issues for XGBoost/LightGBM wrappers
-      * 🐛 FIX: Fixed model serialization/pickling for new wrapper classes
-      * 📈 ENHANCED: Real-time pip installation progress with detailed logging
-      * 📝 ENHANCED: Comprehensive error handling with specific exception types and user guidance
+      *  NEW: 7 additional machine learning algorithms - XGBoost, LightGBM, Extra Trees, Gradient Boosting, Logistic Regression, Naive Bayes, MLP
+      *  NEW: Automatic dependency installation system - one-click install of scikit-learn, XGBoost, LightGBM
+      *  NEW: Automatic hyperparameter optimization with cross-validation grid search for all algorithms
+      *  NEW: Smart sparse label handling - automatically handles missing class labels (e.g., 0,1,3)
+      *  NEW: GitHub issue integration - automatic error reporting templates with system info
+      *  IMPROVED: Better log levels (INFO vs WARNING) and more informative progress messages
+      *  FIX: Resolved parameter delegation issues for XGBoost/LightGBM wrappers
+      *  FIX: Fixed model serialization/pickling for new wrapper classes
+      *  ENHANCED: Real-time pip installation progress with detailed logging
+      *  ENHANCED: Comprehensive error handling with specific exception types and user guidance
     4.1.0
       * Major code refactoring and optimization of scripts/classification_pipeline.py
       * Replaced Hungarian notation prefixes (in/out) with descriptive parameter names
@@ -156,6 +156,7 @@ experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
+
 
 
 
