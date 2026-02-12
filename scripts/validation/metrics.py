@@ -32,7 +32,7 @@ License:
 GNU General Public License v2.0 or later
 
 """
-import os
+import importlib.util
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -69,12 +69,7 @@ except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
 # Try to import pandas for dataframes
-try:
-    import pandas as pd
-
-    PANDAS_AVAILABLE = True
-except ImportError:
-    PANDAS_AVAILABLE = False
+PANDAS_AVAILABLE = importlib.util.find_spec("pandas") is not None
 
 
 class ValidationMetrics:
@@ -83,7 +78,7 @@ class ValidationMetrics:
     Provides comprehensive metrics beyond basic accuracy, including
     per-class performance, ROC curves, and learning curves.
 
-    Example
+    Example:
     -------
     >>> metrics = ValidationMetrics()
     >>> report = metrics.compute_per_class_metrics(y_true, y_pred)

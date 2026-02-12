@@ -6,7 +6,7 @@ polygon-based cross-validation.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from dzetsaka.infrastructure.geo.vector_split import count_polygons_per_class
 
@@ -15,9 +15,9 @@ if TYPE_CHECKING:
 
 
 def find_classes_with_insufficient_polygons(
-    class_counts: Dict[Any, int],
+    class_counts: dict[Any, int],
     min_polygons: int = 2,
-) -> Dict[Any, int]:
+) -> dict[Any, int]:
     """Return classes that appear in fewer than ``min_polygons`` samples."""
     return {
         class_label: polygons
@@ -27,13 +27,13 @@ def find_classes_with_insufficient_polygons(
 
 
 def confirm_polygon_group_split(
-    parent: Optional["QWidget"],
+    parent: QWidget | None,
     *,
     vector_path: str,
     class_field: str,
     min_polygons: int = 2,
     log = None,
-) -> Tuple[bool, bool]:
+) -> tuple[bool, bool]:
     """Prompt the user before running polygon-based cross-validation.
 
     Parameters
@@ -53,8 +53,8 @@ def confirm_polygon_group_split(
     -------
     Tuple[bool, bool]
         ``(continue_with_spatial_cv, fallback_to_random_split)``.
-    """
 
+    """
     class_counts = count_polygons_per_class(vector_path, class_field)
 
     if not class_counts:

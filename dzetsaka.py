@@ -10,6 +10,7 @@ from pathlib import Path
 
 from dzetsaka.services.runtime_loader import load_module_from_path
 
+
 def _load_runtime_module():
     runtime_path = (
         Path(__file__).resolve().parent / "src" / "dzetsaka" / "qgis" / "plugin_runtime.py"

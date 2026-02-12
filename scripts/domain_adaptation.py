@@ -6,7 +6,6 @@
 
 from dzetsaka.logging import Reporter
 
-
 try:
     from osgeo import gdal
 except ImportError:

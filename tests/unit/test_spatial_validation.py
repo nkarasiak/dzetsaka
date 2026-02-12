@@ -5,8 +5,6 @@ from __future__ import annotations
 import sys
 from types import ModuleType, SimpleNamespace
 
-import pytest
-
 from dzetsaka.qgis import spatial_validation
 
 

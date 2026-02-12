@@ -31,7 +31,7 @@ License:
 GNU General Public License v2.0 or later
 
 """
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 
@@ -382,7 +382,7 @@ def normalize_weights(weights: Dict[int, float]) -> Dict[int, float]:
 
     if total == 0:
         # Avoid division by zero
-        return {cls: 1.0 for cls in weights.keys()}
+        return dict.fromkeys(weights.keys(), 1.0)
 
     scale_factor = n_classes / total
     return {cls: weight * scale_factor for cls, weight in weights.items()}

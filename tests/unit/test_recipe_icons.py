@@ -3,13 +3,11 @@
 import sys
 from pathlib import Path
 
-import pytest
-
 # Add ui directory to path to import recipe_icons directly without triggering __init__.py
 ui_path = Path(__file__).parent.parent.parent / "ui"
 sys.path.insert(0, str(ui_path))
 
-import recipe_icons  # noqa: E402
+import recipe_icons
 
 # Import the functions we need
 get_recipe_icon = recipe_icons.get_recipe_icon

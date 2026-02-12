@@ -30,7 +30,7 @@ class Logger(Protocol):
     def error(self, message: Any) -> None:
         ...
 
-    def exception(self, message: Any, exc: Optional[BaseException] = None) -> None:
+    def exception(self, message: Any, exc: BaseException | None = None) -> None:
         ...
 
 
@@ -57,7 +57,7 @@ def _format_message(message: Any) -> str:
     return repr(message)
 
 
-def _level_name(level: Optional[int]) -> str:
+def _level_name(level: int | None) -> str:
     if level is None:
         return "INFO"
     if level == logging.CRITICAL:
@@ -71,9 +71,8 @@ def _level_name(level: Optional[int]) -> str:
     return "INFO"
 
 
-def record_log_entry(tag: str, level: Optional[int], message: Any) -> None:
+def record_log_entry(tag: str, level: int | None, message: Any) -> None:
     """Capture recent log entries for issue reporting."""
-
     text = _format_message(message)
     if not text:
         return
@@ -83,7 +82,6 @@ def record_log_entry(tag: str, level: Optional[int], message: Any) -> None:
 
 def get_recent_log_output(max_lines: int = 400) -> str:
     """Return recent log lines captured in the current process."""
-
     if max_lines <= 0 or not _recent_log_lines:
         return ""
     lines = list(_recent_log_lines)[-max_lines:]
@@ -106,7 +104,6 @@ def _read_plugin_metadata_value(key: str, default: str = "Unknown") -> str:
 
 def get_system_info() -> str:
     """Gather system/environment information for issue reports."""
-
     info_lines: list[str] = []
     info_lines.append(f"Python: {sys.version}")
     info_lines.append(f"OS: {platform.system()} {platform.release()} ({platform.machine()})")
@@ -161,7 +158,6 @@ def get_system_info() -> str:
 
 def create_github_issue_url(title: str, body: str) -> str:
     """Return a GitHub issue URL prefilled with title/body."""
-
     try:
         from . import constants
 
@@ -181,7 +177,6 @@ def build_issue_template(
     max_log_lines: int = 1200,
 ) -> str:
     """Compose a markdown issue template containing system info and logs."""
-
     msg = _format_message(error_message)
     system_info = get_system_info()
     log_output = get_recent_log_output(max_lines=max_log_lines) or "[No dzetsaka logs captured in this session]"
@@ -222,20 +217,21 @@ def _default_issue_popup_handler(
     error_title: str,
     error_type: str,
     error_message: Any,
-    context: Optional[str],
-    parent: Optional[Any],
+    context: str | None,
+    parent: Any | None,
 ) -> None:
     template = build_issue_template(error_title, error_type, error_message, context=context or "")
     print("\n".join(["---", f"[dzetsaka issue] {error_title}", template, "---"]))
 
 
-def _default_error_handler(title: str, message: Any, context: Optional[str]) -> None:
+def _default_error_handler(title: str, message: Any, context: str | None) -> None:
     print(f"{title}: {_format_message(message)}", file=sys.stderr)
 
 
 _issue_popup_handler: IssuePopupHandler = _default_issue_popup_handler
 _error_handler: ErrorHandler = _default_error_handler
-_logger_factory: LoggerFactory = lambda tag: PythonLogger(tag)
+def _logger_factory(tag):
+    return PythonLogger(tag)
 
 
 def register_issue_popup_handler(handler: IssuePopupHandler) -> None:
@@ -262,8 +258,8 @@ def show_issue_popup(
     error_title: str,
     error_type: str,
     error_message: Any,
-    context: Optional[str] = "",
-    parent: Optional[Any] = None,
+    context: str | None = "",
+    parent: Any | None = None,
 ) -> None:
     _issue_popup_handler(error_title, error_type, error_message, context, parent)
 
@@ -308,7 +304,7 @@ class PythonLogger:
     def error(self, message: Any) -> None:
         self._log(logging.CRITICAL, message)
 
-    def exception(self, message: Any, exc: Optional[BaseException] = None) -> None:
+    def exception(self, message: Any, exc: BaseException | None = None) -> None:
         details = _format_message(message)
         if exc is None:
             details += "\n" + traceback.format_exc()
@@ -320,11 +316,11 @@ class PythonLogger:
 @dataclass
 class Reporter:
     logger: Logger
-    feedback: Optional[FeedbackProtocol] = None
+    feedback: FeedbackProtocol | None = None
     error_handler: ErrorHandler = _default_error_handler
 
     @classmethod
-    def from_feedback(cls, feedback: Optional[FeedbackProtocol], tag: str = DEFAULT_LOG_TAG) -> "Reporter":
+    def from_feedback(cls, feedback: FeedbackProtocol | None, tag: str = DEFAULT_LOG_TAG) -> Reporter:
         logger = _logger_factory(tag)
         return cls(logger=logger, feedback=feedback, error_handler=_error_handler)
 
@@ -338,7 +334,7 @@ class Reporter:
         self.logger.error(message)
         self.error_handler("dzetsaka Error", message, None)
 
-    def exception(self, message: Any, exc: Optional[BaseException] = None) -> None:
+    def exception(self, message: Any, exc: BaseException | None = None) -> None:
         self.logger.exception(message, exc)
         self.error_handler("dzetsaka Error", message, None)
 

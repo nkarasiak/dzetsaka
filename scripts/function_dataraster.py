@@ -119,12 +119,11 @@ def open_data(filename):
 
     # Read all bands at once using GDAL's ReadAsArray on the dataset
     # This is more efficient than reading band by band
-    if d == 1:
-        im = data.GetRasterBand(1).ReadAsArray().astype(dt)
-    else:
-        # ReadAsArray() on dataset returns (bands, rows, cols)
-        # Transpose to (rows, cols, bands) for compatibility
-        im = data.ReadAsArray().transpose(1, 2, 0).astype(dt)
+    im = (
+        data.GetRasterBand(1).ReadAsArray().astype(dt)
+        if d == 1
+        else data.ReadAsArray().transpose(1, 2, 0).astype(dt)
+    )
 
     GeoTransform = data.GetGeoTransform()
     Projection = data.GetProjection()
@@ -359,13 +358,11 @@ def get_samples_from_roi(raster_name, roi_name, stand_name=False, getCoords=Fals
                 # Load all bands at once for this block, then extract ROI pixels
                 # This is more efficient than reading band by band
                 block_data = raster.ReadAsArray(j, i, cols, lines)  # Shape: (d, lines, cols)
-                if d == 1:
-                    # Single band case: ReadAsArray returns (lines, cols)
-                    Xtp = block_data[t].reshape(-1, 1)
-                else:
-                    # Multi-band: extract pixels at ROI locations using advanced indexing
-                    # block_data shape is (d, lines, cols), t is (row_indices, col_indices)
-                    Xtp = block_data[:, t[0], t[1]].T  # Shape: (n_pixels, d)
+                Xtp = (
+                    block_data[t].reshape(-1, 1)
+                    if d == 1
+                    else block_data[:, t[0], t[1]].T
+                )  # Shape: (n_pixels, d) for multi-band
                 try:
                     X = np.concatenate((X, Xtp))
                 except MemoryError:

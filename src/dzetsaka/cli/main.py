@@ -7,7 +7,7 @@ import json
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from dzetsaka.application.use_cases.classify_raster import run_classification
 from dzetsaka.application.use_cases.train_model import run_training
@@ -49,7 +49,7 @@ def _parse_split_config(value: str) -> str | int | float:
             return normalized
 
 
-def _parse_extra_params(value: Optional[str]) -> Dict[str, Any]:
+def _parse_extra_params(value: str | None) -> dict[str, Any]:
     if value is None:
         return {}
     trimmed = value.strip()
@@ -137,7 +137,7 @@ def _configure_cli() -> ArgumentParser:
     return parser
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = _configure_cli()
     args = parser.parse_args(argv)
     if not hasattr(args, "func"):

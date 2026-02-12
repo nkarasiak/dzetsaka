@@ -11,7 +11,7 @@ Public API:
 - check_imblearn_available: Check imbalanced-learn availability
 
 Example:
---------
+-------
     >>> from scripts.sampling import SMOTESampler, compute_class_weights
     >>>
     >>> # Apply SMOTE
@@ -27,10 +27,10 @@ Example:
 # Try to import sampling components
 try:
     from .smote_sampler import (
+        IMBLEARN_AVAILABLE,
         SMOTESampler,
         apply_smote_if_needed,
         check_imblearn_available,
-        IMBLEARN_AVAILABLE,
     )
 
     SMOTE_AVAILABLE = IMBLEARN_AVAILABLE
@@ -66,19 +66,19 @@ except ImportError:
 
 # Define public API
 __all__ = [
+    "CLASS_WEIGHTS_AVAILABLE",
+    "SMOTE_AVAILABLE",
     # SMOTE sampling
     "SMOTESampler",
+    "apply_class_weights_to_model",
     "apply_smote_if_needed",
     "check_imblearn_available",
-    "SMOTE_AVAILABLE",
     # Class weights
     "compute_class_weights",
-    "apply_class_weights_to_model",
     "compute_sample_weights",
     "get_class_distribution",
     "get_imbalance_ratio",
-    "recommend_strategy",
-    "print_class_distribution",
     "normalize_weights",
-    "CLASS_WEIGHTS_AVAILABLE",
+    "print_class_distribution",
+    "recommend_strategy",
 ]

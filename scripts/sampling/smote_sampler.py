@@ -34,22 +34,22 @@ import numpy as np
 
 # Try to import imbalanced-learn (optional dependency)
 try:
-    from imblearn.over_sampling import SMOTE as ImbSMOTE
+    from imblearn.over_sampling import SMOTE as IMB_SMOTE
 
     IMBLEARN_AVAILABLE = True
 except ImportError:
     IMBLEARN_AVAILABLE = False
-    ImbSMOTE = None
+    IMB_SMOTE = None
 
 # Try to import from dzetsaka modules
 try:
     from ..domain.exceptions import DependencyError, ValidationError
 except ImportError:
     # Fallback exceptions if domain not available
-    class DependencyError(Exception):  # noqa: N818
+    class DependencyError(Exception):
         """Dependency error fallback."""
 
-    class ValidationError(Exception):  # noqa: N818
+    class ValidationError(Exception):
         """Validation error fallback."""
 
 
@@ -127,7 +127,7 @@ class SMOTESampler:
         self.sampling_strategy = sampling_strategy
 
         # Create underlying SMOTE instance
-        self.smote = ImbSMOTE(
+        self.smote = IMB_SMOTE(
             k_neighbors=k_neighbors,
             random_state=random_state,
             sampling_strategy=sampling_strategy,
@@ -199,7 +199,7 @@ class SMOTESampler:
             new_k_neighbors = max(1, min_samples - 1)
             if new_k_neighbors != self.k_neighbors:
                 # Recreate SMOTE with adjusted k_neighbors
-                self.smote = ImbSMOTE(
+                self.smote = IMB_SMOTE(
                     k_neighbors=new_k_neighbors,
                     random_state=self.random_state,
                     sampling_strategy=self.sampling_strategy,
@@ -309,12 +309,12 @@ class SMOTESampler:
 def check_imblearn_available() -> Tuple[bool, Optional[str]]:
     """Check if imbalanced-learn is available and return version info.
 
-    Returns
+    Returns:
     -------
     Tuple[bool, Optional[str]]
         (is_available, version_string)
 
-    Example
+    Example:
     -------
     >>> available, version = check_imblearn_available()
     >>> if available:

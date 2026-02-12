@@ -10,7 +10,7 @@ within QGIS using the QGIS testing framework.
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -183,8 +183,6 @@ def test_overview_page_structure(mock_qgis_modules):
 
 def test_quickstart_page_color_darkening():
     """Test color darkening utility function."""
-    from ui.welcome_wizard import QuickStartPage
-
     # Test the static method logic without instantiation
     # Color darkening formula: multiply RGB by 0.9
     hex_color = "#4CAF50"

@@ -6,7 +6,6 @@ and the Processing algorithm.
 import os
 import pickle
 import tempfile
-from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest

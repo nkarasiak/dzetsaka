@@ -4,9 +4,8 @@ Tests the ModelExplainer class and related functionality for computing
 SHAP-based feature importance.
 """
 import os
-import pickle
 import tempfile
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
@@ -23,6 +22,8 @@ except ImportError:
 try:
     from scripts.explainability.shap_explainer import (
         SHAP_AVAILABLE as MODULE_SHAP_AVAILABLE,
+    )
+    from scripts.explainability.shap_explainer import (
         ModelExplainer,
         check_shap_available,
     )

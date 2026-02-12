@@ -6,27 +6,24 @@ import contextlib
 import traceback
 import webbrowser
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
+from qgis.core import Qgis, QgsMessageLog
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import (
-    QAction,
     QApplication,
     QDialog,
     QHBoxLayout,
     QLabel,
     QMessageBox,
-    QPushButton,
     QPlainTextEdit,
+    QPushButton,
     QVBoxLayout,
 )
-from qgis.core import Qgis, QgsMessageLog
 
 from dzetsaka.logging import (
     DEFAULT_LOG_TAG,
-    IssuePopupHandler,
     Logger,
-    ErrorHandler,
     build_issue_template,
     register_error_handler,
     register_issue_popup_handler,
@@ -46,7 +43,7 @@ class QgisLogger(Logger):
 
     tag: str = DEFAULT_LOG_TAG
 
-    def _log(self, level: Optional[int], message: Any) -> None:
+    def _log(self, level: int | None, message: Any) -> None:
         text = _format_message(message)
         if QgsMessageLog is None:
             return
@@ -64,7 +61,7 @@ class QgisLogger(Logger):
     def error(self, message: Any) -> None:
         self._log(Qgis.Critical if Qgis is not None else None, message)
 
-    def exception(self, message: Any, exc: Optional[BaseException] = None) -> None:
+    def exception(self, message: Any, exc: BaseException | None = None) -> None:
         if exc is None:
             details = traceback.format_exc()
         else:
@@ -72,7 +69,7 @@ class QgisLogger(Logger):
         self.error(f"{_format_message(message)}\n{details}")
 
 
-def _active_window() -> Optional[Any]:
+def _active_window() -> Any | None:
     try:
         app = QApplication.instance()
         if app is None:
@@ -83,7 +80,7 @@ def _active_window() -> Optional[Any]:
 
 
 def _create_issue_dialog(
-    parent: Optional[Any],
+    parent: Any | None,
     title: str,
     template: str,
 ) -> None:
@@ -129,8 +126,8 @@ def _show_issue_popup(
     error_title: str,
     error_type: str,
     error_message: Any,
-    context: Optional[str],
-    parent: Optional[Any],
+    context: str | None,
+    parent: Any | None,
 ) -> None:
     template = build_issue_template(
         error_title=error_title,
@@ -141,7 +138,7 @@ def _show_issue_popup(
     _create_issue_dialog(parent, error_title, template)
 
 
-def _show_error_dialog(title: str, message: Any, context: Optional[str]) -> None:
+def _show_error_dialog(title: str, message: Any, context: str | None) -> None:
     _show_issue_popup(title, "Runtime Error", message, context, _active_window())
 
 

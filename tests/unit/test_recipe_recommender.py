@@ -146,14 +146,13 @@ class TestRecipeRecommender:
         # Find SVM recipe (should be penalized)
         svm_found = False
         rf_found = False
-        for recipe, score, reason in recommendations:
+        for recipe, _score, reason in recommendations:
             if recipe["classifier"] == "SVM":
                 svm_found = True
                 # SVM should have lower score due to file size
                 assert "slow" in reason.lower() or "large" in reason.lower()
             elif recipe["classifier"] == "RF":
                 rf_found = True
-                rf_score = score
 
         assert svm_found
         assert rf_found

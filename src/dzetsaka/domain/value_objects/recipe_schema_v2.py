@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Any, Dict
+from typing import Any
 
 SCHEMA_VERSION = 2
 LEGACY_VERSION = 1
@@ -26,14 +26,14 @@ _DEFAULT_COMPAT = {
 }
 
 
-def _ensure_dict(value: Any, default: Dict[str, Any]) -> Dict[str, Any]:
+def _ensure_dict(value: Any, default: dict[str, Any]) -> dict[str, Any]:
     """Return dict(value) when possible, else a deep copy of default."""
     if isinstance(value, dict):
         return dict(value)
     return deepcopy(default)
 
 
-def upgrade_recipe_to_v2(recipe: Dict[str, Any]) -> Dict[str, Any]:
+def upgrade_recipe_to_v2(recipe: dict[str, Any]) -> dict[str, Any]:
     """Upgrade a recipe dictionary to schema v2 while preserving legacy keys."""
     upgraded = dict(recipe or {})
 

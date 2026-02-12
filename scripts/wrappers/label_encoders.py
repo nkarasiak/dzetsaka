@@ -69,6 +69,7 @@ if SKLEARN_AVAILABLE:
         >>> model.fit(X_train, y_train)
         >>> # Predictions automatically decoded to original labels
         >>> predictions = model.predict(X_test)
+
         """
 
         def __init__(self, **xgb_params):
@@ -90,6 +91,7 @@ if SKLEARN_AVAILABLE:
             -------
             self
                 Fitted estimator
+
             """
             try:
                 from xgboost import XGBClassifier
@@ -113,6 +115,7 @@ if SKLEARN_AVAILABLE:
             -------
             y_pred : ndarray of shape (n_samples,)
                 Predicted class labels (in original sparse encoding)
+
             """
             y_encoded = self.xgb_classifier.predict(X)
             return self.label_encoder.inverse_transform(y_encoded)
@@ -129,6 +132,7 @@ if SKLEARN_AVAILABLE:
             -------
             proba : ndarray of shape (n_samples, n_classes)
                 Class probabilities
+
             """
             return self.xgb_classifier.predict_proba(X)
 
@@ -165,6 +169,7 @@ if SKLEARN_AVAILABLE:
         >>> model = LGBLabelWrapper(n_estimators=100, num_leaves=31)
         >>> model.fit(X_train, y_train)
         >>> predictions = model.predict(X_test)
+
         """
 
         def __init__(self, **lgb_params):
@@ -186,6 +191,7 @@ if SKLEARN_AVAILABLE:
             -------
             self
                 Fitted estimator
+
             """
             try:
                 from lightgbm import LGBMClassifier
@@ -209,6 +215,7 @@ if SKLEARN_AVAILABLE:
             -------
             y_pred : ndarray of shape (n_samples,)
                 Predicted class labels (in original sparse encoding)
+
             """
             y_encoded = self.lgb_classifier.predict(X, feature_name=None)
             return self.label_encoder.inverse_transform(y_encoded)
@@ -225,6 +232,7 @@ if SKLEARN_AVAILABLE:
             -------
             proba : ndarray of shape (n_samples, n_classes)
                 Class probabilities
+
             """
             return self.lgb_classifier.predict_proba(X, feature_name=None)
 
@@ -261,6 +269,7 @@ if SKLEARN_AVAILABLE:
         >>> model = CBClassifierWrapper(iterations=100, depth=6)
         >>> model.fit(X_train, y_train)
         >>> predictions = model.predict(X_test)
+
         """
 
         def __init__(self, **cb_params):
@@ -282,6 +291,7 @@ if SKLEARN_AVAILABLE:
             -------
             self
                 Fitted estimator
+
             """
             try:
                 from catboost import CatBoostClassifier
@@ -305,6 +315,7 @@ if SKLEARN_AVAILABLE:
             -------
             y_pred : ndarray of shape (n_samples,)
                 Predicted class labels (in original sparse encoding)
+
             """
             y_encoded = self.cb_classifier.predict(X)
             y_encoded = np.array(y_encoded).reshape(-1)
@@ -322,6 +333,7 @@ if SKLEARN_AVAILABLE:
             -------
             proba : ndarray of shape (n_samples, n_classes)
                 Class probabilities
+
             """
             return self.cb_classifier.predict_proba(X)
 

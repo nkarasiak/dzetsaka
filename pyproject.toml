@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dzetsaka"
-version = "5.0.0"
+version = "0.5.0"
 description = "A powerful and fast classification plugin for QGIS supporting 12 machine learning algorithms with Optuna optimization, SHAP explainability, and class imbalance handling"
 readme = "readme.md"
 license = {text = "GPL-2.0-or-later"}
@@ -206,8 +206,13 @@ ignore = [
     "E501",   # Line too long, handled by formatter
     "E203",   # Whitespace before ':', conflicts with Black
     "D100",   # Missing docstring in public module
+    "D101",   # Missing docstring in public class
+    "D102",   # Missing docstring in public method
+    "D103",   # Missing docstring in public function
     "D104",   # Missing docstring in public package
+    "D105",   # Missing docstring in magic method
     "D107",   # Missing docstring in __init__
+    "D417",   # Missing argument descriptions in docstrings
     "D203",   # 1 blank line required before class docstring
     "D213",   # Multi-line docstring summary should start at the second line
     "D401",   # First line should be in imperative mood (too restrictive)
@@ -229,6 +234,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "test_*.py" = ["PLR2004", "S101", "T201"]
 "**/test_*.py" = ["PLR2004", "S101", "T201"] 
 "tests/*.py" = ["PLR2004", "S101", "T201"]
+"tests/**/*.py" = ["PLR2004", "S101", "T201", "E402", "F401", "B017", "N805"]
 
 # Scripts can use print statements
 "scripts/*.py" = ["T201"]

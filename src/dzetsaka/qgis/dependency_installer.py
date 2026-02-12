@@ -8,6 +8,7 @@ import tempfile
 
 from qgis.core import QgsApplication
 from qgis.PyQt.QtWidgets import QMessageBox
+
 from dzetsaka.qgis.dependency_catalog import FULL_DEPENDENCY_BUNDLE
 
 
@@ -308,9 +309,10 @@ def try_install_dependencies(plugin, missing_deps):
         last_output = ""
         for cmd, description in attempts:
             # Avoid running ensurepip unless pip is really missing for that attempt.
-            if "ensurepip" in cmd:
-                if "No module named pip" not in last_output and "pip is not installed" not in last_output.lower():
-                    continue
+            if "ensurepip" in cmd and (
+                "No module named pip" not in last_output and "pip is not installed" not in last_output.lower()
+            ):
+                continue
             success, output = run_command(cmd, description)
             last_output = output or ""
             if success and "ensurepip" not in cmd:
@@ -616,9 +618,10 @@ def try_install_dependencies(plugin, missing_deps):
 
         last_output = ""
         for cmd, description in attempts:
-            if "ensurepip" in cmd:
-                if "No module named pip" not in last_output and "pip is not installed" not in last_output.lower():
-                    continue
+            if "ensurepip" in cmd and (
+                "No module named pip" not in last_output and "pip is not installed" not in last_output.lower()
+            ):
+                continue
             success, output = run_command(cmd, description)
             last_output = output or ""
             if success and "ensurepip" not in cmd:
@@ -883,6 +886,7 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
     -------
     None
         Installation runs asynchronously, result returned via callback
+
     """
     if not missing_deps:
         if on_complete:

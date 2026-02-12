@@ -10,7 +10,7 @@ Public API:
 - SHAP_AVAILABLE: Boolean flag indicating SHAP availability
 
 Example:
---------
+-------
     >>> from scripts.explainability import ModelExplainer, SHAP_AVAILABLE
     >>>
     >>> if SHAP_AVAILABLE:
@@ -23,9 +23,9 @@ Example:
 
 # Try to import SHAP explainer components
 try:
-    from .shap_explainer import ModelExplainer, check_shap_available, SHAP_AVAILABLE
+    from .shap_explainer import SHAP_AVAILABLE, ModelExplainer, check_shap_available
 
-    __all__ = ["ModelExplainer", "check_shap_available", "SHAP_AVAILABLE"]
+    __all__ = ["SHAP_AVAILABLE", "ModelExplainer", "check_shap_available"]
 except ImportError:
     # SHAP not available - provide graceful fallback
     SHAP_AVAILABLE = False
@@ -35,4 +35,4 @@ except ImportError:
         return False, None
 
     # Don't export ModelExplainer if SHAP unavailable
-    __all__ = ["check_shap_available", "SHAP_AVAILABLE"]
+    __all__ = ["SHAP_AVAILABLE", "check_shap_available"]

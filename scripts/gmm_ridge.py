@@ -7,7 +7,7 @@ with the broader ML ecosystem.
 Author: Mathieu Fauvel (original implementation)
 Enhanced: Nicolas Karasiak (sklearn compatibility, numerical stability, performance)
 
-Example
+Example:
 -------
 >>> from scripts.gmm_ridge import GMMR
 >>> import numpy as np
@@ -109,6 +109,7 @@ def _predict_worker(tau: float, model: "GMMR", xT: np.ndarray, yT: np.ndarray) -
     -------
     err : np.ndarray
         Accuracy scores for each tau value
+
     """
     err = np.zeros(tau.size)
     for j, t in enumerate(tau):
@@ -192,6 +193,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
     ----------
     .. [1] Bishop, C. M. (2006). Pattern Recognition and Machine Learning.
            Springer. Chapter 2.3 (The Gaussian Distribution).
+
     """
 
     def __init__(
@@ -226,6 +228,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         -------
         self : object
             Returns self for method chaining
+
         """
         return self.learn(X, y)
 
@@ -252,6 +255,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         ------
         ValueError
             If input contains NaN/Inf values or if any class has too few samples
+
         """
         # Normalize labels to 1D to avoid sklearn DataConversionWarning on column vectors.
         y = np.asarray(y).reshape(-1)
@@ -283,7 +287,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
                     f"Class {label} has only {n_samples} samples but needs "
                     f"at least {min_samples_required} for reliable covariance estimation. "
                     f"Consider increasing regularization (tau) or collecting more samples.",
-                    UserWarning,
+                    UserWarning, stacklevel=2,
                 )
 
         # Initialize storage
@@ -336,7 +340,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
                         f"Class {cR} has ill-conditioned covariance matrix "
                         f"(condition number: {condition_number:.2e}). "
                         f"Consider increasing tau parameter.",
-                        UserWarning,
+                        UserWarning, stacklevel=2,
                     )
 
         return self
@@ -370,6 +374,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         1. Eigendecomposition-based matrix inversion
         2. Log-sum-exp trick for probability computation
         3. Careful handling of overflow/underflow
+
         """
         # Validation
         check_is_fitted(self, ["mean", "cov", "classes_"])
@@ -461,6 +466,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         >>> model = GMMR(tau=0.1).fit(X_train, y_train)
         >>> proba = model.predict_proba(X_test)
         >>> print(proba.sum(axis=1))  # All close to 1.0
+
         """
         check_is_fitted(self, ["mean", "cov", "classes_"])
         X = check_array(X, dtype=np.float64)
@@ -526,6 +532,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
             Inverse covariance matrix
         logdet : float
             Log determinant of the regularized covariance matrix
+
         """
         Lr = self.L[c, :] + tau
         Lr = np.maximum(Lr, self.min_eigenvalue)
@@ -558,6 +565,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         -----
         BIC = log-likelihood + penalty
         where penalty = (number of parameters) * log(n_samples) / 2
+
         """
         check_is_fitted(self, ["mean", "cov"])
 
@@ -628,6 +636,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         >>> tau_grid = np.logspace(-6, 2, 20)
         >>> best_tau, scores = model.cross_validation(X, y, tau_grid, v=5)
         >>> print(f"Best tau: {best_tau}, Best score: {scores.max()}")
+
         """
         # Use sklearn if available for better stratification
         if SKLEARN_AVAILABLE:
@@ -762,6 +771,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         >>> model = GMMR().fit(X, y)
         >>> importance = model.get_feature_importance(method='discriminative')
         >>> print(f"Most important feature: {importance.argmax()}")
+
         """
         check_is_fitted(self, ["mean", "cov", "prop"])
 
@@ -816,6 +826,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         >>> print(f"Condition numbers: {diag['condition_numbers']}")
         >>> if any(diag['condition_numbers'] > 1e10):
         ...     print("Warning: Some classes have ill-conditioned covariances!")
+
         """
         check_is_fitted(self, ["L", "classes_"])
 
@@ -890,6 +901,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         - Eigendecomposition is recomputed after each update (O(d^3) cost)
         - For very frequent small updates, consider batching
         - First call must include `classes` parameter
+
         """
         # Normalize labels to 1D to avoid sklearn DataConversionWarning on column vectors.
         y = np.asarray(y).reshape(-1)
@@ -989,6 +1001,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         -------
         reg_cov : np.ndarray of shape (n_features, n_features)
             Regularized covariance matrix
+
         """
         d = cov.shape[0]
 
@@ -1051,14 +1064,12 @@ class GMMR(BaseEstimator, ClassifierMixin):
         Ledoit, O., & Wolf, M. (2004). A well-conditioned estimator for
         large-dimensional covariance matrices. Journal of Multivariate
         Analysis, 88(2), 365-411.
+
         """
         d = cov.shape[0]
 
         # Target: diagonal matrix
-        if self.shrinkage_target == "identity":
-            mu = np.trace(cov) / d
-        else:
-            mu = np.mean(np.diag(cov))
+        mu = np.trace(cov) / d if self.shrinkage_target == "identity" else np.mean(np.diag(cov))
 
         # Compute delta (squared Frobenius norm of difference)
         delta = np.sum((cov - mu * np.eye(d)) ** 2)
@@ -1093,6 +1104,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         Chen, Y., Wiesel, A., Eldar, Y. C., & Hero, A. O. (2010).
         Shrinkage algorithms for MMSE covariance estimation.
         IEEE Transactions on Signal Processing, 58(10), 5016-5029.
+
         """
         d = cov.shape[0]
         n = n_samples
@@ -1150,7 +1162,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
         self.L = state["L"]
         self.classnum = state["classnum"]
         self.classes_ = state["classes_"]
-        self._M2 = state.get("_M2", None)
+        self._M2 = state.get("_M2")
 
 
 # Backward compatibility alias for factory pattern

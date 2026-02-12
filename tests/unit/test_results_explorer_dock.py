@@ -68,7 +68,6 @@ def test_result_data_no_optional_fields():
 def test_result_data_with_report_dir(tmp_path):
     """Test result data building with report directory."""
     pytest.importorskip("qgis")
-    import os
 
     from dzetsaka.qgis.task_launcher import _build_result_data
 

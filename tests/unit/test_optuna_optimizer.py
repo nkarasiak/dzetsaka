@@ -27,14 +27,14 @@ except ImportError:
 
 # Skip all tests if sklearn is not available
 try:
-    import sklearn  # noqa: F401
+    import sklearn
 
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
 
 try:
-    import catboost  # noqa: F401
+    import catboost
 
     CATBOOST_AVAILABLE = True
 except ImportError:

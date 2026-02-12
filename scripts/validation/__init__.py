@@ -11,7 +11,7 @@ Public API:
 - create_classification_summary: Text summary of results
 
 Example:
---------
+-------
     >>> from scripts.validation import NestedCrossValidator, ValidationMetrics
     >>>
     >>> # Nested CV evaluation
@@ -50,13 +50,13 @@ except ImportError:
 
 
 __all__ = [
+    "METRICS_AVAILABLE",
+    "NESTED_CV_AVAILABLE",
     # Nested CV
     "NestedCrossValidator",
-    "perform_nested_cv",
-    "NESTED_CV_AVAILABLE",
     # Metrics
     "ValidationMetrics",
     "compute_multiclass_roc_auc",
     "create_classification_summary",
-    "METRICS_AVAILABLE",
+    "perform_nested_cv",
 ]

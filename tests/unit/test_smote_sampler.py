@@ -245,7 +245,7 @@ class TestSMOTEEdgeCases:
     def test_binary_equal_classes(self):
         """Test with exactly equal class sizes."""
         np.random.seed(42)
-        X = np.random.rand(100, 3)
+        np.random.rand(100, 3)
         y = np.array([0] * 50 + [1] * 50)
 
         sampler = SMOTESampler()

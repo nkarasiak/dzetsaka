@@ -5,9 +5,8 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
-from pathlib import Path
 import zipfile
-
+from pathlib import Path
 
 DEFAULT_OUTPUT = "dzetsaka.zip"
 PLUGIN_DIR_NAME = "dzetsaka"
@@ -60,9 +59,7 @@ def _is_excluded(rel_path: Path) -> bool:
         return True
     filename = rel_path.name
     if any(fnmatch.fnmatch(filename, pattern) for pattern in EXCLUDED_FILE_PATTERNS):
-        if filename.lower() == "readme.md":
-            return False
-        return True
+        return filename.lower() != "readme.md"
     return False
 
 

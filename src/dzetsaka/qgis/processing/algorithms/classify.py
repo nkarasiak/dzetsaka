@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import os
 
-from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtGui import QIcon
 from qgis.core import (
     QgsProcessingAlgorithm,
     QgsProcessingParameterFile,
     QgsProcessingParameterRasterDestination,
     QgsProcessingParameterRasterLayer,
 )
+from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtGui import QIcon
 
 from dzetsaka.application.use_cases.classify_raster import run_classification
 from dzetsaka.logging import show_error_dialog

@@ -437,8 +437,6 @@ def test_streaming_workflow():
 
 def test_backward_compatibility_old_models():
     """Test that old pickled models without new attributes load correctly."""
-    import pickle
-
     X = np.random.randn(50, 5)
     y = np.random.randint(1, 3, 50)
 

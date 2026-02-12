@@ -9,9 +9,9 @@ from .split_train_validation import SplitTrain
 from .train import TrainAlgorithm
 
 __all__ = [
-    "TrainAlgorithm",
     "ClassifyAlgorithm",
-    "SplitTrain",
-    "NestedCVAlgorithm",
     "ExplainModelAlgorithm",
+    "NestedCVAlgorithm",
+    "SplitTrain",
+    "TrainAlgorithm",
 ]

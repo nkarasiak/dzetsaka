@@ -3,9 +3,6 @@
 import ast
 import os
 
-# Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
-from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtGui import QIcon
 from qgis.core import (
     QgsProcessingAlgorithm,
     QgsProcessingParameterEnum,
@@ -16,6 +13,10 @@ from qgis.core import (
     QgsProcessingParameterString,
     QgsProcessingParameterVectorLayer,
 )
+
+# Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
+from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtGui import QIcon
 
 from dzetsaka import classifier_config
 from dzetsaka.application.use_cases.train_model import run_training
@@ -159,7 +160,6 @@ class TrainAlgorithm(QgsProcessingAlgorithm):
             SELECTED_ALGORITHM = self.TRAIN_ALGORITHMS_CODE[TRAIN[0]]
             log.info(str(SELECTED_ALGORITHM))
 
-            libOk = True
             PARAMGRID = self.parameterAsString(parameters, self.PARAMGRID, context)
             if PARAMGRID != "":
                 extraParam = {}

@@ -15,10 +15,10 @@ import datetime
 import glob
 import os
 
+import function_dataraster as dataraster
 import numpy as np
 
 from dzetsaka.logging import Reporter
-import function_dataraster as dataraster
 
 
 def convertToDateTime(dates, strp="%Y%m%d", DOY=False):

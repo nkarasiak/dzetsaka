@@ -20,10 +20,7 @@ def build_debug_info(plugin) -> str:
 
         sklearn_available = "No"
         sklearn_ok, sklearn_details = plugin._check_sklearn_usable()
-        if sklearn_ok:
-            sklearn_available = f"Yes ({sklearn_details})"
-        else:
-            sklearn_available = f"No ({sklearn_details})"
+        sklearn_available = f"Yes ({sklearn_details})" if sklearn_ok else f"No ({sklearn_details})"
 
         xgboost_available = "No"
         try:

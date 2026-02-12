@@ -6,15 +6,15 @@ correctly with non-continuous class labels (e.g., 0, 1, 3, 5 instead of 0, 1, 2,
 """
 
 from .label_encoders import (
-    XGBLabelWrapper,
-    LGBLabelWrapper,
-    CBClassifierWrapper,
     SKLEARN_AVAILABLE,
+    CBClassifierWrapper,
+    LGBLabelWrapper,
+    XGBLabelWrapper,
 )
 
 __all__ = [
-    "XGBLabelWrapper",
-    "LGBLabelWrapper",
-    "CBClassifierWrapper",
     "SKLEARN_AVAILABLE",
+    "CBClassifierWrapper",
+    "LGBLabelWrapper",
+    "XGBLabelWrapper",
 ]

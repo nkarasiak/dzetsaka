@@ -2,19 +2,13 @@
 
 from __future__ import annotations
 
-import contextlib
 import glob
 import os
-import re
 import shutil
 import subprocess
 import sys
-import tempfile
-from typing import List, Optional, Tuple
 
 from qgis.core import QgsTask
-
-from dzetsaka.qgis.logging import QgisLogger
 
 
 class DependencyInstallTask(QgsTask):
@@ -23,9 +17,9 @@ class DependencyInstallTask(QgsTask):
     def __init__(
         self,
         description: str,
-        packages: List[str],
+        packages: list[str],
         plugin_logger,
-        runtime_constraints: Optional[str] = None,
+        runtime_constraints: str | None = None,
     ):
         """Initialize the dependency installation task.
 
@@ -39,6 +33,7 @@ class DependencyInstallTask(QgsTask):
             Logger instance from the plugin
         runtime_constraints : Optional[str]
             Path to pip constraints file (for pinning numpy/scipy/pandas)
+
         """
         super().__init__(description)
         self.packages = packages
@@ -105,7 +100,7 @@ class DependencyInstallTask(QgsTask):
         else:
             self.log.error(f"Installation failed. Installed {self.success_count}/{len(self.packages)} packages")
 
-    def _find_python_executables(self) -> List[str]:
+    def _find_python_executables(self) -> list[str]:
         """Find candidate Python executables for pip installation."""
         candidates = []
 
@@ -158,7 +153,7 @@ class DependencyInstallTask(QgsTask):
 
         return validated
 
-    def _install_package_bundle(self, packages: List[str], constraint_args: List[str]) -> bool:
+    def _install_package_bundle(self, packages: list[str], constraint_args: list[str]) -> bool:
         """Try to install all packages in a single pip command."""
         python_exes = self._find_python_executables()
         if not python_exes:
@@ -209,7 +204,7 @@ class DependencyInstallTask(QgsTask):
 
         return False
 
-    def _install_single_package(self, package: str, constraint_args: List[str]) -> bool:
+    def _install_single_package(self, package: str, constraint_args: list[str]) -> bool:
         """Try to install a single package."""
         python_exes = self._find_python_executables()
         if not python_exes:

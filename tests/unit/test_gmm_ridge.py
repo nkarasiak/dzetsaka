@@ -53,7 +53,7 @@ def test_predict_confidence_map_returns_probabilities():
     preds, probabilities = model.predict(x, confidenceMap=True)
     assert preds.shape == (x.shape[0],)
     assert probabilities.shape == (x.shape[0],)
-    assert np.all((0 <= probabilities) & (probabilities <= 1))
+    assert np.all((probabilities >= 0) & (probabilities <= 1))
 
 
 def test_predict_zero_tau_stable():

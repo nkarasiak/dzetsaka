@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import importlib
-from pathlib import Path
 import sys
+from pathlib import Path
 
-import numpy as np
 import pytest
 
 optuna_spec = importlib.util.find_spec("optuna")
@@ -45,8 +44,8 @@ def test_optuna_optimizer_runs_minimal_trial() -> None:
 @pytest.mark.skipif(shap_spec is None, reason="shap not installed")
 def test_shap_tree_explainer_runs() -> None:
     import shap
-    from sklearn.ensemble import RandomForestClassifier
     from sklearn.datasets import make_classification
+    from sklearn.ensemble import RandomForestClassifier
 
     X, y = make_classification(n_samples=40, n_features=5, n_informative=3, random_state=1)
     model = RandomForestClassifier(n_estimators=5, random_state=1)

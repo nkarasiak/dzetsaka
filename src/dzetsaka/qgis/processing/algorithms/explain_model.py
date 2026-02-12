@@ -7,7 +7,6 @@ feature importance maps from trained models.
 import os
 import pickle
 
-from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
     QgsProcessingAlgorithm,
     QgsProcessingParameterFile,
@@ -15,6 +14,7 @@ from qgis.core import (
     QgsProcessingParameterRasterDestination,
     QgsProcessingParameterRasterLayer,
 )
+from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 
 from dzetsaka.logging import show_error_dialog
@@ -167,8 +167,8 @@ All dzetsaka algorithms are supported:
             # Extract model components
             if isinstance(model_data, (list, tuple)) and len(model_data) >= 4:
                 model = model_data[0]
-                M = model_data[1]  # Max scaling values (not used for SHAP)
-                m = model_data[2]  # Min scaling values (not used for SHAP)
+                model_data[1]  # Max scaling values (not used for SHAP)
+                model_data[2]  # Min scaling values (not used for SHAP)
                 classifier_code = model_data[3]
                 feedback.pushInfo(f"Loaded {classifier_code} model successfully")
             else:

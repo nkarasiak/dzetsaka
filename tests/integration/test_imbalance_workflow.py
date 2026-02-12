@@ -17,7 +17,7 @@ except ImportError:
 
 # Try to import imbalanced-learn
 try:
-    import imblearn  # noqa: F401
+    import imblearn
 
     IMBLEARN_AVAILABLE = True
 except ImportError:

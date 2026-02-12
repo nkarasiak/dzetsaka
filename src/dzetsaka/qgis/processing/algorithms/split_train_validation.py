@@ -127,18 +127,9 @@ class SplitTrain(QgsProcessingAlgorithm):
             # Convert from validation-centric to train-centric parameter
             # Old RandomInSubset used VALUE for validation size
             # New split_vector_stratified uses train_percent for training size
-            if use_percent:
-                # VALUE is percentage for validation, convert to training percentage
-                train_value = 100 - VALUE
-            else:
-                # VALUE is absolute count for validation
-                # We need to convert to training count
-                # This requires knowing total count, which we'll let the function handle
-                # by passing the validation count and letting it calculate train count
-                # Actually, we'll pass total-VALUE as train_value
-                # But since we don't know total here, we'll use a different approach:
-                # Pass VALUE as validation count instead
-                train_value = VALUE
+            # VALUE is validation size. For percentage mode, convert to train percent.
+            # For absolute mode we keep VALUE and delegate exact handling downstream.
+            train_value = 100 - VALUE if use_percent else VALUE
                 # We'll need to adjust the logic in the call
 
             try:

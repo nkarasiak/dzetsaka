@@ -28,13 +28,13 @@ License:
 GNU General Public License v2.0 or later
 
 """
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, Optional
 
 import numpy as np
 
 # Try to import sklearn
 try:
-    from sklearn.model_selection import GridSearchCV, StratifiedKFold, cross_val_score
+    from sklearn.model_selection import GridSearchCV, StratifiedKFold
 
     SKLEARN_AVAILABLE = True
 except ImportError:
@@ -42,7 +42,6 @@ except ImportError:
 
 # Try to import Optuna
 try:
-    import optuna
     from ..optimization.optuna_optimizer import OptunaOptimizer
 
     OPTUNA_AVAILABLE = True
@@ -55,10 +54,10 @@ try:
     from ..domain.exceptions import DependencyError, ValidationError
 except ImportError:
     # Fallback exceptions
-    class DependencyError(Exception):  # noqa: N818
+    class DependencyError(Exception):
         """Dependency error fallback."""
 
-    class ValidationError(Exception):  # noqa: N818
+    class ValidationError(Exception):
         """Validation error fallback."""
 
 
@@ -198,11 +197,11 @@ class NestedCrossValidator:
             from ..factories.classifier_factory import ClassifierFactory
 
             factory = ClassifierFactory()
-        except ImportError:
+        except ImportError as err:
             raise DependencyError(
                 package_name="dzetsaka.factories",
                 reason="Classifier factory required for nested CV",
-            )
+            ) from err
 
         # Setup outer CV
         outer_cv = StratifiedKFold(
@@ -220,8 +219,7 @@ class NestedCrossValidator:
         current_fold = 0
 
         # Outer loop: Model evaluation
-        for train_idx, test_idx in outer_cv.split(X, y):
-            current_fold += 1
+        for current_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y), start=1):
 
             # Split data
             X_train, X_test = X[train_idx], X[test_idx]
