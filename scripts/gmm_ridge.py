@@ -253,6 +253,9 @@ class GMMR(BaseEstimator, ClassifierMixin):
         ValueError
             If input contains NaN/Inf values or if any class has too few samples
         """
+        # Normalize labels to 1D to avoid sklearn DataConversionWarning on column vectors.
+        y = np.asarray(y).reshape(-1)
+
         # Input validation
         x, y = check_X_y(x, y, dtype=np.float64)
 
@@ -888,6 +891,9 @@ class GMMR(BaseEstimator, ClassifierMixin):
         - For very frequent small updates, consider batching
         - First call must include `classes` parameter
         """
+        # Normalize labels to 1D to avoid sklearn DataConversionWarning on column vectors.
+        y = np.asarray(y).reshape(-1)
+
         X, y = check_X_y(X, y, dtype=np.float64)
 
         # Initialize on first call

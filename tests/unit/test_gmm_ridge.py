@@ -16,6 +16,11 @@ except ImportError:
 
 pytestmark = pytest.mark.skipif(not MODULE_AVAILABLE, reason="gmm_ridge module not available")
 
+try:
+    from sklearn.exceptions import DataConversionWarning
+except ImportError:  # pragma: no cover - sklearn optional
+    DataConversionWarning = Warning
+
 
 def _make_toy_data():
     # Two simple clusters in 2D.
@@ -84,3 +89,16 @@ def test_bic_no_numpy_deprecation_warning():
         bic = model.BIC(x, y)
 
     assert np.isfinite(bic)
+
+
+def test_learn_accepts_column_vector_labels_without_data_conversion_warning():
+    x, y = _make_toy_data()
+    y_column = y.reshape(-1, 1)
+    model = GMMR()
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        model.learn(x, y_column)
+
+    data_conversion = [w for w in caught if issubclass(w.category, DataConversionWarning)]
+    assert not data_conversion

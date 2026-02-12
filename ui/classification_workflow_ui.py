@@ -222,7 +222,7 @@ def validate_recipe_dependencies(recipe):
     deps = check_dependency_availability()
 
     # Check classifier-specific dependencies
-    if code in classifier_config.SKLEARN_DEPENDENT:
+    if code in classifier_config.SKLEARN_DEPENDENT or code in {"XGB", "LGB", "CB"}:
         if not deps.get("sklearn", False):
             missing.append("scikit-learn")
 
@@ -956,9 +956,9 @@ _CLASSIFIER_META = [
     ("RF", "Random Forest", True, False, False, False),
     ("SVM", "Support Vector Machine", True, False, False, False),
     ("KNN", "K-Nearest Neighbors", True, False, False, False),
-    ("XGB", "XGBoost", False, True, False, False),
-    ("LGB", "LightGBM", False, False, True, False),
-    ("CB", "CatBoost", False, False, False, True),
+    ("XGB", "XGBoost", True, True, False, False),
+    ("LGB", "LightGBM", True, False, True, False),
+    ("CB", "CatBoost", True, False, False, True),
     ("ET", "Extra Trees", True, False, False, False),
     ("GBC", "Gradient Boosting Classifier", True, False, False, False),
     ("LR", "Logistic Regression", True, False, False, False),
@@ -6886,107 +6886,117 @@ class QuickClassificationPanel(QWidget):
 
     def _emit_config(self):
         # type: () -> None
-        raster = self._get_raster_path()
-        if not raster:
-            QMessageBox.warning(self, "Missing Input", "Please select an input raster.")
-            return
+        try:
+            raster = self._get_raster_path()
+            if not raster:
+                QMessageBox.warning(self, "Missing Input", "Please select an input raster.")
+                return
 
-        if bool(getattr(self, "reportCheck", None) and self.reportCheck.isChecked()):
-            deps = check_dependency_availability()
-            missing_bundle = []
-            for dep_key in ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"):
-                # seaborn is used by report heatmaps.
-                if dep_key == "imblearn":
+            if bool(getattr(self, "reportCheck", None) and self.reportCheck.isChecked()):
+                deps = check_dependency_availability()
+                missing_bundle = []
+                for dep_key in ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"):
+                    # seaborn is used by report heatmaps.
+                    if dep_key == "imblearn":
+                        if not deps.get(dep_key, False):
+                            missing_bundle.append(dep_key)
+                        continue
                     if not deps.get(dep_key, False):
                         missing_bundle.append(dep_key)
-                    continue
-                if not deps.get(dep_key, False):
-                    missing_bundle.append(dep_key)
-            if not deps.get("seaborn", False):
-                missing_bundle.append("seaborn")
+                if not deps.get("seaborn", False):
+                    missing_bundle.append("seaborn")
 
-            if missing_bundle:
-                if self._installer and hasattr(self._installer, "_try_install_dependencies"):
-                    reply = QMessageBox.question(
-                        self,
-                        "Report Dependencies Missing",
-                        (
-                            "Report mode requires the full dzetsaka dependency bundle.<br><br>"
-                            f"Missing now: <code>{', '.join(missing_bundle)}</code><br>"
-                            f"Bundle to install: <code>{_full_bundle_label()}</code><br><br>"
-                            "Install now?<br><br>"
-                            "<i>Choose No to continue without report mode.</i>"
-                        ),
-                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                        QMessageBox.StandardButton.No,
-                    )
-                    if reply == QMessageBox.StandardButton.Yes:
-                        if not self._installer._try_install_dependencies(_full_dependency_bundle()):
-                            QMessageBox.warning(
-                                self,
-                                "Dependencies Missing",
-                                "Could not install full dependency bundle required for report mode.",
-                            )
+                if missing_bundle:
+                    if self._installer and hasattr(self._installer, "_try_install_dependencies"):
+                        reply = QMessageBox.question(
+                            self,
+                            "Report Dependencies Missing",
+                            (
+                                "Report mode requires the full dzetsaka dependency bundle.<br><br>"
+                                f"Missing now: <code>{', '.join(missing_bundle)}</code><br>"
+                                f"Bundle to install: <code>{_full_bundle_label()}</code><br><br>"
+                                "Install now?<br><br>"
+                                "<i>Choose No to continue without report mode.</i>"
+                            ),
+                            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                            QMessageBox.StandardButton.No,
+                        )
+                        if reply == QMessageBox.StandardButton.Yes:
+                            if not self._installer._try_install_dependencies(_full_dependency_bundle()):
+                                QMessageBox.warning(
+                                    self,
+                                    "Dependencies Missing",
+                                    "Could not install full dependency bundle required for report mode.",
+                                )
+                                return
+                            self._deps = check_dependency_availability()
+                        else:
+                            # Allow baseline execution by disabling report mode for this run.
+                            self.reportCheck.setChecked(False)
+                    else:
+                        reply = QMessageBox.question(
+                            self,
+                            "Dependencies Missing",
+                            (
+                                "Report mode requires the full dependency bundle, but installer is unavailable.\n\n"
+                                f"Required bundle: {_full_bundle_label()}\n\n"
+                                "Continue without report mode?"
+                            ),
+                            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                            QMessageBox.StandardButton.Yes,
+                        )
+                        if reply == QMessageBox.StandardButton.Yes:
+                            self.reportCheck.setChecked(False)
+                        else:
                             return
-                        self._deps = check_dependency_availability()
-                    else:
-                        # Allow baseline execution by disabling report mode for this run.
-                        self.reportCheck.setChecked(False)
-                else:
-                    reply = QMessageBox.question(
-                        self,
-                        "Dependencies Missing",
-                        (
-                            "Report mode requires the full dependency bundle, but installer is unavailable.\n\n"
-                            f"Required bundle: {_full_bundle_label()}\n\n"
-                            "Continue without report mode?"
-                        ),
-                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                        QMessageBox.StandardButton.Yes,
-                    )
-                    if reply == QMessageBox.StandardButton.Yes:
-                        self.reportCheck.setChecked(False)
-                    else:
-                        return
 
-        missing_required, _missing_optional = self._get_missing_dependencies()
-        if missing_required:
-            QMessageBox.warning(
-                self,
-                "Dependencies Missing",
-                (
-                    f"Selected classifier {self._get_classifier_name()} cannot run right now.\n\n"
-                    f"Missing runtime dependencies: {', '.join(missing_required)}\n\n"
-                    "Install dependencies from the dashboard installer and restart QGIS."
-                ),
+            missing_required, _missing_optional = self._get_missing_dependencies()
+            if missing_required:
+                QMessageBox.warning(
+                    self,
+                    "Dependencies Missing",
+                    (
+                        f"Selected classifier {self._get_classifier_name()} cannot run right now.\n\n"
+                        f"Missing runtime dependencies: {', '.join(missing_required)}\n\n"
+                        "Install dependencies from the dashboard installer and restart QGIS."
+                    ),
+                )
+                return
+
+            vector = self._get_vector_path()
+            class_field = self.classFieldCombo.currentText().strip()
+
+            if not vector or not class_field:
+                QMessageBox.warning(
+                    self,
+                    "Missing Training Data",
+                    "Express mode requires training data and a label field.",
+                )
+                return
+
+            config = {
+                "raster": raster,
+                "vector": vector,
+                "class_field": class_field,
+                "load_model": "",
+                "classifier": self._get_classifier_code(),
+                "extraParam": self._quick_extra_params(),
+                "output_raster": "",
+                "confidence_map": "",
+                "save_model": "",
+                "confusion_matrix": "",
+                "split_percent": self._quick_split_percent,
+            }
+            self.classificationRequested.emit(config)
+        except Exception as exc:
+            _show_issue_popup(
+                owner=self,
+                installer=self._installer,
+                title="Quick Run Failed",
+                error_type="Runtime Error",
+                error_message=f"Unexpected error while preparing Quick Run: {exc!s}",
+                context="classification_workflow_ui._emit_config",
             )
-            return
-
-        vector = self._get_vector_path()
-        class_field = self.classFieldCombo.currentText().strip()
-
-        if not vector or not class_field:
-            QMessageBox.warning(
-                self,
-                "Missing Training Data",
-                "Express mode requires training data and a label field.",
-            )
-            return
-
-        config = {
-            "raster": raster,
-            "vector": vector,
-            "class_field": class_field,
-            "load_model": "",
-            "classifier": self._get_classifier_code(),
-            "extraParam": self._quick_extra_params(),
-            "output_raster": "",
-            "confidence_map": "",
-            "save_model": "",
-            "confusion_matrix": "",
-            "split_percent": self._quick_split_percent,
-        }
-        self.classificationRequested.emit(config)
 
     def _show_recipe_recommendations(self, raster_path):
         # type: (str) -> None

@@ -53,6 +53,7 @@ DOI: 10.5281/zenodo.2552284
 """
 
 import contextlib
+import traceback
 
 # Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
 from qgis.PyQt.QtCore import Qt
@@ -95,6 +96,7 @@ class DzetsakaGUI(QDialog):
         Currently selected classifier name
     classifiers : list
         List of available classifier names
+
     Examples
     --------
     The plugin is typically instantiated by QGIS:
@@ -242,7 +244,16 @@ class DzetsakaGUI(QDialog):
 
     def run(self):
         """Run method that opens the guided dashboard."""
-        self.open_dashboard()
+        try:
+            self.open_dashboard()
+        except Exception as exc:
+            self._report_unhandled_exception(
+                error_title="dzetsaka Runtime Error",
+                error_type="Runtime Error",
+                error_message="Failed to open dashboard from run()",
+                context="Plugin run() entrypoint",
+                exc=exc,
+            )
 
     def loadConfig(self):
         """!@brief Class that loads all saved settings from config.txt."""
@@ -309,6 +320,7 @@ class DzetsakaGUI(QDialog):
             List of missing dependency names
         on_complete : callable, optional
             Callback function(success: bool) called when installation finishes
+
         """
         from dzetsaka.qgis.dependency_installer import try_install_dependencies_async
 
@@ -316,32 +328,50 @@ class DzetsakaGUI(QDialog):
 
     def open_dashboard(self):
         """Open the dockable classification dashboard (Quick/Advanced)."""
-        from dzetsaka.qgis.dashboard_dock import open_dashboard_dock
+        try:
+            from dzetsaka.qgis.dashboard_dock import open_dashboard_dock
 
-        open_dashboard_dock(self, _LEFT_DOCK_AREA)
+            open_dashboard_dock(self, _LEFT_DOCK_AREA)
+        except Exception as exc:
+            self._report_unhandled_exception(
+                error_title="Dashboard Open Failed",
+                error_type="Runtime Error",
+                error_message="Unexpected error while opening dashboard",
+                context="open_dashboard()",
+                exc=exc,
+            )
 
     def open_batch_classification(self):
         """Open the batch classification dialog."""
         try:
-            from dzetsaka.ui.batch_classification_dialog import BatchClassificationDialog
-        except ImportError:
-            from qgis.PyQt.QtWidgets import QMessageBox
-            QMessageBox.warning(
-                self.iface.mainWindow(),
-                "Batch Classification",
-                "Batch classification dialog is not available. Please check that all files are installed correctly."
-            )
-            return
+            try:
+                from dzetsaka.ui.batch_classification_dialog import BatchClassificationDialog
+            except ImportError:
+                from qgis.PyQt.QtWidgets import QMessageBox
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "Batch Classification",
+                    "Batch classification dialog is not available. Please check that all files are installed correctly."
+                )
+                return
 
-        dialog = BatchClassificationDialog(
-            parent=self.iface.mainWindow(),
-            iface=self.iface,
-            plugin=self
-        )
-        try:
-            dialog.exec_()
-        except AttributeError:
-            dialog.exec()
+            dialog = BatchClassificationDialog(
+                parent=self.iface.mainWindow(),
+                iface=self.iface,
+                plugin=self
+            )
+            try:
+                dialog.exec_()
+            except AttributeError:
+                dialog.exec()
+        except Exception as exc:
+            self._report_unhandled_exception(
+                error_title="Batch Classification Error",
+                error_type="Runtime Error",
+                error_message="Unexpected error while opening batch classification dialog",
+                context="open_batch_classification()",
+                exc=exc,
+            )
 
     def on_close_dashboard_dock(self):
         """Track dashboard dock closing state."""
@@ -457,9 +487,18 @@ class DzetsakaGUI(QDialog):
             confusion_matrix, split_percent.
 
         """
-        from dzetsaka.qgis.dashboard_execution import execute_dashboard_config
+        try:
+            from dzetsaka.qgis.dashboard_execution import execute_dashboard_config
 
-        execute_dashboard_config(self, config)
+            execute_dashboard_config(self, config)
+        except Exception as exc:
+            self._report_unhandled_exception(
+                error_title="Dashboard Execution Error",
+                error_type="Runtime Error",
+                error_message="Unexpected error while starting dashboard classification",
+                context="execute_dashboard_config()",
+                exc=exc,
+            )
 
     def modifyConfig(self, section, option, value):
         """Modify configuration file with new section/option/value.
@@ -477,6 +516,31 @@ class DzetsakaGUI(QDialog):
         from dzetsaka.qgis.runtime_utils import write_plugin_config
 
         write_plugin_config(self.configFile, self.Config, section, option, value)
+
+    def _report_unhandled_exception(
+        self,
+        *,
+        error_title: str,
+        error_type: str,
+        error_message: str,
+        context: str,
+        exc: Exception,
+    ) -> None:
+        """Log and show a standardized issue popup for unexpected runtime errors."""
+        tb = traceback.format_exc()
+        details = f"{error_message}: {exc!s}\n\nTraceback:\n{tb}"
+        self.log.exception(f"{error_title}: {error_message}", exc)
+        try:
+            self._show_github_issue_popup(
+                error_title=error_title,
+                error_type=error_type,
+                error_message=details,
+                context=context,
+            )
+        except Exception:
+            from dzetsaka.logging import show_error_dialog
+
+            show_error_dialog(error_title, details)
 # Qt6 enum compatibility (QGIS 4 / PyQt6)
 try:
     _LEFT_DOCK_AREA = Qt.LeftDockWidgetArea
