@@ -25,7 +25,12 @@ def execute_dashboard_config(plugin, config) -> None:
             model_path = load_model
         else:
             save_model = config.get("save_model", "")
-            model_path = save_model if save_model else tempfile.mktemp("." + classifier_code)
+            if save_model:
+                model_path = save_model
+            else:
+                fd, tmp_model_path = tempfile.mkstemp(suffix="." + classifier_code)
+                os.close(fd)
+                model_path = tmp_model_path
 
         matrix_path = config.get("confusion_matrix", "") or None
         split_percent = config.get("split_percent", 100)

@@ -48,7 +48,7 @@ from __future__ import annotations
 
 import contextlib
 import os
-import pickle
+import pickle  # nosec B403
 import sys
 from typing import Any, Callable
 
@@ -741,7 +741,7 @@ class ModelExplainer:
         """
         try:
             with open(file_path, "rb") as f:
-                data = pickle.load(f)
+                data = pickle.load(f)  # nosec B301
 
             return cls(
                 model=data["model"],

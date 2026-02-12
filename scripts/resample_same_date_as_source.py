@@ -14,6 +14,9 @@ except ImportError:
 import datetime
 import glob
 import os
+import shlex
+import subprocess  # nosec B404
+import tempfile
 
 import function_dataraster as dataraster
 import numpy as np
@@ -77,6 +80,24 @@ def listToStr(fileName, sep=" "):
     return strList
 
 
+
+def _run_command(command, report=None):
+    """Run external command safely without shell interpolation."""
+    args = shlex.split(command)
+    result = subprocess.run(args, capture_output=True, text=True, check=False)  # nosec B603
+    if result.returncode != 0:
+        stderr = (result.stderr or "").strip()
+        stdout = (result.stdout or "").strip()
+        if report is not None:
+            report.error(f"Command failed: {command}")
+        if report is not None:
+            if stderr:
+                report.error(stderr)
+            elif stdout:
+                report.error(stdout)
+        raise RuntimeError(f"Command failed with exit code {result.returncode}: {command}")
+
+
 def resampleWithSameDateAsSource(
     sourceImage,
     targetImage,
@@ -112,9 +133,8 @@ def resampleWithSameDateAsSource(
     report = Reporter.from_feedback(feedback, tag="Dzetsaka/Resample")
     report.progress(1)
 
-    tempDir = os.path.dirname(resampledImage) + "/tmp"
-    if not os.path.exists(tempDir):
-        os.makedirs(tempDir)
+    base_tmp_dir = os.path.dirname(resampledImage) or None
+    tempDir = tempfile.mkdtemp(prefix="dzetsaka_resample_", dir=base_tmp_dir)
 
     # RefDates = sp.loadtxt("/mnt/Data_2/Formosat/RAW/formosat_SudouestKalideos_2010/sample_time.csv")
     # ChangeDates = sp.loadtxt("/mnt/Data_2/Formosat/RAW/formosat_SudouestKalideos_2012/sample_time.csv")
@@ -197,8 +217,8 @@ def resampleWithSameDateAsSource(
                 + str(tempDir)
                 + "/mask1.tif"
             )
-            os.system(bashCommand)
-            os.system(bashCommandMask)
+            _run_command(bashCommand)
+            _run_command(bashCommandMask)
 
     # create doy vrt using real image
     for i, j in enumerate(sourceDOY):
@@ -227,8 +247,8 @@ def resampleWithSameDateAsSource(
                 + str(tempDir)
                 + "/mask0.tif"
             )
-            os.system(bashCommand)
-            os.system(bashCommandMask)
+            _run_command(bashCommand)
+            _run_command(bashCommandMask)
 
     report.progress(10)
     """
@@ -238,8 +258,8 @@ def resampleWithSameDateAsSource(
 
         bashCommand = ("gdalbuildvrt "+str(WDIR)+'temp_'+str(date)+".tif "+str(WDIR)+"mask1.tif ")*4+' -separate'
         bashCommandMask = "gdalbuildvrt "+str(WDIR)+'temp_'+str(date)+".nuages.tif "+str(WDIR)+"mask1.tif "
-        os.system(bashCommand)
-        os.system(bashCommandMask)
+        _run_command(bashCommand)
+        _run_command(bashCommandMask)
     """
     # os.remove(WDIR+'mask1.tif')
 
@@ -274,13 +294,13 @@ def resampleWithSameDateAsSource(
 
     bashCommand='gdalbuildvrt '+tokeep+"SITS_2012_temp.tif "+WDIR+"SITS_2010.tif "
 
-    os.system(bashCommand)
+    _run_command(bashCommand)
 
     bashCommand='gdal_translate SITS_2012_temp.tif '+WDIR+'NODTW_SameDatesAsRef/SITS_2012.tif && rm SITS_2012_temp.tif'
-    os.system(bashCommand)
+    _run_command(bashCommand)
 
     bashCommand='cp /mnt/Data_2/Formosat/SITS_2/SITS_2010.tif '+WDIR+'NODTW_SameDatesAsRef/SITS_2010.tif'
-    os.system(bashCommand)
+    _run_command(bashCommand)
 
     """
     # os.remove(tempDir+'/mask0.tif')
@@ -305,10 +325,10 @@ def resampleWithSameDateAsSource(
         toGapFillMask = glob.glob(tempDir + "/*_" + str(spectral + 1) + "_*[0-9]_mask.tif")
 
         vrt = "gdalbuildvrt -separate " + tempDir + "/temp.vrt" + listToStr(sorted(toGapFill))
-        os.system(vrt)
+        _run_command(vrt)
 
         vrtmask = "gdalbuildvrt -separate " + tempDir + "/temp_mask.vrt" + listToStr(sorted(toGapFillMask))
-        os.system(vrtmask)
+        _run_command(vrtmask)
 
         bashCommand = ("otbcli_ImageTimeSeriesGapFilling -in {} -mask {} -out {} {} -comp 1 -it linear -id {}").format(
             tempDir + "/temp.vrt",
@@ -320,7 +340,7 @@ def resampleWithSameDateAsSource(
 
         report.info("Executing gap filling : " + bashCommand)
 
-        os.system(bashCommand)
+        _run_command(bashCommand)
 
         os.remove(tempDir + "/temp.vrt")
         os.remove(tempDir + "/temp_mask.vrt")
@@ -330,10 +350,10 @@ def resampleWithSameDateAsSource(
             currentVrt = (tempDir + "/band_temp_{}_{}.tif").format(str(spectral + 1), i)
             tempList.append(currentVrt)
             vrt = ("gdalbuildvrt -b {0} {1} " + tempDir + "/temp_{2}.tif").format(j + 1, currentVrt, str(spectral + 1))
-            os.system(vrt)
+            _run_command(vrt)
 
         vrt = "gdalbuildvrt -separate " + tempDir + "/temp_" + str(spectral + 1) + ".vrt" + listToStr(tempList)
-        os.system(vrt)
+        _run_command(vrt)
 
     bandList = [tempDir + "/temp_" + str(x + 1) + ".vrt" for x in range(nSpectralBands)]
 
@@ -344,7 +364,7 @@ def resampleWithSameDateAsSource(
     report.progress(80)
     report.info("Executing image concatenation : " + conca)
 
-    os.system(conca)
+    _run_command(conca)
 
     files = glob.glob(tempDir + "/*")
     for file in files:
@@ -382,3 +402,4 @@ if __name__ == "__main__":
         n_spectral_bands,
         resampled_image,
     )
+

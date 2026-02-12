@@ -270,7 +270,7 @@ def _stratified_split(
         raise ValueError("train/test split too small to keep all classes in both subsets")
 
     train_counts = _allocate_train_counts(class_to_indices, n_train, n_samples)
-    rng = random.Random(random_state)
+    rng = random.Random(random_state)  # nosec B311
 
     train_indices: list[int] = []
     test_indices: list[int] = []

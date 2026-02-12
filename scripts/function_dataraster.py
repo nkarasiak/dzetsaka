@@ -689,12 +689,15 @@ def scale(x, M=None, m=None):
 
 
 if __name__ == "__main__":
+    import tempfile
+
     Raster = "/mnt/DATA/Test/dzetsaka/map.tif"
     ROI = "/home/nicolas/Bureau/train_300class.gpkg"
-    rasterize(Raster, ROI, "Class", "/tmp/roi.tif")
+    roi_path = os.path.join(tempfile.gettempdir(), "roi.tif")
+    rasterize(Raster, ROI, "Class", roi_path)
 
-    #    X, Y, coords = get_samples_from_roi(Raster, '/tmp/roi.tif', getCoords=True)
-    X, Y = get_samples_from_roi(Raster, "/tmp/roi.tif")
+    #    X, Y, coords = get_samples_from_roi(Raster, roi_path, getCoords=True)
+    X, Y = get_samples_from_roi(Raster, roi_path)
     print(np.amax(Y))
     """
     import accuracy_index as ai

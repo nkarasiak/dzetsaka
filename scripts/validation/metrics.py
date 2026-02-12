@@ -501,7 +501,7 @@ def create_classification_summary(
             auc = compute_multiclass_roc_auc(y_true, y_proba)
             summary += f"  ROC AUC:     {auc:.4f}\n"
         except Exception:
-            pass
+            summary += "  ROC AUC:     unavailable\n"
 
     # Per-class metrics
     summary += "\nPer-Class Metrics:\n"

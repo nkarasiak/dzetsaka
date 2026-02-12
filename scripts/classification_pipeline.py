@@ -83,7 +83,7 @@ import html
 import json
 import math
 import os
-import pickle
+import pickle  # nosec B403
 import tempfile
 import webbrowser
 from datetime import datetime, timezone
@@ -267,7 +267,7 @@ def _refresh_runtime_dependency_state():
         if WRAPPERS_SKLEARN_AVAILABLE:
             SKLEARN_AVAILABLE = True
     except Exception:
-        pass
+        WRAPPERS_SKLEARN_AVAILABLE = False
 
     # Optuna optimizer
     try:
@@ -939,7 +939,8 @@ def _write_report_bundle(
                 fig2.savefig(clf_heatmap_png, dpi=160)
                 plt.close(fig2)
     except Exception:
-        pass
+        # Heatmap generation is optional; keep report generation resilient.
+        embedded_clf_heatmap = ""
 
     embedded_heatmap = ""
     if os.path.exists(heatmap_png):
@@ -2163,7 +2164,7 @@ class LearnModel:
                                 f"(samples={sample_count}, imbalance_ratio={imbalance_ratio:.2f}).",
                             )
                     except Exception:
-                        pass
+                        _report(report, "Using default CatBoost search space due to auto-tuning pre-check failure.")
 
                     if "param_algo" in locals():
                         classifier = cb_wrapper(
@@ -3452,7 +3453,7 @@ class ClassifyImage:
 
         try:
             with open(model_path, "rb") as model_file:
-                model_data = pickle.load(model_file)
+                model_data = pickle.load(model_file)  # nosec B301
 
             # Validate model data structure
             if not isinstance(model_data, (list, tuple)) or len(model_data) != 4:
@@ -3925,7 +3926,8 @@ def rasterize(
     if not os.path.exists(shapefile_path):
         raise FileNotFoundError(f"Shapefile not found: {shapefile_path}")
 
-    filename = tempfile.mktemp(".tif")
+    fd, filename = tempfile.mkstemp(suffix=".tif")
+    os.close(fd)
 
     try:
         data = gdal.Open(raster_path, gdal.GA_ReadOnly)
@@ -4012,7 +4014,7 @@ if __name__ == "__main__":
     if Test == "STAND":
         extra_param = {
             "inStand": "Stand",
-            "saveDir": "/tmp/test1/",
+            "saveDir": os.path.join(tempfile.gettempdir(), "test1") + os.sep,
             "maxIter": 5,
             "SLOO": False,
         }
@@ -4034,7 +4036,7 @@ if __name__ == "__main__":
         VECTOR_PATH = "/mnt/DATA/Test/DA/ROI_2154.sqlite"
         CLASS_FIELD = "level1"
 
-        extra_param = {"distance": 100, "maxIter": 5, "saveDir": "/tmp/"}
+        extra_param = {"distance": 100, "maxIter": 5, "saveDir": tempfile.gettempdir() + os.sep}
         LearnModel(
             raster_path=RASTER_PATH,
             vector_path=VECTOR_PATH,

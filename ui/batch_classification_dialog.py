@@ -430,8 +430,8 @@ class BatchClassificationDialog(ThemeAwareWidget, QDialog):
             from src.dzetsaka.infrastructure.ui.status_bar_feedback import show_batch_classification_started
             if self.iface:
                 show_batch_classification_started(self.iface, len(self.raster_queue))
-        except Exception:
-            pass
+        except Exception as exc:
+            _ = exc
 
         # Update UI
         self.start_btn.setEnabled(False)

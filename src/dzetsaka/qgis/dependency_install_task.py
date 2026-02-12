@@ -5,7 +5,7 @@ from __future__ import annotations
 import glob
 import os
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import sys
 
 from qgis.core import QgsTask
@@ -139,7 +139,7 @@ class DependencyInstallTask(QgsTask):
                 continue
             # Quick validation check
             try:
-                result = subprocess.run(
+                result = subprocess.run(  # nosec B603
                     [py, "-c", "print('OK')"],
                     capture_output=True,
                     text=True,
@@ -182,7 +182,7 @@ class DependencyInstallTask(QgsTask):
                 cmd = [py, *pip_args]
                 self.log.info(f"Trying bundle install: {' '.join(cmd)}")
 
-                result = subprocess.run(
+                result = subprocess.run(  # nosec B603
                     cmd,
                     capture_output=True,
                     text=True,
@@ -229,7 +229,7 @@ class DependencyInstallTask(QgsTask):
 
             try:
                 cmd = [py, *pip_args]
-                result = subprocess.run(
+                result = subprocess.run(  # nosec B603
                     cmd,
                     capture_output=True,
                     text=True,

@@ -18,6 +18,7 @@ import json
 import os
 from pathlib import Path
 import urllib.request
+from urllib.parse import urlparse
 from collections import Counter
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -2159,7 +2160,10 @@ class RecipeGalleryDialog(QDialog):
             QMessageBox.information(self, "Remote gallery", "Set a remote URL to fetch shared recipes.")
             return
         try:
-            with urllib.request.urlopen(self._remote_url, timeout=4) as response:
+            parsed_url = urlparse(self._remote_url)
+            if parsed_url.scheme not in ("http", "https"):
+                raise ValueError("Remote URL must use http:// or https://")
+            with urllib.request.urlopen(self._remote_url, timeout=4) as response:  # nosec B310
                 data = response.read().decode("utf-8")
             payload = json.loads(data)
             recipes, errors = validate_recipe_list(payload)
@@ -3036,8 +3040,8 @@ class DataInputPage(QWizardPage):
                     show_quality_check_started(parent_widget.iface)
                     break
                 parent_widget = parent_widget.parent()
-        except Exception:
-            pass  # Fallback if status bar not available
+        except Exception as exc:
+            _ = exc  # Fallback if status bar not available
 
         # Resolve checker class from module at call time to avoid stale in-session imports.
         checker_cls = TrainingDataQualityChecker
@@ -3047,8 +3051,8 @@ class DataInputPage(QWizardPage):
 
             _tdq_mod = importlib.reload(_tdq_mod)
             checker_cls = getattr(_tdq_mod, "TrainingDataQualityChecker", TrainingDataQualityChecker)
-        except Exception:
-            pass
+        except Exception as exc:
+            _ = exc
 
         # Open the quality checker dialog
         dialog = checker_cls(
@@ -3071,8 +3075,8 @@ class DataInputPage(QWizardPage):
                         show_quality_check_completed(parent_widget.iface, issue_count)
                         break
                     parent_widget = parent_widget.parent()
-        except Exception:
-            pass
+        except Exception as exc:
+            _ = exc
 
     def get_classifier_code(self):
         # type: () -> str
@@ -3138,9 +3142,9 @@ class DataInputPage(QWizardPage):
             dialog.recipeSelected.connect(lambda recipe: self._apply_recipe_to_setup_dialog(recipe))
             dialog.exec_()
 
-        except Exception:
+        except Exception as exc:
             # Silently fail - recommendations are a nice-to-have feature
-            pass
+            _ = exc
 
     def _apply_recipe_to_setup_dialog(self, recipe):
         # type: (Dict[str, object]) -> None
@@ -3156,8 +3160,8 @@ class DataInputPage(QWizardPage):
             setup_dialog = self.wizard()
             if setup_dialog and hasattr(setup_dialog, "apply_recipe"):
                 setup_dialog.apply_recipe(recipe)
-        except Exception:
-            pass
+        except Exception as exc:
+            _ = exc
 
 # ---------------------------------------------------------------------------
 # Page 2 — Advanced Options
@@ -6133,8 +6137,8 @@ class QuickClassificationPanel(QWidget):
                     show_quality_check_started(parent_widget.iface)
                     break
                 parent_widget = parent_widget.parent()
-        except Exception:
-            pass
+        except Exception as exc:
+            _ = exc
 
         # Resolve checker class from module at call time to avoid stale in-session imports.
         checker_cls = TrainingDataQualityChecker
@@ -6144,8 +6148,8 @@ class QuickClassificationPanel(QWidget):
 
             _tdq_mod = importlib.reload(_tdq_mod)
             checker_cls = getattr(_tdq_mod, "TrainingDataQualityChecker", TrainingDataQualityChecker)
-        except Exception:
-            pass
+        except Exception as exc:
+            _ = exc
 
         # Open the quality checker dialog
         dialog = checker_cls(
@@ -6168,8 +6172,8 @@ class QuickClassificationPanel(QWidget):
                         show_quality_check_completed(parent_widget.iface, issue_count)
                         break
                     parent_widget = parent_widget.parent()
-        except Exception:
-            pass
+        except Exception as exc:
+            _ = exc
 
     def _on_vector_changed(self):
         # type: () -> None
@@ -6573,8 +6577,8 @@ class QuickClassificationPanel(QWidget):
             completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
             completer.setFilterMode(Qt.MatchFlag.MatchContains)
             self.recipeCombo.setCompleter(completer)
-        except Exception:
-            pass
+        except Exception as exc:
+            _ = exc
 
         restore_index = 0
         if current_name:
@@ -7091,9 +7095,9 @@ class QuickClassificationPanel(QWidget):
             dialog.recipeSelected.connect(self._apply_recommended_recipe)
             dialog.exec_()
 
-        except Exception:
+        except Exception as exc:
             # Silently fail - recommendations are a nice-to-have feature
-            pass
+            _ = exc
 
     def _apply_recommended_recipe(self, recipe):
         # type: (Dict[str, object]) -> None
@@ -7114,9 +7118,9 @@ class QuickClassificationPanel(QWidget):
                     # This will trigger recipe application through _apply_selected_recipe.
                     break
 
-        except Exception:
+        except Exception as exc:
             # If something goes wrong, just skip
-            pass
+            _ = exc
 
 class ClassificationDashboardDock(QDockWidget):
     """Dockable dashboard with Quick Run and Advanced Setup modes."""

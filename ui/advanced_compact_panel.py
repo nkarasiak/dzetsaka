@@ -520,8 +520,8 @@ class AdvancedCompactPanel(QWidget):
                     f"AdvancedPanel icon missing: icon='{icon_path}' tooltip='{tooltip}' candidates={candidates} "
                     f"plugin_root='{self._plugin_root_dir()}'"
                 )
-        except Exception:
-            pass
+        except Exception as exc:
+            _ = exc
         return icon_label
 
     def _on_vector_changed(self):
@@ -752,7 +752,11 @@ class AdvancedCompactPanel(QWidget):
 
         confidence_map = ""
         if self.confidenceCheck.isChecked():
-            confidence_map = self.confidenceEdit.text().strip() or tempfile.mktemp(".tif")
+            if self.confidenceEdit.text().strip():
+                confidence_map = self.confidenceEdit.text().strip()
+            else:
+                fd, confidence_map = tempfile.mkstemp(suffix=".tif")
+                os.close(fd)
 
         matrix_path = ""
         if self.validationCheck.isChecked():

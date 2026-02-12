@@ -794,8 +794,11 @@ if __name__ == "__main__":
 
     import function_dataraster
 
-    function_dataraster.rasterize(in_raster, in_vector, in_field, "/tmp/roi.tif")
-    X, Y, coords = function_dataraster.get_samples_from_roi(in_raster, "/tmp/roi.tif", getCoords=True)
+    import tempfile
+
+    roi_path = os.path.join(tempfile.gettempdir(), "roi.tif")
+    function_dataraster.rasterize(in_raster, in_vector, in_field, roi_path)
+    X, Y, coords = function_dataraster.get_samples_from_roi(in_raster, roi_path, getCoords=True)
 
     distance_array = distMatrix(coords)
     raw_cv = DistanceCV(distance_array, Y, 32, minTrain=-1, SLOO=True)

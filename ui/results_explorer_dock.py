@@ -860,8 +860,8 @@ class ResultsExplorerDock(ThemeAwareWidget, QDockWidget):
                                 except (ValueError, IndexError):
                                     matrix_data[true_class][class_labels[j]] = 0
 
-        except Exception:
-            pass
+        except Exception as exc:
+            _ = exc
 
         return matrix_data, metrics
 

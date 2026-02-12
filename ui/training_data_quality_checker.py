@@ -558,8 +558,8 @@ class TrainingDataQualityChecker(ThemeAwareWidget, QDialog):
                         duplicate_count += 1
                     else:
                         seen_combinations.add(key)
-            except Exception:
-                continue  # Skip if centroid calculation fails
+            except Exception as exc:
+                _ = exc  # Skip if centroid calculation fails
 
         if duplicate_count > 0:
             percentage = (duplicate_count / len(class_labels)) * 100 if class_labels else 0

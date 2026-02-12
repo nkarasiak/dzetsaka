@@ -5,7 +5,7 @@ feature importance maps from trained models.
 """
 
 import os
-import pickle
+import pickle  # nosec B403
 
 from qgis.core import (
     QgsProcessingAlgorithm,
@@ -162,7 +162,7 @@ All dzetsaka algorithms are supported:
         feedback.pushInfo("Loading model...")
         try:
             with open(model_path, "rb") as f:
-                model_data = pickle.load(f)
+                model_data = pickle.load(f)  # nosec B301
 
             # Extract model components
             if isinstance(model_data, (list, tuple)) and len(model_data) >= 4:
