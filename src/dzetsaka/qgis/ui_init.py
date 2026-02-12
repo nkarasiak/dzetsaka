@@ -6,6 +6,8 @@ from qgis.core import QgsApplication
 from qgis.PyQt.QtCore import QTimer
 from qgis.PyQt.QtGui import QAction, QIcon
 
+from dzetsaka.qgis.about_dialog import show_about_dialog
+
 
 def init_gui(plugin) -> None:
     """Create menu entries and toolbar icons inside QGIS GUI."""
@@ -31,6 +33,15 @@ def init_gui(plugin) -> None:
         add_to_toolbar=False,  # Don't add to toolbar, only menu
     )
 
+    # Add About action (menu only)
+    plugin.add_action(
+        icon_path,
+        text=plugin.tr("About dzetsaka"),
+        callback=lambda: show_about_dialog(plugin),
+        parent=plugin.iface.mainWindow(),
+        add_to_toolbar=False,
+    )
+
     plugin.dashboard_toolbar_action = QAction(
         QIcon(plugin.get_icon_path("icon.png")),
         "dzetsaka classifier dashboard",
@@ -42,4 +53,3 @@ def init_gui(plugin) -> None:
     if plugin._auto_open_dashboard_on_init:
         plugin._auto_open_dashboard_on_init = False
         QTimer.singleShot(1200, plugin.open_dashboard)
-

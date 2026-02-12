@@ -10,8 +10,8 @@
 name=dzetsaka : AI-Powered Remote Sensing Classification
 qgisMinimumVersion=3.0
 supportsQt6=True
-description=AI for Earth Observation and remote sensing classification for QGIS with 12 ML algorithms, Optuna optimization, SHAP explainability, and imbalance-aware validation.
-version=0.5.0
+description=Next-generation AI for Earth Observation in QGIS with 12 ML algorithms, major runtime optimizations, advanced UX workflows, recipe-driven configuration, and rich report generation.
+version=1.0.0
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -42,12 +42,12 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
-    0.5.0
-      * NEW: Guided Classification Dialog - step-by-step QWizard interface (Input, Algorithm, Advanced Options, Output, Review)
-      * NEW: Algorithm Comparison Panel - colour-coded table of all 12 classifiers with feature and dependency status
-      * NEW: Smart Defaults button auto-enables Optuna/SHAP/SMOTE when packages are available
-      * NEW: Guided workflow classification with full extraParam support (Optuna, SHAP, SMOTE, class weights, nested CV)
-      * ENHANCED: Menu-accessible guided workflow keeps toolbar clean while adding powerful defaults
+    1.0.0
+      * MAJOR: Milestone release with substantial architecture, performance, and UX upgrades
+      * NEW: 12 production-ready ML algorithms with optimization and explainability workflows
+      * NEW: Guided wizard + compact dashboard UX, smart defaults, algorithm comparison, and recipe-driven setup
+      * NEW: Integrated reporting and diagnostics pipeline for clearer, reproducible results
+      * ENHANCED: Faster training/inference paths, stronger validation workflows, and broader optional dependency support
     4.6.0
       * NEW: ui/classification_workflow_ui.py - 5-page QWizard with DataInput, Algorithm, AdvancedOptions, OutputConfig, Review pages
       * NEW: ui/comparison_panel.py - AlgorithmComparisonPanel QDialog with dependency-aware colouring
@@ -156,5 +156,7 @@ experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
+
+
 
 

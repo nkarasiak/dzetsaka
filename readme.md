@@ -5,6 +5,20 @@
 
 dzetsaka <img src="https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/icon.png" alt="dzetsaka logo" width="30px"/> is very fast and easy to use but also a **powerful classification plugin for Qgis**. Initially based on Gaussian Mixture Model classifier developed by [Mathieu Fauvel](http://fauvel.mathieu.free.fr), this plugin now supports **12 machine learning algorithms** including advanced gradient boosting methods like XGBoost, LightGBM, and CatBoost. This plugin is a more generalist tool than [Historical Map](https://github.com/lennepkade/HistoricalMap) which was dedicated to classify forests from old maps.
 This plugin has by developped by [Nicolas Karasiak](https://github.com/nkarasiak/dzetsaka).
+## 🚀 What's New In 1.0.0 (Awesome Milestone)
+
+Version **1.0.0** is a major leap in capability and usability:
+
+- **12 production-ready ML algorithms** from classic baselines to modern boosting methods.
+- **Major optimization upgrades** for faster training/inference and improved runtime behavior.
+- **Advanced optimization workflows** with Optuna-based hyperparameter search.
+- **Explainable AI support** with SHAP-based feature importance.
+- **Imbalance-aware validation stack** with SMOTE, class weights, and nested CV.
+- **Much better UI/UX** with guided wizard workflows, compact dashboard modes, and smart defaults.
+- **Recipe-driven workflows** for quick, reusable, and shareable configuration patterns.
+- **Richer reporting outputs** for clearer, reproducible, and more actionable classification results.
+
+In short: faster, smarter, cleaner, and much more productive end-to-end.
 
 ## QGIS vs core runtime
 
@@ -45,7 +59,7 @@ dzetsaka now supports **12 powerful machine learning algorithms**:
 - **Support Vector Machine (SVM)** - High-accuracy classifier
 - **K-Nearest Neighbors (KNN)** - Simple distance-based classifier
 
-### **Advanced Algorithms** ⭐ NEW
+### **Advanced Algorithms**
 - **XGBoost (XGB)** - State-of-the-art gradient boosting
 - **LightGBM (LGB)** - Fast gradient boosting framework
 - **CatBoost (CB)** - Gradient boosting with strong defaults
@@ -57,7 +71,7 @@ dzetsaka now supports **12 powerful machine learning algorithms**:
 
 ### **🚀 Automatic Dependency Installation**
 
-**NEW FEATURE**: dzetsaka can now automatically install missing dependencies!
+dzetsaka can automatically install missing dependencies when possible.
 
 When you select an algorithm that requires additional packages (XGBoost, LightGBM, CatBoost), dzetsaka will:
 1. **Detect missing dependencies** automatically
@@ -175,3 +189,5 @@ doi={10.5281/zenodo.2552284}
 I would like to thank the [Guiana Amazonian Park](http://www.parc-amazonien-guyane.fr/) for their trust in my work, and the Master 2 Geomatics [Sigma](http://sigma.univ-toulouse.fr/en/welcome.html) for their excellent lessons in geomatics.
 
 ![Sponsors of Qgis](https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/logo.png)
+
+

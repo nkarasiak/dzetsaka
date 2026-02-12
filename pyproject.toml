@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dzetsaka"
-version = "0.5.0"
-description = "A powerful and fast classification plugin for QGIS supporting 12 machine learning algorithms with Optuna optimization, SHAP explainability, and class imbalance handling"
+version = "1.0.0"
+description = "Next-generation classification plugin for QGIS with 12 machine learning algorithms, major runtime optimization, advanced UX workflows, recipe-driven setup, and rich reporting."
 readme = "readme.md"
 license = {text = "GPL-2.0-or-later"}
 authors = [
@@ -394,3 +394,4 @@ dzetsaka = [
     "README.md",
     "LICENSE"
 ]
+

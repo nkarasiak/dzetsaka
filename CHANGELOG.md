@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.0] - 2026-02-04
+## [1.0.0] - 2026-02-04
 
 ### Added - Phase 5: Polish & Testing
 - Comprehensive unit tests for all wizard helper functions and comparison panel data builder
@@ -13,8 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tests/unit/test_comparison_panel.py` — 20+ tests covering table data structure, feature support mapping, and availability logic
 
 ### Changed
-- Version bumped to 0.5.0 (stable release)
-- `metadata.txt` and `pyproject.toml` updated to 0.5.0
+- Version bumped to 1.0.0 (major milestone release)
+- `metadata.txt` and `pyproject.toml` updated to 1.0.0
 
 ## [4.6.0] - 2026-02-04
 
@@ -704,3 +704,4 @@ model = LearnModel(
 
 ### Added
 - Initial release of dzetsaka classification tool
+
