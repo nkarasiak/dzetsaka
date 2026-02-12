@@ -1,5 +1,6 @@
 import os
 import tempfile
+from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from qgis.PyQt.QtCore import pyqtSignal
@@ -451,14 +452,27 @@ class AdvancedCompactPanel(QWidget):
     def _icon_asset_path(self, icon_path):
         if icon_path.startswith(":/"):
             return icon_path
-        return os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "img", icon_path))
+        plugin_root = self._plugin_root_dir()
+        return os.path.normpath(os.path.join(plugin_root, "img", icon_path))
+
+    def _plugin_root_dir(self):
+        try:
+            import dzetsaka as _dzetsaka_pkg
+
+            return str(Path(_dzetsaka_pkg.__file__).resolve().parent)
+        except Exception:
+            here = Path(__file__).resolve().parent
+            if here.name == "__pycache__":
+                here = here.parent
+            return str(here.parent)
 
     def _resource_to_file_path(self, resource_path):
         prefix = ":/plugins/dzetsaka/"
         if not resource_path.startswith(prefix):
             return None
         rel = resource_path[len(prefix):]
-        return os.path.normpath(os.path.join(os.path.dirname(__file__), "..", rel))
+        plugin_root = self._plugin_root_dir()
+        return os.path.normpath(os.path.join(plugin_root, rel))
 
     def _icon_label(self, icon_path, tooltip, fallback_resource=None):
         icon_label = QLabel()

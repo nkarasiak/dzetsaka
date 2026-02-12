@@ -16,6 +16,7 @@ Author:
 
 import json
 import os
+from pathlib import Path
 import urllib.request
 from collections import Counter
 from typing import Any, Dict, List, Optional, Tuple
@@ -5791,7 +5792,20 @@ class QuickClassificationPanel(QWidget):
         # type: (str) -> str
         if icon_path.startswith(":/"):
             return icon_path
-        return os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "img", icon_path))
+        plugin_root = self._plugin_root_dir()
+        return os.path.normpath(os.path.join(plugin_root, "img", icon_path))
+
+    def _plugin_root_dir(self):
+        # type: () -> str
+        try:
+            import dzetsaka as _dzetsaka_pkg
+
+            return str(Path(_dzetsaka_pkg.__file__).resolve().parent)
+        except Exception:
+            here = Path(__file__).resolve().parent
+            if here.name == "__pycache__":
+                here = here.parent
+            return str(here.parent)
 
     def _resource_to_file_path(self, resource_path):
         # type: (str) -> Optional[str]
@@ -5799,7 +5813,8 @@ class QuickClassificationPanel(QWidget):
         if not resource_path.startswith(prefix):
             return None
         rel = resource_path[len(prefix):]
-        return os.path.normpath(os.path.join(os.path.dirname(__file__), "..", rel))
+        plugin_root = self._plugin_root_dir()
+        return os.path.normpath(os.path.join(plugin_root, rel))
 
     def _icon_label(self, icon_path, tooltip, fallback_resource=None):
         # type: (str, str, Optional[str]) -> QLabel
@@ -5826,13 +5841,30 @@ class QuickClassificationPanel(QWidget):
                 candidates.append(fs_fallback)
 
         pix = QPixmap()
+        selected_candidate = None
         for candidate in candidates:
             candidate_pix = QPixmap(candidate)
             if not candidate_pix.isNull():
                 pix = candidate_pix
+                selected_candidate = candidate
                 break
         icon_label.setPixmap(pix)
         icon_label.setScaledContents(True)
+        try:
+            from dzetsaka.logging import create_logger
+
+            logger = create_logger("dzetsaka.icon-debug")
+            if selected_candidate:
+                logger.info(
+                    f"QuickPanel icon loaded: icon='{icon_path}' tooltip='{tooltip}' selected='{selected_candidate}'"
+                )
+            else:
+                logger.warning(
+                    f"QuickPanel icon missing: icon='{icon_path}' tooltip='{tooltip}' candidates={candidates} "
+                    f"plugin_root='{self._plugin_root_dir()}'"
+                )
+        except Exception:
+            pass
         return icon_label
 
     def _setup_shortcuts(self):

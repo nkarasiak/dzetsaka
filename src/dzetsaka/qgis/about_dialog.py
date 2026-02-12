@@ -62,3 +62,4 @@ def show_about_dialog(plugin) -> None:
     layout.addWidget(buttons)
 
     dialog.exec()
+
