@@ -172,6 +172,7 @@ class RasterAnalyzer:
             List of detected hints
 
         """
+        filename = filename.lower()
         hints = []
 
         # Check for common keywords
@@ -197,6 +198,12 @@ class RasterAnalyzer:
         for keyword in keywords:
             if keyword in filename:
                 hints.append(keyword)
+
+        # Add normalized sensor hints for common coded filenames.
+        if "landsat" not in hints and any(token in filename for token in ("lc08", "lc09", "lo8", "lo9")):
+            hints.append("landsat")
+        if "sentinel" not in hints and "s2" in filename:
+            hints.append("sentinel")
 
         return hints
 

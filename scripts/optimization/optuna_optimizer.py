@@ -22,10 +22,10 @@ Author:
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Union
+import warnings
+from typing import Any
 
 import numpy as np
-import warnings
 
 try:
     from sklearn.base import BaseEstimator
@@ -55,7 +55,16 @@ except ImportError:
     SKLEARN_AVAILABLE = False
 
 
-from ...logging import create_logger
+try:
+    from ...logging import create_logger
+except ImportError:
+    try:
+        from dzetsaka.logging import create_logger
+    except ImportError:
+        from logging import getLogger
+
+        def create_logger(name: str):
+            return getLogger(name)
 
 
 class OptunaOptimizer:
@@ -90,7 +99,7 @@ class OptunaOptimizer:
         self,
         classifier_code: str,
         n_trials: int = 100,
-        timeout: Optional[int] = None,
+        timeout: int | None = None,
         random_seed: int = 42,
         n_jobs: int = -1,
         verbose: bool = False,
@@ -107,7 +116,7 @@ class OptunaOptimizer:
         self.random_seed = random_seed
         self.n_jobs = n_jobs
         self.verbose = verbose
-        self.study: Optional[optuna.Study] = None
+        self.study: optuna.Study | None = None
         self.log = create_logger("Dzetsaka/Optuna")
 
         # Configure Optuna logging
@@ -118,10 +127,10 @@ class OptunaOptimizer:
         self,
         X: np.ndarray,
         y: np.ndarray,
-        cv: Union[int, Any] = 5,
+        cv: int | Any = 5,
         scoring: str = "f1_weighted",
-        groups: Optional[np.ndarray] = None,
-    ) -> Dict[str, Any]:
+        groups: np.ndarray | None = None,
+    ) -> dict[str, Any]:
         """Run Optuna optimization and return best parameters.
 
         Parameters
@@ -206,7 +215,7 @@ class OptunaOptimizer:
 
         return self.study.best_params
 
-    def _suggest_params(self, trial: optuna.Trial, classifier_code: str) -> Dict[str, Any]:
+    def _suggest_params(self, trial: optuna.Trial, classifier_code: str) -> dict[str, Any]:
         """Suggest hyperparameters for a given classifier.
 
         Parameters
@@ -338,7 +347,7 @@ class OptunaOptimizer:
         else:
             raise ValueError(f"Unknown classifier code: {classifier_code}")
 
-    def _create_classifier(self, classifier_code: str, params: Dict[str, Any]) -> Any:
+    def _create_classifier(self, classifier_code: str, params: dict[str, Any]) -> Any:
         """Create classifier instance with given parameters.
 
         Parameters
@@ -407,7 +416,7 @@ class OptunaOptimizer:
 
             classifier_cls = CatBoostClassifier
             if BaseEstimator is not None:
-                class _CatBoostSklearnCompanion(CatBoostClassifier, BaseEstimator):  # noqa: WPS306
+                class _CatBoostSklearnCompanion(CatBoostClassifier, BaseEstimator):
                     # Place BaseEstimator on the right so __sklearn_tags__ is available to sklearn.clone
                     pass
 
@@ -443,7 +452,7 @@ class OptunaOptimizer:
         else:
             raise ValueError(f"Unknown classifier code: {classifier_code}")
 
-    def get_optimization_history(self) -> Optional[Dict[str, Any]]:
+    def get_optimization_history(self) -> dict[str, Any] | None:
         """Get optimization history and statistics.
 
         Returns
@@ -465,6 +474,6 @@ class OptunaOptimizer:
             "n_failed": len([t for t in self.study.trials if t.state == optuna.trial.TrialState.FAIL]),
         }
 
-    def get_optimization_stats(self) -> Optional[Dict[str, Any]]:
+    def get_optimization_stats(self) -> dict[str, Any] | None:
         """Alias for backwards compatibility with dzetsaka reporting."""
         return self.get_optimization_history()

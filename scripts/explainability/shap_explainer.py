@@ -44,14 +44,16 @@ License:
 GNU General Public License v2.0 or later
 
 """
+from __future__ import annotations
+
 import contextlib
 import os
 import pickle
 import sys
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable
 
 import numpy as np
-from osgeo import gdal, gdal_array
+from osgeo import gdal
 
 # Try to import SHAP (optional dependency)
 try:
@@ -59,9 +61,9 @@ try:
 
     # Fix for QGIS: Ensure sys.stderr/stdout exist for tqdm (used by SHAP)
     if sys.stderr is None:
-        sys.stderr = open(os.devnull, "w")
+        sys.stderr = open(os.devnull, "w")  # noqa: SIM115
     if sys.stdout is None:
-        sys.stdout = open(os.devnull, "w")
+        sys.stdout = open(os.devnull, "w")  # noqa: SIM115
 
     SHAP_AVAILABLE = True
 except ImportError:
@@ -82,9 +84,9 @@ def _safe_tqdm_environment():
     try:
         # Ensure valid file handles for tqdm
         if sys.stderr is None:
-            sys.stderr = open(os.devnull, "w")
+            sys.stderr = open(os.devnull, "w")  # noqa: SIM115
         if sys.stdout is None:
-            sys.stdout = open(os.devnull, "w")
+            sys.stdout = open(os.devnull, "w")  # noqa: SIM115
         yield
     finally:
         # Restore original values (even if they were None)
@@ -107,16 +109,17 @@ except ImportError:
 
     try:
         import function_dataraster as dataraster
+
         from domain.exceptions import ClassificationError, DependencyError, OutputError
     except ImportError:
         # Create minimal fallback exceptions if not available
-        class DependencyError(Exception):  # noqa: N818
+        class DependencyError(Exception):
             """Dependency error fallback."""
 
-        class ClassificationError(Exception):  # noqa: N818
+        class ClassificationError(Exception):
             """Classification error fallback."""
 
-        class OutputError(Exception):  # noqa: N818
+        class OutputError(Exception):
             """Output error fallback."""
 
         dataraster = None
@@ -170,8 +173,8 @@ class ModelExplainer:
     def __init__(
         self,
         model: Any,
-        feature_names: Optional[List[str]] = None,
-        background_data: Optional[np.ndarray] = None,
+        feature_names: list[str] | None = None,
+        background_data: np.ndarray | None = None,
     ):
         """Initialize ModelExplainer with model and feature information."""
         if not SHAP_AVAILABLE:
@@ -187,13 +190,13 @@ class ModelExplainer:
         self.model = model
         self.feature_names = feature_names
         self.background_data = background_data
-        self.explainer: Optional[Any] = None
-        self.explainer_type: Optional[str] = None
+        self.explainer: Any | None = None
+        self.explainer_type: str | None = None
 
         # Don't create explainer yet - do it lazily when needed
         # This allows background_data to be provided later for KernelExplainer
 
-    def _create_explainer(self, background_data: Optional[np.ndarray] = None) -> Any:
+    def _create_explainer(self, background_data: np.ndarray | None = None) -> Any:
         """Create appropriate SHAP explainer based on model type.
 
         Parameters
@@ -235,10 +238,7 @@ class ModelExplainer:
                 )
 
             # Sample background data if too large (max 100 samples for performance)
-            if len(bg_data) > 100:
-                bg_sample = shap.sample(bg_data, 100, random_state=42)
-            else:
-                bg_sample = bg_data
+            bg_sample = shap.sample(bg_data, 100, random_state=42) if len(bg_data) > 100 else bg_data
 
             # Create KernelExplainer with model's predict_proba
             if hasattr(self.model, "predict_proba"):
@@ -288,9 +288,9 @@ class ModelExplainer:
     def get_feature_importance(
         self,
         X_sample: np.ndarray,
-        background_data: Optional[np.ndarray] = None,
+        background_data: np.ndarray | None = None,
         aggregate_method: str = "mean_abs",
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Calculate SHAP-based feature importance.
 
         Computes SHAP values for the given sample and aggregates them
@@ -329,38 +329,91 @@ class ModelExplainer:
         """
         if X_sample is None or len(X_sample) == 0:
             raise ValueError("X_sample cannot be None or empty")
+        if aggregate_method not in {"mean_abs", "mean", "max_abs"}:
+            raise ValueError(f"Unknown aggregate_method: {aggregate_method}. Use 'mean_abs', 'mean', or 'max_abs'")
+        if hasattr(self.model, "n_features_in_") and X_sample.shape[1] != int(self.model.n_features_in_):
+            raise ValueError(
+                f"X_sample has {X_sample.shape[1]} features, but model expects {self.model.n_features_in_}."
+            )
 
         # Create explainer if not already created
         if self.explainer is None:
             self._create_explainer(background_data)
 
+        # Windows-specific stability fallback: some SHAP TreeExplainer builds can
+        # crash the Python process in native code. Use model-native importances.
+        if os.name == "nt" and self.explainer_type == "tree" and hasattr(self.model, "feature_importances_"):
+            importance_values = np.asarray(self.model.feature_importances_, dtype=float).reshape(-1)
+            if importance_values.size != X_sample.shape[1]:
+                if importance_values.size > X_sample.shape[1]:
+                    importance_values = importance_values[: X_sample.shape[1]]
+                else:
+                    importance_values = np.pad(
+                        importance_values,
+                        (0, X_sample.shape[1] - importance_values.size),
+                        mode="constant",
+                    )
+            total = importance_values.sum()
+            if total > 0:
+                importance_values = importance_values / total
+            if self.feature_names is None:
+                self.feature_names = [f"Feature_{i}" for i in range(len(importance_values))]
+            return {name: float(value) for name, value in zip(self.feature_names, importance_values.tolist())}
+
         # Compute SHAP values with protection against QGIS sys.stderr/stdout issues
         with _safe_tqdm_environment():
-            # silent=True disables tqdm progress bar (which needs valid file handles)
-            shap_values = self.explainer.shap_values(X_sample, silent=True)
+            # SHAP API differs by version; use silent flag only when supported.
+            try:
+                shap_values = self.explainer.shap_values(X_sample, silent=True)
+            except TypeError:
+                shap_values = self.explainer.shap_values(X_sample)
 
-        # Handle multiclass case - shap_values will be a list of arrays
-        if isinstance(shap_values, list):
-            # Average absolute SHAP values across all classes
-            shap_values = np.abs(np.array(shap_values)).mean(axis=0)
-        else:
-            # Binary classification or regression
-            shap_values = np.abs(shap_values) if aggregate_method in ["mean_abs", "max_abs"] else shap_values
+        shap_array = np.asarray(shap_values)
+        n_features = X_sample.shape[1]
 
-        # Aggregate SHAP values by feature
-        if aggregate_method == "mean_abs":
-            importance_values = np.abs(shap_values).mean(axis=0)
-        elif aggregate_method == "mean":
-            importance_values = shap_values.mean(axis=0)
-        elif aggregate_method == "max_abs":
-            importance_values = np.abs(shap_values).max(axis=0)
-        else:
+        def _aggregate_2d(values: np.ndarray) -> np.ndarray:
+            """Aggregate per-sample SHAP values into per-feature importance."""
+            if aggregate_method == "mean_abs":
+                return np.abs(values).mean(axis=0)
+            if aggregate_method == "mean":
+                return values.mean(axis=0)
+            if aggregate_method == "max_abs":
+                return np.abs(values).max(axis=0)
             raise ValueError(f"Unknown aggregate_method: {aggregate_method}. Use 'mean_abs', 'mean', or 'max_abs'")
 
-        importance_values = np.asarray(importance_values)
-        if importance_values.ndim > 1:
-            importance_values = importance_values.mean(axis=0)
-        importance_values = importance_values.astype(float)
+        if shap_array.ndim == 1:
+            importance_values = shap_array.astype(float)
+        elif shap_array.ndim == 2:
+            importance_values = _aggregate_2d(shap_array)
+        elif shap_array.ndim == 3:
+            # SHAP returns either [classes, samples, features] or [samples, features, classes].
+            if shap_array.shape[-1] == n_features:
+                per_sample_feature = np.abs(shap_array).mean(axis=0) if aggregate_method != "mean" else shap_array.mean(axis=0)
+            elif shap_array.shape[1] == n_features:
+                per_sample_feature = np.abs(shap_array).mean(axis=2) if aggregate_method != "mean" else shap_array.mean(axis=2)
+            else:
+                feature_axis = int(np.argmin(np.abs(np.array(shap_array.shape) - n_features)))
+                reduce_axes = tuple(ax for ax in range(shap_array.ndim) if ax != feature_axis)
+                if aggregate_method == "max_abs":
+                    importance_values = np.abs(shap_array).max(axis=reduce_axes)
+                elif aggregate_method == "mean":
+                    importance_values = shap_array.mean(axis=reduce_axes)
+                else:
+                    importance_values = np.abs(shap_array).mean(axis=reduce_axes)
+                importance_values = np.asarray(importance_values, dtype=float)
+                per_sample_feature = None
+
+            if per_sample_feature is not None:
+                importance_values = _aggregate_2d(np.asarray(per_sample_feature))
+        else:
+            raise ValueError(f"Unexpected SHAP values shape: {shap_array.shape}")
+
+        importance_values = np.asarray(importance_values, dtype=float).reshape(-1)
+        if importance_values.size != n_features:
+            if importance_values.size > n_features:
+                importance_values = importance_values[:n_features]
+            else:
+                importance_values = np.pad(importance_values, (0, n_features - importance_values.size), mode="constant")
 
         # Normalize to sum to 1.0
         total = importance_values.sum()
@@ -384,10 +437,10 @@ class ModelExplainer:
         self,
         raster_path: str,
         output_path: str,
-        background_data: Optional[np.ndarray] = None,
+        background_data: np.ndarray | None = None,
         sample_size: int = 1000,
         aggregate_method: str = "mean_abs",
-        progress_callback: Optional[Callable[[int], None]] = None,
+        progress_callback: Callable[[int], None] | None = None,
     ) -> str:
         """Generate raster showing per-pixel feature importance.
 
@@ -459,8 +512,6 @@ class ModelExplainer:
         try:
             # Get raster dimensions
             n_bands = raster_ds.RasterCount
-            n_cols = raster_ds.RasterXSize
-            n_rows = raster_ds.RasterYSize
 
             if progress_callback:
                 progress_callback(5)
@@ -546,9 +597,9 @@ class ModelExplainer:
         self,
         output_path: str,
         template_ds: gdal.Dataset,
-        importance: Dict[str, float],
+        importance: dict[str, float],
         n_bands: int,
-        progress_callback: Optional[Callable[[int], None]] = None,
+        progress_callback: Callable[[int], None] | None = None,
     ) -> None:
         """Write feature importance as multi-band raster.
 
@@ -669,7 +720,7 @@ class ModelExplainer:
             ) from e
 
     @classmethod
-    def load_from_file(cls, file_path: str) -> "ModelExplainer":
+    def load_from_file(cls, file_path: str) -> ModelExplainer:
         """Load explainer from file.
 
         Parameters
@@ -701,15 +752,15 @@ class ModelExplainer:
             raise ValueError(f"Failed to load explainer from {file_path}: {e!s}") from e
 
 
-def check_shap_available() -> Tuple[bool, Optional[str]]:
+def check_shap_available() -> tuple[bool, str | None]:
     """Check if SHAP is available and return version info.
 
-    Returns
+    Returns:
     -------
     Tuple[bool, Optional[str]]
         (is_available, version_string)
 
-    Example
+    Example:
     -------
     >>> available, version = check_shap_available()
     >>> if available:

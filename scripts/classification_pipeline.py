@@ -41,17 +41,44 @@ GNU General Public License v2.0 or later
 """
 
 try:
-    # when using it from QGIS 3
+    # Preferred package-relative imports (plugin/runtime context)
     from . import accuracy_index as ai
     from . import function_dataraster as dataraster
-    from . import progress_bar
-except BaseException:
-    import accuracy_index as ai
-    import function_dataraster as dataraster
-    import progress_bar
+except ImportError:
+    # Standalone/script fallback
+    try:
+        from dzetsaka.scripts import accuracy_index as ai
+        from dzetsaka.scripts import function_dataraster as dataraster
+    except ImportError:
+        import accuracy_index as ai
+        import function_dataraster as dataraster
 
-import contextlib
+try:
+    # QGIS runtime progress bar helper
+    from . import progress_bar
+except Exception:
+    try:
+        from dzetsaka.scripts import progress_bar
+    except Exception:
+        class _NoOpProgressBar:
+            """Fallback progress bar for non-QGIS contexts (tests/CLI)."""
+
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def addStep(self, step=1):
+                pass
+
+            def reset(self):
+                pass
+
+        class _NoOpProgressModule:
+            ProgressBar = _NoOpProgressBar
+
+        progress_bar = _NoOpProgressModule()
+
 import base64
+import contextlib
 import html
 import json
 import math
@@ -85,20 +112,18 @@ class PolygonCoverageInsufficientError(RuntimeError):
 
 # Try to import SHAP explainer (optional)
 try:
-    from .explainability.shap_explainer import ModelExplainer, SHAP_AVAILABLE
-except ImportError:
+    from .explainability.shap_explainer import SHAP_AVAILABLE, ModelExplainer
+except Exception:
     SHAP_AVAILABLE = False
     ModelExplainer = None
 
 # Try to import sampling techniques (Phase 3)
 try:
-    from .sampling.smote_sampler import SMOTESampler, apply_smote_if_needed, IMBLEARN_AVAILABLE
     from .sampling.class_weights import (
         compute_class_weights,
-        apply_class_weights_to_model,
-        compute_sample_weights,
         recommend_strategy,
     )
+    from .sampling.smote_sampler import IMBLEARN_AVAILABLE, SMOTESampler, apply_smote_if_needed
 
     SAMPLING_AVAILABLE = True
 except ImportError:
@@ -110,8 +135,8 @@ except ImportError:
 
 # Try to import validation techniques (Phase 3)
 try:
-    from .validation.nested_cv import NestedCrossValidator, perform_nested_cv
-    from .validation.metrics import ValidationMetrics, create_classification_summary
+    from .validation.metrics import ValidationMetrics
+    from .validation.nested_cv import NestedCrossValidator
 
     VALIDATION_AVAILABLE = True
 except ImportError:
@@ -152,13 +177,22 @@ except ImportError:
     confusion_matrix = None
     SKLEARN_AVAILABLE = False
 
-from .. import classifier_config
-from dzetsaka.logging import Reporter, show_issue_popup
-from .wrappers.label_encoders import (
-    XGBLabelWrapper,
-    LGBLabelWrapper,
-    CBClassifierWrapper,
+try:
+    from .. import classifier_config
+except ImportError:
+    try:
+        from dzetsaka import classifier_config
+    except ImportError:
+        import classifier_config
+from dzetsaka.logging import Reporter, show_issue_popup  # noqa: E402
+
+from .wrappers.label_encoders import (  # noqa: E402
     SKLEARN_AVAILABLE as WRAPPERS_SKLEARN_AVAILABLE,
+)
+from .wrappers.label_encoders import (  # noqa: E402
+    CBClassifierWrapper,
+    LGBLabelWrapper,
+    XGBLabelWrapper,
 )
 
 # Update SKLEARN_AVAILABLE if needed
@@ -264,11 +298,11 @@ def _refresh_runtime_dependency_state():
     # Sampling utilities
     try:
         try:
-            from .sampling import smote_sampler as smote_sampler_module
             from .sampling import class_weights as class_weights_module
+            from .sampling import smote_sampler as smote_sampler_module
         except ImportError:
-            import sampling.smote_sampler as smote_sampler_module
             import sampling.class_weights as class_weights_module
+            import sampling.smote_sampler as smote_sampler_module
         smote_sampler_module = importlib.reload(smote_sampler_module)
         class_weights_module = importlib.reload(class_weights_module)
         SMOTESampler = getattr(smote_sampler_module, "SMOTESampler", None)
@@ -292,11 +326,11 @@ def _refresh_runtime_dependency_state():
     # Validation utilities
     try:
         try:
-            from .validation import nested_cv as nested_cv_module
             from .validation import metrics as metrics_module
+            from .validation import nested_cv as nested_cv_module
         except ImportError:
-            import validation.nested_cv as nested_cv_module
             import validation.metrics as metrics_module
+            import validation.nested_cv as nested_cv_module
         nested_cv_module = importlib.reload(nested_cv_module)
         metrics_module = importlib.reload(metrics_module)
         NestedCrossValidator = getattr(nested_cv_module, "NestedCrossValidator", None)
@@ -893,7 +927,7 @@ def _write_report_bundle(
                 fig2 = plt.figure(figsize=(10, 7))
                 ax2 = fig2.add_subplot(111)
                 with contextlib.suppress(Exception):
-                    import seaborn as sns  # noqa: F811
+                    import seaborn as sns
 
                     sns.heatmap(metric_df, annot=True, ax=ax2)
                 ax2.set_title("Classification report heatmap")
@@ -1000,7 +1034,7 @@ def _write_report_bundle(
         wedges: List[str] = []
         legend_rows: List[str] = []
 
-        for i, cls_val in enumerate(values):
+        for i, _cls_val in enumerate(values):
             count = int(support[i])
             if count <= 0:
                 continue
@@ -1048,7 +1082,6 @@ def _write_report_bundle(
         summary_metrics: Dict[str, Any], config_meta: Dict[str, Any], class_values: List[Any], class_names: List[str]
     ) -> str:
         """Generate an AI-style executive summary of classification results."""
-
         # 1. Classify accuracy level
         accuracy = summary_metrics.get("accuracy", 0.0)
         if accuracy >= 0.90:
@@ -1373,7 +1406,7 @@ def _write_report_bundle(
             grid_combinations = config_meta.get("grid_search_combinations")
             if grid_combinations:
                 handle.write(
-                    f"<p><strong>Grid Search with cross-validation</strong>: Systematically tested "
+                    "<p><strong>Grid Search with cross-validation</strong>: Systematically tested "
                 )
                 handle.write(
                     f"<strong>{grid_combinations} different hyperparameter combinations</strong> using stratified "
@@ -1422,7 +1455,7 @@ def _write_report_bundle(
         if shap_config.get("enabled"):
             handle.write("<h3>Explainability Analysis</h3>")
             handle.write(
-                f"<p><strong>SHAP (SHapley Additive exPlanations)</strong> was computed to quantify feature importance. "
+                "<p><strong>SHAP (SHapley Additive exPlanations)</strong> was computed to quantify feature importance. "
             )
             handle.write(
                 f"SHAP values were calculated on {shap_config.get('sample_size', 1000):,} randomly sampled training pixels, "
@@ -1494,7 +1527,7 @@ def _write_report_bundle(
                 "<div class='intro' style='background:linear-gradient(135deg,#fdf4ff 0%,#fae8ff 100%);border-color:#f0abfc;'>"
             )
             handle.write("<h3>🎯 Feature Importance (SHAP Analysis)</h3>")
-            handle.write(f"<p><strong>Method:</strong> SHAP (SHapley Additive exPlanations) values computed on ")
+            handle.write("<p><strong>Method:</strong> SHAP (SHapley Additive exPlanations) values computed on ")
             handle.write(f"{shap_config.get('sample_size', 1000):,} randomly sampled training pixels.</p>")
             handle.write("<p><strong>Interpretation:</strong> Higher values indicate features that contribute more ")
             handle.write("to the model's predictions. SHAP values represent the marginal contribution of each ")
@@ -1515,7 +1548,7 @@ def _write_report_bundle(
                 handle.write("<tr>")
                 handle.write(f"<td style='text-align:left;'><code>{html.escape(str(feature))}</code></td>")
                 handle.write(f"<td style='text-align:right;'><code>{importance_val:.4f}</code></td>")
-                handle.write(f"<td style='text-align:left;'>")
+                handle.write("<td style='text-align:left;'>")
                 handle.write(
                     f"<div style='background:#a855f7;height:12px;width:{bar_width}%;border-radius:2px;'></div>"
                 )
@@ -1884,7 +1917,7 @@ class LearnModel:
 
             # model_selection = True
             try:
-                from sklearn.model_selection import GridSearchCV, StratifiedKFold, StratifiedGroupKFold
+                from sklearn.model_selection import GridSearchCV, StratifiedGroupKFold, StratifiedKFold
 
                 joblib = __import__("joblib")  # Test for joblib dependency
             except ImportError as e:
@@ -2326,13 +2359,12 @@ class LearnModel:
             use_optuna = extraParam.get("USE_OPTUNA", False) if extraParam else False
             optuna_trials = extraParam.get("OPTUNA_TRIALS", 100) if extraParam else 100
             # Note: optuna_stats is initialized at the top of __init__ for all classifiers
-            if fast_mode_active and use_optuna:
-                if optuna_trials > FAST_MODE_MAX_OPTUNA_TRIALS:
-                    optuna_trials = FAST_MODE_MAX_OPTUNA_TRIALS
-                    _report(
-                        report,
-                        f"Fast mode: reduced Optuna trials to {optuna_trials}.",
-                    )
+            if fast_mode_active and use_optuna and optuna_trials > FAST_MODE_MAX_OPTUNA_TRIALS:
+                optuna_trials = FAST_MODE_MAX_OPTUNA_TRIALS
+                _report(
+                    report,
+                    f"Fast mode: reduced Optuna trials to {optuna_trials}.",
+                )
 
             if use_optuna and OPTUNA_AVAILABLE:
                 # Use Optuna for faster hyperparameter optimization
@@ -2795,6 +2827,7 @@ class LearnModel:
             Path to save importance raster
         sample_size : int
             Number of samples for SHAP computation
+
         """
         report = self.report
         if not SHAP_AVAILABLE:
@@ -2884,6 +2917,7 @@ class LearnModel:
             Classifier code
         extraParam : dict
             Extra parameters
+
         """
         report = self.report
         if not SAMPLING_AVAILABLE:
@@ -2935,6 +2969,7 @@ class LearnModel:
             Training labels
         extraParam : dict
             Extra parameters
+
         Returns
         -------
         X_resampled : np.ndarray
@@ -2985,6 +3020,7 @@ class LearnModel:
             Training labels
         extraParam : dict
             Extra parameters
+
         Returns
         -------
         weights : dict or None
@@ -2995,7 +3031,7 @@ class LearnModel:
             return None
 
         strategy = extraParam.get("CLASS_WEIGHT_STRATEGY", "balanced")
-        custom_weights = extraParam.get("CUSTOM_CLASS_WEIGHTS", None)
+        custom_weights = extraParam.get("CUSTOM_CLASS_WEIGHTS")
 
         try:
             weights = compute_class_weights(Y, strategy=strategy, custom_weights=custom_weights)
@@ -3177,9 +3213,10 @@ class LearnModel:
 
         try:
             # Rasterize the FID (Feature ID) field to get polygon IDs
-            import tempfile
             import os
             import shutil
+            import tempfile
+
             from osgeo import ogr
 
             _report(report, "Extracting polygon IDs for spatial cross-validation...")
@@ -3224,10 +3261,8 @@ class LearnModel:
             X, Y, polygon_groups = dataraster.get_samples_from_roi(raster_path, ROI, POLYGON_IDS)
 
             # Clean up temporary files
-            try:
+            with contextlib.suppress(Exception):
                 shutil.rmtree(temp_dir)
-            except Exception:
-                pass
 
             # Flatten polygon_groups to 1D array
             polygon_groups = polygon_groups.ravel()
@@ -3398,6 +3433,7 @@ class ClassifyImage:
         ----------
         model_path : str
             Path to the pickled model file
+
         Returns
         -------
         tuple
