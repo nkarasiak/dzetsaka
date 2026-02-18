@@ -6,6 +6,22 @@ from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QPixmap
 from qgis.PyQt.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout
 
+# Qt5 / Qt6 enum compatibility
+try:
+    _AlignCenter = Qt.AlignmentFlag.AlignCenter
+    _AlignLeft = Qt.AlignmentFlag.AlignLeft
+    _AlignTop = Qt.AlignmentFlag.AlignTop
+    _KeepAspectRatio = Qt.AspectRatioMode.KeepAspectRatio
+    _SmoothTransformation = Qt.TransformationMode.SmoothTransformation
+    _ButtonOk = QDialogButtonBox.StandardButton.Ok
+except AttributeError:
+    _AlignCenter = Qt.AlignCenter  # type: ignore[attr-defined]
+    _AlignLeft = Qt.AlignLeft  # type: ignore[attr-defined]
+    _AlignTop = Qt.AlignTop  # type: ignore[attr-defined]
+    _KeepAspectRatio = Qt.KeepAspectRatio  # type: ignore[attr-defined]
+    _SmoothTransformation = Qt.SmoothTransformation  # type: ignore[attr-defined]
+    _ButtonOk = QDialogButtonBox.Ok  # type: ignore[attr-defined]
+
 
 def show_about_dialog(plugin) -> None:
     """Display the dzetsaka About window."""
@@ -18,7 +34,7 @@ def show_about_dialog(plugin) -> None:
     layout.setSpacing(12)
 
     logo = QLabel()
-    logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    logo.setAlignment(_AlignCenter)
     pixmap = QPixmap(plugin.get_icon_path("logo.png"))
     if pixmap.isNull():
         pixmap = QPixmap(plugin.get_icon_path("icon.png"))
@@ -27,8 +43,8 @@ def show_about_dialog(plugin) -> None:
             pixmap.scaled(
                 120,
                 120,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
+                _KeepAspectRatio,
+                _SmoothTransformation,
             ),
         )
     layout.addWidget(logo)
@@ -36,7 +52,7 @@ def show_about_dialog(plugin) -> None:
     version = getattr(plugin, "plugin_version", None) or plugin._read_plugin_version()
 
     title = QLabel(f"<h2>dzetsaka {version}</h2>")
-    title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    title.setAlignment(_AlignCenter)
     layout.addWidget(title)
 
     about = QLabel(
@@ -45,7 +61,7 @@ def show_about_dialog(plugin) -> None:
         "guided UI/UX, reusable recipes, and rich report generation.",
     )
     about.setWordWrap(True)
-    about.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+    about.setAlignment(_AlignLeft | _AlignTop)
     layout.addWidget(about)
 
     author = QLabel(
@@ -57,8 +73,11 @@ def show_about_dialog(plugin) -> None:
     author.setWordWrap(True)
     layout.addWidget(author)
 
-    buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+    buttons = QDialogButtonBox(_ButtonOk)
     buttons.accepted.connect(dialog.accept)
     layout.addWidget(buttons)
 
-    dialog.exec()
+    try:
+        dialog.exec_()
+    except AttributeError:
+        dialog.exec()

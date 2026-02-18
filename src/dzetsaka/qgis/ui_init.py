@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from qgis.core import QgsApplication
 from qgis.PyQt.QtCore import QTimer
-from qgis.PyQt.QtGui import QAction, QIcon
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QAction
 
 from dzetsaka.qgis.about_dialog import show_about_dialog
 

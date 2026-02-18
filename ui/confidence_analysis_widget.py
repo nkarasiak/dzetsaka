@@ -36,11 +36,19 @@ from qgis.PyQt.QtWidgets import (
 
 try:
     import matplotlib
+
+    try:
+        from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+
+        matplotlib.use("Qt5Agg")  # Ensure Qt5 backend
+    except ImportError:
+        from matplotlib.backends.backend_qt6agg import FigureCanvasQTAgg as FigureCanvas  # type: ignore[no-redef]
+
+        matplotlib.use("Qt6Agg")  # Ensure Qt6 backend
+
     import matplotlib.pyplot as plt
-    from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
     from matplotlib.figure import Figure
 
-    matplotlib.use("Qt5Agg")  # Ensure Qt backend
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
     MATPLOTLIB_AVAILABLE = False

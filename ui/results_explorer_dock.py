@@ -34,13 +34,23 @@ from qgis.PyQt.QtWidgets import (
 
 try:
     import matplotlib
+
+    try:
+        from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+
+        _MPL_BACKEND = "Qt5Agg"
+    except ImportError:
+        from matplotlib.backends.backend_qt6agg import FigureCanvasQTAgg as FigureCanvas  # type: ignore[no-redef]
+
+        _MPL_BACKEND = "Qt6Agg"
+
     import matplotlib.pyplot as plt
-    from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
     from matplotlib.figure import Figure
 
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
+    _MPL_BACKEND = "Qt5Agg"  # unused fallback
 
 try:
     from osgeo import gdal
@@ -252,7 +262,7 @@ class ResultsExplorerDock(ThemeAwareWidget, QDockWidget):
             return
 
         # Set matplotlib backend
-        matplotlib.use("Qt5Agg")
+        matplotlib.use(_MPL_BACKEND)
 
         # Create figure with two subplots
         fig = Figure(figsize=(8, 6))

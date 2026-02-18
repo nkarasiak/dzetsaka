@@ -3140,7 +3140,10 @@ class DataInputPage(QWizardPage):
             # Show recommendation dialog
             dialog = RecommendationDialog(recommendations, raster_info, self)
             dialog.recipeSelected.connect(lambda recipe: self._apply_recipe_to_setup_dialog(recipe))
-            dialog.exec_()
+            try:
+                dialog.exec_()
+            except AttributeError:
+                dialog.exec()
 
         except Exception as exc:
             # Silently fail - recommendations are a nice-to-have feature
@@ -4116,7 +4119,10 @@ class OutputConfigPage(QWizardPage):
         # Show preview dialog
         try:
             dialog = SplitPreviewDialog(vector_path, class_field, split_percent, cv_mode, self)
-            dialog.exec_()
+            try:
+                dialog.exec_()
+            except AttributeError:
+                dialog.exec()
         except Exception as e:
             QMessageBox.critical(self, "Preview Error", f"Failed to compute split preview:\n{str(e)}")
 
@@ -7093,7 +7099,10 @@ class QuickClassificationPanel(QWidget):
             # Show recommendation dialog
             dialog = RecommendationDialog(recommendations, raster_info, self)
             dialog.recipeSelected.connect(self._apply_recommended_recipe)
-            dialog.exec_()
+            try:
+                dialog.exec_()
+            except AttributeError:
+                dialog.exec()
 
         except Exception as exc:
             # Silently fail - recommendations are a nice-to-have feature

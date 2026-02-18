@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import os
 
-from qgis.PyQt.QtGui import QAction, QIcon
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QAction
 
 
 def add_action(

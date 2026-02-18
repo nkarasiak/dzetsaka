@@ -719,11 +719,12 @@ class QuickStartPage(QWizardPage):
         else:
             # Show info message and close anyway
             from qgis.PyQt.QtWidgets import QMessageBox
+            _ok = getattr(getattr(QMessageBox, "StandardButton", None), "Ok", None) or QMessageBox.Ok  # type: ignore[attr-defined]
             QMessageBox.information(
                 self,
                 "Sample Data",
                 "Sample data files not found. The dashboard will open where you can load your own data.",
-                QMessageBox.StandardButton.Ok
+                _ok,
             )
             self.wizard().accept()
             QTimer.singleShot(300, self.plugin.open_dashboard)
