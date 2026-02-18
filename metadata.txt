@@ -11,7 +11,7 @@ name=dzetsaka : AI-Powered Remote Sensing Classification
 qgisMinimumVersion=3.0
 supportsQt6=True
 description=Next-generation AI for Earth Observation in QGIS with 12 ML algorithms, major runtime optimizations, advanced UX workflows, recipe-driven configuration, and rich report generation.
-version=5.0.1
+version=5.0.2
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -42,6 +42,8 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+    5.0.2
+      * FIX: Harden dependency installer runtime constraints to avoid NumPy conflicts with QGIS bundled stack (issue #46)
     5.0.1
       * FIX: QAction imported from wrong Qt module (QtGui → QtWidgets) — fixes crash on QGIS 3.28+ startup (issue #45)
       * FIX: Qt5/Qt6 compatibility audit — exec_() fallback, enum aliases, matplotlib backend detection

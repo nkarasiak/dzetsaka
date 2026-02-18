@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+from importlib import metadata as importlib_metadata
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
@@ -180,3 +183,37 @@ def test_async_dependency_installer_uses_callback():
 
         # Verify logger was called (task was created)
         assert plugin.log.info.called, "Logger should be called during setup"
+
+
+@pytest.mark.unit
+def test_runtime_constraints_fallbacks_to_imported_versions_when_metadata_missing():
+    """Scientific stack versions should still be pinned when metadata is unavailable."""
+    from dzetsaka.qgis.dependency_installer import _build_runtime_constraints_file
+
+    plugin_logger = Mock()
+    original_import = __import__
+
+    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):  # noqa: A002
+        if name == "numpy":
+            return SimpleNamespace(__version__="1.26.4")
+        if name == "scipy":
+            return SimpleNamespace(__version__="1.11.4")
+        if name == "pandas":
+            return SimpleNamespace(__version__="2.2.3")
+        return original_import(name, globals, locals, fromlist, level)
+
+    with patch("importlib.metadata.version", side_effect=importlib_metadata.PackageNotFoundError):
+        with patch("builtins.__import__", side_effect=fake_import):
+            constraints_file, args = _build_runtime_constraints_file(plugin_logger)
+
+    assert constraints_file is not None
+    assert args == ["-c", constraints_file]
+
+    with open(constraints_file, encoding="utf-8") as f:
+        constraints = f.read()
+
+    assert "numpy==1.26.4" in constraints
+    assert "scipy==1.11.4" in constraints
+    assert "pandas==2.2.3" in constraints
+
+    os.remove(constraints_file)

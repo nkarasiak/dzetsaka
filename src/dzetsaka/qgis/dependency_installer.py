@@ -11,6 +11,56 @@ from qgis.PyQt.QtWidgets import QMessageBox
 
 from dzetsaka.qgis.dependency_catalog import FULL_DEPENDENCY_BUNDLE
 
+_SCIENTIFIC_STACK_PACKAGES = ("numpy", "scipy", "pandas")
+
+
+def _build_runtime_constraints_file(plugin_logger) -> tuple[str | None, list[str]]:
+    """Build a pip constraints file pinned to the live runtime scientific stack."""
+    try:
+        try:
+            from importlib import metadata as importlib_metadata
+        except ImportError:
+            import importlib_metadata  # type: ignore
+
+        pinned_packages = []  # type: list[str]
+        for pkg in _SCIENTIFIC_STACK_PACKAGES:
+            version = None
+            try:
+                version = importlib_metadata.version(pkg)
+            except importlib_metadata.PackageNotFoundError:
+                # QGIS-bundled packages can be importable without package metadata.
+                pass
+            except Exception as metadata_err:
+                plugin_logger.warning(f"Could not read {pkg} version from package metadata: {metadata_err!s}")
+
+            if not version:
+                with contextlib.suppress(Exception):
+                    module = __import__(pkg)
+                    version = getattr(module, "__version__", None)
+
+            if version:
+                pinned_packages.append(f"{pkg}=={version}")
+
+        if not pinned_packages:
+            return None, []
+
+        constraints_text = "\n".join(pinned_packages) + "\n"
+        fd, runtime_constraints_file = tempfile.mkstemp(
+            prefix="dzetsaka_pip_constraints_",
+            suffix=".txt",
+        )
+        os.close(fd)
+        with open(runtime_constraints_file, "w", encoding="utf-8") as f:
+            f.write(constraints_text)
+
+        plugin_logger.info(
+            f"Using runtime pip constraints to keep scientific stack stable: {', '.join(pinned_packages)}",
+        )
+        return runtime_constraints_file, ["-c", runtime_constraints_file]
+    except Exception as constraints_err:
+        plugin_logger.warning(f"Could not prepare runtime pip constraints: {constraints_err!s}")
+        return None, []
+
 
 def try_install_dependencies(plugin, missing_deps):
     """Experimental feature to auto-install missing dependencies.
@@ -53,38 +103,7 @@ def try_install_dependencies(plugin, missing_deps):
 
     # Build conservative constraints from the live runtime to avoid breaking
     # core scientific stack packages in embedded QGIS envs.
-    runtime_constraints_file = None
-    runtime_constraint_args = []
-    try:
-        try:
-            from importlib import metadata as importlib_metadata
-        except ImportError:
-            import importlib_metadata  # type: ignore
-
-        pinned_packages = []  # type: list[str]
-        for pkg in ("numpy", "scipy", "pandas"):
-            try:
-                version = importlib_metadata.version(pkg)
-            except importlib_metadata.PackageNotFoundError:
-                continue
-            if version:
-                pinned_packages.append(f"{pkg}=={version}")
-
-        if pinned_packages:
-            constraints_text = "\n".join(pinned_packages) + "\n"
-            fd, runtime_constraints_file = tempfile.mkstemp(
-                prefix="dzetsaka_pip_constraints_",
-                suffix=".txt",
-            )
-            os.close(fd)
-            with open(runtime_constraints_file, "w", encoding="utf-8") as f:
-                f.write(constraints_text)
-            runtime_constraint_args = ["-c", runtime_constraints_file]
-            plugin.log.info(
-                f"Using runtime pip constraints to keep scientific stack stable: {', '.join(pinned_packages)}",
-            )
-    except Exception as constraints_err:
-        plugin.log.warning(f"Could not prepare runtime pip constraints: {constraints_err!s}")
+    runtime_constraints_file, runtime_constraint_args = _build_runtime_constraints_file(plugin.log)
 
     # Package installation using QProcess for responsive UI
     def install_package(package, progress_dialog, extra_args=None):
@@ -905,36 +924,7 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
     )
 
     # Build conservative constraints from the live runtime
-    runtime_constraints_file = None
-    try:
-        try:
-            from importlib import metadata as importlib_metadata
-        except ImportError:
-            import importlib_metadata  # type: ignore
-
-        pinned_packages = []
-        for pkg in ("numpy", "scipy", "pandas"):
-            try:
-                version = importlib_metadata.version(pkg)
-            except importlib_metadata.PackageNotFoundError:
-                continue
-            if version:
-                pinned_packages.append(f"{pkg}=={version}")
-
-        if pinned_packages:
-            constraints_text = "\n".join(pinned_packages) + "\n"
-            fd, runtime_constraints_file = tempfile.mkstemp(
-                prefix="dzetsaka_pip_constraints_",
-                suffix=".txt",
-            )
-            os.close(fd)
-            with open(runtime_constraints_file, "w", encoding="utf-8") as f:
-                f.write(constraints_text)
-            plugin.log.info(
-                f"Using runtime pip constraints to keep scientific stack stable: {', '.join(pinned_packages)}",
-            )
-    except Exception as constraints_err:
-        plugin.log.warning(f"Could not prepare runtime pip constraints: {constraints_err!s}")
+    runtime_constraints_file, _ = _build_runtime_constraints_file(plugin.log)
 
     # Mapping of dependency names to pip packages
     pip_packages = {
