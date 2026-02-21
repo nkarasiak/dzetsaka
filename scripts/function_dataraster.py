@@ -67,20 +67,25 @@ def convertGdalDataTypeToOTB(gdalDT):
     return code[gdalDT]
 
 
-# GDAL to NumPy datatype mapping for efficient lookup
-_GDAL_TO_NUMPY_DTYPE = {
-    gdal.GDT_Byte: "uint8",
-    gdal.GDT_Int16: "int16",
-    gdal.GDT_UInt16: "uint16",
-    gdal.GDT_Int32: "int32",
-    gdal.GDT_UInt32: "uint32",
-    gdal.GDT_Float32: "float32",
-    gdal.GDT_Float64: "float64",
-    gdal.GDT_CInt16: "complex64",
-    gdal.GDT_CInt32: "complex64",
-    gdal.GDT_CFloat32: "complex64",
-    gdal.GDT_CFloat64: "complex64",
-}
+# GDAL to NumPy datatype mapping for efficient lookup.
+# Built dynamically to handle GDAL 4.x which removed the legacy GDT_* constants.
+_GDAL_TO_NUMPY_DTYPE = {}
+for _gdt_name, _np_dtype in [
+    ("GDT_Byte", "uint8"),
+    ("GDT_Int16", "int16"),
+    ("GDT_UInt16", "uint16"),
+    ("GDT_Int32", "int32"),
+    ("GDT_UInt32", "uint32"),
+    ("GDT_Float32", "float32"),
+    ("GDT_Float64", "float64"),
+    ("GDT_CInt16", "complex64"),
+    ("GDT_CInt32", "complex64"),
+    ("GDT_CFloat32", "complex64"),
+    ("GDT_CFloat64", "complex64"),
+]:
+    _gdt_val = getattr(gdal, _gdt_name, None)
+    if _gdt_val is not None:
+        _GDAL_TO_NUMPY_DTYPE[_gdt_val] = _np_dtype
 
 
 def open_data(filename):
