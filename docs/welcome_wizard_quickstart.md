@@ -113,27 +113,38 @@ dependency_info = {
 ### Add Sample Images
 
 Place image at:
-- `docs/images/classification_example.png` (preferred)
-- `docs/classification_result.png`
-- `images/sample.png`
+
+* `docs/images/classification_example.png` (preferred)
+
+* `docs/classification_result.png`
+
+* `images/sample.png`
 
 Wizard auto-detects and displays first found.
 
 ## Troubleshooting
 
 **Wizard doesn't appear:**
-- Check `QSettings().value("/dzetsaka/welcomeCompleted")` is False
-- Check `gui.firstInstallation` is True
-- Check `gui._show_welcome_wizard` is set in runtime_bootstrap
+
+* Check `QSettings().value("/dzetsaka/welcomeCompleted")` is False
+
+* Check `gui.firstInstallation` is True
+
+* Check `gui._show_welcome_wizard` is set in runtime\_bootstrap
 
 **Dependencies show wrong status:**
-- Wizard uses `importlib.util.find_spec(module_name)`
-- For sklearn, uses plugin's `_check_sklearn_usable()` for robust check
+
+* Wizard uses `importlib.util.find_spec(module_name)`
+
+* For sklearn, uses plugin's `_check_sklearn_usable()` for robust check
 
 **Sample data won't load:**
-- Verify files in `data/sample/` directory
-- Check file extensions match glob patterns
-- Ensure valid GDAL/OGR formats
+
+* Verify files in `data/sample/` directory
+
+* Check file extensions match glob patterns
+
+* Ensure valid GDAL/OGR formats
 
 ## File Locations
 
@@ -157,21 +168,29 @@ tests/unit/
 
 ## Key Classes
 
-- **WelcomeWizard**: Main wizard (QWizard)
-  - PAGE_OVERVIEW = 0
-  - PAGE_DEPENDENCIES = 1
-  - PAGE_QUICKSTART = 2
+* **WelcomeWizard**: Main wizard (QWizard)
 
-- **OverviewPage**: Feature showcase
-- **DependencyCheckPage**: Install dependencies
-- **QuickStartPage**: Sample data or user data
+  * PAGE\_OVERVIEW = 0
+
+  * PAGE\_DEPENDENCIES = 1
+
+  * PAGE\_QUICKSTART = 2
+
+* **OverviewPage**: Feature showcase
+
+* **DependencyCheckPage**: Install dependencies
+
+* **QuickStartPage**: Sample data or user data
 
 ## Settings
 
-- **Key**: `/dzetsaka/welcomeCompleted`
-- **Type**: bool
-- **Default**: False
-- **Set by**: Wizard on completion
+* **Key**: `/dzetsaka/welcomeCompleted`
+
+* **Type**: bool
+
+* **Default**: False
+
+* **Set by**: Wizard on completion
 
 ## Dependencies
 
@@ -215,9 +234,11 @@ python -c "from qgis.PyQt.QtCore import QSettings; \
 
 ## Support
 
-- Full documentation: `docs/welcome_wizard_integration.md`
-- Implementation: `ui/welcome_wizard.py`
-- Tests: `tests/unit/test_welcome_wizard.py`
-- Summary: `WELCOME_WIZARD_SUMMARY.md`
+* Full documentation: `docs/welcome_wizard_integration.md`
 
+* Implementation: `ui/welcome_wizard.py`
+
+* Tests: `tests/unit/test_welcome_wizard.py`
+
+* Summary: `WELCOME_WIZARD_SUMMARY.md`
 

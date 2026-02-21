@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dzetsaka"
-version = "5.0.0"
+version = "5.0.6"
 description = "Next-generation classification plugin for QGIS with 12 machine learning algorithms, major runtime optimization, advanced UX workflows, recipe-driven setup, and rich reporting."
 readme = "readme.md"
 license = {text = "GPL-2.0-or-later"}
