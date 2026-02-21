@@ -74,7 +74,6 @@ ALGORITHM_EMOJI = {
     "SVM": "⚔️",
     "KNN": "👥",
     "XGB": "🚀",
-    "LGB": "⚡",
     "CB": "🐈",
     "ET": "🌳",
     "GBC": "📊",
@@ -156,9 +155,6 @@ def _check_dependencies_available(recipe: Dict[str, Any], available_deps: Dict[s
     elif algo_code == "XGB":
         if not available_deps.get("xgboost", False):
             missing.append("xgboost")
-    elif algo_code == "LGB":
-        if not available_deps.get("lightgbm", False):
-            missing.append("lightgbm")
     elif algo_code == "CB":
         if not available_deps.get("catboost", False):
             missing.append("catboost")

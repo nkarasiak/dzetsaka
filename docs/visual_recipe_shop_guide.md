@@ -98,12 +98,12 @@ The details panel shows:
 #### ⚡ Large Dataset Fast
 - **Runtime:** 3-8 minutes
 - **Accuracy:** 78-90%
-- **Algorithm:** LightGBM
+- **Algorithm:** Extra Trees
 - **Use Cases:** Large rasters (>1GB), speed-critical workflows, production pipelines
 - **Features:**
-  - Histogram-based gradient boosting
+  - Fast ensemble method
   - Minimal overhead
-  - Fast training on big data
+  - Efficient training on big data
 
 ### Advanced Recipes
 
@@ -213,7 +213,6 @@ The details panel shows:
 - ⚔️ SVM - Support Vector Machine
 - 👥 KNN - K-Nearest Neighbors
 - 🚀 XGB - XGBoost
-- ⚡ LGB - LightGBM
 - 🐈 CB - CatBoost
 - 🌳 ET - Extra Trees
 - 📊 GBC - Gradient Boosting Classifier
@@ -241,7 +240,6 @@ recipes = load_builtin_recipes()
 available_deps = {
     "sklearn": True,
     "xgboost": True,
-    "lightgbm": False,
     "catboost": False,
     "optuna": True,
     "shap": True,
@@ -389,7 +387,7 @@ Recipes use schema v2 with the following structure:
 
 ### Missing Dependencies Warning
 
-- Install required packages: `pip install scikit-learn xgboost lightgbm catboost optuna shap imbalanced-learn`
+- Install required packages: `pip install scikit-learn xgboost catboost optuna shap imbalanced-learn`
 - Use dzetsaka's built-in dependency installer
 - Some recipes work without all dependencies (check recipe requirements)
 

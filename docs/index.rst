@@ -17,11 +17,11 @@ It supports **12 different algorithms**, from simple Gaussian Mixture Models to 
 Key Features
 ------------
 
-* **12 Machine Learning Algorithms**
+* **11 Machine Learning Algorithms**
 
   - Built-in: Gaussian Mixture Model (GMM)
   - Scikit-learn: Random Forest, SVM, KNN, Extra Trees, Gradient Boosting, Logistic Regression, Naive Bayes, MLP
-  - Advanced: XGBoost, LightGBM, CatBoost
+  - Advanced: XGBoost, CatBoost
 
 * **Automatic Hyperparameter Optimization**
 
@@ -134,7 +134,6 @@ Algorithm Reference
    algorithms/svm
    algorithms/knn
    algorithms/xgboost
-   algorithms/lightgbm
    algorithms/catboost
    algorithms/extra_trees
    algorithms/gradient_boosting

@@ -149,7 +149,7 @@ class TestAlgoTableDataStructure:
     def test_expected_codes_present(self):
         """All expected codes are present."""
         codes = {row[0] for row in _ALGO_TABLE_DATA}
-        expected = {"GMM", "RF", "SVM", "KNN", "XGB", "LGB", "CB", "ET", "GBC", "LR", "NB", "MLP"}
+        expected = {"GMM", "RF", "SVM", "KNN", "XGB", "CB", "ET", "GBC", "LR", "NB", "MLP"}
         assert codes == expected
 
     def test_speed_values_valid(self):
@@ -208,7 +208,6 @@ class TestBuildComparisonData:
         return {
             "sklearn": True,
             "xgboost": True,
-            "lightgbm": True,
             "catboost": True,
             "optuna": True,
             "shap": True,
@@ -217,12 +216,12 @@ class TestBuildComparisonData:
 
     def _no_deps(self):
         """Return deps dict with nothing available."""
-        return dict.fromkeys(("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"), False)
+        return dict.fromkeys(("sklearn", "xgboost", "catboost", "optuna", "shap", "imblearn"), False)
 
     def test_returns_eleven_rows(self):
-        """Always returns 12 rows."""
+        """Always returns 11 rows."""
         rows = build_comparison_data(self._all_deps())
-        assert len(rows) == 12
+        assert len(rows) == 11
 
     def test_all_available_when_all_deps(self):
         """When all deps are present every row is marked available."""
@@ -253,14 +252,6 @@ class TestBuildComparisonData:
         xgb_row = next(r for r in rows if r[0] == "XGB")
         assert xgb_row[5] is True
 
-    def test_lgb_available_with_lightgbm(self):
-        """LGB becomes available when lightgbm dep is True."""
-        deps = self._no_deps()
-        deps["lightgbm"] = True
-        rows = build_comparison_data(deps)
-        lgb_row = next(r for r in rows if r[0] == "LGB")
-        assert lgb_row[5] is True
-
     def test_cb_available_with_catboost(self):
         """CB becomes available when catboost dep is True."""
         deps = self._no_deps()
@@ -289,7 +280,6 @@ class TestBuildComparisonData:
         assert speed_map["GMM"] == "Fast"
         assert speed_map["SVM"] == "Medium"
         assert speed_map["MLP"] == "Slow"
-        assert speed_map["LGB"] == "Fast"
         assert speed_map["XGB"] == "Medium"
 
     def test_recommended_for_column_populated(self):
@@ -306,5 +296,4 @@ class TestBuildComparisonData:
         rec_map = {row[0]: row[4] for row in rows}
         assert "no dependencies" in rec_map["GMM"].lower()
         assert "state-of-the-art" in rec_map["XGB"].lower()
-        assert "fastest gradient boosting" in rec_map["LGB"].lower()
         assert "best default parameters" in rec_map["CB"].lower()

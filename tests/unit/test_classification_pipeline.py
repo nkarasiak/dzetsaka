@@ -38,7 +38,6 @@ for module_name in STUB_MODULES:
 
 label_encoders_stub = types.ModuleType("dzetsaka.scripts.wrappers.label_encoders")
 label_encoders_stub.XGBLabelWrapper = None
-label_encoders_stub.LGBLabelWrapper = None
 label_encoders_stub.CBClassifierWrapper = None
 label_encoders_stub.SKLEARN_AVAILABLE = False
 sys.modules["dzetsaka.scripts.wrappers.label_encoders"] = label_encoders_stub

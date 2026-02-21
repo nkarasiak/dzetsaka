@@ -6,7 +6,7 @@ algorithms with automatic explainer selection.
 
 Key Features:
 -------------
-- TreeExplainer for tree-based models (RF, XGB, LGB, ET, GBC)
+- TreeExplainer for tree-based models (RF, XGB, ET, GBC)
 - KernelExplainer fallback for other models (SVM, KNN, LR, NB, MLP)
 - Feature importance computation from SHAP values
 - Raster importance map generation
@@ -258,7 +258,7 @@ class ModelExplainer:
         # Check for common tree-based model attributes
         tree_indicators = [
             "tree_",  # Single decision tree
-            "estimators_",  # Ensemble methods (RF, ET, GBC, XGB, LGB)
+            "estimators_",  # Ensemble methods (RF, ET, GBC, XGB)
             "booster_",  # XGBoost
             "n_estimators",  # Most tree ensembles
         ]
@@ -274,8 +274,6 @@ class ModelExplainer:
             "extratrees",
             "gradientboosting",
             "xgb",
-            "lgbm",
-            "lightgbm",
             "decisiontree",
         ]
 

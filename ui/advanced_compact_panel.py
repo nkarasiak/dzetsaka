@@ -176,7 +176,7 @@ class AdvancedCompactPanel(QWidget):
         )
         self.classifierCombo = QComboBox()
         self.classifierCombo.setToolTip("Classifier algorithm")
-        for _code, name, _sk, _xgb, _lgb, _cb in self._classifier_meta:
+        for _code, name, _sk, _xgb, _cb in self._classifier_meta:
             self.classifierCombo.addItem(name)
         self.classifierCombo.currentIndexChanged.connect(self._update_status)
         classifier_row.addWidget(self.classifierCombo)
@@ -613,15 +613,14 @@ class AdvancedCompactPanel(QWidget):
                 return
 
     def _classifier_available(self, code):
-        for c, _name, needs_sk, needs_xgb, needs_lgb, needs_cb in self._classifier_meta:
+        for c, _name, needs_sk, needs_xgb, needs_cb in self._classifier_meta:
             if c != code:
                 continue
             if needs_sk and not self._deps.get("sklearn", False):
                 return False
             if needs_xgb and not self._deps.get("xgboost", False):
                 return False
-            if needs_lgb and not self._deps.get("lightgbm", False):
-                return False
+
             if needs_cb and not self._deps.get("catboost", False):
                 return False
             return True
@@ -629,15 +628,14 @@ class AdvancedCompactPanel(QWidget):
 
     def _missing_required_deps(self, code):
         missing = []
-        for c, _name, needs_sk, needs_xgb, needs_lgb, needs_cb in self._classifier_meta:
+        for c, _name, needs_sk, needs_xgb, needs_cb in self._classifier_meta:
             if c != code:
                 continue
             if needs_sk and not self._deps.get("sklearn", False):
                 missing.append("scikit-learn")
             if needs_xgb and not self._deps.get("xgboost", False):
                 missing.append("xgboost")
-            if needs_lgb and not self._deps.get("lightgbm", False):
-                missing.append("lightgbm")
+
             if needs_cb and not self._deps.get("catboost", False):
                 missing.append("catboost")
         return missing
@@ -664,7 +662,7 @@ class AdvancedCompactPanel(QWidget):
         if goal == "Fast map now":
             self._set_classifier_by_code(self._first_available(["GMM", "RF"]))
         elif goal == "Best accuracy":
-            self._set_classifier_by_code(self._first_available(["CB", "XGB", "LGB", "RF", "ET", "GMM"]))
+            self._set_classifier_by_code(self._first_available(["CB", "XGB", "RF", "ET", "GMM"]))
             if self._deps.get("optuna", False):
                 self.optunaCheck.setChecked(True)
             if self._deps.get("sklearn", False):

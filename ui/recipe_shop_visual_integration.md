@@ -101,12 +101,6 @@ def _check_dependencies(self):
         deps["xgboost"] = False
 
     try:
-        import lightgbm
-        deps["lightgbm"] = True
-    except ImportError:
-        deps["lightgbm"] = False
-
-    try:
         import catboost
         deps["catboost"] = True
     except ImportError:

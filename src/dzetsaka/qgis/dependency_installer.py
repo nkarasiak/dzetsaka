@@ -823,7 +823,6 @@ def try_install_dependencies(plugin, missing_deps):
         "sklearn": "scikit-learn",
         "Sklearn": "scikit-learn",
         "xgboost": "xgboost",
-        "lightgbm": "lightgbm",
         "catboost": "catboost",
         "optuna": "optuna",
         "shap": "shap",
@@ -831,7 +830,6 @@ def try_install_dependencies(plugin, missing_deps):
         "imbalanced-learn": "imbalanced-learn",
         "imblearn": "imbalanced-learn",
         "XGBoost": "xgboost",
-        "LightGBM": "lightgbm",
         "CatBoost": "catboost",
         "Optuna": "optuna",
     }
@@ -839,7 +837,6 @@ def try_install_dependencies(plugin, missing_deps):
     progress_labels = {
         "scikit-learn": "scikit-learn (core algorithms: RF, SVM, KNN, ET, GBC, LR, NB, MLP)",
         "xgboost": "XGBoost algorithm",
-        "lightgbm": "LightGBM algorithm",
         "catboost": "CatBoost algorithm",
         "optuna": "Optuna (hyperparameter optimization)",
         "shap": "SHAP (explainability)",
@@ -851,7 +848,6 @@ def try_install_dependencies(plugin, missing_deps):
         "scikit-learn": "sklearn",
         "sklearn": "sklearn",
         "xgboost": "xgboost",
-        "lightgbm": "lightgbm",
         "catboost": "catboost",
         "optuna": "optuna",
         "shap": "shap",
@@ -996,7 +992,7 @@ def try_install_dependencies(plugin, missing_deps):
                 f"Only {success_count} of {len(missing_deps)} dependencies were installed successfully.\n"
                 "Manual fallback examples:\n"
                 "  pip install --user scikit-learn\n"
-                "  pip install --user xgboost lightgbm catboost optuna shap imbalanced-learn\n"
+                "  pip install --user xgboost catboost optuna shap imbalanced-learn\n"
             ),
             context=f"Missing dependencies requested: {', '.join(missing_deps)}",
         )
@@ -1074,7 +1070,6 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
         "sklearn": "scikit-learn",
         "Sklearn": "scikit-learn",
         "xgboost": "xgboost",
-        "lightgbm": "lightgbm",
         "catboost": "catboost",
         "optuna": "optuna",
         "shap": "shap",
@@ -1082,7 +1077,6 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
         "imbalanced-learn": "imbalanced-learn",
         "imblearn": "imbalanced-learn",
         "XGBoost": "xgboost",
-        "LightGBM": "lightgbm",
         "CatBoost": "catboost",
         "Optuna": "optuna",
     }
@@ -1111,7 +1105,7 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
                 "Dependencies installed successfully!\n\n"
                 "<b>Important:</b> Please restart QGIS to load the new libraries.\n\n"
                 "After restarting, you can use all dzetsaka features including "
-                "XGBoost, LightGBM, CatBoost, Optuna optimization, and SHAP explainability.",
+                "XGBoost, CatBoost, Optuna optimization, and SHAP explainability.",
                 QMessageBox.StandardButton.Ok,
             )
         elif task.isCanceled():
@@ -1129,7 +1123,7 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
                     f"Only {task.success_count} of {len(package_order)} dependencies were installed successfully.\n"
                     "Manual fallback examples:\n"
                     "  pip install --user scikit-learn\n"
-                    "  pip install --user xgboost lightgbm catboost optuna shap imbalanced-learn\n"
+                    "  pip install --user xgboost catboost optuna shap imbalanced-learn\n"
                 ),
                 context=f"Missing dependencies requested: {', '.join(missing_deps)}",
             )

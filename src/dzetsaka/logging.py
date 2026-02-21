@@ -110,7 +110,7 @@ def get_system_info() -> str:
     info_lines.append(f"dzetsaka: {version}")
 
     dependencies = {}
-    for pkg in ["sklearn", "xgboost", "lightgbm", "catboost", "numpy", "gdal"]:
+    for pkg in ["sklearn", "xgboost", "catboost", "numpy", "gdal"]:
         try:
             if pkg == "sklearn":
                 import sklearn
@@ -120,10 +120,6 @@ def get_system_info() -> str:
                 import xgboost
 
                 dependencies[pkg] = getattr(xgboost, "__version__", "Unknown version")
-            elif pkg == "lightgbm":
-                import lightgbm
-
-                dependencies[pkg] = getattr(lightgbm, "__version__", "Unknown version")
             elif pkg == "catboost":
                 import catboost
 

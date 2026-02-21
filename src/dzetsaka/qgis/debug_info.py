@@ -30,14 +30,6 @@ def build_debug_info(plugin) -> str:
         except ImportError:
             pass
 
-        lightgbm_available = "No"
-        try:
-            import lightgbm
-
-            lightgbm_available = f"Yes ({lightgbm.__version__})"
-        except ImportError:
-            pass
-
         catboost_available = "No"
         try:
             import catboost
@@ -58,7 +50,6 @@ Current Classifier: {plugin.classifier} ({classifier_code})
 Available Libraries:
 - Scikit-learn: {sklearn_available}
 - XGBoost: {xgboost_available}
-- LightGBM: {lightgbm_available}
 - CatBoost: {catboost_available}
 === END DEBUG INFO ===
 """

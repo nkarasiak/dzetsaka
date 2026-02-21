@@ -133,14 +133,6 @@ class TestApplyClassWeightsToModel:
 
         assert params == {}
 
-    def test_lgb_format(self):
-        """Test LightGBM format."""
-        weights = {0: 0.5, 1: 4.5}
-        params = apply_class_weights_to_model("LGB", weights)
-
-        assert "class_weight" in params
-        assert params["class_weight"] == weights
-
     def test_gmm_returns_empty(self):
         """Test GMM returns empty (unsupported)."""
         weights = {0: 1.0, 1: 2.0}

@@ -8,7 +8,7 @@ Key Features:
 - Automatic balanced weight computation
 - Custom weight strategies
 - Integration with all dzetsaka algorithms
-- Support for RF, SVM, XGBoost, LightGBM class weights
+- Support for RF, SVM, XGBoost class weights
 
 Example Usage:
 --------------
@@ -164,7 +164,7 @@ def apply_class_weights_to_model(
     Parameters
     ----------
     model_code : str
-        dzetsaka classifier code (e.g., 'RF', 'SVM', 'XGB', 'LGB')
+        dzetsaka classifier code (e.g., 'RF', 'SVM', 'XGB')
     class_weights : dict
         Class weights {class_label: weight}
 
@@ -174,7 +174,6 @@ def apply_class_weights_to_model(
         Model-specific parameters to pass to classifier
         - RF/SVM/KNN/ET/GBC/LR/NB/MLP: {'class_weight': weights_dict}
         - XGB: {'scale_pos_weight': ratio}  (binary only)
-        - LGB: {'class_weight': weights_dict}
 
     Example
     -------
@@ -199,10 +198,6 @@ def apply_class_weights_to_model(
         # For multiclass, XGBoost doesn't support class weights directly
         # Would need to use sample_weight in fit() instead
         return {}
-
-    # LightGBM (accepts dict with 'balanced' string or dict)
-    if model_code == "LGB":
-        return {"class_weight": class_weights}
 
     # GMM doesn't support class weights
     if model_code == "GMM":

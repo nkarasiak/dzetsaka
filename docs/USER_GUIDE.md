@@ -38,7 +38,7 @@ Welcome to dzetsaka! This guide will help you get started with remote sensing im
 The main interface with all options visible:
 
 - **Input Data Section**: Select raster, training vector, and class field
-- **Algorithm Section**: Choose from 12 ML algorithms
+- **Algorithm Section**: Choose from 11 ML algorithms
 - **Advanced Options** (collapsible): Hyperparameters, validation split, optimization
 - **Output Section**: Save locations for model, confusion matrix, confidence map
 - **Action Buttons**: Train, Classify, Train & Classify
@@ -151,7 +151,7 @@ Save your configurations as **recipes** for reuse:
 - High accuracy required
 - Processing time is not critical
 
-**Choose XGBoost/LightGBM/CatBoost if:**
+**Choose XGBoost/CatBoost if:**
 - Maximum accuracy required
 - Large training dataset available (1000+ samples)
 - Have time for hyperparameter tuning
@@ -168,7 +168,6 @@ Save your configurations as **recipes** for reuse:
 | RF        | ⚡⚡   | ⭐⭐⭐⭐  | 💾💾   | 100+           |
 | SVM       | ⚡     | ⭐⭐⭐⭐  | 💾💾   | 50+            |
 | XGB       | ⚡     | ⭐⭐⭐⭐⭐ | 💾💾💾 | 500+           |
-| LGB       | ⚡⚡   | ⭐⭐⭐⭐⭐ | 💾💾   | 500+           |
 | CB        | ⚡⚡   | ⭐⭐⭐⭐⭐ | 💾💾   | 500+           |
 
 ## Advanced Features
@@ -266,7 +265,7 @@ Avoid spatial autocorrelation bias:
 
 **For faster training:**
 - Limit training samples (10,000 max often sufficient)
-- Use LightGBM instead of XGBoost
+- Use Extra Trees instead of XGBoost for faster training
 - Disable cross-validation for quick tests
 
 ### Validation

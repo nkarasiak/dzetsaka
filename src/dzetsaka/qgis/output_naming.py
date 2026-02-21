@@ -6,7 +6,6 @@ import os
 
 _CLASSIFIER_CODE_TO_LABEL = {
     "XGB": "XGBoost",
-    "LGB": "LightGBM",
     "CB": "CatBoost",
 }
 

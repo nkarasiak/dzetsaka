@@ -47,7 +47,6 @@ dzetsaka/
         ml/
           sklearn/
           xgboost/
-          lightgbm/
           catboost/
         geo/
           gdal/

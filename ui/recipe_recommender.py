@@ -378,7 +378,7 @@ class RecipeRecommender:
         # File size considerations
         if file_size_mb > 1000:  # Large file (>1 GB)
             # Recommend fast algorithms
-            fast_algos = ["RF", "ET", "LGB", "XGB"]
+            fast_algos = ["RF", "ET", "XGB"]
             if recipe_classifier in fast_algos:
                 score += 15.0
                 reasons.append(f"Fast algorithm suitable for large files ({file_size_mb:.0f} MB)")
@@ -391,7 +391,7 @@ class RecipeRecommender:
 
         elif file_size_mb > 500:  # Medium-large file
             # Slight preference for fast algorithms
-            fast_algos = ["RF", "ET", "LGB", "XGB"]
+            fast_algos = ["RF", "ET", "XGB"]
             if recipe_classifier in fast_algos:
                 score += 8.0
                 reasons.append("Efficient for medium-large files")

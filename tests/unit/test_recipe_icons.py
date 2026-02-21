@@ -401,8 +401,8 @@ class TestConstants:
     """Test constant dictionaries."""
 
     def test_algorithm_icons_complete(self):
-        """Test all 12 algorithms have icons."""
-        expected_algorithms = ["GMM", "RF", "SVM", "KNN", "XGB", "LGB", "CB", "ET", "GBC", "LR", "NB", "MLP"]
+        """Test all 11 algorithms have icons."""
+        expected_algorithms = ["GMM", "RF", "SVM", "KNN", "XGB", "CB", "ET", "GBC", "LR", "NB", "MLP"]
         for algo in expected_algorithms:
             assert algo in ALGORITHM_ICONS
             assert len(ALGORITHM_ICONS[algo]) > 0

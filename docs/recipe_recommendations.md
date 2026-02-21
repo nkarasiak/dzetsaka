@@ -26,7 +26,7 @@ The recommender scores each available recipe based on:
 - **RGB/Multispectral**: 3-4 bands
 
 #### Performance Optimization
-- **Large files (>1 GB)**: Boost fast algorithms (RF, XGB, LGB), penalize slow (SVM, MLP)
+- **Large files (>1 GB)**: Boost fast algorithms (RF, XGB), penalize slow (SVM, MLP)
 - **Medium files (500 MB - 1 GB)**: Slight preference for efficient algorithms
 
 #### Land Cover Specificity

@@ -10,7 +10,7 @@
 name=dzetsaka : AI-Powered Remote Sensing Classification
 qgisMinimumVersion=3.0
 supportsQt6=True
-description=Next-generation AI for Earth Observation in QGIS with 12 ML algorithms, major runtime optimizations, advanced UX workflows, recipe-driven configuration, and rich report generation.
+description=Next-generation AI for Earth Observation in QGIS with 11 ML algorithms, major runtime optimizations, advanced UX workflows, recipe-driven configuration, and rich report generation.
 version=5.0.5
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
@@ -19,7 +19,7 @@ about=
       dzetsaka is a compact AI for Earth Observation plugin for remote sensing classification in QGIS.
 
       Built for fast map production and practical operations:
-      - 12 production-ready ML classifiers (GMM, RF, SVM, KNN, XGBoost, LightGBM, CatBoost, ET, GBC, LR, NB, MLP)
+      - 11 production-ready ML classifiers (GMM, RF, SVM, KNN, XGBoost, CatBoost, ET, GBC, LR, NB, MLP)
       - Optuna hyperparameter optimization
       - SHAP explainability and confidence outputs
       - Class-imbalance workflow (SMOTE, class weights, nested CV)
@@ -159,7 +159,7 @@ changelog=
       * Move dzetsaka icons to extension toolbar
 
 # Tags are comma separated with spaces allowed
-tags=ai for earth observation,earth observation,remote sensing,classification,machine learning,deep learning,multimodal,vision transformer,self-supervised learning,vision-language model,open-vocabulary mapping,trustworthy ai,uncertainty,mlops,reproducibility,xgboost,lightgbm,catboost,random forest,svm,knn,neural network,optuna,bayesian optimization,shap,explainability,smote,class imbalance,nested cross-validation,processing
+tags=ai for earth observation,earth observation,remote sensing,classification,machine learning,deep learning,multimodal,vision transformer,self-supervised learning,vision-language model,open-vocabulary mapping,trustworthy ai,uncertainty,mlops,reproducibility,xgboost,catboost,random forest,svm,knn,neural network,optuna,bayesian optimization,shap,explainability,smote,class imbalance,nested cross-validation,processing
 
 homepage=http://www.github.com/nkarasiak/dzetsaka
 category=Raster

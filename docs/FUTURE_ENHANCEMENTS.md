@@ -84,7 +84,7 @@ sensitivity = model.analyze_hyperparameter_sensitivity(
 model.plot_sensitivity_heatmap(sensitivity, output_path='svm_sensitivity.png')
 ```
 
-### XGBoost/LightGBM Wrapper Enhancements
+### XGBoost Wrapper Enhancements
 
 #### Native SHAP Integration
 ```python
@@ -177,7 +177,7 @@ model.plot_k_selection(k_range, scores, output_path='knn_k_selection.png')
 - Support vector analysis
 - Hyperparameter sensitivity
 
-**Phase 2.3: XGBoost/LightGBM** (1.5 weeks)
+**Phase 2.3: XGBoost** (1 week)
 - Native SHAP integration
 - Learning curve tracking
 - Early stopping diagnostics
@@ -520,7 +520,7 @@ class GMMR(BaseEstimator, ClassifierMixin):
 
     When to Avoid
     -----------
-    - Very large datasets (consider LightGBM)
+    - Very large datasets (consider XGBoost or CatBoost)
     - Non-Gaussian class distributions
     - Need for non-linear decision boundaries
 

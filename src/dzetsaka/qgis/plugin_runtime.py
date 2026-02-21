@@ -1,13 +1,13 @@
 """dzetsaka: Classification Tool for QGIS.
 
-A powerful and fast classification plugin for QGIS that supports 12 machine learning
+A powerful and fast classification plugin for QGIS that supports 11 machine learning
 algorithms for remote sensing image classification. Originally based on Gaussian
 Mixture Model classifier, dzetsaka now includes state-of-the-art algorithms like
-XGBoost and LightGBM with automatic dependency installation.
+XGBoost and CatBoost with automatic dependency installation.
 
 Features:
 ---------
-- 12 machine learning algorithms (GMM, RF, SVM, KNN, XGB, LGB, CB, ET, GBC, LR, NB, MLP)
+- 11 machine learning algorithms (GMM, RF, SVM, KNN, XGB, CB, ET, GBC, LR, NB, MLP)
 - Automatic hyperparameter optimization using cross-validation
 - Automatic dependency installation for advanced algorithms
 - Support for confidence maps and per-class probability outputs
@@ -32,7 +32,6 @@ Scikit-learn based:
 
 Advanced gradient boosting:
     - XGB: XGBoost (requires: pip install xgboost)
-    - LGB: LightGBM (requires: pip install lightgbm)
     - CB: CatBoost (requires: pip install catboost)
 
 Author:

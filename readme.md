@@ -3,14 +3,14 @@
 
 ![Inselberg in Guiana Amazonian Park](https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/guyane.jpg)
 
-dzetsaka <img src="https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/icon.png" alt="dzetsaka logo" width="30px"/> is very fast and easy to use but also a **powerful classification plugin for Qgis**. Initially based on Gaussian Mixture Model classifier developed by [Mathieu Fauvel](http://fauvel.mathieu.free.fr), this plugin now supports **12 machine learning algorithms** including advanced gradient boosting methods like XGBoost, LightGBM, and CatBoost. This plugin is a more generalist tool than [Historical Map](https://github.com/lennepkade/HistoricalMap) which was dedicated to classify forests from old maps.
+dzetsaka <img src="https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/icon.png" alt="dzetsaka logo" width="30px"/> is very fast and easy to use but also a **powerful classification plugin for Qgis**. Initially based on Gaussian Mixture Model classifier developed by [Mathieu Fauvel](http://fauvel.mathieu.free.fr), this plugin now supports **11 machine learning algorithms** including advanced gradient boosting methods like XGBoost and CatBoost. This plugin is a more generalist tool than [Historical Map](https://github.com/lennepkade/HistoricalMap) which was dedicated to classify forests from old maps.
 This plugin has by developped by [Nicolas Karasiak](https://github.com/nkarasiak/dzetsaka).
 Somewhere between writing too much Python and caring about every sentient being on the map, I built dzetsaka, a QGIS plugin that puts machine learning classification one click away from your raster.
 ## 🚀 What's New In 5.0.0 (Awesome Milestone)
 
 Version **5.0.0** is a major leap in capability and usability:
 
-- **12 production-ready ML algorithms** from classic baselines to modern boosting methods.
+- **11 production-ready ML algorithms** from classic baselines to modern boosting methods.
 - **Major optimization upgrades** for faster training/inference and improved runtime behavior.
 - **Advanced optimization workflows** with Optuna-based hyperparameter search.
 - **Explainable AI support** with SHAP-based feature importance.
@@ -52,7 +52,7 @@ The shapefile must have a column which contains your classification numbers *(1,
 
 ## 🎯 Supported Algorithms
 
-dzetsaka now supports **12 powerful machine learning algorithms**:
+dzetsaka now supports **11 powerful machine learning algorithms**:
 
 ### **Core Algorithms** (built-in)
 - **Gaussian Mixture Model (GMM)** - Fast baseline classifier
@@ -62,7 +62,6 @@ dzetsaka now supports **12 powerful machine learning algorithms**:
 
 ### **Advanced Algorithms**
 - **XGBoost (XGB)** - State-of-the-art gradient boosting
-- **LightGBM (LGB)** - Fast gradient boosting framework
 - **CatBoost (CB)** - Gradient boosting with strong defaults
 - **Extra Trees (ET)** - Extremely randomized trees
 - **Gradient Boosting Classifier (GBC)** - Scikit-learn gradient boosting
@@ -74,7 +73,7 @@ dzetsaka now supports **12 powerful machine learning algorithms**:
 
 dzetsaka can automatically install missing dependencies when possible.
 
-When you select an algorithm that requires additional packages (XGBoost, LightGBM, CatBoost), dzetsaka will:
+When you select an algorithm that requires additional packages (XGBoost, CatBoost), dzetsaka will:
 1. **Detect missing dependencies** automatically
 2. **Offer to install them** with one click
 3. **Handle the installation process** in the background
@@ -83,7 +82,6 @@ When you select an algorithm that requires additional packages (XGBoost, LightGB
 **Supported auto-installation**:
 - ✅ scikit-learn (for RF, SVM, KNN, ET, GBC, LR, NB, MLP)
 - ✅ XGBoost (for XGB classifier)
-- ✅ LightGBM (for LGB classifier)
 - ✅ CatBoost (for CB classifier)
 
 **No more manual pip commands!** Just select your algorithm and let dzetsaka handle the rest.
@@ -133,7 +131,7 @@ In the OsGeo setup, search for PIP and install it. Then you have few more steps 
 If you do not have pip installed, open osgeo4w-setup-x86_64.exe, select Advanced install and install *pip*.
 
 
-You can now use **all 12 machine learning algorithms** including XGBoost, LightGBM, and CatBoost!
+You can now use **all 11 machine learning algorithms** including XGBoost and CatBoost!
 
 ## 🔧 Algorithm Parameters & Performance
 
@@ -148,7 +146,6 @@ dzetsaka automatically optimizes algorithm parameters using **cross-validation g
 
 **Advanced Algorithms** ⭐:
 - **XGBoost (XGB)**: 3-fold CV, optimizes n_estimators (50-200), max_depth (3-9), learning_rate (0.01-0.2)
-- **LightGBM (LGB)**: 3-fold CV, optimizes n_estimators (50-200), num_leaves (31-100), learning_rate (0.01-0.2)
 - **CatBoost (CB)**: 3-fold CV, optimizes iterations, depth, learning_rate, l2_leaf_reg
 - **Extra Trees (ET)**: 3-fold CV, optimizes n_estimators and max_features
 - **Gradient Boosting (GBC)**: 3-fold CV, optimizes n_estimators and max_depth
@@ -159,7 +156,7 @@ dzetsaka automatically optimizes algorithm parameters using **cross-validation g
 ### **🎯 Label Handling**
 dzetsaka automatically handles **sparse class labels** (e.g., classes 0, 1, 3 - missing class 2):
 - **Core algorithms**: Work natively with sparse labels
-- **XGBoost/LightGBM/CatBoost**: Automatic label encoding/decoding for compatibility
+- **XGBoost/CatBoost**: Automatic label encoding/decoding for compatibility
 - **Seamless workflow**: No manual preprocessing required
 
 ### Custom Parameters

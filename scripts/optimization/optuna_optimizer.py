@@ -272,19 +272,6 @@ class OptunaOptimizer:
                 "eval_metric": "logloss",
             }
 
-        if classifier_code == "LGB":
-            return {
-                "n_estimators": trial.suggest_int("n_estimators", 50, 500, step=50),
-                "num_leaves": trial.suggest_int("num_leaves", 20, 150),
-                "max_depth": trial.suggest_int("max_depth", 3, 15),
-                "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
-                "subsample": trial.suggest_float("subsample", 0.6, 1.0),
-                "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
-                "min_child_samples": trial.suggest_int("min_child_samples", 5, 50),
-                "random_state": self.random_seed,
-                "verbose": -1,
-            }
-
         if classifier_code == "CB":
             return {
                 "iterations": trial.suggest_int("iterations", 50, 500, step=50),
@@ -398,14 +385,6 @@ class OptunaOptimizer:
                 return XGBClassifier(**params)
             except ImportError as e:
                 raise ImportError("XGBoost is not installed. Install it with: pip install xgboost") from e
-
-        elif classifier_code == "LGB":
-            try:
-                from lightgbm import LGBMClassifier
-
-                return LGBMClassifier(**params)
-            except ImportError as e:
-                raise ImportError("LightGBM is not installed. Install it with: pip install lightgbm") from e
 
         elif classifier_code == "CB":
             try:

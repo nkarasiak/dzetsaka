@@ -12,7 +12,7 @@ Key Components:
 - ConfusionMatrix: Compute accuracy statistics from classifications
 - Backward compatibility decorators for parameter name changes
 - Advanced cross-validation methods (SLOO, STAND)
-- Label encoding wrappers for XGBoost and LightGBM
+- Label encoding wrappers for XGBoost and CatBoost
 
 Supported Algorithms:
 --------------------
@@ -21,7 +21,6 @@ Supported Algorithms:
 - SVM: Support Vector Machine (sklearn)
 - KNN: K-Nearest Neighbors (sklearn)
 - XGB: XGBoost (requires xgboost package)
-- LGB: LightGBM (requires lightgbm package)
 - CB: CatBoost (requires catboost package)
 - ET: Extra Trees (sklearn)
 - GBC: Gradient Boosting Classifier (sklearn)
@@ -86,6 +85,7 @@ import math
 import os
 import pickle  # nosec B403
 import tempfile
+import warnings
 import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
@@ -193,7 +193,6 @@ from .wrappers.label_encoders import (  # noqa: E402
 )
 from .wrappers.label_encoders import (  # noqa: E402
     CBClassifierWrapper,
-    LGBLabelWrapper,
     XGBLabelWrapper,
 )
 
@@ -233,17 +232,9 @@ def _get_xgboost_wrapper():
     return XGBLabelWrapper
 
 
-def _get_lightgbm_wrapper():
-    """Return a usable LightGBM wrapper, refreshing runtime state if needed."""
-    global LGBLabelWrapper
-    if LGBLabelWrapper is None:
-        _refresh_runtime_dependency_state()
-    return LGBLabelWrapper
-
-
 def _refresh_runtime_dependency_state():
     """Refresh optional dependency state after in-session installations."""
-    global XGBLabelWrapper, LGBLabelWrapper, CBClassifierWrapper
+    global XGBLabelWrapper, CBClassifierWrapper
     global WRAPPERS_SKLEARN_AVAILABLE, SKLEARN_AVAILABLE
     global OPTUNA_AVAILABLE, OptunaOptimizer
     global SHAP_AVAILABLE, ModelExplainer
@@ -255,7 +246,7 @@ def _refresh_runtime_dependency_state():
 
     import importlib
 
-    # Wrappers (XGB/LGB/CB + sklearn availability in wrapper layer)
+    # Wrappers (XGB/CB + sklearn availability in wrapper layer)
     try:
         try:
             from .wrappers import label_encoders as label_encoders_module
@@ -263,7 +254,6 @@ def _refresh_runtime_dependency_state():
             import wrappers.label_encoders as label_encoders_module
         label_encoders_module = importlib.reload(label_encoders_module)
         XGBLabelWrapper = getattr(label_encoders_module, "XGBLabelWrapper", None)
-        LGBLabelWrapper = getattr(label_encoders_module, "LGBLabelWrapper", None)
         CBClassifierWrapper = getattr(label_encoders_module, "CBClassifierWrapper", None)
         WRAPPERS_SKLEARN_AVAILABLE = bool(getattr(label_encoders_module, "SKLEARN_AVAILABLE", False))
         if WRAPPERS_SKLEARN_AVAILABLE:
@@ -348,7 +338,7 @@ def _refresh_runtime_dependency_state():
         create_classification_summary = None
 
 
-# Note: Label encoding wrappers (XGBLabelWrapper, LGBLabelWrapper, CBClassifierWrapper)
+# Note: Label encoding wrappers (XGBLabelWrapper, CBClassifierWrapper)
 # are now imported from .wrappers.label_encoders module (see imports at top)
 
 # Configuration constants
@@ -370,14 +360,6 @@ CLASSIFIER_CONFIGS = {
             "n_estimators": [100],
             "max_depth": [9],
             "learning_rate": [0.01],
-        },
-        "n_splits": 3,
-    },
-    "LGB": {
-        "param_grid": {
-            "n_estimators": [50, 200],
-            "num_leaves": [31, 100],
-            "learning_rate": [0.01, 0.2],
         },
         "n_splits": 3,
     },
@@ -1309,7 +1291,6 @@ def _write_report_bundle(
             "RF": "Random Forest is an ensemble method that constructs multiple decision trees during training and outputs the mode of their predictions. It reduces overfitting through bagging and random feature selection.",
             "SVM": "Support Vector Machine finds the optimal hyperplane that maximizes the margin between classes in a high-dimensional feature space, using kernel functions for non-linear decision boundaries.",
             "XGB": "XGBoost (Extreme Gradient Boosting) is an optimized gradient boosting algorithm that builds an ensemble of weak learners (decision trees) sequentially, with each tree correcting errors from previous trees.",
-            "LGB": "LightGBM is a gradient boosting framework using tree-based learning with histogram-based algorithms for efficiency. It grows trees leaf-wise rather than level-wise for faster training.",
             "CB": "CatBoost (Categorical Boosting) is a gradient boosting algorithm optimized for categorical features, using ordered boosting to reduce overfitting and symmetric trees for faster prediction.",
             "KNN": "K-Nearest Neighbors is a non-parametric method that classifies samples based on the majority vote of their k nearest neighbors in feature space.",
             "GMM": "Gaussian Mixture Model with Ridge regression uses probabilistic clustering with multivariate Gaussian distributions to model class distributions.",
@@ -1560,7 +1541,7 @@ def _write_report_bundle(
             handle.write("<li>An error occurred during SHAP computation (check the QGIS log for details)</li>")
             handle.write("</ul>")
             handle.write(
-                "<p><strong>Recommendation:</strong> Use Random Forest (RF), XGBoost (XGB), or LightGBM (LGB) ",
+                "<p><strong>Recommendation:</strong> Use Random Forest (RF) or XGBoost (XGB) ",
             )
             handle.write("for best SHAP compatibility.</p>")
             handle.write("</div>")
@@ -1689,7 +1670,6 @@ class LearnModel:
             - 'SVM': Support Vector Machine (sklearn)
             - 'KNN': K-Nearest Neighbors (sklearn)
             - 'XGB': XGBoost (requires: pip install xgboost)
-            - 'LGB': LightGBM (requires: pip install lightgbm)
             - 'CB': CatBoost (requires: pip install catboost)
             - 'ET': Extra Trees (sklearn)
             - 'GBC': Gradient Boosting Classifier (sklearn)
@@ -2087,29 +2067,6 @@ class LearnModel:
                         classifier = xgb_wrapper(random_state=random_seed, eval_metric="logloss")
                     n_splits = config["n_splits"]
 
-                elif classifier == "LGB":
-                    import importlib.util
-
-                    if importlib.util.find_spec("lightgbm") is None:
-                        _report(report, "LightGBM not found. Install with: pip install lightgbm")
-                        return
-                    lgb_wrapper = _get_lightgbm_wrapper()
-                    if lgb_wrapper is None:
-                        _report(
-                            report,
-                            "LightGBM requires a usable scikit-learn runtime for label encoding. "
-                            "Install with: pip install scikit-learn and restart QGIS.",
-                        )
-                        return
-
-                    config = CLASSIFIER_CONFIGS["LGB"]
-                    param_grid = config["param_grid"]
-                    if "param_algo" in locals():
-                        classifier = lgb_wrapper(random_state=random_seed, verbose=-1, **param_algo)
-                    else:
-                        classifier = lgb_wrapper(random_state=random_seed, verbose=-1)
-                    n_splits = config["n_splits"]
-
                 elif classifier == "CB":
                     import importlib.util
 
@@ -2411,11 +2368,6 @@ class LearnModel:
                         if xgb_wrapper is None:
                             raise ImportError("XGBoost requires a usable scikit-learn runtime for label encoding")
                         model = xgb_wrapper(**best_params)
-                    elif classifier_code == "LGB":
-                        lgb_wrapper = _get_lightgbm_wrapper()
-                        if lgb_wrapper is None:
-                            raise ImportError("LightGBM requires a usable scikit-learn runtime for label encoding")
-                        model = lgb_wrapper(**best_params)
                     elif classifier_code == "CB":
                         cb_wrapper = _get_catboost_wrapper()
                         if cb_wrapper is None:
@@ -2720,7 +2672,8 @@ class LearnModel:
                 if open_report:
                     report_html = Path(report_dir) / "classification_report.html"
                     if report_html.exists():
-                        with contextlib.suppress(Exception):
+                        with contextlib.suppress(Exception), warnings.catch_warnings():
+                            warnings.simplefilter("ignore", ResourceWarning)
                             webbrowser.open(report_html.resolve().as_uri())
                             _report(report, f"Opened report in browser: {report_html}")
 
@@ -2881,7 +2834,7 @@ class LearnModel:
                 "  1. SHAP library not installed (install with: pip install shap>=0.41.0)\n"
                 "  2. Incompatible classifier (GMM has limited SHAP support)\n"
                 "  3. Model complexity or data size issues\n\n"
-                "Continuing without SHAP analysis. For best SHAP compatibility, use RF, XGB, or LGB.\n\n"
+                "Continuing without SHAP analysis. For best SHAP compatibility, use RF or XGB.\n\n"
                 f"Technical details:\n{error_details}",
             )
             # Don't raise - continue with normal workflow
