@@ -13,14 +13,12 @@ def missing_classifier_dependencies(plugin, classifier_code: str) -> list[str]:
     missing: list[str] = []
 
     sklearn_ok, _sklearn_details = plugin._check_sklearn_usable()
-    needs_sklearn_runtime = classifier_config.requires_sklearn(code) or code in {"XGB", "LGB", "CB"}
+    needs_sklearn_runtime = classifier_config.requires_sklearn(code) or code in {"XGB", "CB"}
     if needs_sklearn_runtime and not sklearn_ok:
         missing.append("scikit-learn")
 
     if classifier_config.requires_xgboost(code) and not plugin._is_module_importable("xgboost"):
         missing.append("xgboost")
-    if classifier_config.requires_lightgbm(code) and not plugin._is_module_importable("lightgbm"):
-        missing.append("lightgbm")
     if classifier_config.requires_catboost(code) and not plugin._is_module_importable("catboost"):
         missing.append("catboost")
 

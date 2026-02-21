@@ -153,7 +153,6 @@ def _full_dependency_bundle():
         return [
             "scikit-learn",
             "xgboost",
-            "lightgbm",
             "catboost",
             "optuna",
             "shap",
@@ -174,14 +173,13 @@ def check_dependency_availability():
     Returns
     -------
     dict[str, bool]
-        Keys: ``sklearn``, ``xgboost``, ``lightgbm``, ``catboost``,
+        Keys: ``sklearn``, ``xgboost``, ``catboost``,
         ``optuna``, ``shap``, ``seaborn``, ``imblearn``.  Values: True when the package can be
         imported successfully.
     """
     deps = {
         "sklearn": False,
         "xgboost": False,
-        "lightgbm": False,
         "catboost": False,
         "optuna": False,
         "shap": False,
@@ -224,17 +222,13 @@ def validate_recipe_dependencies(recipe):
     deps = check_dependency_availability()
 
     # Check classifier-specific dependencies
-    if code in classifier_config.SKLEARN_DEPENDENT or code in {"XGB", "LGB", "CB"}:
+    if code in classifier_config.SKLEARN_DEPENDENT or code in {"XGB", "CB"}:
         if not deps.get("sklearn", False):
             missing.append("scikit-learn")
 
     if code in classifier_config.XGBOOST_DEPENDENT:
         if not deps.get("xgboost", False):
             missing.append("xgboost")
-
-    if code in classifier_config.LIGHTGBM_DEPENDENT:
-        if not deps.get("lightgbm", False):
-            missing.append("lightgbm")
 
     if code in classifier_config.CATBOOST_DEPENDENT:
         if not deps.get("catboost", False):
@@ -403,7 +397,7 @@ _RECIPE_SCHEMA_TEXT = (
     "- Each recipe is a JSON object with:\n"
     "  - name: string (required)\n"
     "  - description: string (optional)\n"
-    "  - classifier: { code: one of GMM, RF, SVM, KNN, XGB, LGB, CB, ET, GBC, LR, NB, MLP }\n"
+    "  - classifier: { code: one of GMM, RF, SVM, KNN, XGB, CB, ET, GBC, LR, NB, MLP }\n"
     "  - postprocess: { confidence_map: bool, save_model: bool, confusion_matrix: bool }\n"
     "  - validation: { split_percent: 10-100, nested_cv: bool, nested_inner_cv: 2-10, nested_outer_cv: 2-10,\n"
     "                 cv_mode: RANDOM_SPLIT|POLYGON_GROUP }\n"
@@ -491,33 +485,6 @@ def build_catboost_recipe():
             ),
             "validation": dict(_recipe_template()["validation"], split_percent=75, cv_mode="POLYGON_GROUP"),
             "postprocess": {"confidence_map": True, "save_model": True, "confusion_matrix": True},
-        }
-    )
-    return recipe
-
-
-def build_lightgbm_recipe():
-    # type: () -> Dict[str, object]
-    recipe = _recipe_template()
-    recipe.update(
-        {
-            "name": "LightGBM Large-Scale (Optuna)",
-            "description": "Optuna-tuned LightGBM with nested CV and SMOTE-ready preconditioning.",
-            "is_template": True,
-            "category": "Intermediate",
-            "expected_runtime": "10-20 min",
-            "typical_accuracy": "85-92%",
-            "best_for": "Large-scale datasets with many features",
-            "classifier": {"code": "LGB"},
-            "extraParam": dict(
-                _recipe_template()["extraParam"],
-                USE_OPTUNA=True,
-                OPTUNA_TRIALS=150,
-                USE_CLASS_WEIGHTS=True,
-                CLASS_WEIGHT_STRATEGY="balanced",
-            ),
-            "validation": dict(_recipe_template()["validation"], split_percent=75, cv_mode="POLYGON_GROUP"),
-            "postprocess": {"confidence_map": False, "save_model": True, "confusion_matrix": True},
         }
     )
     return recipe
@@ -714,7 +681,7 @@ def normalize_recipe(recipe):
 
 def _valid_classifier_codes():
     # type: () -> List[str]
-    return [code for code, _n, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META]
+    return [code for code, _n, _sk, _xgb, _cb in _CLASSIFIER_META]
 
 
 def validate_recipe_list(payload):
@@ -860,7 +827,6 @@ def load_recipes(settings):
     # Load legacy default recipes (kept for backward compatibility)
     default_recipes = [
         build_fast_recipe(),
-        build_lightgbm_recipe(),
         build_best_accuracy_recipe(),
         build_explainability_recipe(),
         build_imbalanced_fast_recipe(),
@@ -952,20 +918,19 @@ def recipe_from_config(config, name, description=""):
 # Classifier metadata used by the guided workflow (mirrors classifier_config)
 # ---------------------------------------------------------------------------
 
-# (code, full name, requires_sklearn, requires_xgboost, requires_lightgbm, requires_catboost)
+# (code, full name, requires_sklearn, requires_xgboost, requires_catboost)
 _CLASSIFIER_META = [
-    ("GMM", "Gaussian Mixture Model", False, False, False, False),
-    ("RF", "Random Forest", True, False, False, False),
-    ("SVM", "Support Vector Machine", True, False, False, False),
-    ("KNN", "K-Nearest Neighbors", True, False, False, False),
-    ("XGB", "XGBoost", True, True, False, False),
-    ("LGB", "LightGBM", True, False, True, False),
-    ("CB", "CatBoost", True, False, False, True),
-    ("ET", "Extra Trees", True, False, False, False),
-    ("GBC", "Gradient Boosting Classifier", True, False, False, False),
-    ("LR", "Logistic Regression", True, False, False, False),
-    ("NB", "Gaussian Naive Bayes", True, False, False, False),
-    ("MLP", "Multi-layer Perceptron", True, False, False, False),
+    ("GMM", "Gaussian Mixture Model", False, False, False),
+    ("RF", "Random Forest", True, False, False),
+    ("SVM", "Support Vector Machine", True, False, False),
+    ("KNN", "K-Nearest Neighbors", True, False, False),
+    ("XGB", "XGBoost", True, True, False),
+    ("CB", "CatBoost", True, False, True),
+    ("ET", "Extra Trees", True, False, False),
+    ("GBC", "Gradient Boosting Classifier", True, False, False),
+    ("LR", "Logistic Regression", True, False, False),
+    ("NB", "Gaussian Naive Bayes", True, False, False),
+    ("MLP", "Multi-layer Perceptron", True, False, False),
 ]
 
 
@@ -1030,13 +995,11 @@ class _CoverPixmapLabel(QLabel):
 def _classifier_available(code, deps):
     # type: (str, Dict[str, bool]) -> bool
     """Return True when all hard dependencies for *code* are satisfied."""
-    for c, _name, needs_sk, needs_xgb, needs_lgb, needs_cb in _CLASSIFIER_META:
+    for c, _name, needs_sk, needs_xgb, needs_cb in _CLASSIFIER_META:
         if c == code:
             if needs_sk and not deps.get("sklearn", False):
                 return False
             if needs_xgb and not deps.get("xgboost", False):
-                return False
-            if needs_lgb and not deps.get("lightgbm", False):
                 return False
             if needs_cb and not deps.get("catboost", False):
                 return False
@@ -1059,23 +1022,6 @@ class RecipeShopDialog(QDialog):
             "nested_cv": False,
             "split": 100,
             "cv_mode": "RANDOM_SPLIT",
-            "report_bundle": True,
-            "open_report": True,
-        },
-        {
-            "name": "LightGBM Large-Scale (Optuna)",
-            "description": "LightGBM with Optuna, SMOTE, and nested CV tuned for large datasets.",
-            "classifier": "LGB",
-            "optuna": True,
-            "optuna_trials": 200,
-            "shap": False,
-            "smote": True,
-            "class_weights": True,
-            "nested_cv": True,
-            "nested_inner": 4,
-            "nested_outer": 6,
-            "split": 65,
-            "cv_mode": "POLYGON_GROUP",
             "report_bundle": True,
             "open_report": True,
         },
@@ -1185,7 +1131,7 @@ class RecipeShopDialog(QDialog):
         classifier_row = QHBoxLayout()
         classifier_row.addWidget(QLabel("Core model:"))
         self.classifierCombo = QComboBox()
-        for code, name, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
+        for code, name, _sk, _xgb, _cb in _CLASSIFIER_META:
             label = f"{name} ({code})"
             self.classifierCombo.addItem(label, code)
         self.classifierCombo.currentIndexChanged.connect(self._handle_classifier_changed)
@@ -1407,15 +1353,14 @@ class RecipeShopDialog(QDialog):
         # type: (str) -> tuple[List[str], List[str]]
         missing_required = []
         missing_optional = []
-        for c, _name, needs_sk, needs_xgb, needs_lgb, needs_cb in _CLASSIFIER_META:
+        for c, _name, needs_sk, needs_xgb, needs_cb in _CLASSIFIER_META:
             if c != code:
                 continue
             if needs_sk and not self._deps.get("sklearn", False):
                 missing_required.append("scikit-learn")
             if needs_xgb and not self._deps.get("xgboost", False):
                 missing_required.append("xgboost")
-            if needs_lgb and not self._deps.get("lightgbm", False):
-                missing_required.append("lightgbm")
+
             if needs_cb and not self._deps.get("catboost", False):
                 missing_required.append("catboost")
             break
@@ -1431,7 +1376,7 @@ class RecipeShopDialog(QDialog):
 
     def _classifier_name(self, code):
         # type: (str) -> str
-        for c, name, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
+        for c, name, _sk, _xgb, _cb in _CLASSIFIER_META:
             if c == code:
                 return name
         return code
@@ -2561,7 +2506,7 @@ class DataInputPage(QWizardPage):
             "<ul>"
             "<li><b>Band matching:</b> The model expects the same number and order of bands as training data</li>"
             "<li><b>Spectral consistency:</b> Best results when raster has similar spectral characteristics (sensor, season, preprocessing)</li>"
-            "<li><b>Model format:</b> dzetsaka saves models as pickled scikit-learn/XGBoost/LightGBM/CatBoost files (.pkl)</li>"
+            "<li><b>Model format:</b> dzetsaka saves models as pickled scikit-learn/XGBoost/CatBoost files (.pkl)</li>"
             "</ul>"
         )
         input_layout.addWidget(self.loadModelCheck)
@@ -2592,7 +2537,7 @@ class DataInputPage(QWizardPage):
 
         algo_layout.addWidget(QLabel("Classifier:"))
         self.classifierCombo = QComboBox()
-        for _code, name, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
+        for _code, name, _sk, _xgb, _cb in _CLASSIFIER_META:
             self.classifierCombo.addItem(name)
         self.classifierCombo.setWhatsThis(
             "<h3>Classifier Algorithm</h3>"
@@ -2601,22 +2546,22 @@ class DataInputPage(QWizardPage):
             "<h4>Popular choices:</h4>"
             "<ul>"
             "<li><b>Random Forest:</b> Balanced accuracy, fast training, good default choice for most cases</li>"
-            "<li><b>XGBoost/LightGBM/CatBoost:</b> State-of-the-art accuracy, excellent with Optuna optimization</li>"
+            "<li><b>XGBoost/CatBoost:</b> State-of-the-art accuracy, excellent with Optuna optimization</li>"
             "<li><b>SVM:</b> High accuracy for smaller datasets, slower on large datasets</li>"
             "<li><b>GMM:</b> Fast, probabilistic, good for quick exploration</li>"
             "</ul>"
             "<h4>When to use each:</h4>"
             "<ul>"
             "<li><b>Experimenting:</b> Start with Random Forest - fast, robust, good baseline</li>"
-            "<li><b>Best accuracy:</b> Try XGBoost/LightGBM with Optuna optimization</li>"
+            "<li><b>Best accuracy:</b> Try XGBoost/CatBoost with Optuna optimization</li>"
             "<li><b>Small datasets (<1000 samples):</b> SVM or Random Forest</li>"
-            "<li><b>Large datasets (>100k samples):</b> LightGBM, Random Forest, or Neural Network (MLP)</li>"
+            "<li><b>Large datasets (>100k samples):</b> XGBoost, Random Forest, or Neural Network (MLP)</li>"
             "<li><b>Fast preview:</b> GMM or KNN</li>"
             "</ul>"
             "<h4>Dependencies:</h4>"
             "<ul>"
             "<li><b>Always available:</b> GMM, KNN, SVM, Random Forest (via scikit-learn)</li>"
-            "<li><b>Require installation:</b> XGBoost, LightGBM, CatBoost (dzetsaka can auto-install)</li>"
+            "<li><b>Require installation:</b> XGBoost, CatBoost (dzetsaka can auto-install)</li>"
             "</ul>"
             "<p><i>Tip:</i> Use the <b>Compare</b> button to see algorithm characteristics side-by-side, "
             "or click <b>Smart Defaults</b> to enable recommended advanced features.</p>"
@@ -2816,13 +2761,11 @@ class DataInputPage(QWizardPage):
         """Show required and optional dependency status for the selected classifier."""
         code = _CLASSIFIER_META[index][0]
         missing_required = []  # type: List[str]
-        _code, _name, needs_sk, needs_xgb, needs_lgb, needs_cb = _CLASSIFIER_META[index]
+        _code, _name, needs_sk, needs_xgb, needs_cb = _CLASSIFIER_META[index]
         if needs_sk and not self._deps.get("sklearn", False):
             missing_required.append("scikit-learn")
         if needs_xgb and not self._deps.get("xgboost", False):
             missing_required.append("xgboost")
-        if needs_lgb and not self._deps.get("lightgbm", False):
-            missing_required.append("lightgbm")
         if needs_cb and not self._deps.get("catboost", False):
             missing_required.append("catboost")
 
@@ -2921,7 +2864,7 @@ class DataInputPage(QWizardPage):
     def _set_algorithm_from_comparison(self, name):
         # type: (str) -> None
         """Set the combo to the algorithm chosen in the comparison panel."""
-        for i, (_code, n, _sk, _xgb, _lgb, _cb) in enumerate(_CLASSIFIER_META):
+        for i, (_code, n, _sk, _xgb, _cb) in enumerate(_CLASSIFIER_META):
             if n == name:
                 self.classifierCombo.setCurrentIndex(i)
                 break
@@ -2929,7 +2872,7 @@ class DataInputPage(QWizardPage):
     def set_classifier_by_code(self, code):
         # type: (str) -> None
         """Set the combo to the classifier matching the provided code."""
-        for i, (c, _n, _sk, _xgb, _lgb, _cb) in enumerate(_CLASSIFIER_META):
+        for i, (c, _n, _sk, _xgb, _cb) in enumerate(_CLASSIFIER_META):
             if c == code:
                 self.classifierCombo.setCurrentIndex(i)
                 break
@@ -3433,7 +3376,7 @@ class AdvancedOptionsPage(QWizardPage):
             "<li><b>Method:</b> Uses game-theory Shapley values from cooperative game theory</li>"
             "<li><b>Sample size:</b> 1000 samples = balanced speed/accuracy, 5000+ = thorough but slower</li>"
             "<li><b>Overhead:</b> ~2-5 min for 1000 samples, ~10-20 min for 5000 samples</li>"
-            "<li><b>Compatible with:</b> All tree-based models (RF, XGB, LGB, CB, ET, GBC)</li>"
+            "<li><b>Compatible with:</b> All tree-based models (RF, XGB, CB, ET, GBC)</li>"
             "</ul>"
             "<p><i>Use case example:</i> In vegetation mapping, SHAP might reveal that NIR and Red Edge bands "
             "are most important for forest/grassland distinction, while SWIR bands matter for urban areas.</p>"
@@ -3856,7 +3799,7 @@ class OutputConfigPage(QWizardPage):
             "<b>Save Trained Model</b><br>"
             "Saves the trained classifier to disk for later reuse without retraining.<br><br>"
             "<i>Use case:</i> Classify multiple rasters with same model, share model with colleagues.<br>"
-            "<i>Format:</i> Pickled scikit-learn/XGBoost/LightGBM/CatBoost model file."
+            "<i>Format:</i> Pickled scikit-learn/XGBoost/CatBoost model file."
         )
         out_layout.addWidget(self.saveModelCheck, 3, 0, 1, 3)
         out_layout.addWidget(QLabel("Model file:"), 4, 0)
@@ -4993,7 +4936,7 @@ class RecipeHubDialog(QDialog):
         # type: (Dict[str, object]) -> str
         classifier = recipe.get("classifier", {})
         classifier_code = str(classifier.get("code", "GMM"))
-        for code, label, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
+        for code, label, _sk, _xgb, _cb in _CLASSIFIER_META:
             if code == classifier_code:
                 return label
         return classifier_code
@@ -5229,7 +5172,7 @@ class RecipeHubDialog(QDialog):
         classifier = recipe.get("classifier", {})
         classifier_code = str(classifier.get("code", "GMM"))
         classifier_name = classifier_code
-        for code, label, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
+        for code, label, _sk, _xgb, _cb in _CLASSIFIER_META:
             if code == classifier_code:
                 classifier_name = label
                 break
@@ -5734,7 +5677,7 @@ class QuickClassificationPanel(QWidget):
 
         # Keep classifier combo as internal state (not shown in default dashboard).
         self.classifierCombo = QComboBox()
-        for _code, name, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
+        for _code, name, _sk, _xgb, _cb in _CLASSIFIER_META:
             self.classifierCombo.addItem(name)
 
         self.depStatusLabel = QLabel()
@@ -6284,13 +6227,11 @@ class QuickClassificationPanel(QWidget):
             index = self.classifierCombo.currentIndex()
 
         missing_required = []  # type: List[str]
-        _code, _name, needs_sk, needs_xgb, needs_lgb, needs_cb = _CLASSIFIER_META[index]
+        _code, _name, needs_sk, needs_xgb, needs_cb = _CLASSIFIER_META[index]
         if needs_sk and not self._deps.get("sklearn", False):
             missing_required.append("scikit-learn")
         if needs_xgb and not self._deps.get("xgboost", False):
             missing_required.append("xgboost")
-        if needs_lgb and not self._deps.get("lightgbm", False):
-            missing_required.append("lightgbm")
         if needs_cb and not self._deps.get("catboost", False):
             missing_required.append("catboost")
 
@@ -6410,7 +6351,7 @@ class QuickClassificationPanel(QWidget):
         classifier = recipe.get("classifier", {})
         classifier_code = str(classifier.get("code", "GMM"))
         classifier_name = classifier_code
-        for code, name_str, _sk, _xgb, _lgb, _cb in _CLASSIFIER_META:
+        for code, name_str, _sk, _xgb, _cb in _CLASSIFIER_META:
             if code == classifier_code:
                 classifier_name = name_str
                 break
@@ -6467,14 +6408,12 @@ class QuickClassificationPanel(QWidget):
 
         # Add required dependencies
         deps_required = []
-        for code, _name, needs_sk, needs_xgb, needs_lgb, needs_cb in _CLASSIFIER_META:
+        for code, _name, needs_sk, needs_xgb, needs_cb in _CLASSIFIER_META:
             if code == classifier_code:
                 if needs_sk:
                     deps_required.append("scikit-learn")
                 if needs_xgb:
                     deps_required.append("XGBoost")
-                if needs_lgb:
-                    deps_required.append("LightGBM")
                 if needs_cb:
                     deps_required.append("CatBoost")
                 break
@@ -6712,7 +6651,7 @@ class QuickClassificationPanel(QWidget):
         self._previous_recipe_index = self.recipeCombo.currentIndex()
         classifier = selected.get("classifier", {})
         classifier_code = str(classifier.get("code", "GMM"))
-        for i, (code, _n, _sk, _xgb, _lgb, _cb) in enumerate(_CLASSIFIER_META):
+        for i, (code, _n, _sk, _xgb, _cb) in enumerate(_CLASSIFIER_META):
             if code == classifier_code:
                 self.classifierCombo.setCurrentIndex(i)
                 break
@@ -6952,7 +6891,7 @@ class QuickClassificationPanel(QWidget):
             if bool(getattr(self, "reportCheck", None) and self.reportCheck.isChecked()):
                 deps = check_dependency_availability()
                 missing_bundle = []
-                for dep_key in ("sklearn", "xgboost", "lightgbm", "catboost", "optuna", "shap", "imblearn"):
+                for dep_key in ("sklearn", "xgboost", "catboost", "optuna", "shap", "imblearn"):
                     # seaborn is used by report heatmaps.
                     if dep_key == "imblearn":
                         if not deps.get(dep_key, False):

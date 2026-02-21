@@ -175,16 +175,15 @@ tests/unit/
 
 ## Dependencies
 
-Wizard checks 8 packages:
+Wizard checks 7 packages:
 
 1. scikit-learn → sklearn
 2. xgboost → xgboost
-3. lightgbm → lightgbm
-4. catboost → catboost
-5. optuna → optuna
-6. shap → shap
-7. seaborn → seaborn
-8. imbalanced-learn → imblearn
+3. catboost → catboost
+4. optuna → optuna
+5. shap → shap
+6. seaborn → seaborn
+7. imbalanced-learn → imblearn
 
 ## User Flow
 

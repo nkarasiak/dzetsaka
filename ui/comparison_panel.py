@@ -36,20 +36,19 @@ from .dashboard_widget import check_dependency_availability
 # Static table data
 # ---------------------------------------------------------------------------
 
-# Each entry: (code, name, classifier_type, speed, needs_sklearn, needs_xgboost, needs_lightgbm, needs_catboost)
+# Each entry: (code, name, classifier_type, speed, needs_sklearn, needs_xgboost, needs_catboost)
 _ALGO_TABLE_DATA = [
-    ("GMM", "Gaussian Mixture Model", "Probabilistic", "Fast", False, False, False, False),
-    ("RF", "Random Forest", "Ensemble", "Fast", True, False, False, False),
-    ("SVM", "Support Vector Machine", "Kernel", "Medium", True, False, False, False),
-    ("KNN", "K-Nearest Neighbors", "Instance-based", "Medium", True, False, False, False),
-    ("XGB", "XGBoost", "Boosting", "Medium", True, True, False, False),
-    ("LGB", "LightGBM", "Boosting", "Fast", True, False, True, False),
-    ("CB", "CatBoost", "Boosting", "Medium", True, False, False, True),
-    ("ET", "Extra Trees", "Ensemble", "Fast", True, False, False, False),
-    ("GBC", "Gradient Boosting Classifier", "Boosting", "Medium", True, False, False, False),
-    ("LR", "Logistic Regression", "Linear", "Fast", True, False, False, False),
-    ("NB", "Gaussian Naive Bayes", "Probabilistic", "Fast", True, False, False, False),
-    ("MLP", "Multi-layer Perceptron", "Neural Network", "Slow", True, False, False, False),
+    ("GMM", "Gaussian Mixture Model", "Probabilistic", "Fast", False, False, False),
+    ("RF", "Random Forest", "Ensemble", "Fast", True, False, False),
+    ("SVM", "Support Vector Machine", "Kernel", "Medium", True, False, False),
+    ("KNN", "K-Nearest Neighbors", "Instance-based", "Medium", True, False, False),
+    ("XGB", "XGBoost", "Boosting", "Medium", True, True, False),
+    ("CB", "CatBoost", "Boosting", "Medium", True, False, True),
+    ("ET", "Extra Trees", "Ensemble", "Fast", True, False, False),
+    ("GBC", "Gradient Boosting Classifier", "Boosting", "Medium", True, False, False),
+    ("LR", "Logistic Regression", "Linear", "Fast", True, False, False),
+    ("NB", "Gaussian Naive Bayes", "Probabilistic", "Fast", True, False, False),
+    ("MLP", "Multi-layer Perceptron", "Neural Network", "Slow", True, False, False),
 ]
 
 # Which features each algorithm supports (optuna, shap, smote, class_weights)
@@ -59,7 +58,6 @@ _FEATURE_SUPPORT = {
     "SVM": {"optuna": True, "shap": True, "smote": True, "class_weights": True},
     "KNN": {"optuna": True, "shap": True, "smote": True, "class_weights": False},
     "XGB": {"optuna": True, "shap": True, "smote": True, "class_weights": True},
-    "LGB": {"optuna": True, "shap": True, "smote": True, "class_weights": True},
     "CB": {"optuna": True, "shap": True, "smote": True, "class_weights": True},
     "ET": {"optuna": True, "shap": True, "smote": True, "class_weights": True},
     "GBC": {"optuna": True, "shap": True, "smote": True, "class_weights": True},
@@ -75,7 +73,6 @@ _RECOMMENDATIONS = {
     "SVM": "High accuracy on small datasets",
     "KNN": "Simple, interpretable, good for irregular boundaries",
     "XGB": "State-of-the-art, large datasets, best overall accuracy",
-    "LGB": "Fastest gradient boosting, large datasets",
     "CB": "Best default parameters, minimal tuning needed",
     "ET": "Fast, high variance data, parallel training",
     "GBC": "Smooth probability estimates, calibrated confidence",
@@ -214,32 +211,6 @@ _ALGORITHM_EXPLANATIONS = {
             "Large-scale land cover mapping projects",
             "Multi-temporal crop classification with complex patterns",
             "Urban sprawl detection with diverse spectral-spatial features",
-        ],
-    },
-    "LGB": {
-        "description": "LightGBM is a gradient boosting framework that uses tree-based learning with leaf-wise growth. It's optimized for speed and memory efficiency, making it ideal for large datasets.",
-        "when_to_use": [
-            "When you have very large datasets (>100k samples)",
-            "When training time is a constraint",
-            "When memory usage is a concern",
-            "When you need fast iteration for experimentation",
-        ],
-        "tradeoffs": {
-            "Accuracy": "Very High (comparable to XGBoost)",
-            "Speed": "Very Fast (fastest gradient boosting)",
-            "Memory": "Low (efficient histogram-based algorithm)",
-            "Tuning Required": "Medium (fewer parameters than XGBoost)",
-        },
-        "advanced_features": {
-            "Optuna": True,
-            "SHAP": True,
-            "SMOTE": True,
-            "Class Weights": True,
-        },
-        "examples": [
-            "Continental-scale land cover mapping",
-            "Real-time classification applications",
-            "Time-series analysis with many temporal features",
         ],
     },
     "CB": {
@@ -428,13 +399,11 @@ def build_comparison_data(deps):
     installed.  The ``available`` flag drives row colouring in the UI.
     """
     rows = []  # type: List[Tuple[str, str, str, str, str, bool, str, str, str, str]]
-    for code, name, algo_type, speed, needs_sk, needs_xgb, needs_lgb, needs_cb in _ALGO_TABLE_DATA:
+    for code, name, algo_type, speed, needs_sk, needs_xgb, needs_cb in _ALGO_TABLE_DATA:
         available = True
         if needs_sk and not deps.get("sklearn", False):
             available = False
         if needs_xgb and not deps.get("xgboost", False):
-            available = False
-        if needs_lgb and not deps.get("lightgbm", False):
             available = False
         if needs_cb and not deps.get("catboost", False):
             available = False
@@ -484,7 +453,7 @@ class AlgorithmExplanationDialog(QDialog):
 
         # Get algorithm name
         algo_name = ""
-        for code, name, _, _, _, _, _, _ in _ALGO_TABLE_DATA:
+        for code, name, _, _, _, _, _ in _ALGO_TABLE_DATA:
             if code == algorithm_code:
                 algo_name = name
                 break

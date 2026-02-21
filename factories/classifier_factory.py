@@ -41,8 +41,6 @@ class ClassifierMetadata:
         Whether scikit-learn is required
     requires_xgboost : bool
         Whether XGBoost is required
-    requires_lightgbm : bool
-        Whether LightGBM is required
     requires_catboost : bool
         Whether CatBoost is required
     supports_probability : bool
@@ -57,7 +55,6 @@ class ClassifierMetadata:
     description: str
     requires_sklearn: bool = False
     requires_xgboost: bool = False
-    requires_lightgbm: bool = False
     requires_catboost: bool = False
     supports_probability: bool = True
     supports_feature_importance: bool = False
@@ -256,16 +253,6 @@ class ClassifierFactory:
                     "xgboost", f"Classifier {metadata.code} requires XGBoost", required_version=">=1.0.0",
                 ) from e
 
-        if metadata.requires_lightgbm:
-            try:
-                import lightgbm  # noqa: F401
-            except ImportError as e:
-                raise DependencyError(
-                    "lightgbm",
-                    f"Classifier {metadata.code} requires LightGBM",
-                    required_version=">=3.0.0",
-                ) from e
-
         if getattr(metadata, "requires_catboost", False):
             try:
                 import catboost  # noqa: F401
@@ -290,7 +277,7 @@ class ClassifierFactory:
 def initialize_factory() -> None:
     """Initialize factory with all built-in classifiers.
 
-    This function registers all 11 supported classifiers with their
+    This function registers all built-in classifiers with their
     metadata and default parameters.
 
     """
@@ -466,26 +453,6 @@ def initialize_factory() -> None:
                 supports_feature_importance=True,
             ),
             default_params={"random_state": 42, "eval_metric": "logloss"},
-        )
-    except ImportError:
-        pass
-
-    # LightGBM
-    try:
-        from scripts.classification_pipeline import LGBMClassifierWrapper
-
-        ClassifierFactory.register(
-            code="LGB",
-            classifier_class=LGBMClassifierWrapper,
-            metadata=ClassifierMetadata(
-                code="LGB",
-                name="LightGBM",
-                description="Fast gradient boosting framework, efficient for large datasets",
-                requires_lightgbm=True,
-                supports_probability=True,
-                supports_feature_importance=True,
-            ),
-            default_params={"random_state": 42, "verbose": -1},
         )
     except ImportError:
         pass

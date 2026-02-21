@@ -205,7 +205,6 @@ def test_quickstart_page_color_darkening():
     [
         ("scikit-learn", "sklearn"),
         ("xgboost", "xgboost"),
-        ("lightgbm", "lightgbm"),
         ("catboost", "catboost"),
         ("optuna", "optuna"),
         ("shap", "shap"),

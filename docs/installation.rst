@@ -55,12 +55,6 @@ For XGBoost:
 
    pip install xgboost
 
-For LightGBM:
-
-.. code-block:: bash
-
-   pip install lightgbm
-
 For CatBoost:
 
 .. code-block:: bash
@@ -135,10 +129,10 @@ Use the QGIS Python to ensure packages are installed in the correct environment:
 .. code-block:: bash
 
    # Windows (as Administrator)
-   "C:\Program Files\QGIS 3.XX\bin\python-qgis.bat" -m pip install scikit-learn xgboost lightgbm catboost
+   "C:\Program Files\QGIS 3.XX\bin\python-qgis.bat" -m pip install scikit-learn xgboost catboost
 
    # macOS/Linux
-   /path/to/qgis/python3 -m pip install scikit-learn xgboost lightgbm catboost
+   /path/to/qgis/python3 -m pip install scikit-learn xgboost catboost
 
 Installing from Source (Developers)
 ------------------------------------
@@ -234,7 +228,7 @@ To uninstall dzetsaka:
 
 .. code-block:: bash
 
-   pip uninstall scikit-learn xgboost lightgbm catboost optuna shap imbalanced-learn
+   pip uninstall scikit-learn xgboost catboost optuna shap imbalanced-learn
 
 Updating
 --------

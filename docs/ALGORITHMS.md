@@ -1,6 +1,6 @@
 # dzetsaka Algorithm Reference
 
-Complete guide to all 12 machine learning algorithms supported by dzetsaka.
+Complete guide to all 11 machine learning algorithms supported by dzetsaka.
 
 ## Quick Comparison Table
 
@@ -11,7 +11,6 @@ Complete guide to all 12 machine learning algorithms supported by dzetsaka.
 | SVM | Kernel-based | ⚡ | ⭐⭐⭐⭐ | scikit-learn | Small datasets, high accuracy |
 | KNN | Instance-based | ⚡⚡ | ⭐⭐⭐ | scikit-learn | Simple boundaries |
 | XGBoost | Gradient Boosting | ⚡ | ⭐⭐⭐⭐⭐ | xgboost | Maximum accuracy |
-| LightGBM | Gradient Boosting | ⚡⚡ | ⭐⭐⭐⭐⭐ | lightgbm | Fast + accurate |
 | CatBoost | Gradient Boosting | ⚡⚡ | ⭐⭐⭐⭐⭐ | catboost | Best default boosting |
 | Extra Trees | Ensemble | ⚡⚡⚡ | ⭐⭐⭐ | scikit-learn | Fast ensemble |
 | Gradient Boosting | Ensemble | ⚡ | ⭐⭐⭐⭐ | scikit-learn | Controlled overfitting |
@@ -204,46 +203,7 @@ Extreme Gradient Boosting - builds trees sequentially, each correcting errors of
 
 ---
 
-### 6. LightGBM (LGB)
-
-**Code:** `LGB`
-**Dependencies:** lightgbm
-**Cross-Validation:** 3-fold
-
-**Description:**
-Gradient boosting framework by Microsoft. Uses leaf-wise tree growth for faster training than XGBoost.
-
-**Strengths:**
-- Faster than XGBoost
-- Lower memory usage
-- Handles large datasets well
-- High accuracy
-- Categorical feature support
-
-**Weaknesses:**
-- Can overfit on small datasets
-- Sensitive to hyperparameters
-- Less stable than Random Forest
-
-**Use When:**
-- Need speed AND accuracy
-- Have large dataset
-- Training time is limited
-- Working with many features (>100)
-
-**Tuned Hyperparameters:**
-- `n_estimators`: 50, 100, 200
-- `num_leaves`: 31, 63, 127
-- `learning_rate`: 0.01, 0.1, 0.3
-
-**Typical Values:**
-- Best n_estimators: 100-200
-- Best num_leaves: 31-63
-- Best learning_rate: 0.1
-
----
-
-### 7. CatBoost (CB)
+### 6. CatBoost (CB)
 
 **Code:** `CB`
 **Dependencies:** catboost
@@ -260,8 +220,8 @@ Gradient boosting by Yandex with strong defaults and categorical feature handlin
 - Best for users new to boosting
 
 **Weaknesses:**
-- Slower than LightGBM
-- Higher memory usage than LightGBM
+- Slower than XGBoost in some scenarios
+- Higher memory usage
 - Less control over tree structure
 
 **Use When:**
@@ -282,7 +242,7 @@ Gradient boosting by Yandex with strong defaults and categorical feature handlin
 
 ---
 
-### 8. Extra Trees (ET)
+### 7. Extra Trees (ET)
 
 **Code:** `ET`
 **Dependencies:** scikit-learn
@@ -315,14 +275,14 @@ Extremely Randomized Trees - similar to Random Forest but with more randomizatio
 
 ---
 
-### 9. Gradient Boosting Classifier (GBC)
+### 8. Gradient Boosting Classifier (GBC)
 
 **Code:** `GBC`
 **Dependencies:** scikit-learn
 **Cross-Validation:** 3-fold
 
 **Description:**
-Scikit-learn's gradient boosting implementation. More controlled than XGBoost/LightGBM but slower.
+Scikit-learn's gradient boosting implementation. More controlled than XGBoost but slower.
 
 **Strengths:**
 - High accuracy
@@ -331,7 +291,7 @@ Scikit-learn's gradient boosting implementation. More controlled than XGBoost/Li
 - Less prone to overfitting than XGBoost
 
 **Weaknesses:**
-- Much slower than XGBoost/LightGBM
+- Much slower than XGBoost
 - Limited to smaller datasets
 - Fewer advanced features
 
@@ -346,7 +306,7 @@ Scikit-learn's gradient boosting implementation. More controlled than XGBoost/Li
 
 ---
 
-### 10. Logistic Regression (LR)
+### 9. Logistic Regression (LR)
 
 **Code:** `LR`
 **Dependencies:** scikit-learn
@@ -378,7 +338,7 @@ Linear model with logistic function. Fast and simple, works when classes are lin
 
 ---
 
-### 11. Gaussian Naive Bayes (NB)
+### 10. Gaussian Naive Bayes (NB)
 
 **Code:** `NB`
 **Dependencies:** scikit-learn
@@ -409,7 +369,7 @@ Probabilistic classifier based on Bayes' theorem assuming independence between f
 
 ---
 
-### 12. Multi-Layer Perceptron (MLP)
+### 11. Multi-Layer Perceptron (MLP)
 
 **Code:** `MLP`
 **Dependencies:** scikit-learn
@@ -453,7 +413,7 @@ START
   |
   ├─ Need maximum accuracy?
   │   ├─ Yes → Have 500+ samples/class?
-  │   │   ├─ Yes → Try CatBoost or LightGBM
+  │   │   ├─ Yes → Try CatBoost or XGBoost
   │   │   └─ No → Try SVM or Random Forest
   │   └─ No → Continue
   |
@@ -482,11 +442,11 @@ START
 - GMM, NB, LR: Very fast (<1 minute)
 - RF, ET, KNN: Fast (1-5 minutes)
 - SVM, MLP: Moderate (5-15 minutes)
-- XGB, LGB, CB, GBC: Slow (15-60 minutes with tuning)
+- XGB, CB, GBC: Slow (15-60 minutes with tuning)
 
 ### Prediction Speed
 - GMM, LR, NB: Very fast
-- RF, ET, XGB, LGB, CB: Fast
+- RF, ET, XGB, CB: Fast
 - KNN: Slow (stores all training data)
 - SVM, MLP: Moderate
 
@@ -497,7 +457,6 @@ START
 - **Random Forest:** Breiman, L. (2001). Random Forests. Machine Learning, 45(1), 5-32.
 - **XGBoost:** Chen & Guestrin (2016). XGBoost: A Scalable Tree Boosting System.
 - **SVM:** Mountrakis et al. (2011). Support vector machines in remote sensing.
-- **LightGBM:** Ke et al. (2017). LightGBM: A Highly Efficient Gradient Boosting Decision Tree.
 - **CatBoost:** Prokhorenkova et al. (2018). CatBoost: unbiased boosting with categorical features.
 
 ---

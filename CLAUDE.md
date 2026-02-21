@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-dzetsaka is a QGIS plugin for raster classification supporting 12 machine learning algorithms (GMM, RF, SVM, KNN, XGBoost, LightGBM, CatBoost, Extra Trees, GBC, LR, NB, MLP). It features automatic dependency installation, recipe-based workflows, Optuna optimization, SHAP explainability, and class imbalance handling.
+dzetsaka is a QGIS plugin for raster classification supporting 11 machine learning algorithms (GMM, RF, SVM, KNN, XGBoost, CatBoost, Extra Trees, GBC, LR, NB, MLP). It features automatic dependency installation, recipe-based workflows, Optuna optimization, SHAP explainability, and class imbalance handling.
 
 ## Development Commands
 
@@ -111,7 +111,7 @@ The codebase follows a **hybrid architecture**:
 - **DTOs** for data transfer
 
 #### 4. Infrastructure Layer (`src/dzetsaka/infrastructure/`)
-- **ML adapters** (`ml/sklearn/`, `ml/xgboost/`, `ml/lightgbm/`, `ml/catboost/`)
+- **ML adapters** (`ml/sklearn/`, `ml/xgboost/`, `ml/catboost/`)
 - **Geo adapters** (`geo/gdal/`, `geo/qgis/`)
 
 #### 5. Legacy Core (`scripts/`)
@@ -147,7 +147,7 @@ The codebase follows a **hybrid architecture**:
 1. `dependency_installer.py::try_install_dependencies()` uses QProcess + QEventLoop
 2. Shows `InstallProgressDialog` (non-modal, live output)
 3. Tries multiple Python launcher candidates (handles QGIS Python quirks on Windows)
-4. Installs full bundle: scikit-learn, xgboost, lightgbm, catboost, optuna, shap, imbalanced-learn
+4. Installs full bundle: scikit-learn, xgboost, catboost, optuna, shap, imbalanced-learn
 5. Uses runtime constraints to avoid breaking numpy/scipy/pandas versions
 
 **Note:** New code should use `_try_install_dependencies_async()` which follows QGIS best practices.
@@ -203,7 +203,7 @@ When modifying UI code in `ui/classification_workflow_ui.py`:
 ### Algorithm Support
 Each algorithm has a classifier code:
 - `1`: GMM, `2`: SVM, `3`: RF, `4`: KNN
-- `5`: XGB, `6`: LGB, `7`: CB
+- `5`: XGB, `7`: CB
 - `8`: ET, `9`: GBC, `10`: LR, `11`: NB, `12`: MLP
 
 Check `classifier_config.py` for capability matrix (which algorithms need which dependencies).

@@ -22,7 +22,7 @@ Main implementation file containing:
   - Emoji-based visual design
 
 - **DependencyCheckPage** (QWizardPage)
-  - Real-time dependency status checking (8 packages)
+  - Real-time dependency status checking (7 packages)
   - Visual status indicators (✓/○) with color coding
   - One-click "Install Full Bundle" button
   - Async installation with progress feedback
@@ -229,7 +229,7 @@ Edit `FULL_DEPENDENCY_BUNDLE` in `src/dzetsaka/qgis/dependency_catalog.py`:
 
 ```python
 FULL_DEPENDENCY_BUNDLE = [
-    "scikit-learn", "xgboost", "lightgbm", "catboost",
+    "scikit-learn", "xgboost", "catboost",
     "optuna", "shap", "seaborn", "imbalanced-learn",
 ]
 ```

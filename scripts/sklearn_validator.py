@@ -20,7 +20,6 @@ class SklearnValidator:
             "SVM": ["sklearn.svm.SVC"],
             "KNN": ["sklearn.neighbors.KNeighborsClassifier"],
             "XGB": ["xgboost.XGBClassifier"],
-            "LGB": ["lightgbm.LGBMClassifier"],
             "ET": ["sklearn.ensemble.ExtraTreesClassifier"],
             "GBC": ["sklearn.ensemble.GradientBoostingClassifier"],
             "LR": ["sklearn.linear_model.LogisticRegression"],
@@ -56,7 +55,7 @@ class SklearnValidator:
         Parameters
         ----------
         algorithm : str
-            Algorithm name ('GMM', 'RF', 'SVM', 'KNN', 'XGB', 'LGB', 'ET', 'GBC', 'LR', 'NB', 'MLP')
+            Algorithm name ('GMM', 'RF', 'SVM', 'KNN', 'XGB', 'ET', 'GBC', 'LR', 'NB', 'MLP')
 
         Returns
         -------
@@ -122,8 +121,8 @@ class SklearnValidator:
                 if is_valid:
                     available.append(algorithm)
 
-        # Check for XGBoost and LightGBM separately as they're not part of sklearn
-        for algorithm in ["XGB", "LGB"]:
+        # Check for XGBoost separately as it's not part of sklearn
+        for algorithm in ["XGB"]:
             is_valid, _ = self.validate_algorithm(algorithm)
             if is_valid:
                 available.append(algorithm)
@@ -140,7 +139,6 @@ class SklearnValidator:
             "SVM",
             "KNN",
             "XGB",
-            "LGB",
             "ET",
             "GBC",
             "LR",
@@ -152,7 +150,7 @@ class SklearnValidator:
                 "available": is_valid,
                 "error": error_msg,
                 "requires_sklearn": algorithm not in ["GMM"],
-                "requires_extra_package": algorithm in ["XGB", "LGB"],
+                "requires_extra_package": algorithm in ["XGB"],
                 "full_name": self._get_algorithm_full_name(algorithm),
             }
 
@@ -169,12 +167,11 @@ class SklearnValidator:
             "Core packages (required for most classifiers):\n"
             "  pip install scikit-learn\n\n"
             "Optional packages for additional classifiers:\n"
-            "  pip install xgboost        # For XGBoost (XGB)\n"
-            "  pip install lightgbm       # For LightGBM (LGB)\n\n"
+            "  pip install xgboost        # For XGBoost (XGB)\n\n"
             "Install all at once:\n"
-            "  pip install scikit-learn xgboost lightgbm\n\n"
+            "  pip install scikit-learn xgboost\n\n"
             "Using conda:\n"
-            "  conda install scikit-learn xgboost lightgbm\n\n"
+            "  conda install scikit-learn xgboost\n\n"
             "For QGIS users:\n"
             "  Install through the OSGeo4W shell or QGIS Python environment\n\n"
             "For more detailed instructions, visit:\n"
@@ -207,7 +204,6 @@ def validate_classifier_selection(classifier: str) -> Tuple[bool, str]:
         "Support Vector Machine": "SVM",
         "K-Nearest Neighbors": "KNN",
         "XGBoost": "XGB",
-        "LightGBM": "LGB",
         "Extra Trees": "ET",
         "Gradient Boosting Classifier": "GBC",
         "Logistic Regression": "LR",

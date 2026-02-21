@@ -329,12 +329,49 @@ def try_install_dependencies(plugin, missing_deps):
                     return qgis_validated
             return validated
 
+        def ensure_pip_available(py):
+            """Bootstrap pip via get-pip.py if missing for *py*."""
+            probe_cmd = [py, "-m", "pip", "--version"]
+            success, _ = run_command(probe_cmd, f"pip probe via {py}")
+            if success:
+                return
+            plugin.log.info(f"pip not found for {py}, bootstrapping via get-pip.py")
+            progress_dialog.append_output(f"\n⚠ pip not found for {py}, downloading get-pip.py...\n")
+            try:
+                import tempfile
+                import urllib.request
+
+                fd, get_pip_path = tempfile.mkstemp(suffix=".py", prefix="dzetsaka_get_pip_")
+                os.close(fd)
+                try:
+                    urllib.request.urlretrieve(  # nosec B310
+                        "https://bootstrap.pypa.io/get-pip.py",
+                        get_pip_path,
+                    )
+                    bootstrap_cmd = [py, get_pip_path, "--user", "--break-system-packages"]
+                    ok, out = run_command(bootstrap_cmd, f"get-pip.py via {py}")
+                    if ok:
+                        plugin.log.info(f"Successfully bootstrapped pip for {py}")
+                        progress_dialog.append_output(f"✓ pip bootstrapped for {py}\n")
+                    else:
+                        plugin.log.warning(f"get-pip.py failed for {py}")
+                        progress_dialog.append_output(f"✗ get-pip.py failed for {py}\n")
+                finally:
+                    with contextlib.suppress(Exception):
+                        os.remove(get_pip_path)
+            except Exception as exc:
+                plugin.log.warning(f"pip bootstrap error: {exc!s}")
+
         raw_candidates, qgis_macos_python_dir = find_python_candidates()
         python_candidates = validate_python_candidates(raw_candidates, qgis_macos_python_dir)
         plugin.log.info(f"Installing {package}. Python candidates: {python_candidates!r}")
         progress_dialog.append_output(
             "Python candidates: " + (", ".join(python_candidates) if python_candidates else "<none found>"),
         )
+
+        # Ensure pip is available (bootstraps via get-pip.py if missing)
+        for py in python_candidates:
+            ensure_pip_available(py)
 
         # Check for cancellation before starting
         if progress_dialog.was_cancelled():
@@ -349,6 +386,7 @@ def try_install_dependencies(plugin, missing_deps):
             "--no-input",
             "--disable-pip-version-check",
             "--prefer-binary",
+            "--break-system-packages",
         ]
         if runtime_constraint_args:
             pip_args.extend(runtime_constraint_args)
@@ -397,38 +435,10 @@ def try_install_dependencies(plugin, missing_deps):
         plugin.log.warning(f"Installation failed for {package} after all launcher attempts")
         progress_dialog.append_output(f"\n✗ install_package returning False for {package}\n")
 
-        # Method 3: On Linux, try apt as final fallback
-        if sys.platform.startswith("linux"):
-            apt_packages = {
-                "scikit-learn": "python3-sklearn",
-                "xgboost": "python3-xgboost",
-                "lightgbm": "python3-lightgbm",
-                "catboost": "python3-catboost",
-            }
-            apt_pkg = apt_packages.get(package.lower())
-
-            if apt_pkg:
-                apt_path = "/usr/bin/apt"
-                if os.path.exists(apt_path):
-                    plugin.log.info(f"Trying system package manager (apt install {apt_pkg})...")
-                    progress_dialog.append_output("\n⚠ Trying system package manager...\n")
-                    success, output = run_command(
-                        ["pkexec", apt_path, "install", "-y", apt_pkg],
-                        "apt via pkexec",
-                    )
-                    if success:
-                        plugin.log.info(f"Successfully installed {apt_pkg} via apt")
-                        return True
-                    plugin.log.warning(f"apt install failed: {output}")
-
         # All methods failed
         plugin.log.error(
             f"Could not install {package}. Please install manually:\n"
-            "  Option 1 - Install pip first:\n"
-            "    sudo apt install python3-pip\n"
-            "    pip3 install --user scikit-learn\n"
-            "  Option 2 - Install via apt directly:\n"
-            "    sudo apt install python3-sklearn\n"
+            "  pip3 install --user {package}\n"
             "  Then restart QGIS.",
         )
         return False
@@ -698,12 +708,49 @@ def try_install_dependencies(plugin, missing_deps):
                     return qgis_validated
             return validated
 
+        def ensure_pip_available(py):
+            """Bootstrap pip via get-pip.py if missing for *py*."""
+            probe_cmd = [py, "-m", "pip", "--version"]
+            success, _ = run_command(probe_cmd, f"pip probe via {py}")
+            if success:
+                return
+            plugin.log.info(f"pip not found for {py}, bootstrapping via get-pip.py")
+            progress_dialog.append_output(f"\n⚠ pip not found for {py}, downloading get-pip.py...\n")
+            try:
+                import tempfile
+                import urllib.request
+
+                fd, get_pip_path = tempfile.mkstemp(suffix=".py", prefix="dzetsaka_get_pip_")
+                os.close(fd)
+                try:
+                    urllib.request.urlretrieve(  # nosec B310
+                        "https://bootstrap.pypa.io/get-pip.py",
+                        get_pip_path,
+                    )
+                    bootstrap_cmd = [py, get_pip_path, "--user", "--break-system-packages"]
+                    ok, _ = run_command(bootstrap_cmd, f"get-pip.py via {py}")
+                    if ok:
+                        plugin.log.info(f"Successfully bootstrapped pip for {py}")
+                        progress_dialog.append_output(f"✓ pip bootstrapped for {py}\n")
+                    else:
+                        plugin.log.warning(f"get-pip.py failed for {py}")
+                        progress_dialog.append_output(f"✗ get-pip.py failed for {py}\n")
+                finally:
+                    with contextlib.suppress(Exception):
+                        os.remove(get_pip_path)
+            except Exception as exc:
+                plugin.log.warning(f"pip bootstrap error: {exc!s}")
+
         raw_candidates, qgis_macos_python_dir = find_python_candidates()
         python_candidates = validate_python_candidates(raw_candidates, qgis_macos_python_dir)
         plugin.log.info(f"Installing bundle {targets}. Python candidates: {python_candidates!r}")
         progress_dialog.append_output(
             "Python candidates: " + (", ".join(python_candidates) if python_candidates else "<none found>"),
         )
+
+        # Ensure pip is available (bootstraps via get-pip.py if missing)
+        for py in python_candidates:
+            ensure_pip_available(py)
 
         if progress_dialog.was_cancelled():
             return False
@@ -717,6 +764,7 @@ def try_install_dependencies(plugin, missing_deps):
             "--no-input",
             "--disable-pip-version-check",
             "--prefer-binary",
+            "--break-system-packages",
         ]
         if runtime_constraint_args:
             pip_args.extend(runtime_constraint_args)
@@ -775,7 +823,6 @@ def try_install_dependencies(plugin, missing_deps):
         "sklearn": "scikit-learn",
         "Sklearn": "scikit-learn",
         "xgboost": "xgboost",
-        "lightgbm": "lightgbm",
         "catboost": "catboost",
         "optuna": "optuna",
         "shap": "shap",
@@ -783,7 +830,6 @@ def try_install_dependencies(plugin, missing_deps):
         "imbalanced-learn": "imbalanced-learn",
         "imblearn": "imbalanced-learn",
         "XGBoost": "xgboost",
-        "LightGBM": "lightgbm",
         "CatBoost": "catboost",
         "Optuna": "optuna",
     }
@@ -791,7 +837,6 @@ def try_install_dependencies(plugin, missing_deps):
     progress_labels = {
         "scikit-learn": "scikit-learn (core algorithms: RF, SVM, KNN, ET, GBC, LR, NB, MLP)",
         "xgboost": "XGBoost algorithm",
-        "lightgbm": "LightGBM algorithm",
         "catboost": "CatBoost algorithm",
         "optuna": "Optuna (hyperparameter optimization)",
         "shap": "SHAP (explainability)",
@@ -803,7 +848,6 @@ def try_install_dependencies(plugin, missing_deps):
         "scikit-learn": "sklearn",
         "sklearn": "sklearn",
         "xgboost": "xgboost",
-        "lightgbm": "lightgbm",
         "catboost": "catboost",
         "optuna": "optuna",
         "shap": "shap",
@@ -903,45 +947,25 @@ def try_install_dependencies(plugin, missing_deps):
                     if install_result:
                         plugin.log.info(f"Successfully installed {target}")
                         progress.append_output(f"✓ {target} installed successfully\n")
-                        # Try to import to verify installation (after clearing import cache).
-                        # Do not mark success unless the module is actually importable.
+                        # Trust pip exit code for success. Freshly --user-installed
+                        # packages may not be importable in the running process
+                        # (Python needs a restart to pick up new ~/.local/ paths).
+                        # Best-effort import check for version logging only.
                         import importlib
 
                         try:
                             importlib.invalidate_caches()
                             import_target = base_imports.get(target, target)
                             imported = importlib.import_module(import_target)
-                            if target == "scikit-learn":
-                                sklearn_ok, sklearn_details = plugin._check_sklearn_usable()
-                                if not sklearn_ok:
-                                    plugin.log.warning(
-                                        "scikit-learn install command succeeded but runtime check failed: "
-                                        f"{sklearn_details}",
-                                    )
-                                    progress.append_output(
-                                        f"✗ scikit-learn is still unusable after install ({sklearn_details})\n",
-                                    )
-                                    continue
-                                progress.append_output(f"  Verified: {sklearn_details}\n")
-                            elif hasattr(imported, "__version__"):
-                                plugin.log.info(f"Verified {import_target} import: {imported.__version__}")
+                            if hasattr(imported, "__version__"):
                                 progress.append_output(f"  Version: {imported.__version__}\n")
-                            else:
-                                plugin.log.info(f"Verified {import_target} import.")
-                            plugin.log.info(
-                                f"Checking condition: target={target}, package_name={package_name}, "
-                                f"dep_installed={dep_installed}",
+                        except ImportError:
+                            progress.append_output(
+                                f"  (will be available after QGIS restart)\n",
                             )
-                            if target == package_name and not dep_installed:
-                                success_count += 1
-                                dep_installed = True
-                                plugin.log.info(f"SUCCESS! Incremented success_count to {success_count}")
-                                progress.append_output(f"✓ success_count = {success_count}\n")
-                        except ImportError as import_error:
-                            plugin.log.warning(
-                                f"Package {target} install command succeeded but import failed: {import_error}",
-                            )
-                            progress.append_output("✗ Package not importable after install attempt\n")
+                        if target == package_name and not dep_installed:
+                            success_count += 1
+                            dep_installed = True
                     else:
                         plugin.log.warning(f"Direct pip installation failed for {target}")
                         progress.append_output(f"✗ Failed to install {target}\n")
@@ -968,7 +992,7 @@ def try_install_dependencies(plugin, missing_deps):
                 f"Only {success_count} of {len(missing_deps)} dependencies were installed successfully.\n"
                 "Manual fallback examples:\n"
                 "  pip install --user scikit-learn\n"
-                "  pip install --user xgboost lightgbm catboost optuna shap imbalanced-learn\n"
+                "  pip install --user xgboost catboost optuna shap imbalanced-learn\n"
             ),
             context=f"Missing dependencies requested: {', '.join(missing_deps)}",
         )
@@ -1046,7 +1070,6 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
         "sklearn": "scikit-learn",
         "Sklearn": "scikit-learn",
         "xgboost": "xgboost",
-        "lightgbm": "lightgbm",
         "catboost": "catboost",
         "optuna": "optuna",
         "shap": "shap",
@@ -1054,7 +1077,6 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
         "imbalanced-learn": "imbalanced-learn",
         "imblearn": "imbalanced-learn",
         "XGBoost": "xgboost",
-        "LightGBM": "lightgbm",
         "CatBoost": "catboost",
         "Optuna": "optuna",
     }
@@ -1083,7 +1105,7 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
                 "Dependencies installed successfully!\n\n"
                 "<b>Important:</b> Please restart QGIS to load the new libraries.\n\n"
                 "After restarting, you can use all dzetsaka features including "
-                "XGBoost, LightGBM, CatBoost, Optuna optimization, and SHAP explainability.",
+                "XGBoost, CatBoost, Optuna optimization, and SHAP explainability.",
                 QMessageBox.StandardButton.Ok,
             )
         elif task.isCanceled():
@@ -1101,7 +1123,7 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
                     f"Only {task.success_count} of {len(package_order)} dependencies were installed successfully.\n"
                     "Manual fallback examples:\n"
                     "  pip install --user scikit-learn\n"
-                    "  pip install --user xgboost lightgbm catboost optuna shap imbalanced-learn\n"
+                    "  pip install --user xgboost catboost optuna shap imbalanced-learn\n"
                 ),
                 context=f"Missing dependencies requested: {', '.join(missing_deps)}",
             )

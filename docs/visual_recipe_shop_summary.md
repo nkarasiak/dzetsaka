@@ -93,7 +93,6 @@ A beautiful, modern Recipe Shop dialog with visual recipe cards has been **fully
 | Support Vector Machine | ⚔️ | SVM |
 | K-Nearest Neighbors | 👥 | KNN |
 | XGBoost | 🚀 | XGB |
-| LightGBM | ⚡ | LGB |
 | CatBoost | 🐈 | CB |
 | Extra Trees | 🌳 | ET |
 | Gradient Boosting | 📊 | GBC |
@@ -113,7 +112,7 @@ A beautiful, modern Recipe Shop dialog with visual recipe cards has been **fully
 3. **Forest Mapping** - RF + SMOTE, 3-8 min, 75-88%
 4. **Crop Classification** - XGB + Optuna + SHAP, 8-15 min, 80-92%
 5. **Urban/Rural Land Use** - SVM + weights, 5-12 min, 78-89%
-6. **Large Dataset Fast** - LightGBM, 3-8 min, 78-90%
+6. **Large Dataset Fast** - Extra Trees, 3-8 min, 78-90%
 
 ### Advanced (2)
 
@@ -166,7 +165,7 @@ A beautiful, modern Recipe Shop dialog with visual recipe cards has been **fully
 - **Close** - Cancel without changes
 
 ### ✅ Dependency Checking
-- Checks for: sklearn, xgboost, lightgbm, catboost, optuna, shap, imblearn
+- Checks for: sklearn, xgboost, catboost, optuna, shap, imblearn
 - Per-recipe dependency requirements
 - Visual indicators in details panel
 - Missing package names listed
@@ -253,7 +252,7 @@ ACCURACY_MAP = {
 # Algorithm emojis
 ALGORITHM_EMOJI = {
     "GMM": "🔵", "RF": "🌲", "SVM": "⚔️",
-    "KNN": "👥", "XGB": "🚀", "LGB": "⚡",
+    "KNN": "👥", "XGB": "🚀",
     "CB": "🐈", "ET": "🌳", ...
 }
 ```

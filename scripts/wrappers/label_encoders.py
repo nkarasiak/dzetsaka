@@ -1,4 +1,4 @@
-"""Label encoding wrappers for XGBoost, LightGBM, and CatBoost.
+"""Label encoding wrappers for XGBoost and CatBoost.
 
 These wrapper classes transparently handle sparse label encoding/decoding,
 allowing models to work with non-continuous class labels (e.g., 1, 3, 5, 7)
@@ -45,7 +45,6 @@ except ImportError:
 # Label encoding wrapper classes
 # Only define these classes if sklearn is available
 XGBLabelWrapper = None
-LGBLabelWrapper = None
 CBClassifierWrapper = None
 
 if SKLEARN_AVAILABLE:
@@ -150,106 +149,6 @@ if SKLEARN_AVAILABLE:
             self.xgb_params.update(params)
             if self.xgb_classifier is not None:
                 self.xgb_classifier.set_params(**params)
-            return self
-
-    class LGBLabelWrapper(BaseEstimator, ClassifierMixin):
-        """Wrapper for LightGBM that handles sparse label encoding/decoding.
-
-        This wrapper automatically encodes sparse class labels (e.g., 0, 1, 3, 5)
-        to continuous labels (0, 1, 2, 3) required by LightGBM, and decodes
-        predictions back to original labels.
-
-        Parameters
-        ----------
-        **lgb_params : dict
-            Parameters to pass to LGBMClassifier
-
-        Examples
-        --------
-        >>> model = LGBLabelWrapper(n_estimators=100, num_leaves=31)
-        >>> model.fit(X_train, y_train)
-        >>> predictions = model.predict(X_test)
-
-        """
-
-        def __init__(self, **lgb_params):
-            self.lgb_params = lgb_params
-            self.label_encoder = LabelEncoder()
-            self.lgb_classifier = None
-
-        def fit(self, X, y):
-            """Fit the LightGBM classifier with label encoding.
-
-            Parameters
-            ----------
-            X : array-like of shape (n_samples, n_features)
-                Training data
-            y : array-like of shape (n_samples,)
-                Target values (can be sparse/non-continuous)
-
-            Returns
-            -------
-            self
-                Fitted estimator
-
-            """
-            try:
-                from lightgbm import LGBMClassifier
-            except ImportError:
-                raise ImportError("LightGBM not found. Install with: pip install lightgbm") from None
-
-            y_encoded = self.label_encoder.fit_transform(y)
-            self.lgb_classifier = LGBMClassifier(**self.lgb_params)
-            self.lgb_classifier.fit(X, y_encoded)
-            return self
-
-        def predict(self, X):
-            """Predict class labels for samples.
-
-            Parameters
-            ----------
-            X : array-like of shape (n_samples, n_features)
-                Samples to predict
-
-            Returns
-            -------
-            y_pred : ndarray of shape (n_samples,)
-                Predicted class labels (in original sparse encoding)
-
-            """
-            y_encoded = self.lgb_classifier.predict(X, feature_name=None)
-            return self.label_encoder.inverse_transform(y_encoded)
-
-        def predict_proba(self, X):
-            """Predict class probabilities for samples.
-
-            Parameters
-            ----------
-            X : array-like of shape (n_samples, n_features)
-                Samples to predict
-
-            Returns
-            -------
-            proba : ndarray of shape (n_samples, n_classes)
-                Class probabilities
-
-            """
-            return self.lgb_classifier.predict_proba(X, feature_name=None)
-
-        @property
-        def classes_(self):
-            """Get class labels in original encoding."""
-            return self.label_encoder.classes_
-
-        def get_params(self, deep=True):
-            """Get parameters for this estimator."""
-            return self.lgb_params.copy()
-
-        def set_params(self, **params):
-            """Set parameters for this estimator."""
-            self.lgb_params.update(params)
-            if self.lgb_classifier is not None:
-                self.lgb_classifier.set_params(**params)
             return self
 
     class CBClassifierWrapper(BaseEstimator, ClassifierMixin):

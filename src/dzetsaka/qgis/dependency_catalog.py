@@ -16,7 +16,6 @@ FULL_DEPENDENCY_BUNDLE = [
 RUNTIME_TO_PIP_PACKAGE = {
     "sklearn": "scikit-learn",
     "xgboost": "xgboost",
-    "lightgbm": "lightgbm",
     "catboost": "catboost",
     "optuna": "optuna",
     "shap": "shap",

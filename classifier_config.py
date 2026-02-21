@@ -4,13 +4,12 @@ This module provides a centralized configuration system for all machine learning
 classifiers supported by dzetsaka. It defines classifier codes, names, dependencies,
 and utility functions to manage classifier selection and validation.
 
-The module supports 12 different machine learning algorithms:
+The module supports 11 different machine learning algorithms:
 - Gaussian Mixture Model (GMM) - Built-in, no dependencies
 - Random Forest (RF) - Requires scikit-learn
 - Support Vector Machine (SVM) - Requires scikit-learn
 - K-Nearest Neighbors (KNN) - Requires scikit-learn
 - XGBoost (XGB) - Requires XGBoost package
-- LightGBM (LGB) - Requires LightGBM package
 - CatBoost (CB) - Requires CatBoost package
 - Extra Trees (ET) - Requires scikit-learn
 - Gradient Boosting Classifier (GBC) - Requires scikit-learn
@@ -38,7 +37,6 @@ CLASSIFIER_CODES = [
     "SVM",
     "KNN",
     "XGB",
-    "LGB",
     "CB",
     "ET",
     "GBC",
@@ -54,7 +52,6 @@ CLASSIFIER_NAMES = [
     "Support Vector Machine",
     "K-Nearest Neighbors",
     "XGBoost",
-    "LightGBM",
     "CatBoost",
     "Extra Trees",
     "Gradient Boosting Classifier",
@@ -74,7 +71,6 @@ SKLEARN_DEPENDENT = ["RF", "SVM", "KNN", "ET", "GBC", "LR", "NB", "MLP"]
 
 # Special dependency classifiers
 XGBOOST_DEPENDENT = ["XGB"]
-LIGHTGBM_DEPENDENT = ["LGB"]
 CATBOOST_DEPENDENT = ["CB"]
 
 # UI display names (for processing algorithms)
@@ -84,7 +80,6 @@ UI_DISPLAY_NAMES = [
     "Support Vector Machine",
     "K-Nearest Neighbors",
     "XGBoost",
-    "LightGBM",
     "CatBoost",
     "Extra Trees",
     "Gradient Boosting Classifier",
@@ -213,30 +208,6 @@ def requires_xgboost(code):
 
     """
     return code.upper() in XGBOOST_DEPENDENT
-
-
-def requires_lightgbm(code):
-    """Check if classifier requires LightGBM package.
-
-    Parameters
-    ----------
-    code : str
-        Classifier short code
-
-    Returns
-    -------
-    bool
-        True if classifier requires LightGBM, False otherwise
-
-    Examples
-    --------
-    >>> requires_lightgbm("LGB")
-    True
-    >>> requires_lightgbm("RF")
-    False
-
-    """
-    return code.upper() in LIGHTGBM_DEPENDENT
 
 
 def requires_catboost(code):

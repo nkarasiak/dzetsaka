@@ -30,14 +30,6 @@ def build_debug_info(plugin) -> str:
         except ImportError:
             pass
 
-        lightgbm_available = "No"
-        try:
-            import lightgbm
-
-            lightgbm_available = f"Yes ({lightgbm.__version__})"
-        except ImportError:
-            pass
-
         catboost_available = "No"
         try:
             import catboost
@@ -46,9 +38,10 @@ def build_debug_info(plugin) -> str:
         except ImportError:
             pass
 
+        plugin_version = getattr(plugin, "plugin_version", None) or "unknown"
         debug_info = f"""
 === DZETSAKA DEBUG INFO ===
-Plugin Version: 4.1.2
+Plugin Version: {plugin_version}
 QGIS Version: {qgis_version}
 Python Version: {python_version}
 Operating System: {os_info}
@@ -57,7 +50,6 @@ Current Classifier: {plugin.classifier} ({classifier_code})
 Available Libraries:
 - Scikit-learn: {sklearn_available}
 - XGBoost: {xgboost_available}
-- LightGBM: {lightgbm_available}
 - CatBoost: {catboost_available}
 === END DEBUG INFO ===
 """

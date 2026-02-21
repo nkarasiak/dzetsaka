@@ -39,12 +39,6 @@ def check_dependency_availability():
         deps["xgboost"] = False
 
     try:
-        import lightgbm
-        deps["lightgbm"] = True
-    except ImportError:
-        deps["lightgbm"] = False
-
-    try:
         import catboost
         deps["catboost"] = True
     except ImportError:

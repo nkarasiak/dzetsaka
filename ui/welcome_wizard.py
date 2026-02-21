@@ -153,7 +153,7 @@ class OverviewPage(QWizardPage):
 
         # Feature grid
         features = [
-            ("🤖", "12 ML Algorithms", "GMM, RF, SVM, KNN, XGBoost, LightGBM, CatBoost, Extra Trees, Gradient Boosting, Logistic Regression, Naive Bayes, MLP"),
+            ("🤖", "11 ML Algorithms", "GMM, RF, SVM, KNN, XGBoost, CatBoost, Extra Trees, Gradient Boosting, Logistic Regression, Naive Bayes, MLP"),
             ("⚡", "Automatic Optimization", "Optuna-powered hyperparameter tuning with cross-validation"),
             ("🔍", "Model Explainability", "SHAP values to understand feature importance and predictions"),
             ("⚖️", "Class Imbalance Handling", "SMOTE and other techniques for balanced training"),
@@ -362,7 +362,6 @@ class DependencyCheckPage(QWizardPage):
         dependency_info = {
             "scikit-learn": ("sklearn", "Core algorithms: RF, SVM, KNN, ET, GBC, LR, NB, MLP"),
             "xgboost": ("xgboost", "XGBoost gradient boosting algorithm"),
-            "lightgbm": ("lightgbm", "LightGBM gradient boosting algorithm"),
             "catboost": ("catboost", "CatBoost gradient boosting algorithm"),
             "optuna": ("optuna", "Hyperparameter optimization"),
             "shap": ("shap", "Model explainability with SHAP values"),

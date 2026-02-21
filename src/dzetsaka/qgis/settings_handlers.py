@@ -37,11 +37,6 @@ def save_settings(gui) -> None:
             except ImportError:
                 missing_required.append("xgboost")
 
-        if classifier_config.requires_lightgbm(classifier_code):
-            try:
-                import lightgbm  # noqa: F401
-            except ImportError:
-                missing_required.append("lightgbm")
         if classifier_config.requires_catboost(classifier_code):
             try:
                 import catboost  # noqa: F401

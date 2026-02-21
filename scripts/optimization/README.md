@@ -13,7 +13,7 @@ Bayesian hyperparameter optimization using [Optuna](https://optuna.org/).
 - MedianPruner for early stopping of poor trials
 - 2-10x faster than traditional GridSearchCV
 - Parallel trial execution support
-- Comprehensive parameter search spaces for all 12 algorithms
+- Comprehensive parameter search spaces for all 11 algorithms
 
 **Usage**:
 
@@ -64,7 +64,7 @@ model = LearnModel(
 Typical speedups compared to GridSearchCV:
 - Random Forest: 3x faster
 - SVM: 5-8x faster
-- XGBoost/LightGBM/CatBoost: 2-4x faster
+- XGBoost/CatBoost: 2-4x faster
 - Neural networks (MLP): 4-6x faster
 
 Accuracy improvements: 2-5% better F1 scores from superior parameter combinations.

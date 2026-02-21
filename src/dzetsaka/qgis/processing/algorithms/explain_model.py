@@ -68,12 +68,12 @@ accurate but slower. Recommended: 500-2000 for most cases.
 
 <h3>Supported Algorithms</h3>
 All dzetsaka algorithms are supported:
-- Tree models (RF, XGB, LGB, ET, GBC): Fast TreeExplainer
+- Tree models (RF, XGB, ET, GBC): Fast TreeExplainer
 - Other models (SVM, KNN, LR, NB, MLP): Slower KernelExplainer
 
 <h3>Performance</h3>
 - Random Forest: ~10-30 seconds
-- XGBoost/LightGBM: ~15-40 seconds
+- XGBoost: ~15-40 seconds
 - SVM/MLP: ~2-5 minutes (slower but provides insights)
 
 <h3>Tips</h3>

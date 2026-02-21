@@ -15,7 +15,6 @@ DEFAULT_CV_FOLDS = {
     "SVM": 3,  # SVM uses 3-fold CV
     "KNN": 3,  # K-Nearest Neighbors uses 3-fold CV
     "XGB": 3,  # XGBoost uses 3-fold CV
-    "LGB": 3,  # LightGBM uses 3-fold CV
     "CB": 3,  # CatBoost uses 3-fold CV
     "ET": 3,  # Extra Trees uses 3-fold CV
     "GBC": 3,  # Gradient Boosting uses 3-fold CV
@@ -77,11 +76,6 @@ ERROR_MSG_MISSING_SKLEARN = (
 )
 ERROR_MSG_MISSING_XGBOOST = (
     "Missing dependency: xgboost. Please install it using the plugin's dependency installer or run: pip install xgboost"
-)
-ERROR_MSG_MISSING_LIGHTGBM = (
-    "Missing dependency: lightgbm. "
-    "Please install it using the plugin's dependency installer or run: "
-    "pip install lightgbm"
 )
 ERROR_MSG_MISSING_CATBOOST = (
     "Missing dependency: catboost. "

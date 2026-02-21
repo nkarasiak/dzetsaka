@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prevent QGIS crash on macOS ARM64 during dependency auto-install — use main-thread `finished()` callback instead of cross-thread `taskCompleted`/`taskTerminated` signals (issue #48)
 - Handle missing legacy `GDT_*` constants in GDAL 4.x — build `_GDAL_TO_NUMPY_DTYPE` dynamically to avoid `AttributeError` at import time
 - Widen test guard imports in `test_shap_explainer.py` to catch `AttributeError` from GDAL compat issues
+- Remove `pkexec apt` fallback that triggered admin password prompts on Linux
+- Add `--break-system-packages` to pip commands for PEP 668 compatibility (Debian 13+, Ubuntu 24+)
 
 ## [5.0.0] - 2026-02-12
 

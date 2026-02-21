@@ -237,7 +237,6 @@ class ErrorGuide:
 
         dependency_info = {
             "xgboost": ("XGBoost", "pip install xgboost"),
-            "lightgbm": ("LightGBM", "pip install lightgbm"),
             "catboost": ("CatBoost", "pip install catboost"),
             "optuna": ("Optuna", "pip install optuna"),
             "shap": ("SHAP", "pip install shap"),
