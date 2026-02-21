@@ -55,34 +55,46 @@ def start_classification_task(
             return
 
     def on_task_error(title, message):
+        """Deferred via QTimer to avoid macOS AppKit crash (issue #48)."""
+        from qgis.PyQt.QtCore import QTimer
+
         plugin._active_classification_task = None
         config_info = plugin._get_debug_info()
         plugin.log.error(f"{title}: {message}")
         plugin.log.info("Configuration for issue reporting:")
         plugin.log.info(config_info)
-        if "Optuna" in title:
-            QMessageBox.warning(
-                plugin.iface.mainWindow(),
-                title,
-                message,
-                QMessageBox.StandardButton.Ok,
+
+        def _show():
+            if "Optuna" in title:
+                QMessageBox.warning(
+                    plugin.iface.mainWindow(),
+                    title,
+                    message,
+                    QMessageBox.StandardButton.Ok,
+                )
+                return
+            plugin._show_github_issue_popup(
+                error_title=title,
+                error_type="Runtime Error",
+                error_message=message,
+                context=error_context,
             )
-            return
-        plugin._show_github_issue_popup(
-            error_title=title,
-            error_type="Runtime Error",
-            error_message=message,
-            context=error_context,
-        )
+
+        QTimer.singleShot(0, _show)
 
     def on_task_success(out_raster, out_confidence):
-        plugin.log.info(f"[{success_prefix}] Classification completed successfully")
-        plugin.iface.addRasterLayer(out_raster)
-        if out_confidence:
-            plugin.iface.addRasterLayer(out_confidence)
+        """Deferred via QTimer to avoid macOS AppKit crash (issue #48)."""
+        from qgis.PyQt.QtCore import QTimer
 
-        # Clean up reference
-        plugin._active_classification_task = None
+        plugin.log.info(f"[{success_prefix}] Classification completed successfully")
+
+        def _add_layers():
+            plugin.iface.addRasterLayer(out_raster)
+            if out_confidence:
+                plugin.iface.addRasterLayer(out_confidence)
+            plugin._active_classification_task = None
+
+        QTimer.singleShot(0, _add_layers)
 
     task = ClassificationTask(
         description,

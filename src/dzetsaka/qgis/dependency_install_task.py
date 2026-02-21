@@ -50,7 +50,12 @@ class DependencyInstallTask(QgsTask):
     def run(self) -> bool:
         """Execute package installation in background thread."""
         try:
-            self.log.info(f"Starting background installation of packages: {', '.join(self.packages)}")
+            import threading
+
+            self.log.info(
+                f"[DependencyInstallTask.run] thread={threading.current_thread().name} "
+                f"packages={', '.join(self.packages)}"
+            )
             self.setProgress(1)
 
             # Build runtime constraints if needed
@@ -97,6 +102,11 @@ class DependencyInstallTask(QgsTask):
 
     def finished(self, result: bool) -> None:
         """Called when task completes (runs in main thread)."""
+        import threading
+
+        self.log.info(
+            f"[DependencyInstallTask.finished] thread={threading.current_thread().name} result={result}"
+        )
         if result:
             self.log.info(f"Successfully installed {self.success_count}/{len(self.packages)} packages")
         elif self.isCanceled():

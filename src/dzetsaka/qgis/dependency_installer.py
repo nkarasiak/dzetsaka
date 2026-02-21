@@ -1091,46 +1091,66 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
             package_order.append(package_name)
 
     def on_task_finished(success: bool):
-        """Handle task completion in main thread (called from finished())."""
-        # Clean up constraints file
+        """Handle task completion in main thread (called from finished()).
+
+        GUI operations are deferred via QTimer.singleShot(0, ...) to run in
+        a fresh event-loop iteration.  On macOS ARM64, opening a modal dialog
+        directly inside QGIS's task-manager callback chain triggers an AppKit
+        assertion (SIGABRT) — see issue #48.
+        """
+        import threading
+
+        from qgis.PyQt.QtCore import QTimer
+
+        plugin.log.info(
+            f"[on_task_finished] thread={threading.current_thread().name} success={success}"
+        )
+
+        # Clean up constraints file (safe — no GUI)
         if runtime_constraints_file:
             with contextlib.suppress(Exception):
                 os.remove(runtime_constraints_file)
 
-        # Show result to user
-        if success:
-            QMessageBox.information(
-                plugin.iface.mainWindow(),
-                "Installation Successful",
-                "Dependencies installed successfully!\n\n"
-                "<b>Important:</b> Please restart QGIS to load the new libraries.\n\n"
-                "After restarting, you can use all dzetsaka features including "
-                "XGBoost, CatBoost, Optuna optimization, and SHAP explainability.",
-                QMessageBox.StandardButton.Ok,
+        def _show_result():
+            plugin.log.info(
+                f"[on_task_finished._show_result] thread={threading.current_thread().name}"
             )
-        elif task.isCanceled():
-            QMessageBox.warning(
-                plugin.iface.mainWindow(),
-                "Installation Cancelled",
-                "Dependency installation was cancelled.",
-                QMessageBox.StandardButton.Ok,
-            )
-        else:
-            plugin._show_github_issue_popup(
-                error_title="Installation Incomplete",
-                error_type="Dependency Installation Error",
-                error_message=(
-                    f"Only {task.success_count} of {len(package_order)} dependencies were installed successfully.\n"
-                    "Manual fallback examples:\n"
-                    "  pip install --user scikit-learn\n"
-                    "  pip install --user xgboost catboost optuna shap imbalanced-learn\n"
-                ),
-                context=f"Missing dependencies requested: {', '.join(missing_deps)}",
-            )
+            if success:
+                QMessageBox.information(
+                    plugin.iface.mainWindow(),
+                    "Installation Successful",
+                    "Dependencies installed successfully!\n\n"
+                    "Important: Please restart QGIS to load the new libraries.\n\n"
+                    "After restarting, you can use all dzetsaka features including "
+                    "XGBoost, CatBoost, Optuna optimization, and SHAP explainability.",
+                    QMessageBox.StandardButton.Ok,
+                )
+            elif task.isCanceled():
+                QMessageBox.warning(
+                    plugin.iface.mainWindow(),
+                    "Installation Cancelled",
+                    "Dependency installation was cancelled.",
+                    QMessageBox.StandardButton.Ok,
+                )
+            else:
+                plugin._show_github_issue_popup(
+                    error_title="Installation Incomplete",
+                    error_type="Dependency Installation Error",
+                    error_message=(
+                        f"Only {task.success_count} of {len(package_order)} dependencies were installed successfully.\n"
+                        "Manual fallback examples:\n"
+                        "  pip install --user scikit-learn\n"
+                        "  pip install --user xgboost catboost optuna shap imbalanced-learn\n"
+                    ),
+                    context=f"Missing dependencies requested: {', '.join(missing_deps)}",
+                )
 
-        # Call user callback
-        if on_complete:
-            on_complete(success)
+            # Call user callback after dialog is dismissed
+            if on_complete:
+                on_complete(success)
+
+        # Defer GUI to next event-loop iteration (avoids macOS AppKit crash).
+        QTimer.singleShot(0, _show_result)
 
     # Create and submit task — use on_finished callback instead of
     # taskCompleted/taskTerminated signals.  The callback is invoked from
