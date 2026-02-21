@@ -225,6 +225,7 @@ def try_install_dependencies(plugin, missing_deps):
         # Build candidate Python launchers (QGIS on Windows often has no plain "python" in PATH).
         def find_python_candidates():
             candidates = []
+            qgis_macos_python_dir = None
 
             def _add(path):
                 if path and path not in candidates:
@@ -234,7 +235,20 @@ def try_install_dependencies(plugin, missing_deps):
                 if path in {"python", "python3", "py"}:
                     return True
                 base = os.path.basename(str(path)).lower()
-                return base in {"python.exe", "python3.exe", "py.exe"}
+                if base in {"python.exe", "python3.exe", "py.exe", "python", "python3"}:
+                    return True
+                return base.startswith("python")
+
+            if sys.platform == "darwin":
+                with contextlib.suppress(Exception):
+                    app_path = QgsApplication.applicationFilePath() or ""
+                    if app_path:
+                        qgis_macos_python_dir = os.path.dirname(app_path)
+                if qgis_macos_python_dir:
+                    runtime_mm = f"{sys.version_info.major}.{sys.version_info.minor}"
+                    _add(os.path.join(qgis_macos_python_dir, f"python{runtime_mm}"))
+                    _add(os.path.join(qgis_macos_python_dir, "python3"))
+                    _add(os.path.join(qgis_macos_python_dir, "python"))
 
             if sys.executable:
                 _add(sys.executable)
@@ -268,21 +282,55 @@ def try_install_dependencies(plugin, missing_deps):
                 if not _looks_like_python_launcher(c):
                     continue
                 filtered.append(c)
-            return filtered
+            return filtered, qgis_macos_python_dir
 
-        def validate_python_candidates(raw_candidates):
+        def validate_python_candidates(raw_candidates, qgis_macos_python_dir=None):
             validated = []
+            expected_mm = f"{sys.version_info.major}.{sys.version_info.minor}"
             for py in raw_candidates:
-                probe_cmd = [py, "-c", "print('DZETSAKA_PY_OK')"]
+                probe_cmd = [
+                    py,
+                    "-c",
+                    (
+                        "import sys;"
+                        "print('DZETSAKA_PY_OK|%d.%d|%s' % (sys.version_info[0], sys.version_info[1], sys.executable))"
+                    ),
+                ]
                 success, output = run_command(probe_cmd, f"python probe via {py}")
-                if success and "DZETSAKA_PY_OK" in (output or ""):
-                    validated.append(py)
-                else:
+                marker_line = ""
+                if success:
+                    for line in (output or "").splitlines():
+                        if line.startswith("DZETSAKA_PY_OK|"):
+                            marker_line = line.strip()
+                            break
+                if not marker_line:
                     plugin.log.warning(f"Skipping non-python launcher candidate: {py}")
                     progress_dialog.append_output(f"⚠ Skipping non-python launcher: {py}\n")
+                    continue
+
+                parts = marker_line.split("|", 2)
+                candidate_mm = parts[1] if len(parts) >= 2 else ""
+                if candidate_mm != expected_mm:
+                    plugin.log.warning(
+                        f"Skipping python candidate with mismatched version ({candidate_mm} != {expected_mm}): {py}",
+                    )
+                    progress_dialog.append_output(
+                        f"⚠ Skipping python candidate (version {candidate_mm}, expected {expected_mm}): {py}\n",
+                    )
+                    continue
+                validated.append(py)
+
+            if sys.platform == "darwin" and qgis_macos_python_dir:
+                qgis_prefix = os.path.abspath(qgis_macos_python_dir) + os.sep
+                qgis_validated = [
+                    py for py in validated if os.path.isabs(py) and os.path.abspath(py).startswith(qgis_prefix)
+                ]
+                if qgis_validated:
+                    return qgis_validated
             return validated
 
-        python_candidates = validate_python_candidates(find_python_candidates())
+        raw_candidates, qgis_macos_python_dir = find_python_candidates()
+        python_candidates = validate_python_candidates(raw_candidates, qgis_macos_python_dir)
         plugin.log.info(f"Installing {package}. Python candidates: {python_candidates!r}")
         progress_dialog.append_output(
             "Python candidates: " + (", ".join(python_candidates) if python_candidates else "<none found>"),
@@ -314,14 +362,23 @@ def try_install_dependencies(plugin, missing_deps):
             attempts.append(([py, *pip_args], f"pip module after ensurepip via {py}"))
 
         # Shell launcher fallbacks (common on Windows/QGIS environments).
-        attempts.extend(
-            [
-                (["py", "-3", *pip_args], "pip via py -3"),
-                (["py", *pip_args], "pip via py"),
-                (["python3", *pip_args], "pip via python3"),
-                (["python", *pip_args], "pip via python"),
-            ],
+        has_qgis_macos_candidate = (
+            sys.platform == "darwin"
+            and qgis_macos_python_dir
+            and any(
+                os.path.isabs(py) and os.path.abspath(py).startswith(os.path.abspath(qgis_macos_python_dir) + os.sep)
+                for py in python_candidates
+            )
         )
+        if not has_qgis_macos_candidate:
+            attempts.extend(
+                [
+                    (["py", "-3", *pip_args], "pip via py -3"),
+                    (["py", *pip_args], "pip via py"),
+                    (["python3", *pip_args], "pip via python3"),
+                    (["python", *pip_args], "pip via python"),
+                ],
+            )
 
         last_output = ""
         for cmd, description in attempts:
@@ -538,6 +595,7 @@ def try_install_dependencies(plugin, missing_deps):
 
         def find_python_candidates():
             candidates = []
+            qgis_macos_python_dir = None
 
             def _add(path):
                 if path and path not in candidates:
@@ -547,7 +605,20 @@ def try_install_dependencies(plugin, missing_deps):
                 if path in {"python", "python3", "py"}:
                     return True
                 base = os.path.basename(str(path)).lower()
-                return base in {"python.exe", "python3.exe", "py.exe"}
+                if base in {"python.exe", "python3.exe", "py.exe", "python", "python3"}:
+                    return True
+                return base.startswith("python")
+
+            if sys.platform == "darwin":
+                with contextlib.suppress(Exception):
+                    app_path = QgsApplication.applicationFilePath() or ""
+                    if app_path:
+                        qgis_macos_python_dir = os.path.dirname(app_path)
+                if qgis_macos_python_dir:
+                    runtime_mm = f"{sys.version_info.major}.{sys.version_info.minor}"
+                    _add(os.path.join(qgis_macos_python_dir, f"python{runtime_mm}"))
+                    _add(os.path.join(qgis_macos_python_dir, "python3"))
+                    _add(os.path.join(qgis_macos_python_dir, "python"))
 
             if sys.executable:
                 _add(sys.executable)
@@ -580,21 +651,55 @@ def try_install_dependencies(plugin, missing_deps):
                 if not _looks_like_python_launcher(c):
                     continue
                 filtered.append(c)
-            return filtered
+            return filtered, qgis_macos_python_dir
 
-        def validate_python_candidates(raw_candidates):
+        def validate_python_candidates(raw_candidates, qgis_macos_python_dir=None):
             validated = []
+            expected_mm = f"{sys.version_info.major}.{sys.version_info.minor}"
             for py in raw_candidates:
-                probe_cmd = [py, "-c", "print('DZETSAKA_PY_OK')"]
+                probe_cmd = [
+                    py,
+                    "-c",
+                    (
+                        "import sys;"
+                        "print('DZETSAKA_PY_OK|%d.%d|%s' % (sys.version_info[0], sys.version_info[1], sys.executable))"
+                    ),
+                ]
                 success, output = run_command(probe_cmd, f"python probe via {py}")
-                if success and "DZETSAKA_PY_OK" in (output or ""):
-                    validated.append(py)
-                else:
+                marker_line = ""
+                if success:
+                    for line in (output or "").splitlines():
+                        if line.startswith("DZETSAKA_PY_OK|"):
+                            marker_line = line.strip()
+                            break
+                if not marker_line:
                     plugin.log.warning(f"Skipping non-python launcher candidate: {py}")
                     progress_dialog.append_output(f"⚠ Skipping non-python launcher: {py}\n")
+                    continue
+
+                parts = marker_line.split("|", 2)
+                candidate_mm = parts[1] if len(parts) >= 2 else ""
+                if candidate_mm != expected_mm:
+                    plugin.log.warning(
+                        f"Skipping python candidate with mismatched version ({candidate_mm} != {expected_mm}): {py}",
+                    )
+                    progress_dialog.append_output(
+                        f"⚠ Skipping python candidate (version {candidate_mm}, expected {expected_mm}): {py}\n",
+                    )
+                    continue
+                validated.append(py)
+
+            if sys.platform == "darwin" and qgis_macos_python_dir:
+                qgis_prefix = os.path.abspath(qgis_macos_python_dir) + os.sep
+                qgis_validated = [
+                    py for py in validated if os.path.isabs(py) and os.path.abspath(py).startswith(qgis_prefix)
+                ]
+                if qgis_validated:
+                    return qgis_validated
             return validated
 
-        python_candidates = validate_python_candidates(find_python_candidates())
+        raw_candidates, qgis_macos_python_dir = find_python_candidates()
+        python_candidates = validate_python_candidates(raw_candidates, qgis_macos_python_dir)
         plugin.log.info(f"Installing bundle {targets}. Python candidates: {python_candidates!r}")
         progress_dialog.append_output(
             "Python candidates: " + (", ".join(python_candidates) if python_candidates else "<none found>"),
@@ -624,14 +729,23 @@ def try_install_dependencies(plugin, missing_deps):
             attempts.append(([py, "-m", "ensurepip", "--user"], f"ensurepip via {py}"))
             attempts.append(([py, *pip_args], f"pip bundle after ensurepip via {py}"))
 
-        attempts.extend(
-            [
-                (["py", "-3", *pip_args], "pip bundle via py -3"),
-                (["py", *pip_args], "pip bundle via py"),
-                (["python3", *pip_args], "pip bundle via python3"),
-                (["python", *pip_args], "pip bundle via python"),
-            ],
+        has_qgis_macos_candidate = (
+            sys.platform == "darwin"
+            and qgis_macos_python_dir
+            and any(
+                os.path.isabs(py) and os.path.abspath(py).startswith(os.path.abspath(qgis_macos_python_dir) + os.sep)
+                for py in python_candidates
+            )
         )
+        if not has_qgis_macos_candidate:
+            attempts.extend(
+                [
+                    (["py", "-3", *pip_args], "pip bundle via py -3"),
+                    (["py", *pip_args], "pip bundle via py"),
+                    (["python3", *pip_args], "pip bundle via python3"),
+                    (["python", *pip_args], "pip bundle via python"),
+                ],
+            )
 
         last_output = ""
         for cmd, description in attempts:

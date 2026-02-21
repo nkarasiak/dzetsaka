@@ -103,10 +103,32 @@ class DependencyInstallTask(QgsTask):
     def _find_python_executables(self) -> list[str]:
         """Find candidate Python executables for pip installation."""
         candidates = []
+        qgis_macos_python_dir = None
 
         def _add(path):
             if path and path not in candidates:
                 candidates.append(path)
+
+        def _looks_like_python_launcher(path):
+            base = os.path.basename(str(path)).lower()
+            if base in {"python.exe", "python3.exe", "py.exe", "python", "python3"}:
+                return True
+            return base.startswith("python")
+
+        if sys.platform == "darwin":
+            try:
+                from qgis.core import QgsApplication
+
+                app_path = QgsApplication.applicationFilePath() or ""
+                if app_path:
+                    qgis_macos_python_dir = os.path.dirname(app_path)
+            except Exception:
+                qgis_macos_python_dir = None
+            if qgis_macos_python_dir:
+                runtime_mm = f"{sys.version_info.major}.{sys.version_info.minor}"
+                _add(os.path.join(qgis_macos_python_dir, f"python{runtime_mm}"))
+                _add(os.path.join(qgis_macos_python_dir, "python3"))
+                _add(os.path.join(qgis_macos_python_dir, "python"))
 
         # Primary candidate: sys.executable
         if sys.executable:
@@ -134,23 +156,56 @@ class DependencyInstallTask(QgsTask):
 
         # Validate executables
         validated = []
+        expected_mm = f"{sys.version_info.major}.{sys.version_info.minor}"
         for py in candidates:
             if not os.path.isfile(py):
+                continue
+            if not _looks_like_python_launcher(py):
                 continue
             # Quick validation check
             try:
                 result = subprocess.run(  # nosec B603
-                    [py, "-c", "print('OK')"],
+                    [
+                        py,
+                        "-c",
+                        (
+                            "import sys;"
+                            "print('DZETSAKA_PY_OK|%d.%d|%s' % (sys.version_info[0], sys.version_info[1], "
+                            "sys.executable))"
+                        ),
+                    ],
                     capture_output=True,
                     text=True,
                     timeout=5,
                     check=False,
                 )
-                if result.returncode == 0 and "OK" in result.stdout:
-                    validated.append(py)
+                if result.returncode != 0:
+                    continue
+                marker_line = ""
+                for line in (result.stdout or "").splitlines():
+                    if line.startswith("DZETSAKA_PY_OK|"):
+                        marker_line = line.strip()
+                        break
+                if not marker_line:
+                    continue
+                parts = marker_line.split("|", 2)
+                candidate_mm = parts[1] if len(parts) >= 2 else ""
+                if candidate_mm != expected_mm:
+                    self.log.warning(
+                        f"Skipping python candidate with mismatched version ({candidate_mm} != {expected_mm}): {py}",
+                    )
+                    continue
+                validated.append(py)
             except (subprocess.TimeoutExpired, FileNotFoundError):
                 continue
 
+        if sys.platform == "darwin" and qgis_macos_python_dir:
+            qgis_prefix = os.path.abspath(qgis_macos_python_dir) + os.sep
+            qgis_validated = [
+                py for py in validated if os.path.isabs(py) and os.path.abspath(py).startswith(qgis_prefix)
+            ]
+            if qgis_validated:
+                return qgis_validated
         return validated
 
     def _install_package_bundle(self, packages: list[str], constraint_args: list[str]) -> bool:
