@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import glob
 import os
 import shutil
@@ -214,12 +215,60 @@ class DependencyInstallTask(QgsTask):
                 return qgis_validated
         return validated
 
+    def _ensure_pip(self, py: str) -> bool:
+        """Bootstrap pip via get-pip.py if it is missing for *py*."""
+        try:
+            probe = subprocess.run(  # nosec B603
+                [py, "-m", "pip", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+            if probe.returncode == 0:
+                return True
+        except Exception:
+            pass
+
+        self.log.info(f"pip not found for {py}, attempting bootstrap via get-pip.py")
+        try:
+            import urllib.request
+
+            get_pip_url = "https://bootstrap.pypa.io/get-pip.py"
+            import tempfile
+
+            fd, get_pip_path = tempfile.mkstemp(suffix=".py", prefix="dzetsaka_get_pip_")
+            os.close(fd)
+            try:
+                urllib.request.urlretrieve(get_pip_url, get_pip_path)  # nosec B310
+                result = subprocess.run(  # nosec B603
+                    [py, get_pip_path, "--user", "--break-system-packages"],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                    check=False,
+                )
+                if result.returncode == 0:
+                    self.log.info(f"Successfully bootstrapped pip for {py}")
+                    return True
+                self.log.warning(f"get-pip.py failed (exit {result.returncode}): {result.stderr[:300]}")
+            finally:
+                with contextlib.suppress(Exception):
+                    os.remove(get_pip_path)
+        except Exception as exc:
+            self.log.warning(f"pip bootstrap failed: {exc!s}")
+        return False
+
     def _install_package_bundle(self, packages: list[str], constraint_args: list[str]) -> bool:
         """Try to install all packages in a single pip command."""
         python_exes = self._find_python_executables()
         if not python_exes:
             self.log.warning("No Python executables found for installation")
             return False
+
+        # Ensure pip is available (bootstraps via get-pip.py if missing)
+        for py in python_exes:
+            self._ensure_pip(py)
 
         pip_args = [
             "-m",

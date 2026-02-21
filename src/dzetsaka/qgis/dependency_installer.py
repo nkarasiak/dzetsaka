@@ -329,12 +329,49 @@ def try_install_dependencies(plugin, missing_deps):
                     return qgis_validated
             return validated
 
+        def ensure_pip_available(py):
+            """Bootstrap pip via get-pip.py if missing for *py*."""
+            probe_cmd = [py, "-m", "pip", "--version"]
+            success, _ = run_command(probe_cmd, f"pip probe via {py}")
+            if success:
+                return
+            plugin.log.info(f"pip not found for {py}, bootstrapping via get-pip.py")
+            progress_dialog.append_output(f"\n⚠ pip not found for {py}, downloading get-pip.py...\n")
+            try:
+                import tempfile
+                import urllib.request
+
+                fd, get_pip_path = tempfile.mkstemp(suffix=".py", prefix="dzetsaka_get_pip_")
+                os.close(fd)
+                try:
+                    urllib.request.urlretrieve(  # nosec B310
+                        "https://bootstrap.pypa.io/get-pip.py",
+                        get_pip_path,
+                    )
+                    bootstrap_cmd = [py, get_pip_path, "--user", "--break-system-packages"]
+                    ok, out = run_command(bootstrap_cmd, f"get-pip.py via {py}")
+                    if ok:
+                        plugin.log.info(f"Successfully bootstrapped pip for {py}")
+                        progress_dialog.append_output(f"✓ pip bootstrapped for {py}\n")
+                    else:
+                        plugin.log.warning(f"get-pip.py failed for {py}")
+                        progress_dialog.append_output(f"✗ get-pip.py failed for {py}\n")
+                finally:
+                    with contextlib.suppress(Exception):
+                        os.remove(get_pip_path)
+            except Exception as exc:
+                plugin.log.warning(f"pip bootstrap error: {exc!s}")
+
         raw_candidates, qgis_macos_python_dir = find_python_candidates()
         python_candidates = validate_python_candidates(raw_candidates, qgis_macos_python_dir)
         plugin.log.info(f"Installing {package}. Python candidates: {python_candidates!r}")
         progress_dialog.append_output(
             "Python candidates: " + (", ".join(python_candidates) if python_candidates else "<none found>"),
         )
+
+        # Ensure pip is available (bootstraps via get-pip.py if missing)
+        for py in python_candidates:
+            ensure_pip_available(py)
 
         # Check for cancellation before starting
         if progress_dialog.was_cancelled():
@@ -671,12 +708,49 @@ def try_install_dependencies(plugin, missing_deps):
                     return qgis_validated
             return validated
 
+        def ensure_pip_available(py):
+            """Bootstrap pip via get-pip.py if missing for *py*."""
+            probe_cmd = [py, "-m", "pip", "--version"]
+            success, _ = run_command(probe_cmd, f"pip probe via {py}")
+            if success:
+                return
+            plugin.log.info(f"pip not found for {py}, bootstrapping via get-pip.py")
+            progress_dialog.append_output(f"\n⚠ pip not found for {py}, downloading get-pip.py...\n")
+            try:
+                import tempfile
+                import urllib.request
+
+                fd, get_pip_path = tempfile.mkstemp(suffix=".py", prefix="dzetsaka_get_pip_")
+                os.close(fd)
+                try:
+                    urllib.request.urlretrieve(  # nosec B310
+                        "https://bootstrap.pypa.io/get-pip.py",
+                        get_pip_path,
+                    )
+                    bootstrap_cmd = [py, get_pip_path, "--user", "--break-system-packages"]
+                    ok, _ = run_command(bootstrap_cmd, f"get-pip.py via {py}")
+                    if ok:
+                        plugin.log.info(f"Successfully bootstrapped pip for {py}")
+                        progress_dialog.append_output(f"✓ pip bootstrapped for {py}\n")
+                    else:
+                        plugin.log.warning(f"get-pip.py failed for {py}")
+                        progress_dialog.append_output(f"✗ get-pip.py failed for {py}\n")
+                finally:
+                    with contextlib.suppress(Exception):
+                        os.remove(get_pip_path)
+            except Exception as exc:
+                plugin.log.warning(f"pip bootstrap error: {exc!s}")
+
         raw_candidates, qgis_macos_python_dir = find_python_candidates()
         python_candidates = validate_python_candidates(raw_candidates, qgis_macos_python_dir)
         plugin.log.info(f"Installing bundle {targets}. Python candidates: {python_candidates!r}")
         progress_dialog.append_output(
             "Python candidates: " + (", ".join(python_candidates) if python_candidates else "<none found>"),
         )
+
+        # Ensure pip is available (bootstraps via get-pip.py if missing)
+        for py in python_candidates:
+            ensure_pip_available(py)
 
         if progress_dialog.was_cancelled():
             return False
@@ -877,45 +951,25 @@ def try_install_dependencies(plugin, missing_deps):
                     if install_result:
                         plugin.log.info(f"Successfully installed {target}")
                         progress.append_output(f"✓ {target} installed successfully\n")
-                        # Try to import to verify installation (after clearing import cache).
-                        # Do not mark success unless the module is actually importable.
+                        # Trust pip exit code for success. Freshly --user-installed
+                        # packages may not be importable in the running process
+                        # (Python needs a restart to pick up new ~/.local/ paths).
+                        # Best-effort import check for version logging only.
                         import importlib
 
                         try:
                             importlib.invalidate_caches()
                             import_target = base_imports.get(target, target)
                             imported = importlib.import_module(import_target)
-                            if target == "scikit-learn":
-                                sklearn_ok, sklearn_details = plugin._check_sklearn_usable()
-                                if not sklearn_ok:
-                                    plugin.log.warning(
-                                        "scikit-learn install command succeeded but runtime check failed: "
-                                        f"{sklearn_details}",
-                                    )
-                                    progress.append_output(
-                                        f"✗ scikit-learn is still unusable after install ({sklearn_details})\n",
-                                    )
-                                    continue
-                                progress.append_output(f"  Verified: {sklearn_details}\n")
-                            elif hasattr(imported, "__version__"):
-                                plugin.log.info(f"Verified {import_target} import: {imported.__version__}")
+                            if hasattr(imported, "__version__"):
                                 progress.append_output(f"  Version: {imported.__version__}\n")
-                            else:
-                                plugin.log.info(f"Verified {import_target} import.")
-                            plugin.log.info(
-                                f"Checking condition: target={target}, package_name={package_name}, "
-                                f"dep_installed={dep_installed}",
+                        except ImportError:
+                            progress.append_output(
+                                f"  (will be available after QGIS restart)\n",
                             )
-                            if target == package_name and not dep_installed:
-                                success_count += 1
-                                dep_installed = True
-                                plugin.log.info(f"SUCCESS! Incremented success_count to {success_count}")
-                                progress.append_output(f"✓ success_count = {success_count}\n")
-                        except ImportError as import_error:
-                            plugin.log.warning(
-                                f"Package {target} install command succeeded but import failed: {import_error}",
-                            )
-                            progress.append_output("✗ Package not importable after install attempt\n")
+                        if target == package_name and not dep_installed:
+                            success_count += 1
+                            dep_installed = True
                     else:
                         plugin.log.warning(f"Direct pip installation failed for {target}")
                         progress.append_output(f"✗ Failed to install {target}\n")
