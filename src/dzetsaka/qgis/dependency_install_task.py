@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess  # nosec B404
 import sys
+from collections.abc import Callable
 
 from qgis.core import QgsTask
 
@@ -20,6 +21,7 @@ class DependencyInstallTask(QgsTask):
         packages: list[str],
         plugin_logger,
         runtime_constraints: str | None = None,
+        on_finished: Callable[[bool], None] | None = None,
     ):
         """Initialize the dependency installation task.
 
@@ -39,6 +41,7 @@ class DependencyInstallTask(QgsTask):
         self.packages = packages
         self.log = plugin_logger
         self.runtime_constraints = runtime_constraints
+        self.on_finished_callback = on_finished
         self.output_lines = []
         self.success_count = 0
         self.error_message = ""
@@ -99,6 +102,9 @@ class DependencyInstallTask(QgsTask):
             self.log.info("Installation was cancelled")
         else:
             self.log.error(f"Installation failed. Installed {self.success_count}/{len(self.packages)} packages")
+
+        if self.on_finished_callback is not None:
+            self.on_finished_callback(result)
 
     def _find_python_executables(self) -> list[str]:
         """Find candidate Python executables for pip installation."""

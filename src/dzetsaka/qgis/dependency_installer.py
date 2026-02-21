@@ -1068,16 +1068,8 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
         if package_name not in package_order:
             package_order.append(package_name)
 
-    # Create and submit task
-    task = DependencyInstallTask(
-        description="dzetsaka: Installing Python dependencies",
-        packages=package_order,
-        plugin_logger=plugin.log,
-        runtime_constraints=runtime_constraints_file,
-    )
-
     def on_task_finished(success: bool):
-        """Handle task completion in main thread."""
+        """Handle task completion in main thread (called from finished())."""
         # Clean up constraints file
         if runtime_constraints_file:
             with contextlib.suppress(Exception):
@@ -1118,9 +1110,17 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
         if on_complete:
             on_complete(success)
 
-    # Connect finished signal
-    task.taskCompleted.connect(lambda: on_task_finished(True))
-    task.taskTerminated.connect(lambda: on_task_finished(False))
+    # Create and submit task — use on_finished callback instead of
+    # taskCompleted/taskTerminated signals.  The callback is invoked from
+    # finished() which QGIS guarantees runs on the main thread, avoiding
+    # macOS AppKit crashes (see issue #48).
+    task = DependencyInstallTask(
+        description="dzetsaka: Installing Python dependencies",
+        packages=package_order,
+        plugin_logger=plugin.log,
+        runtime_constraints=runtime_constraints_file,
+        on_finished=on_task_finished,
+    )
 
     # Submit to task manager
     QgsApplication.taskManager().addTask(task)

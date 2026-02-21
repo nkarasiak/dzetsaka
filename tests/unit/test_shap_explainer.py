@@ -19,7 +19,9 @@ try:
 except ImportError:
     SHAP_AVAILABLE = False
 
-# Import the module to test
+# Import the module to test.
+# Catch AttributeError too: GDAL 4.x removed legacy GDT_* constants, causing
+# an AttributeError at function_dataraster module level during collection.
 try:
     from scripts.explainability.shap_explainer import (
         SHAP_AVAILABLE as MODULE_SHAP_AVAILABLE,
@@ -30,7 +32,7 @@ try:
     )
 
     MODULE_AVAILABLE = True
-except ImportError:
+except (ImportError, AttributeError):
     MODULE_AVAILABLE = False
     ModelExplainer = None
     check_shap_available = None
@@ -455,5 +457,5 @@ class TestModuleAvailability:
             from scripts.explainability import shap_explainer
 
             assert shap_explainer is not None
-        except ImportError:
+        except (ImportError, AttributeError):
             pytest.skip("Module not available")

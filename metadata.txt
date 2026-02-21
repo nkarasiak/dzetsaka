@@ -11,7 +11,7 @@ name=dzetsaka : AI-Powered Remote Sensing Classification
 qgisMinimumVersion=3.0
 supportsQt6=True
 description=Next-generation AI for Earth Observation in QGIS with 12 ML algorithms, major runtime optimizations, advanced UX workflows, recipe-driven configuration, and rich report generation.
-version=5.0.4
+version=5.0.5
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -42,6 +42,9 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+    5.0.5
+      * FIX: Prevent QGIS crash on macOS ARM64 during dependency auto-install — use main-thread callback instead of cross-thread signals (issue #48)
+      * FIX: Handle missing legacy GDT_* constants in GDAL 4.x to prevent AttributeError at import time
     5.0.4
       * CHORE: Bump plugin metadata version to provide a unique QGIS Plugin Repository release number
     5.0.3
