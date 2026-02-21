@@ -46,9 +46,10 @@ def build_debug_info(plugin) -> str:
         except ImportError:
             pass
 
+        plugin_version = getattr(plugin, "plugin_version", None) or "unknown"
         debug_info = f"""
 === DZETSAKA DEBUG INFO ===
-Plugin Version: 4.1.2
+Plugin Version: {plugin_version}
 QGIS Version: {qgis_version}
 Python Version: {python_version}
 Operating System: {os_info}
