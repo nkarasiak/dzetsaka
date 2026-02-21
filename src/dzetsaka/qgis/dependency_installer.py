@@ -397,38 +397,10 @@ def try_install_dependencies(plugin, missing_deps):
         plugin.log.warning(f"Installation failed for {package} after all launcher attempts")
         progress_dialog.append_output(f"\n✗ install_package returning False for {package}\n")
 
-        # Method 3: On Linux, try apt as final fallback
-        if sys.platform.startswith("linux"):
-            apt_packages = {
-                "scikit-learn": "python3-sklearn",
-                "xgboost": "python3-xgboost",
-                "lightgbm": "python3-lightgbm",
-                "catboost": "python3-catboost",
-            }
-            apt_pkg = apt_packages.get(package.lower())
-
-            if apt_pkg:
-                apt_path = "/usr/bin/apt"
-                if os.path.exists(apt_path):
-                    plugin.log.info(f"Trying system package manager (apt install {apt_pkg})...")
-                    progress_dialog.append_output("\n⚠ Trying system package manager...\n")
-                    success, output = run_command(
-                        ["pkexec", apt_path, "install", "-y", apt_pkg],
-                        "apt via pkexec",
-                    )
-                    if success:
-                        plugin.log.info(f"Successfully installed {apt_pkg} via apt")
-                        return True
-                    plugin.log.warning(f"apt install failed: {output}")
-
         # All methods failed
         plugin.log.error(
             f"Could not install {package}. Please install manually:\n"
-            "  Option 1 - Install pip first:\n"
-            "    sudo apt install python3-pip\n"
-            "    pip3 install --user scikit-learn\n"
-            "  Option 2 - Install via apt directly:\n"
-            "    sudo apt install python3-sklearn\n"
+            "  pip3 install --user {package}\n"
             "  Then restart QGIS.",
         )
         return False
