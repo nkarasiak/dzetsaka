@@ -217,3 +217,45 @@ def test_runtime_constraints_fallbacks_to_imported_versions_when_metadata_missin
     assert "pandas==2.2.3" in constraints
 
     os.remove(constraints_file)
+
+
+@pytest.mark.unit
+def test_dependency_install_task_finished_calls_on_finished_callback():
+    """Test that DependencyInstallTask.finished() invokes the on_finished callback."""
+    from dzetsaka.qgis.dependency_install_task import DependencyInstallTask
+
+    mock_logger = Mock()
+    callback_results = []
+
+    task = DependencyInstallTask(
+        description="Test installation",
+        packages=["test-package"],
+        plugin_logger=mock_logger,
+        on_finished=lambda result: callback_results.append(result),
+    )
+
+    # Simulate successful completion
+    task.finished(True)
+    assert callback_results == [True]
+
+    # Simulate failed completion
+    task.finished(False)
+    assert callback_results == [True, False]
+
+
+@pytest.mark.unit
+def test_dependency_install_task_finished_without_callback():
+    """Test that DependencyInstallTask.finished() works when no callback is provided."""
+    from dzetsaka.qgis.dependency_install_task import DependencyInstallTask
+
+    mock_logger = Mock()
+
+    task = DependencyInstallTask(
+        description="Test installation",
+        packages=["test-package"],
+        plugin_logger=mock_logger,
+    )
+
+    # Should not raise when no callback is set
+    task.finished(True)
+    task.finished(False)
