@@ -349,6 +349,7 @@ def try_install_dependencies(plugin, missing_deps):
             "--no-input",
             "--disable-pip-version-check",
             "--prefer-binary",
+            "--break-system-packages",
         ]
         if runtime_constraint_args:
             pip_args.extend(runtime_constraint_args)
@@ -689,6 +690,7 @@ def try_install_dependencies(plugin, missing_deps):
             "--no-input",
             "--disable-pip-version-check",
             "--prefer-binary",
+            "--break-system-packages",
         ]
         if runtime_constraint_args:
             pip_args.extend(runtime_constraint_args)

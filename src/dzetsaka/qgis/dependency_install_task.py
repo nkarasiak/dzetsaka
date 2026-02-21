@@ -230,6 +230,7 @@ class DependencyInstallTask(QgsTask):
             "--no-input",
             "--disable-pip-version-check",
             "--prefer-binary",
+            "--break-system-packages",
         ]
         if constraint_args:
             pip_args.extend(constraint_args)
@@ -279,6 +280,7 @@ class DependencyInstallTask(QgsTask):
             "--no-input",
             "--disable-pip-version-check",
             "--prefer-binary",
+            "--break-system-packages",
         ]
         if constraint_args:
             pip_args.extend(constraint_args)
