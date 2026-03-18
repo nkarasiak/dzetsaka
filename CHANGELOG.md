@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.7] - 2026-03-18
+
+### Fixed
+- Fix `UnboundLocalError: cvDistance` when using Polygon Group CV mode with a validation vector split (issue #49)
+- Fix dashboard crash on QGIS 4.x / PyQt6: scoped enum compatibility for `Qt.ToolTipRole`, `Qt.UserRole`, `Qt.ScrollBarPolicy`, `QSizePolicy.Policy`, `Qt.DockWidgetArea`, `QDialogButtonBox` roles
+- Replace `exec_()` with `exec()` throughout for PyQt6 compatibility
+
+### Added
+- Declare QGIS 4.x support in `metadata.txt` (`qgisMaximumVersion=4.99`)
+- GitHub Actions workflow: automatically build and attach `dzetsaka_<version>.zip` to GitHub releases
+
 ## [5.0.6] - 2026-02-21
 
 ### Fixed
