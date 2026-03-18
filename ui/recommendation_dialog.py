@@ -71,7 +71,11 @@ class RecommendationDialog(QDialog):
         # Scrollable area for recommendations
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        try:
+            _scrollbar_off = Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        except AttributeError:
+            _scrollbar_off = Qt.ScrollBarAlwaysOff
+        scroll.setHorizontalScrollBarPolicy(_scrollbar_off)
 
         scroll_content = QWidget()
         scroll_layout = QVBoxLayout(scroll_content)
@@ -438,10 +442,16 @@ class RecommendationDialog(QDialog):
         # Show all recipes button
         show_all_btn = QPushButton("Show All Recipes")
         show_all_btn.clicked.connect(self._on_show_all)
-        button_box.addButton(show_all_btn, QDialogButtonBox.ActionRole)
+        try:
+            _action_role = QDialogButtonBox.ButtonRole.ActionRole
+            _close_btn = QDialogButtonBox.StandardButton.Close
+        except AttributeError:
+            _action_role = QDialogButtonBox.ActionRole
+            _close_btn = QDialogButtonBox.Close
+        button_box.addButton(show_all_btn, _action_role)
 
         # Close button
-        close_btn = button_box.addButton(QDialogButtonBox.Close)
+        close_btn = button_box.addButton(_close_btn)
         close_btn.clicked.connect(self.reject)
 
         layout.addWidget(button_box)

@@ -60,6 +60,28 @@ from qgis.PyQt.QtWidgets import (
     QWizardPage,
 )
 
+# PyQt5/6 enum compatibility: PyQt6 (QGIS 4+) uses scoped enums
+try:
+    _Qt_UserRole = Qt.ItemDataRole.UserRole
+    _Qt_ToolTipRole = Qt.ItemDataRole.ToolTipRole
+except AttributeError:
+    _Qt_UserRole = Qt.UserRole
+    _Qt_ToolTipRole = Qt.ToolTipRole
+
+try:
+    _Qt_ScrollBarAsNeeded = Qt.ScrollBarPolicy.ScrollBarAsNeeded
+    _Qt_ScrollBarAlwaysOff = Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+except AttributeError:
+    _Qt_ScrollBarAsNeeded = Qt.ScrollBarAsNeeded
+    _Qt_ScrollBarAlwaysOff = Qt.ScrollBarAlwaysOff
+
+try:
+    _QSizePolicy_Expanding = QSizePolicy.Policy.Expanding
+    _QSizePolicy_Fixed = QSizePolicy.Policy.Fixed
+except AttributeError:
+    _QSizePolicy_Expanding = QSizePolicy.Expanding
+    _QSizePolicy_Fixed = QSizePolicy.Fixed
+
 # Import validated widgets for real-time validation feedback
 from .validated_widgets import ValidatedSpinBox, ValidatedDoubleSpinBox
 
@@ -1109,7 +1131,7 @@ class RecipeShopDialog(QDialog):
         preset_row.addWidget(header)
 
         self.presetCombo = QComboBox()
-        self.presetCombo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.presetCombo.setSizePolicy(_QSizePolicy_Expanding, _QSizePolicy_Fixed)
         self.presetCombo.addItem("Custom recipe", None)
         for preset in self._PRESETS:
             self.presetCombo.addItem(preset.get("name", "Preset"), preset)
@@ -2095,7 +2117,7 @@ class RecipeGalleryDialog(QDialog):
         layout.addLayout(row)
         dialog.setLayout(layout)
         try:
-            dialog.exec_()
+            dialog.exec()
         except AttributeError:
             dialog.exec()
 
@@ -2939,7 +2961,7 @@ class DataInputPage(QWizardPage):
             return
         dialog = VectorInsightDialog(self, vector_path=vector_path, class_field=class_field, layer=layer)
         try:
-            dialog.exec_()
+            dialog.exec()
         except AttributeError:
             dialog.exec()
 
@@ -3004,7 +3026,7 @@ class DataInputPage(QWizardPage):
             parent=self
         )
         try:
-            result = dialog.exec_()
+            result = dialog.exec()
         except AttributeError:
             result = dialog.exec()
 
@@ -3084,7 +3106,7 @@ class DataInputPage(QWizardPage):
             dialog = RecommendationDialog(recommendations, raster_info, self)
             dialog.recipeSelected.connect(lambda recipe: self._apply_recipe_to_setup_dialog(recipe))
             try:
-                dialog.exec_()
+                dialog.exec()
             except AttributeError:
                 dialog.exec()
 
@@ -4063,7 +4085,7 @@ class OutputConfigPage(QWizardPage):
         try:
             dialog = SplitPreviewDialog(vector_path, class_field, split_percent, cv_mode, self)
             try:
-                dialog.exec_()
+                dialog.exec()
             except AttributeError:
                 dialog.exec()
         except Exception as e:
@@ -4382,7 +4404,7 @@ class ClassificationSetupDialog(ThemeAwareWidget, QWizard):
         dialog.recipeApplied.connect(self.apply_recipe)
         dialog.recipesUpdated.connect(self._update_recipes)
         try:
-            dialog.exec_()
+            dialog.exec()
         except AttributeError:
             dialog.exec()
 
@@ -4745,8 +4767,8 @@ class RecipeHubDialog(QDialog):
         self.categoryList = QListWidget()
         self.categoryList.setObjectName("hubList")
         self.categoryList.setSpacing(1 if self._compact_mode else 4)
-        self.categoryList.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.categoryList.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.categoryList.setVerticalScrollBarPolicy(_Qt_ScrollBarAsNeeded)
+        self.categoryList.setHorizontalScrollBarPolicy(_Qt_ScrollBarAlwaysOff)
         categories_layout.addWidget(self.categoryList)
         root.addWidget(categories_group, 3, 0)
         if self._compact_mode:
@@ -5098,7 +5120,7 @@ class RecipeHubDialog(QDialog):
             if search_term and search_term not in blob:
                 continue
             item = QListWidgetItem(name)
-            item.setData(Qt.UserRole, name)
+            item.setData(_Qt_UserRole, name)
             item.setToolTip(desc)
             item.setSizeHint(QSize(0, 24 if self._compact_mode else 32))
             self.recipeList.addItem(item)
@@ -5213,7 +5235,7 @@ class RecipeHubDialog(QDialog):
             self.applyBtn.setEnabled(False)
             self.detailsLabel.setText("Select a recipe to view details.")
             return
-        recipe_name = str(current.data(Qt.UserRole) or "").strip()
+        recipe_name = str(current.data(_Qt_UserRole) or "").strip()
         self._selected_recipe_name = recipe_name
         self.applyBtn.setEnabled(bool(recipe_name))
         selected = None
@@ -5236,7 +5258,7 @@ class RecipeHubDialog(QDialog):
         target = self._current_recipe_name
         for idx in range(self.recipeList.count()):
             item = self.recipeList.item(idx)
-            if item and str(item.data(Qt.UserRole) or "").strip() == target:
+            if item and str(item.data(_Qt_UserRole) or "").strip() == target:
                 self.recipeList.setCurrentRow(idx)
                 break
 
@@ -6107,7 +6129,7 @@ class QuickClassificationPanel(QWidget):
             parent=self
         )
         try:
-            result = dialog.exec_()
+            result = dialog.exec()
         except AttributeError:
             result = dialog.exec()
 
@@ -6479,7 +6501,7 @@ class QuickClassificationPanel(QWidget):
         current_name = str(self.recipeCombo.currentData() or "").strip()
         dialog = RecipeHubDialog(self, recipes=list(self._recipes), current_recipe_name=current_name)
         try:
-            accepted = dialog.exec_()
+            accepted = dialog.exec()
         except AttributeError:
             accepted = dialog.exec()
         if accepted != 1:
@@ -6513,7 +6535,7 @@ class QuickClassificationPanel(QWidget):
             name = str(recipe.get("name", "Unnamed Recipe"))
             self.recipeCombo.addItem(name, name)
             tooltip = self._build_recipe_tooltip(recipe)
-            self.recipeCombo.setItemData(self.recipeCombo.count() - 1, tooltip, Qt.ToolTipRole)
+            self.recipeCombo.setItemData(self.recipeCombo.count() - 1, tooltip, _Qt_ToolTipRole)
 
         # Enable in-field fuzzy search over recipe names.
         try:
@@ -6586,7 +6608,7 @@ class QuickClassificationPanel(QWidget):
             context_text=self._recipe_context_summary(),
         )
         try:
-            accepted = dialog.exec_()
+            accepted = dialog.exec()
         except AttributeError:
             accepted = dialog.exec()
         if accepted != 1:
@@ -7039,7 +7061,7 @@ class QuickClassificationPanel(QWidget):
             dialog = RecommendationDialog(recommendations, raster_info, self)
             dialog.recipeSelected.connect(self._apply_recommended_recipe)
             try:
-                dialog.exec_()
+                dialog.exec()
             except AttributeError:
                 dialog.exec()
 
@@ -7103,10 +7125,7 @@ class ClassificationDashboardDock(QDockWidget):
         self.banner.setMinimumHeight(60)
         self.banner.setMaximumHeight(60)
         self.banner.setAlignment(_qt_align_hcenter())
-        if hasattr(QSizePolicy, "Policy"):
-            self.banner.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        else:
-            self.banner.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.banner.setSizePolicy(_QSizePolicy_Expanding, _QSizePolicy_Fixed)
         banner_pixmap = QPixmap(":/plugins/dzetsaka/img/parcguyane.jpg")
         if not banner_pixmap.isNull():
             self.banner.set_cover_pixmap(banner_pixmap)

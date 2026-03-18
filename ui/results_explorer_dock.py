@@ -738,9 +738,9 @@ class ResultsExplorerDock(ThemeAwareWidget, QDockWidget):
             parent=self
         )
         try:
-            dialog.exec_()
-        except AttributeError:
             dialog.exec()
+        except AttributeError:
+            dialog.exec_()
 
     def _compute_class_counts(self, raster_path: str) -> Dict[int, int]:
         """Compute class pixel counts from a raster file.

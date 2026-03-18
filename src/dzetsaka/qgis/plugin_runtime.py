@@ -357,9 +357,9 @@ class DzetsakaGUI(QDialog):
 
             dialog = BatchClassificationDialog(parent=self.iface.mainWindow(), iface=self.iface, plugin=self)
             try:
-                dialog.exec_()
-            except AttributeError:
                 dialog.exec()
+            except AttributeError:
+                dialog.exec_()
         except Exception as exc:
             self._report_unhandled_exception(
                 error_title="Batch Classification Error",
@@ -539,8 +539,8 @@ class DzetsakaGUI(QDialog):
             show_error_dialog(error_title, details)
 
 
-# Qt6 enum compatibility (QGIS 4 / PyQt6)
+# Qt5/Qt6 enum compatibility (QGIS 4 / PyQt6)
 try:
-    _LEFT_DOCK_AREA = Qt.LeftDockWidgetArea
-except AttributeError:
     _LEFT_DOCK_AREA = Qt.DockWidgetArea.LeftDockWidgetArea
+except AttributeError:
+    _LEFT_DOCK_AREA = Qt.LeftDockWidgetArea

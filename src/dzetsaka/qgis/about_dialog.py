@@ -78,6 +78,6 @@ def show_about_dialog(plugin) -> None:
     layout.addWidget(buttons)
 
     try:
-        dialog.exec_()
+        dialog.exec()
     except AttributeError:
         dialog.exec()
