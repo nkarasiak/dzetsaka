@@ -2277,8 +2277,13 @@ class LearnModel:
             elif isinstance(SPLIT, int):
                 cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
                 groups_for_cv = None
-            else:
+            elif SPLIT in ("STAND", "SLOO"):
                 cv = cvDistance
+                groups_for_cv = None
+            else:
+                # SPLIT is a validation vector path or other non-standard value;
+                # use StratifiedKFold for hyperparameter search CV.
+                cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
                 groups_for_cv = None
 
             x_search = x
