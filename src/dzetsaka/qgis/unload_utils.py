@@ -17,7 +17,11 @@ def unload_plugin(plugin) -> None:
             plugin.dashboard_dock.classificationRequested.disconnect(plugin.execute_dashboard_config)
         with contextlib.suppress(TypeError, RuntimeError):
             plugin.dashboard_dock.closingRequested.disconnect(plugin.on_close_dashboard_dock)
-        plugin.dashboard_dock.close()
+        dock = plugin.dashboard_dock
+        plugin.dashboard_dock = None
+        dock.hide()
+        plugin.iface.removeDockWidget(dock)
+        dock.setParent(None)
 
     # Disconnect toolbar action signal
     if plugin.dashboard_toolbar_action is not None:
