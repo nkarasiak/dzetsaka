@@ -1,8 +1,8 @@
 name: Release
 
 on:
-  release:
-    types: [published]
+  push:
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
@@ -10,7 +10,40 @@ on:
         required: true
 
 jobs:
-  build-and-attach:
+  # ── Cross-platform tests must pass before publishing ──────────────
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest         # x86_64 Linux
+            python: "3.11"
+          - os: macos-latest          # Apple Silicon (ARM64)
+            python: "3.11"
+          - os: macos-13              # Intel x86_64
+            python: "3.11"
+
+    runs-on: ${{ matrix.os }}
+    name: "test / ${{ matrix.os }}"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install test dependencies
+        run: pip install pytest pytest-cov pytest-mock scikit-learn numpy joblib
+
+      - name: Run tests (non-QGIS)
+        run: |
+          pytest tests/ -k "not qgis" --disable-warnings -o "addopts=" -v \
+            --tb=short --no-header -q
+
+  # ── Build & attach plugin zip only after all tests pass ───────────
+  release:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -35,7 +68,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${{ github.event.release.tag_name || inputs.tag }}"
+          TAG="${{ github.event.release.tag_name || inputs.tag || github.ref_name }}"
           gh release upload "$TAG" \
             "dzetsaka_${{ steps.version.outputs.version }}.zip" \
             --clobber

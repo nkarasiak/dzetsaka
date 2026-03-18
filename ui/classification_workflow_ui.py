@@ -188,6 +188,34 @@ def _full_bundle_label():
     return ", ".join(_full_dependency_bundle())
 
 
+def _run_async_install(installer, to_install, on_complete=None):
+    # type: (object, List[str], Optional[object]) -> None
+    """Run dependency installation via async QgsTask (macOS-safe).
+
+    Prefers ``_try_install_dependencies_async`` (non-blocking, no QEventLoop).
+    Falls back to the legacy synchronous installer for older plugin versions.
+
+    Parameters
+    ----------
+    installer : plugin instance
+        The plugin object exposing installer methods.
+    to_install : list[str]
+        Packages to install.
+    on_complete : callable(bool) | None
+        Optional callback invoked with *True* on success, *False* on failure.
+    """
+    if hasattr(installer, "_try_install_dependencies_async"):
+        installer._try_install_dependencies_async(to_install, on_complete=on_complete)
+    elif hasattr(installer, "_try_install_dependencies"):
+        # Legacy fallback — synchronous, may crash on macOS ARM64.
+        result = installer._try_install_dependencies(to_install)
+        if on_complete:
+            on_complete(result)
+    else:
+        if on_complete:
+            on_complete(False)
+
+
 def check_dependency_availability():
     # type: () -> Dict[str, bool]
     """Check which optional packages are importable at runtime.
@@ -1408,7 +1436,7 @@ class RecipeShopDialog(QDialog):
         if not missing_required:
             return True
         classifier_name = self._classifier_name(code)
-        if not self._installer or not hasattr(self._installer, "_try_install_dependencies"):
+        if not self._installer:
             pip_cmd = "python -m pip install dzetsaka[full]"
             QMessageBox.warning(
                 self,
@@ -1439,35 +1467,16 @@ class RecipeShopDialog(QDialog):
         if reply != QMessageBox.StandardButton.Yes:
             return False
         to_install = _full_dependency_bundle()
-        if not self._installer._try_install_dependencies(to_install):
-            if hasattr(self._installer, "_show_github_issue_popup"):
-                self._installer._show_github_issue_popup(
-                    "Dependency Installation Failed",
-                    "Dependency Installation Error",
-                    f"Automatic installation failed for: {', '.join(to_install)}",
-                    f"Recipe shop classifier selection: {classifier_name}",
-                )
-            QMessageBox.warning(
-                self,
-                "Dependencies Missing",
-                "Could not install dependencies required for the selected classifier.",
-            )
-            return False
-        QMessageBox.information(
-            self,
-            "Installation Successful",
-            ("Dependencies installed successfully!<br><br>Please restart QGIS to load the new libraries."),
-            QMessageBox.StandardButton.Ok,
-        )
-        self._deps = check_dependency_availability()
-        remaining, _ = self._missing_dependencies_for_code(code)
-        if remaining:
-            QMessageBox.warning(
-                self,
-                "Dependencies Missing",
-                (f"Still missing packages: {', '.join(remaining)}.\nInstall them manually or restart QGIS."),
-            )
-            return False
+
+        def _on_done(success):
+            if success:
+                self._deps = check_dependency_availability()
+                self._update_summary()
+
+        _run_async_install(self._installer, to_install, on_complete=_on_done)
+        # Async: installation runs in background — return False so caller
+        # does not assume deps are already available (they require restart).
+        return False
         return True
 
     def _handle_classifier_changed(self, index):
@@ -1500,7 +1509,7 @@ class RecipeShopDialog(QDialog):
         # type: (str, List[str]) -> bool
         if not missing_required:
             return True
-        if not self._installer or not hasattr(self._installer, "_try_install_dependencies"):
+        if not self._installer:
             pip_cmd = "python -m pip install dzetsaka[full]"
             QMessageBox.warning(
                 self,
@@ -1528,23 +1537,15 @@ class RecipeShopDialog(QDialog):
             return False
 
         to_install = _full_dependency_bundle()
-        if not self._installer._try_install_dependencies(to_install):
-            QMessageBox.warning(
-                self,
-                "Dependencies Missing",
-                (f"Could not install dependencies required for {feature_name}.\nSee logs for details."),
-            )
-            return False
 
-        QMessageBox.information(
-            self,
-            "Installation Successful",
-            ("Dependencies installed successfully!<br><br>Please restart QGIS to load the new libraries."),
-            QMessageBox.StandardButton.Ok,
-        )
-        self._deps = check_dependency_availability()
-        self._update_summary()
-        return True
+        def _on_done(success):
+            if success:
+                self._deps = check_dependency_availability()
+                self._update_summary()
+
+        _run_async_install(self._installer, to_install, on_complete=_on_done)
+        # Async: return False; deps require QGIS restart anyway.
+        return False
 
     def _apply_preset(self, preset):
         # type: (Optional[Dict[str, object]]) -> None
@@ -2820,7 +2821,7 @@ class DataInputPage(QWizardPage):
             return
         self._last_prompt_signature = signature
 
-        if not self._installer or not hasattr(self._installer, "_try_install_dependencies"):
+        if not self._installer:
             return
 
         if missing_required:
@@ -2845,27 +2846,15 @@ class DataInputPage(QWizardPage):
 
             if reply == QMessageBox.StandardButton.Yes:
                 to_install = _full_dependency_bundle()
-                if self._installer._try_install_dependencies(to_install):
-                    QMessageBox.information(
-                        self,
-                        "Installation Successful",
-                        f"Dependencies installed successfully!<br><br>"
-                        f"<b>Important:</b> Please restart QGIS now.<br>"
-                        f"Without restarting, newly installed libraries may not be loaded, "
-                        f"and {classifier_name} training/classification can fail.",
-                        QMessageBox.StandardButton.Ok,
-                    )
-                    self._deps = check_dependency_availability()
-                    self._update_dep_status(self.classifierCombo.currentIndex())
-                else:
-                    if hasattr(self._installer, "_show_github_issue_popup"):
-                        self._installer._show_github_issue_popup(
-                            "Dependency Installation Failed",
-                            "Dependency Installation Error",
-                            f"Automatic installation failed for: {', '.join(to_install)}",
-                            f"Guided classifier selection: {classifier_name}",
-                        )
-                    self.classifierCombo.setCurrentIndex(0)
+
+                def _on_done(success):
+                    if success:
+                        self._deps = check_dependency_availability()
+                        self._update_dep_status(self.classifierCombo.currentIndex())
+                    else:
+                        self.classifierCombo.setCurrentIndex(0)
+
+                _run_async_install(self._installer, to_install, on_complete=_on_done)
             elif reply == QMessageBox.StandardButton.No:
                 self.classifierCombo.setCurrentIndex(0)
 
@@ -4297,37 +4286,8 @@ class ClassificationSetupDialog(ThemeAwareWidget, QWizard):
                 to_install = _full_dependency_bundle()
 
                 # Check if installer is available
-                if self._installer and hasattr(self._installer, "_try_install_dependencies"):
-                    if self._installer._try_install_dependencies(to_install):
-                        QMessageBox.information(
-                            self,
-                            "Installation Successful",
-                            f"Dependencies installed successfully!<br><br>"
-                            "<b>Important:</b> Please restart QGIS now.<br>"
-                            "Without restarting, newly installed libraries may not be loaded, "
-                            "and training/classification can fail.",
-                            QMessageBox.StandardButton.Ok,
-                        )
-                        # Re-check after installation
-                        is_valid_now, still_missing = validate_recipe_dependencies(recipe)
-                        if not is_valid_now:
-                            _show_issue_popup(
-                                self,
-                                self._installer,
-                                "Dependencies Still Missing",
-                                "Dependency Validation Error",
-                                "Some dependencies are still missing after auto-install.",
-                                f"Recipe: {recipe.get('name', 'unnamed')}; Missing: {', '.join(still_missing)}",
-                            )
-                    else:
-                        _show_issue_popup(
-                            self,
-                            self._installer,
-                            "Installation Failed",
-                            "Dependency Installation Error",
-                            "Failed to install dependencies automatically.",
-                            f"Recipe: {recipe.get('name', 'unnamed')}; Requested: {', '.join(to_install)}",
-                        )
+                if self._installer:
+                    _run_async_install(self._installer, to_install)
                 else:
                     QMessageBox.information(
                         self,
@@ -5942,7 +5902,7 @@ class QuickClassificationPanel(QWidget):
         features : list of str
             List of feature names requiring installation
         """
-        if not self._installer or not hasattr(self._installer, "_try_install_dependencies"):
+        if not self._installer:
             QMessageBox.warning(
                 self,
                 "Installation Not Available",
@@ -5973,21 +5933,12 @@ class QuickClassificationPanel(QWidget):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            # Install full bundle
-            if self._installer._try_install_dependencies([]):
-                QMessageBox.information(
-                    self,
-                    "Installation Successful",
-                    "Dependencies installed successfully.\n\nPlease restart QGIS to load new libraries.",
-                )
-                # Refresh dependency status
-                self._deps = check_dependency_availability()
-            else:
-                QMessageBox.warning(
-                    self,
-                    "Installation Failed",
-                    "Failed to install dependencies. Please check the QGIS message log for details."
-                )
+
+            def _on_done(success):
+                if success:
+                    self._deps = check_dependency_availability()
+
+            _run_async_install(self._installer, _full_dependency_bundle(), on_complete=_on_done)
 
     def _on_feature_badge_clicked(self, feature_name, checked):
         # type: (str, bool) -> None
@@ -6286,7 +6237,7 @@ class QuickClassificationPanel(QWidget):
 
         classifier_name = self._get_classifier_name()
 
-        if self._installer and hasattr(self._installer, "_try_install_dependencies"):
+        if self._installer:
             req_list = ", ".join(missing_required)
             optional_line = ""
             if missing_optional:
@@ -6306,17 +6257,16 @@ class QuickClassificationPanel(QWidget):
             )
             if reply == QMessageBox.StandardButton.Yes:
                 to_install = _full_dependency_bundle()
-                if self._installer._try_install_dependencies(to_install):
-                    QMessageBox.information(
-                        self,
-                        "Installation Successful",
-                        "Dependencies installed successfully.\n\nPlease restart QGIS to load new libraries.",
-                    )
-                    self._deps = check_dependency_availability()
-                    self._update_dep_status(self.classifierCombo.currentIndex())
-                    self._update_summary()
-                else:
-                    self.classifierCombo.setCurrentIndex(0)
+
+                def _on_done(success):
+                    if success:
+                        self._deps = check_dependency_availability()
+                        self._update_dep_status(self.classifierCombo.currentIndex())
+                        self._update_summary()
+                    else:
+                        self.classifierCombo.setCurrentIndex(0)
+
+                _run_async_install(self._installer, to_install, on_complete=_on_done)
             else:
                 self.classifierCombo.setCurrentIndex(0)
             return
@@ -6835,24 +6785,15 @@ class QuickClassificationPanel(QWidget):
             )
 
             if reply == QMessageBox.StandardButton.Yes:
-                if self._installer and hasattr(self._installer, "_try_install_dependencies"):
+                if self._installer:
                     to_install = _full_dependency_bundle()
-                    if self._installer._try_install_dependencies(to_install):
-                        QMessageBox.information(
-                            self,
-                            "Installation Successful",
-                            "Dependencies installed successfully.<br><br>"
-                            "<b>Important:</b> Please restart QGIS to load new libraries."
-                        )
-                        self._deps = check_dependency_availability()
-                        self._update_dep_status(self.classifierCombo.currentIndex())
-                    else:
-                        QMessageBox.warning(
-                            self,
-                            "Installation Failed",
-                            "Failed to install dependencies. You can still import the recipe,<br>"
-                            "but some features may not work until dependencies are installed."
-                        )
+
+                    def _on_done(success):
+                        if success:
+                            self._deps = check_dependency_availability()
+                            self._update_dep_status(self.classifierCombo.currentIndex())
+
+                    _run_async_install(self._installer, to_install, on_complete=_on_done)
                 else:
                     QMessageBox.warning(
                         self,
@@ -6925,7 +6866,7 @@ class QuickClassificationPanel(QWidget):
                     missing_bundle.append("seaborn")
 
                 if missing_bundle:
-                    if self._installer and hasattr(self._installer, "_try_install_dependencies"):
+                    if self._installer:
                         reply = QMessageBox.question(
                             self,
                             "Report Dependencies Missing",
@@ -6940,14 +6881,16 @@ class QuickClassificationPanel(QWidget):
                             QMessageBox.StandardButton.No,
                         )
                         if reply == QMessageBox.StandardButton.Yes:
-                            if not self._installer._try_install_dependencies(_full_dependency_bundle()):
-                                QMessageBox.warning(
-                                    self,
-                                    "Dependencies Missing",
-                                    "Could not install full dependency bundle required for report mode.",
-                                )
-                                return
-                            self._deps = check_dependency_availability()
+                            def _on_done(success):
+                                if success:
+                                    self._deps = check_dependency_availability()
+
+                            _run_async_install(
+                                self._installer, _full_dependency_bundle(), on_complete=_on_done
+                            )
+                            # Async install started — abort this run.
+                            # User should click Run again after installation completes.
+                            return
                         else:
                             # Allow baseline execution by disabling report mode for this run.
                             self.reportCheck.setChecked(False)

@@ -2487,7 +2487,7 @@ class LearnModel:
                 testIndex = []
                 # Get saveDir from extraParam if available
                 saveDir = extraParam.get("saveDir", tempfile.gettempdir())
-                for train_index, test_index in cv:
+                for train_index, test_index in (cv.split(X, y) if hasattr(cv, 'split') else cv):
                     X_train, X_test = X[train_index], X[test_index]
                     y_train, y_test = y[train_index], y[test_index]
 

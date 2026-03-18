@@ -72,23 +72,23 @@ def save_settings(gui) -> None:
 
             if reply == QMessageBox.StandardButton.Yes:
                 to_install = list(FULL_DEPENDENCY_BUNDLE)
-                if gui._try_install_dependencies(to_install):
-                    gui.settings.setValue("/dzetsaka/classifier", selected_classifier)
-                    gui.classifier = selected_classifier
-                    QMessageBox.information(
-                        gui,
-                        "Installation Successful",
-                        f"Dependencies installed successfully!<br><br>"
-                        "<b>Important:</b> Please restart QGIS now.<br>"
-                        "Without restarting, newly installed libraries may not be loaded, "
-                        f"and {selected_classifier} training/classification can fail.<br><br>"
-                        f"You can now try using {selected_classifier}.",
-                        QMessageBox.StandardButton.Ok,
-                    )
+
+                def _on_done(success, _gui=gui, _sel=selected_classifier, _combo=classifier_selector):
+                    if success:
+                        _gui.settings.setValue("/dzetsaka/classifier", _sel)
+                        _gui.classifier = _sel
+                    else:
+                        _combo.setCurrentIndex(0)
+                        _gui.settings.setValue("/dzetsaka/classifier", "Gaussian Mixture Model")
+                        _gui.classifier = "Gaussian Mixture Model"
+
+                if hasattr(gui, "_try_install_dependencies_async"):
+                    gui._try_install_dependencies_async(to_install, on_complete=_on_done)
+                elif hasattr(gui, "_try_install_dependencies"):
+                    result = gui._try_install_dependencies(to_install)
+                    _on_done(result)
                 else:
-                    classifier_selector.setCurrentIndex(0)
-                    gui.settings.setValue("/dzetsaka/classifier", "Gaussian Mixture Model")
-                    gui.classifier = "Gaussian Mixture Model"
+                    _on_done(False)
             elif reply == QMessageBox.StandardButton.No:
                 classifier_selector.setCurrentIndex(0)
                 gui.settings.setValue("/dzetsaka/classifier", "Gaussian Mixture Model")
