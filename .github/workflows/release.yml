@@ -20,7 +20,7 @@ jobs:
             python: "3.11"
           - os: macos-latest          # Apple Silicon (ARM64)
             python: "3.11"
-          - os: macos-13              # Intel x86_64
+          - os: macos-15              # macOS Sequoia (ARM64)
             python: "3.11"
 
     runs-on: ${{ matrix.os }}
