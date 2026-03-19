@@ -1840,7 +1840,7 @@ class LearnModel:
                     train_indices = []
                     test_indices = []
 
-                    for i in range(C):
+                    for i in range(n_classes):
                         t = np.where((i + 1) == Y)[0]
                         nc = t.size
                         ns = int(nc * (split_value / float(100)))
@@ -1866,8 +1866,9 @@ class LearnModel:
                 x, y = X, Y
                 self.x = x
                 self.y = y
-        except BaseException:
-            _report(report, "Problem while learning if split_value <1")
+        except Exception as e:
+            _report(report, f"Problem during train/test split: {e}")
+            raise
 
         _report(report, int(2 * total))
         if feedback == "gui":
@@ -1900,8 +1901,9 @@ class LearnModel:
                 model.learn(x, y)
                 # htau,err = model.cross_validation(x,y,tau)
                 # model.tau = htau
-            except BaseException:
-                _report(report, "Cannot train with GMM")
+            except Exception as e:
+                _report(report, f"Cannot train with GMM: {e}")
+                raise
         else:
             # from sklearn import neighbors
             # from sklearn.svm import SVC

@@ -84,7 +84,7 @@ except AttributeError:
 # Import validated widgets for real-time validation feedback
 from .validated_widgets import ValidatedSpinBox
 
-from constants import (
+from ..constants import (
     OPTUNA_N_TRIALS_DEFAULT,
     SHAP_SAMPLE_SIZE_DEFAULT,
     SMOTE_K_NEIGHBORS_DEFAULT,
