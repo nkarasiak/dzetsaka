@@ -85,6 +85,12 @@ except AttributeError:
 # Import validated widgets for real-time validation feedback
 from .validated_widgets import ValidatedSpinBox, ValidatedDoubleSpinBox
 
+from constants import (
+    OPTUNA_N_TRIALS_DEFAULT,
+    SHAP_SAMPLE_SIZE_DEFAULT,
+    SMOTE_K_NEIGHBORS_DEFAULT,
+)
+
 # Import training data quality checker
 try:
     from .training_data_quality_checker import TrainingDataQualityChecker
@@ -340,12 +346,12 @@ def build_smart_defaults(deps):
     """
     return {
         "USE_OPTUNA": deps.get("optuna", False),
-        "OPTUNA_TRIALS": 100,
+        "OPTUNA_TRIALS": OPTUNA_N_TRIALS_DEFAULT,
         "COMPUTE_SHAP": deps.get("shap", False),
         "SHAP_OUTPUT": "",
-        "SHAP_SAMPLE_SIZE": 1000,
+        "SHAP_SAMPLE_SIZE": SHAP_SAMPLE_SIZE_DEFAULT,
         "USE_SMOTE": deps.get("imblearn", False),
-        "SMOTE_K_NEIGHBORS": 5,
+        "SMOTE_K_NEIGHBORS": SMOTE_K_NEIGHBORS_DEFAULT,
         "USE_CLASS_WEIGHTS": deps.get("sklearn", False),
         "CLASS_WEIGHT_STRATEGY": "balanced",
         "CUSTOM_CLASS_WEIGHTS": {},
@@ -394,17 +400,17 @@ def build_review_summary(config):
     extra = config.get("extraParam", {})  # type: dict
     lines.append("  Optuna optimization : " + str(extra.get("USE_OPTUNA", False)))
     if extra.get("USE_OPTUNA", False):
-        lines.append("    Trials : " + str(extra.get("OPTUNA_TRIALS", 100)))
+        lines.append("    Trials : " + str(extra.get("OPTUNA_TRIALS", OPTUNA_N_TRIALS_DEFAULT)))
     lines.append("  SMOTE : " + str(extra.get("USE_SMOTE", False)))
     if extra.get("USE_SMOTE", False):
-        lines.append("    k_neighbors : " + str(extra.get("SMOTE_K_NEIGHBORS", 5)))
+        lines.append("    k_neighbors : " + str(extra.get("SMOTE_K_NEIGHBORS", SMOTE_K_NEIGHBORS_DEFAULT)))
     lines.append("  Class weights : " + str(extra.get("USE_CLASS_WEIGHTS", False)))
     if extra.get("USE_CLASS_WEIGHTS", False):
         lines.append("    Strategy : " + str(extra.get("CLASS_WEIGHT_STRATEGY", "balanced")))
     lines.append("  SHAP explainability : " + str(extra.get("COMPUTE_SHAP", False)))
     if extra.get("COMPUTE_SHAP", False):
         lines.append("    Output : " + str(extra.get("SHAP_OUTPUT", "<temp>")))
-        lines.append("    Sample size : " + str(extra.get("SHAP_SAMPLE_SIZE", 1000)))
+        lines.append("    Sample size : " + str(extra.get("SHAP_SAMPLE_SIZE", SHAP_SAMPLE_SIZE_DEFAULT)))
     lines.append("  Nested CV : " + str(extra.get("USE_NESTED_CV", False)))
     if extra.get("USE_NESTED_CV", False):
         lines.append("    Inner folds : " + str(extra.get("NESTED_INNER_CV", 3)))
@@ -482,12 +488,12 @@ def _recipe_template():
         },
         "extraParam": {
             "USE_OPTUNA": False,
-            "OPTUNA_TRIALS": 100,
+            "OPTUNA_TRIALS": OPTUNA_N_TRIALS_DEFAULT,
             "COMPUTE_SHAP": False,
             "SHAP_OUTPUT": "",
-            "SHAP_SAMPLE_SIZE": 1000,
+            "SHAP_SAMPLE_SIZE": SHAP_SAMPLE_SIZE_DEFAULT,
             "USE_SMOTE": False,
-            "SMOTE_K_NEIGHBORS": 5,
+            "SMOTE_K_NEIGHBORS": SMOTE_K_NEIGHBORS_DEFAULT,
             "USE_CLASS_WEIGHTS": False,
             "CLASS_WEIGHT_STRATEGY": "balanced",
             "CUSTOM_CLASS_WEIGHTS": {},
@@ -709,12 +715,12 @@ def normalize_recipe(recipe):
     recipe["validation"].setdefault("nested_outer_cv", 5)
     recipe["validation"].setdefault("cv_mode", "POLYGON_GROUP")
     recipe["extraParam"].setdefault("USE_OPTUNA", False)
-    recipe["extraParam"].setdefault("OPTUNA_TRIALS", 100)
+    recipe["extraParam"].setdefault("OPTUNA_TRIALS", OPTUNA_N_TRIALS_DEFAULT)
     recipe["extraParam"].setdefault("COMPUTE_SHAP", False)
     recipe["extraParam"].setdefault("SHAP_OUTPUT", "")
-    recipe["extraParam"].setdefault("SHAP_SAMPLE_SIZE", 1000)
+    recipe["extraParam"].setdefault("SHAP_SAMPLE_SIZE", SHAP_SAMPLE_SIZE_DEFAULT)
     recipe["extraParam"].setdefault("USE_SMOTE", False)
-    recipe["extraParam"].setdefault("SMOTE_K_NEIGHBORS", 5)
+    recipe["extraParam"].setdefault("SMOTE_K_NEIGHBORS", SMOTE_K_NEIGHBORS_DEFAULT)
     recipe["extraParam"].setdefault("USE_CLASS_WEIGHTS", False)
     recipe["extraParam"].setdefault("CLASS_WEIGHT_STRATEGY", "balanced")
     recipe["extraParam"].setdefault("CUSTOM_CLASS_WEIGHTS", {})
@@ -1361,11 +1367,11 @@ class RecipeShopDialog(QDialog):
         post = self._recipe.get("postprocess", {})
 
         self.optunaCheck.setChecked(bool(extra.get("USE_OPTUNA", False)))
-        self.optunaTrialsSpin.setValue(int(extra.get("OPTUNA_TRIALS", 100)))
+        self.optunaTrialsSpin.setValue(int(extra.get("OPTUNA_TRIALS", OPTUNA_N_TRIALS_DEFAULT)))
         self.shapCheck.setChecked(bool(extra.get("COMPUTE_SHAP", False)))
-        self.shapSampleSpin.setValue(int(extra.get("SHAP_SAMPLE_SIZE", 1000)))
+        self.shapSampleSpin.setValue(int(extra.get("SHAP_SAMPLE_SIZE", SHAP_SAMPLE_SIZE_DEFAULT)))
         self.smoteCheck.setChecked(bool(extra.get("USE_SMOTE", False)))
-        self.smoteKSpin.setValue(int(extra.get("SMOTE_K_NEIGHBORS", 5)))
+        self.smoteKSpin.setValue(int(extra.get("SMOTE_K_NEIGHBORS", SMOTE_K_NEIGHBORS_DEFAULT)))
         self.classWeightsCheck.setChecked(bool(extra.get("USE_CLASS_WEIGHTS", False)))
         strategy = str(extra.get("CLASS_WEIGHT_STRATEGY", "balanced"))
         strategy_idx = self.classWeightStrategyCombo.findText(strategy)
@@ -3222,7 +3228,7 @@ class AdvancedOptionsPage(QWizardPage):
             time_estimator_fn=lambda v: f"{v * 0.05:.0f}-{v * 0.15:.0f} min" if v > 0 else "0 min"
         )
         self.optunaTrials.setRange(10, 1000)
-        self.optunaTrials.setValue(100)
+        self.optunaTrials.setValue(OPTUNA_N_TRIALS_DEFAULT)
         self.optunaTrials.setEnabled(False)
         self.optunaTrials.setToolTip(
             "<b>Optuna Trials</b><br>"
@@ -3301,7 +3307,7 @@ class AdvancedOptionsPage(QWizardPage):
         k_label = QLabel("k_neighbors:")
         self.smoteK = QSpinBox()
         self.smoteK.setRange(1, 20)
-        self.smoteK.setValue(5)
+        self.smoteK.setValue(SMOTE_K_NEIGHBORS_DEFAULT)
         self.smoteK.setEnabled(False)
         self.smoteK.setToolTip(
             "<b>SMOTE k_neighbors</b><br>"
@@ -3417,7 +3423,7 @@ class AdvancedOptionsPage(QWizardPage):
             time_estimator_fn=lambda v: f"{v * 0.002:.0f}-{v * 0.005:.0f} min" if v > 0 else "0 min"
         )
         self.shapSampleSize.setRange(100, 50000)
-        self.shapSampleSize.setValue(1000)
+        self.shapSampleSize.setValue(SHAP_SAMPLE_SIZE_DEFAULT)
         self.shapSampleSize.setEnabled(False)
         self.shapSampleSize.setToolTip(
             "<b>SHAP Sample Size</b><br>"
@@ -3530,12 +3536,12 @@ class AdvancedOptionsPage(QWizardPage):
         # type: (Dict[str, object]) -> None
         """Programmatically fill widgets from a smart-defaults dict."""
         self.optunaCheck.setChecked(bool(defaults.get("USE_OPTUNA", False)))
-        self.optunaTrials.setValue(int(defaults.get("OPTUNA_TRIALS", 100)))
+        self.optunaTrials.setValue(int(defaults.get("OPTUNA_TRIALS", OPTUNA_N_TRIALS_DEFAULT)))
         self.smoteCheck.setChecked(bool(defaults.get("USE_SMOTE", False)))
-        self.smoteK.setValue(int(defaults.get("SMOTE_K_NEIGHBORS", 5)))
+        self.smoteK.setValue(int(defaults.get("SMOTE_K_NEIGHBORS", SMOTE_K_NEIGHBORS_DEFAULT)))
         self.classWeightCheck.setChecked(bool(defaults.get("USE_CLASS_WEIGHTS", False)))
         self.shapCheck.setChecked(bool(defaults.get("COMPUTE_SHAP", False)))
-        self.shapSampleSize.setValue(int(defaults.get("SHAP_SAMPLE_SIZE", 1000)))
+        self.shapSampleSize.setValue(int(defaults.get("SHAP_SAMPLE_SIZE", SHAP_SAMPLE_SIZE_DEFAULT)))
         self._set_cv_mode(str(defaults.get("CV_MODE", "POLYGON_GROUP")))
 
     def apply_recipe(self, recipe):
@@ -3545,13 +3551,13 @@ class AdvancedOptionsPage(QWizardPage):
         extra = recipe.get("extraParam", {})
         validation = recipe.get("validation", {})
         self.optunaCheck.setChecked(bool(extra.get("USE_OPTUNA", False)))
-        self.optunaTrials.setValue(int(extra.get("OPTUNA_TRIALS", 100)))
+        self.optunaTrials.setValue(int(extra.get("OPTUNA_TRIALS", OPTUNA_N_TRIALS_DEFAULT)))
         self.smoteCheck.setChecked(bool(extra.get("USE_SMOTE", False)))
-        self.smoteK.setValue(int(extra.get("SMOTE_K_NEIGHBORS", 5)))
+        self.smoteK.setValue(int(extra.get("SMOTE_K_NEIGHBORS", SMOTE_K_NEIGHBORS_DEFAULT)))
         self.classWeightCheck.setChecked(bool(extra.get("USE_CLASS_WEIGHTS", False)))
         self.weightStrategyCombo.setCurrentText(str(extra.get("CLASS_WEIGHT_STRATEGY", "balanced")))
         self.shapCheck.setChecked(bool(extra.get("COMPUTE_SHAP", False)))
-        self.shapSampleSize.setValue(int(extra.get("SHAP_SAMPLE_SIZE", 1000)))
+        self.shapSampleSize.setValue(int(extra.get("SHAP_SAMPLE_SIZE", SHAP_SAMPLE_SIZE_DEFAULT)))
         self.shapOutput.setText(str(extra.get("SHAP_OUTPUT", "")))
 
         nested = bool(validation.get("nested_cv", extra.get("USE_NESTED_CV", False)))
@@ -4453,12 +4459,12 @@ class ClassificationSetupDialog(ThemeAwareWidget, QWizard):
                 "extraParam": {
                     "CV_MODE": str(run.get("split_mode", "RANDOM_SPLIT") or "RANDOM_SPLIT"),
                     "USE_OPTUNA": False,
-                    "OPTUNA_TRIALS": 100,
+                    "OPTUNA_TRIALS": OPTUNA_N_TRIALS_DEFAULT,
                     "COMPUTE_SHAP": False,
                     "SHAP_OUTPUT": "",
-                    "SHAP_SAMPLE_SIZE": 1000,
+                    "SHAP_SAMPLE_SIZE": SHAP_SAMPLE_SIZE_DEFAULT,
                     "USE_SMOTE": False,
-                    "SMOTE_K_NEIGHBORS": 5,
+                    "SMOTE_K_NEIGHBORS": SMOTE_K_NEIGHBORS_DEFAULT,
                     "USE_CLASS_WEIGHTS": False,
                     "CLASS_WEIGHT_STRATEGY": "balanced",
                     "CUSTOM_CLASS_WEIGHTS": {},
@@ -4495,12 +4501,12 @@ class ClassificationSetupDialog(ThemeAwareWidget, QWizard):
             "extraParam": {
                 "CV_MODE": split_mode,
                 "USE_OPTUNA": False,
-                "OPTUNA_TRIALS": 100,
+                "OPTUNA_TRIALS": OPTUNA_N_TRIALS_DEFAULT,
                 "COMPUTE_SHAP": False,
                 "SHAP_OUTPUT": "",
-                "SHAP_SAMPLE_SIZE": 1000,
+                "SHAP_SAMPLE_SIZE": SHAP_SAMPLE_SIZE_DEFAULT,
                 "USE_SMOTE": False,
-                "SMOTE_K_NEIGHBORS": 5,
+                "SMOTE_K_NEIGHBORS": SMOTE_K_NEIGHBORS_DEFAULT,
                 "USE_CLASS_WEIGHTS": False,
                 "CLASS_WEIGHT_STRATEGY": "balanced",
                 "CUSTOM_CLASS_WEIGHTS": {},
@@ -6408,12 +6414,12 @@ class QuickClassificationPanel(QWidget):
         # Start with defaults
         defaults = {
             "USE_OPTUNA": False,
-            "OPTUNA_TRIALS": 100,
+            "OPTUNA_TRIALS": OPTUNA_N_TRIALS_DEFAULT,
             "COMPUTE_SHAP": False,
             "SHAP_OUTPUT": "",
-            "SHAP_SAMPLE_SIZE": 1000,
+            "SHAP_SAMPLE_SIZE": SHAP_SAMPLE_SIZE_DEFAULT,
             "USE_SMOTE": False,
-            "SMOTE_K_NEIGHBORS": 5,
+            "SMOTE_K_NEIGHBORS": SMOTE_K_NEIGHBORS_DEFAULT,
             "USE_CLASS_WEIGHTS": False,
             "CLASS_WEIGHT_STRATEGY": "balanced",
             "CUSTOM_CLASS_WEIGHTS": {},

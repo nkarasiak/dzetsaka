@@ -57,6 +57,26 @@ OPTUNA_N_JOBS_DEFAULT = -1  # Use all available cores
 SMOTE_K_NEIGHBORS_DEFAULT = 5  # Default k_neighbors for SMOTE
 SMOTE_SAMPLING_STRATEGY_DEFAULT = "auto"  # Default sampling strategy
 
+# SHAP Explainability
+SHAP_SAMPLE_SIZE_DEFAULT = 1000  # Default sample size for SHAP computation
+
+# Fast Mode Thresholds
+FAST_MODE_MAX_SAMPLES = 15_000  # Max training samples in fast mode
+FAST_MODE_MAX_OPTUNA_TRIALS = 25  # Max Optuna trials in fast mode
+FAST_MODE_IMBALANCE_RATIO = 5.0  # Class imbalance ratio threshold
+
+# Accuracy Classification Tiers (used in reports)
+ACCURACY_EXCELLENT_THRESHOLD = 0.90
+ACCURACY_GOOD_THRESHOLD = 0.80
+ACCURACY_MEDIUM_THRESHOLD = 0.70
+ACCURACY_FAIR_THRESHOLD = 0.60
+
+# Report Colors
+COLOR_SUCCESS = "#059669"
+COLOR_WARNING = "#d97706"
+COLOR_ERROR = "#dc2626"
+COLOR_TEAL = "#0f766e"
+
 # Logging
 LOG_RETENTION_DAYS = 7  # Days to retain log files
 MAX_LOG_FILE_SIZE_MB = 10  # Maximum size for individual log files
