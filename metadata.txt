@@ -10,7 +10,6 @@
 name=dzetsaka : AI-Powered Remote Sensing Classification
 qgisMinimumVersion=3.0
 qgisMaximumVersion=4.99
-supportsQt6=True
 description=Next-generation AI for Earth Observation in QGIS with 11 ML algorithms, major runtime optimizations, advanced UX workflows, recipe-driven configuration, and rich report generation.
 version=5.0.9
 author=Nicolas Karasiak
