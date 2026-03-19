@@ -90,7 +90,17 @@ class TestComputePerClassMetricsStructure:
         assert result["overall"]["accuracy"] == pytest.approx(0.75)
 
 
+MPL_AVAILABLE = False
+try:
+    import matplotlib  # noqa: F401
+
+    MPL_AVAILABLE = True
+except ImportError:
+    pass
+
+
 @pytest.mark.skipif(not SKLEARN_AVAILABLE, reason="scikit-learn not installed")
+@pytest.mark.skipif(not MPL_AVAILABLE, reason="matplotlib not installed")
 class TestPlotRocCurves:
     """Test ROC curve plotting for binary and multiclass cases."""
 
