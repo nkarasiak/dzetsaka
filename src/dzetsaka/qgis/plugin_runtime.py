@@ -330,7 +330,7 @@ class DzetsakaGUI(QDialog):
         try:
             from dzetsaka.qgis.dashboard_dock import open_dashboard_dock
 
-            open_dashboard_dock(self, _LEFT_DOCK_AREA)
+            open_dashboard_dock(self)
         except Exception as exc:
             self._report_unhandled_exception(
                 error_title="Dashboard Open Failed",
@@ -537,10 +537,3 @@ class DzetsakaGUI(QDialog):
             from dzetsaka.logging import show_error_dialog
 
             show_error_dialog(error_title, details)
-
-
-# Qt5/Qt6 enum compatibility (QGIS 4 / PyQt6)
-try:
-    _LEFT_DOCK_AREA = Qt.DockWidgetArea.LeftDockWidgetArea
-except AttributeError:
-    _LEFT_DOCK_AREA = Qt.LeftDockWidgetArea

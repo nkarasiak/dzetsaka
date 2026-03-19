@@ -6268,7 +6268,6 @@ class QuickClassificationPanel(QWidget):
                     if success:
                         self._deps = check_dependency_availability()
                         self._update_dep_status(self.classifierCombo.currentIndex())
-                        self._update_summary()
                     else:
                         self.classifierCombo.setCurrentIndex(0)
 

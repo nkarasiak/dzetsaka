@@ -28,7 +28,7 @@ def learn_model(
         random_seed=random_seed,
         matrix_path=matrix_path,
         classifier=classifier,
-        extraParam=extra_params,
+        extra_param=extra_params,
         feedback=feedback,
     )
 
