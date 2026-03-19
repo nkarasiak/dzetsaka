@@ -16,7 +16,6 @@ def load_config(gui) -> None:
             gui.classifier = gui.classifiers[0]
             gui.settings.setValue("/dzetsaka/classifier", gui.classifier)
 
-        gui.maskSuffix = gui.DEFAULT_MASK_SUFFIX
         first_install_raw = gui.settings.value("/dzetsaka/firstInstallation", None)
         if first_install_raw is None:
             gui.firstInstallation = True
@@ -26,9 +25,8 @@ def load_config(gui) -> None:
         else:
             gui.firstInstallation = str(first_install_raw).strip().lower() in ("1", "true", "yes", "on")
     except BaseException:
-        gui.log.error("Failed to open config file " + gui.configFile)
+        gui.log.error("Failed to load plugin configuration")
         show_error_dialog(
             "dzetsaka Configuration Error",
             "Failed to load configuration. Check the QGIS log for details.",
-            parent=gui.iface.mainWindow(),
         )

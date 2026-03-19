@@ -54,7 +54,7 @@ class DependencyInstallTask(QgsTask):
 
             self.log.info(
                 f"[DependencyInstallTask.run] thread={threading.current_thread().name} "
-                f"packages={', '.join(self.packages)}"
+                f"packages={', '.join(self.packages)}",
             )
             self.setProgress(1)
 
@@ -104,9 +104,7 @@ class DependencyInstallTask(QgsTask):
         """Called when task completes (runs in main thread)."""
         import threading
 
-        self.log.info(
-            f"[DependencyInstallTask.finished] thread={threading.current_thread().name} result={result}"
-        )
+        self.log.info(f"[DependencyInstallTask.finished] thread={threading.current_thread().name} result={result}")
         if result:
             self.log.info(f"Successfully installed {self.success_count}/{len(self.packages)} packages")
         elif self.isCanceled():

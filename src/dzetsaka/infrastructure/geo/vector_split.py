@@ -24,6 +24,18 @@ def _get_ogr():
     return OGR_BACKEND or _DEFAULT_OGR
 
 
+def _driver_for_path(path: str) -> str:
+    """Return the OGR driver name appropriate for the given file extension."""
+    ext = os.path.splitext(path)[1].lower()
+    _DRIVERS = {
+        ".gpkg": "GPKG",
+        ".geojson": "GeoJSON",
+        ".json": "GeoJSON",
+        ".shp": "ESRI Shapefile",
+    }
+    return _DRIVERS.get(ext, "ESRI Shapefile")
+
+
 def count_polygons_per_class(vector_path: str, class_field: str) -> dict[Any, int]:
     """Count how many vector features per class exist in a layer."""
     ds = _get_ogr().Open(vector_path)
@@ -151,12 +163,13 @@ def split_vector_stratified(
         train_path = train_output or os.path.join(out_dir, "train.shp")
         valid_path = validation_output or os.path.join(out_dir, "validation.shp")
 
-    # Get shapefile driver
-    driver = ogr.GetDriverByName("ESRI Shapefile")
+    # Select OGR driver based on output file extension
+    driver_name = _driver_for_path(train_path)
+    driver = ogr.GetDriverByName(driver_name)
     if driver is None:
-        raise RuntimeError("OGR Shapefile driver unavailable.")
+        raise RuntimeError(f"OGR driver '{driver_name}' unavailable.")
 
-    # Write train and validation shapefiles
+    # Write train and validation vector files
     _write_shapefile_subset(driver, train_path, train_feats, srs, defn, field_names)
     _write_shapefile_subset(driver, valid_path, validation_feats, srs, defn, field_names)
 
@@ -292,9 +305,9 @@ def _resolve_split_sizes(
     if test_size is None:
         n_test = n_samples - n_train
     else:
-        n_test = _resolve_size(test_size, n_samples, "test_size")
-        if n_train + n_test != n_samples:
-            raise ValueError("train_size and test_size must sum to total number of samples")
+        # Derive n_test from n_train to avoid rounding mismatch
+        # (e.g. round(0.5*17) + round(0.5*17) = 8+8 = 16 != 17)
+        n_test = n_samples - n_train
 
     if n_train <= 0 or n_test <= 0:
         raise ValueError("train and test subsets must both be non-empty")

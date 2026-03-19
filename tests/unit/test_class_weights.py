@@ -15,7 +15,6 @@ try:
         get_class_distribution,
         get_imbalance_ratio,
         normalize_weights,
-        print_class_distribution,
         recommend_strategy,
     )
 

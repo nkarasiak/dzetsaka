@@ -10,14 +10,6 @@ DOMAIN_ROOT = REPO_ROOT / "src" / "dzetsaka" / "domain"
 PRESENTATION_QGIS_ROOT = REPO_ROOT / "src" / "dzetsaka" / "presentation" / "qgis"
 
 FORBIDDEN_ROOT_IMPORTS = {"qgis", "osgeo", "PyQt6", "PyQt5", "PySide6", "PySide2"}
-EXPECTED_PROCESSING_SHIMS = {
-    "__init__.py",
-    "classify.py",
-    "explain_model.py",
-    "nested_cv_algorithm.py",
-    "split_train_validation.py",
-    "train.py",
-}
 REMOVED_EXPERIMENTAL_PROCESSING = {
     "closing_filter.py",
     "domain_adaptation.py",
@@ -103,20 +95,17 @@ def test_use_case_bridge_module_removed() -> None:
     assert not bridge_path.exists(), "Unexpected legacy bridge module found at services/use_case_bridge.py"
 
 
-def test_processing_root_contains_only_required_compat_shims() -> None:
-    """Root processing package should keep only compatibility modules still needed for import stability."""
+def test_processing_compat_shims_removed() -> None:
+    """Root processing compatibility package has been removed (algorithms live in src/dzetsaka/qgis/processing/)."""
     processing_root = REPO_ROOT / "processing"
-    assert processing_root.exists(), "Expected root processing compatibility package"
-
-    py_files = {path.name for path in processing_root.glob("*.py")}
-    assert py_files == EXPECTED_PROCESSING_SHIMS, f"Unexpected processing root files: {sorted(py_files)}"
+    assert not processing_root.exists(), "Legacy processing/ compatibility shim directory should be deleted"
 
 
 def test_removed_experimental_processing_modules_stay_deleted() -> None:
-    """Dropped experimental processing modules must not reappear."""
-    processing_root = REPO_ROOT / "processing"
+    """Dropped experimental processing modules must not reappear in scripts/."""
+    scripts_root = REPO_ROOT / "scripts"
     for filename in sorted(REMOVED_EXPERIMENTAL_PROCESSING):
-        assert not (processing_root / filename).exists(), f"Deprecated processing module restored: {filename}"
+        assert not (scripts_root / filename).exists(), f"Deprecated processing module restored: {filename}"
 
 
 def test_packaging_flow_is_canonicalized() -> None:

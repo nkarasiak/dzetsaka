@@ -49,7 +49,8 @@ except ImportError:
 
 @pytest.mark.integration
 @pytest.mark.skipif(
-    not SKLEARN_AVAILABLE or not CLASS_WEIGHTS_AVAILABLE, reason="sklearn or class weights not available",
+    not SKLEARN_AVAILABLE or not CLASS_WEIGHTS_AVAILABLE,
+    reason="sklearn or class weights not available",
 )
 class TestClassWeightsWithModels:
     """Test class weights integration with actual models."""
@@ -193,7 +194,8 @@ class TestSMOTEWithModels:
 
 @pytest.mark.integration
 @pytest.mark.skipif(
-    not SKLEARN_AVAILABLE or not CLASS_WEIGHTS_AVAILABLE, reason="sklearn or class weights not available",
+    not SKLEARN_AVAILABLE or not CLASS_WEIGHTS_AVAILABLE,
+    reason="sklearn or class weights not available",
 )
 class TestCombinedImbalanceHandling:
     """Test combined SMOTE + class weights strategies."""
@@ -240,7 +242,8 @@ class TestCombinedImbalanceHandling:
 
 @pytest.mark.integration
 @pytest.mark.skipif(
-    not SKLEARN_AVAILABLE or not CLASS_WEIGHTS_AVAILABLE, reason="sklearn or class weights not available",
+    not SKLEARN_AVAILABLE or not CLASS_WEIGHTS_AVAILABLE,
+    reason="sklearn or class weights not available",
 )
 class TestImbalanceImpactOnMetrics:
     """Test that imbalance handling improves metrics."""

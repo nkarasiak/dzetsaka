@@ -565,7 +565,12 @@ def test_full_classification_pipeline():
 
     # Generate realistic dataset
     X, y = make_classification(
-        n_samples=200, n_features=10, n_informative=7, n_redundant=2, n_classes=3, random_state=42,
+        n_samples=200,
+        n_features=10,
+        n_informative=7,
+        n_redundant=2,
+        n_classes=3,
+        random_state=42,
     )
     y = y + 1  # Make labels 1, 2, 3 instead of 0, 1, 2
 

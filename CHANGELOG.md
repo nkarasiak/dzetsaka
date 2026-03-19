@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.9] - 2026-03-19
+
+### Fixed
+- Fix split rounding crash when sample count is odd (e.g. 17 samples at 50/50 split)
+- Fix split silently failing when QGIS provides `.gpkg` output paths (hardcoded Shapefile driver)
+- Fix training failures from undefined `C` variable in SVM and missing relative import
+- Fix duplicate dock widget on plugin reload (add `deleteLater()`)
+- Fix `AttributeError` and dock widget area warnings in UI
+
+### Changed
+- Extract magic numbers into centralized constants module
+- Remove dead code, unused files, and empty skeleton packages (~4200 lines removed)
+
+### Added
+- Unit tests for classifier_config, accuracy_index, validation_metrics, and label_encoders
+
 ## [5.0.8] - 2026-03-18
 
 ### Fixed

@@ -24,7 +24,7 @@ Author:
 from typing import Dict, Tuple
 
 from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtGui import QPalette, QColor
+from qgis.PyQt.QtGui import QPalette
 from qgis.PyQt.QtWidgets import QApplication, QWidget
 
 

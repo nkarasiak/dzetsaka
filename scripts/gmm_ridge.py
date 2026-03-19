@@ -348,7 +348,10 @@ class GMMR(BaseEstimator, ClassifierMixin):
         return self
 
     def predict(
-        self, xt: np.ndarray, tau: Optional[float] = None, confidenceMap: Optional[bool] = None,
+        self,
+        xt: np.ndarray,
+        tau: Optional[float] = None,
+        confidenceMap: Optional[bool] = None,
     ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
         """Predict class labels for samples.
 
@@ -514,7 +517,6 @@ class GMMR(BaseEstimator, ClassifierMixin):
         exp_logits = np.exp(logits - logits_max)
         return exp_logits / np.sum(exp_logits, axis=1, keepdims=True)
 
-
     def compute_inverse_logdet(self, c: int, tau: float) -> Tuple[np.ndarray, float]:
         """Compute inverse covariance matrix and log determinant for a class.
 
@@ -605,7 +607,12 @@ class GMMR(BaseEstimator, ClassifierMixin):
         return L + P
 
     def cross_validation(
-        self, x: np.ndarray, y: np.ndarray, tau: np.ndarray, v: int = 5, n_jobs: int = -1,
+        self,
+        x: np.ndarray,
+        y: np.ndarray,
+        tau: np.ndarray,
+        v: int = 5,
+        n_jobs: int = -1,
     ) -> Tuple[float, np.ndarray]:
         """Perform cross-validation to find optimal tau parameter.
 
@@ -643,7 +650,11 @@ class GMMR(BaseEstimator, ClassifierMixin):
         return self._cross_validation_legacy(x, y, tau, v, n_jobs)
 
     def _cross_validation_sklearn(
-        self, x: np.ndarray, y: np.ndarray, tau: np.ndarray, v: int,
+        self,
+        x: np.ndarray,
+        y: np.ndarray,
+        tau: np.ndarray,
+        v: int,
     ) -> Tuple[float, np.ndarray]:
         """Cross-validation using sklearn's StratifiedKFold."""
         from sklearn.base import clone
@@ -673,7 +684,12 @@ class GMMR(BaseEstimator, ClassifierMixin):
         return tau[best_idx], err
 
     def _cross_validation_legacy(
-        self, x: np.ndarray, y: np.ndarray, tau: np.ndarray, v: int, n_jobs: int,
+        self,
+        x: np.ndarray,
+        y: np.ndarray,
+        tau: np.ndarray,
+        v: int,
+        n_jobs: int,
     ) -> Tuple[float, np.ndarray]:
         """Legacy cross-validation with multiprocessing."""
         num_tau = tau.size
@@ -1079,7 +1095,6 @@ class GMMR(BaseEstimator, ClassifierMixin):
         shrinkage = min(delta_bar / (delta + 1e-10), 1.0)
         return max(shrinkage, 0.0)
 
-
     def _oas_shrinkage(self, cov: np.ndarray, n_samples: int) -> float:
         """Compute Oracle Approximating Shrinkage intensity.
 
@@ -1114,7 +1129,6 @@ class GMMR(BaseEstimator, ClassifierMixin):
 
         # Ensure shrinkage is in [0, 1]
         return max(min(rho, 1.0), 0.0)
-
 
     def __getstate__(self) -> Dict[str, Any]:
         """Get state for pickle serialization."""

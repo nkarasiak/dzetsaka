@@ -186,6 +186,20 @@ except ImportError:
         from dzetsaka import classifier_config
     except ImportError:
         import classifier_config
+from dzetsaka.constants import (  # noqa: E402
+    ACCURACY_EXCELLENT_THRESHOLD,
+    ACCURACY_FAIR_THRESHOLD,
+    ACCURACY_GOOD_THRESHOLD,
+    ACCURACY_MEDIUM_THRESHOLD,
+    COLOR_ERROR,
+    COLOR_SUCCESS,
+    COLOR_TEAL,
+    COLOR_WARNING,
+    FAST_MODE_MAX_OPTUNA_TRIALS,
+    FAST_MODE_MAX_SAMPLES,
+    MEMORY_LIMIT_MB,
+    SHAP_SAMPLE_SIZE_DEFAULT,
+)
 from dzetsaka.logging import Reporter, show_issue_popup  # noqa: E402
 
 from .wrappers.label_encoders import (  # noqa: E402
@@ -409,11 +423,9 @@ CLASSIFIER_CONFIGS = {
     },
 }
 
-MAX_MEMORY_MB = 512
+MAX_MEMORY_MB = MEMORY_LIMIT_MB
 MIN_CROSS_VALIDATION_SPLITS = 2
 LOG_TAG = "Dzetsaka"
-FAST_MODE_MAX_SAMPLES = 15000
-FAST_MODE_MAX_OPTUNA_TRIALS = 25
 
 
 def _param_grid_size(param_grid: Dict[str, Any]) -> int:
@@ -720,13 +732,19 @@ def _write_report_bundle(
             f1 = metrics["f1_per_class"][i]
 
             def metric_cell(value):
-                color = "#059669" if value >= 0.8 else "#d97706" if value >= 0.6 else "#dc2626"
+                color = (
+                    COLOR_SUCCESS
+                    if value >= ACCURACY_GOOD_THRESHOLD
+                    else COLOR_WARNING
+                    if value >= ACCURACY_FAIR_THRESHOLD
+                    else COLOR_ERROR
+                )
                 return f"<td style='color:{color};font-weight:600;'>{_fmt_metric(value)}</td>"
 
             rows.append(
                 "<tr>"
-                 f"<td style='text-align:center;'>{html.escape(str(cls_val))}</td>"
-                 f"<td style='text-align:left;'>{html.escape(str(names[i]))}</td>"
+                f"<td style='text-align:center;'>{html.escape(str(cls_val))}</td>"
+                f"<td style='text-align:left;'>{html.escape(str(names[i]))}</td>"
                 + metric_cell(precision)
                 + metric_cell(recall)
                 + metric_cell(f1)
@@ -1058,21 +1076,24 @@ def _write_report_bundle(
         )
 
     def _generate_classification_abstract(
-        summary_metrics: Dict[str, Any], config_meta: Dict[str, Any], class_values: List[Any], class_names: List[str],
+        summary_metrics: Dict[str, Any],
+        config_meta: Dict[str, Any],
+        class_values: List[Any],
+        class_names: List[str],
     ) -> str:
         """Generate an AI-style executive summary of classification results."""
         # 1. Classify accuracy level
         accuracy = summary_metrics.get("accuracy", 0.0)
-        if accuracy >= 0.90:
-            accuracy_label, accuracy_color, accuracy_icon = "excellent", "#059669", "✓"
-        elif accuracy >= 0.80:
-            accuracy_label, accuracy_color, accuracy_icon = "good", "#059669", "✓"
-        elif accuracy >= 0.70:
-            accuracy_label, accuracy_color, accuracy_icon = "medium", "#d97706", "⚠"
-        elif accuracy >= 0.60:
-            accuracy_label, accuracy_color, accuracy_icon = "fair", "#d97706", "⚠"
+        if accuracy >= ACCURACY_EXCELLENT_THRESHOLD:
+            accuracy_label, accuracy_color, accuracy_icon = "excellent", COLOR_SUCCESS, "✓"
+        elif accuracy >= ACCURACY_GOOD_THRESHOLD:
+            accuracy_label, accuracy_color, accuracy_icon = "good", COLOR_SUCCESS, "✓"
+        elif accuracy >= ACCURACY_MEDIUM_THRESHOLD:
+            accuracy_label, accuracy_color, accuracy_icon = "medium", COLOR_WARNING, "⚠"
+        elif accuracy >= ACCURACY_FAIR_THRESHOLD:
+            accuracy_label, accuracy_color, accuracy_icon = "fair", COLOR_WARNING, "⚠"
         else:
-            accuracy_label, accuracy_color, accuracy_icon = "poor", "#dc2626", "⚠"
+            accuracy_label, accuracy_color, accuracy_icon = "poor", COLOR_ERROR, "⚠"
 
         # 2. Build hyperparameter description
         best_params = config_meta.get("best_hyperparameters", {})
@@ -1091,19 +1112,19 @@ def _write_report_bundle(
         diff_pct = abs(oa - f1_macro) * 100
 
         if diff_pct < 5.0:
-            balance_status, balance_color = "balanced", "#059669"
+            balance_status, balance_color = "balanced", COLOR_SUCCESS
             balance_explanation = (
                 "The small difference between Overall Accuracy and F1 Macro indicates "
                 "balanced performance across classes with no significant class imbalance issues."
             )
         elif diff_pct < 10.0:
-            balance_status, balance_color = "moderate imbalance", "#d97706"
+            balance_status, balance_color = "moderate imbalance", COLOR_WARNING
             balance_explanation = (
                 "The moderate difference suggests some variation in per-class performance. "
                 "Review per-class metrics to identify underperforming classes."
             )
         else:
-            balance_status, balance_color = "significant imbalance", "#dc2626"
+            balance_status, balance_color = "significant imbalance", COLOR_ERROR
             balance_explanation = (
                 "The large gap indicates significant class imbalance or poor performance on specific classes. "
                 "Examine the confusion matrix and per-class F1 scores for problematic classes."
@@ -1210,7 +1231,7 @@ def _write_report_bundle(
             "<meta name='viewport' content='width=device-width,initial-scale=1'>"
             "<title>dzetsaka Classification Report</title>"
             "<style>"
-            ":root{--bg:#f6f8fb;--fg:#111827;--muted:#6b7280;--card:#ffffff;--line:#e0e7f1;--head:#f3f7fc;--accent:#0f766e;--success:#059669;--warning:#d97706;}"
+            f":root{{--bg:#f6f8fb;--fg:#111827;--muted:#6b7280;--card:#ffffff;--line:#e0e7f1;--head:#f3f7fc;--accent:{COLOR_TEAL};--success:{COLOR_SUCCESS};--warning:{COLOR_WARNING};}}"
             "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;margin:0;color:var(--fg);"
             "background:linear-gradient(180deg,#f8fafc 0%,var(--bg) 50%,#f1f5f9 100%);line-height:1.6;}"
             ".wrap{max-width:900px;margin:20px auto;padding:0 20px;}"
@@ -1426,7 +1447,7 @@ def _write_report_bundle(
                 "<p><strong>SHAP (SHapley Additive exPlanations)</strong> was computed to quantify feature importance. ",
             )
             handle.write(
-                f"SHAP values were calculated on {shap_config.get('sample_size', 1000):,} randomly sampled training pixels, ",
+                f"SHAP values were calculated on {shap_config.get('sample_size', SHAP_SAMPLE_SIZE_DEFAULT):,} randomly sampled training pixels, ",
             )
             handle.write("providing a game-theoretic measure of each feature's marginal contribution to predictions. ")
             handle.write(
@@ -1496,7 +1517,9 @@ def _write_report_bundle(
             )
             handle.write("<h3>🎯 Feature Importance (SHAP Analysis)</h3>")
             handle.write("<p><strong>Method:</strong> SHAP (SHapley Additive exPlanations) values computed on ")
-            handle.write(f"{shap_config.get('sample_size', 1000):,} randomly sampled training pixels.</p>")
+            handle.write(
+                f"{shap_config.get('sample_size', SHAP_SAMPLE_SIZE_DEFAULT):,} randomly sampled training pixels.</p>",
+            )
             handle.write("<p><strong>Interpretation:</strong> Higher values indicate features that contribute more ")
             handle.write("to the model's predictions. SHAP values represent the marginal contribution of each ")
             handle.write("feature to the prediction, based on Shapley values from cooperative game theory.</p>")
@@ -1614,17 +1637,17 @@ def _write_report_bundle(
         handle.write("</div></body></html>")
 
 
-def _extract_shap_settings(extraParam: Optional[Dict[str, Any]]) -> Tuple[bool, int]:
-    """Normalize SHAP settings coming from ``extraParam``."""
-    if not extraParam:
-        return False, 1000
+def _extract_shap_settings(extra_param: Optional[Dict[str, Any]]) -> Tuple[bool, int]:
+    """Normalize SHAP settings coming from ``extra_param``."""
+    if not extra_param:
+        return False, SHAP_SAMPLE_SIZE_DEFAULT
 
-    enabled = bool(extraParam.get("COMPUTE_SHAP", False))
-    sample_size = extraParam.get("SHAP_SAMPLE_SIZE", 1000)
+    enabled = bool(extra_param.get("COMPUTE_SHAP", False))
+    sample_size = extra_param.get("SHAP_SAMPLE_SIZE", SHAP_SAMPLE_SIZE_DEFAULT)
     try:
         sample_size = int(sample_size)
     except (TypeError, ValueError):
-        sample_size = 1000
+        sample_size = SHAP_SAMPLE_SIZE_DEFAULT
 
     return enabled, sample_size
 
@@ -1642,7 +1665,7 @@ class LearnModel:
         random_seed: int = 0,
         matrix_path: Optional[str] = None,
         classifier: str = "GMM",
-        extraParam: Optional[Dict[str, Any]] = None,
+        extra_param: Optional[Dict[str, Any]] = None,
         feedback=None,
     ):
         """Learn model with a shapefile and a raster image.
@@ -1676,7 +1699,7 @@ class LearnModel:
             - 'LR': Logistic Regression (sklearn)
             - 'NB': Gaussian Naive Bayes (sklearn)
             - 'MLP': Multi-layer Perceptron (sklearn)
-        extraParam : dict, optional
+        extra_param : dict, optional
             Additional parameters for advanced configurations:
 
             Optimization (Phase 1):
@@ -1739,7 +1762,7 @@ class LearnModel:
 
         # Initialize and validate parameters
         self._validate_inputs(raster_path, vector_path, classifier, feedback)
-        extraParam = extraParam or {}
+        extra_param = extra_param or {}
 
         # Setup progress tracking
         total = 100 / 10
@@ -1747,12 +1770,12 @@ class LearnModel:
 
         # Load and prepare data
         try:
-            X, Y, coords, distanceArray, STDs, polygon_groups, vector_test_path = self._load_and_prepare_data(
+            X, Y, coords, distance_matrix, stand_ids, polygon_groups, vector_test_path = self._load_and_prepare_data(
                 raster_path,
                 vector_path,
                 class_field,
                 split_config,
-                extraParam,
+                extra_param,
                 feedback,
             )
 
@@ -1761,8 +1784,8 @@ class LearnModel:
             return
 
         [n, d] = X.shape
-        C = int(Y.max())
-        SPLIT = split_config
+        n_classes = int(Y.max())
+        split_value = split_config
 
         # Validate labels before any training
         finite_mask = np.isfinite(Y)
@@ -1783,19 +1806,19 @@ class LearnModel:
         # os.rmdir(temp_folder)
 
         # Phase 3: Class imbalance handling
-        self._handle_class_imbalance(X, Y, classifier, extraParam)
+        self._handle_class_imbalance(X, Y, classifier, extra_param)
 
         # Apply SMOTE oversampling if enabled
-        if extraParam.get("USE_SMOTE", False):
-            X, Y = self._apply_smote(X, Y, extraParam)
+        if extra_param.get("USE_SMOTE", False):
+            X, Y = self._apply_smote(X, Y, extra_param)
 
         # Compute class weights if enabled
         self.class_weights_ = None
-        if extraParam.get("USE_CLASS_WEIGHTS", False):
-            self.class_weights_ = self._compute_weights(Y, extraParam)
+        if extra_param.get("USE_CLASS_WEIGHTS", False):
+            self.class_weights_ = self._compute_weights(Y, extra_param)
 
         [n, d] = X.shape
-        C = int(Y.max())
+        n_classes = int(Y.max())
 
         # Scale the data
         X, M, m = self.scale(X)
@@ -1807,8 +1830,8 @@ class LearnModel:
         # the remaining for testing
 
         try:
-            if isinstance(SPLIT, (int, float)):
-                if SPLIT < 100:
+            if isinstance(split_value, (int, float)):
+                if split_value < 100:
                     # Random stratified selection of samples
                     # Collect indices first, then create arrays in one operation
                     # This avoids O(n^2) memory allocation from repeated concatenation
@@ -1817,10 +1840,10 @@ class LearnModel:
                     train_indices = []
                     test_indices = []
 
-                    for i in range(C):
+                    for i in range(n_classes):
                         t = np.where((i + 1) == Y)[0]
                         nc = t.size
-                        ns = int(nc * (SPLIT / float(100)))
+                        ns = int(nc * (split_value / float(100)))
                         rp = np.random.permutation(nc)
                         train_indices.append(t[rp[:ns]])
                         test_indices.append(t[rp[ns:]])
@@ -1843,8 +1866,9 @@ class LearnModel:
                 x, y = X, Y
                 self.x = x
                 self.y = y
-        except BaseException:
-            _report(report, "Problem while learning if SPLIT <1")
+        except Exception as e:
+            _report(report, f"Problem during train/test split: {e}")
+            raise
 
         _report(report, int(2 * total))
         if feedback == "gui":
@@ -1877,8 +1901,9 @@ class LearnModel:
                 model.learn(x, y)
                 # htau,err = model.cross_validation(x,y,tau)
                 # model.tau = htau
-            except BaseException:
-                _report(report, "Cannot train with GMM")
+            except Exception as e:
+                _report(report, f"Cannot train with GMM: {e}")
+                raise
         else:
             # from sklearn import neighbors
             # from sklearn.svm import SVC
@@ -1903,64 +1928,63 @@ class LearnModel:
                 return
 
             try:
-                if extraParam and "param_algo" in extraParam:
-                    param_algo = extraParam["param_algo"]
+                if extra_param and "param_algo" in extra_param:
+                    param_algo = extra_param["param_algo"]
 
                 # AS Qgis in Windows doensn't manage multiprocessing, force to
                 # use 1 thread for not linux system
 
-                if SPLIT == "STAND":
+                if split_value == "STAND":
                     label = np.copy(Y)
 
-                    if extraParam:
-                        SLOO = extraParam.get("SLOO", False)
-                        maxIter = extraParam.get("maxIter", 5)
+                    if extra_param:
+                        sloo_enabled = extra_param.get("SLOO", False)
+                        max_iter = extra_param.get("maxIter", 5)
                     else:
-                        SLOO = False
-                        maxIter = 5
+                        sloo_enabled = False
+                        max_iter = 5
 
                     try:
                         from .function_vector import StandCV
                     except ImportError:
                         from function_vector import StandCV
 
-                    rawCV = StandCV(label, STDs, maxIter, SLOO, seed=random_seed)
-                    print(rawCV)
-                    cvDistance = []
-                    for tr, vl in rawCV:
+                    raw_cv = StandCV(label, stand_ids, max_iter, sloo_enabled, seed=random_seed)
+                    cv_distance = []
+                    for tr, vl in raw_cv:
                         # sts.append(stat)
-                        cvDistance.append((tr, vl))
+                        cv_distance.append((tr, vl))
 
-                if SPLIT == "SLOO":
+                if split_value == "SLOO":
                     # Compute CV for Learning later
 
                     label = np.copy(Y)
-                    if extraParam:
-                        if "distance" in extraParam:
-                            distance = extraParam["distance"]
+                    if extra_param:
+                        if "distance" in extra_param:
+                            distance = extra_param["distance"]
                         else:
-                            _report(report, "You need distance in extraParam")
+                            _report(report, "You need distance in extra_param")
 
-                        minTrain = float(extraParam["minTrain"]) if "minTrain" in extraParam else -1
+                        min_train = float(extra_param["minTrain"]) if "minTrain" in extra_param else -1
 
-                        SLOO = extraParam.get("SLOO", True)
+                        sloo_enabled = extra_param.get("SLOO", True)
 
-                        maxIter = extraParam.get("maxIter", False)
+                        max_iter = extra_param.get("maxIter", False)
 
-                        otherLevel = extraParam.get("otherLevel", False)
+                        other_level = extra_param.get("otherLevel", False)
                     # sts = []
-                    cvDistance = []
+                    cv_distance = []
 
                     """
-                    rawCV = DistanceCV(distanceArray,label,distanceThresold=distance,minTrain=minTrain,SLOO=SLOO,maxIter=maxIter,verbose=False,stats=False)
+                    raw_cv = DistanceCV(distance_matrix,label,distanceThresold=distance,minTrain=min_train,SLOO=sloo_enabled,maxIter=max_iter,verbose=False,stats=False)
 
                     """
-                    # feedback.setProgressText('distance is '+str(extraParam['distance']))
+                    # feedback.setProgressText('distance is '+str(extra_param['distance']))
                     _report(report, "label is " + str(label.shape))
-                    _report(report, "distance array shape is " + str(distanceArray.shape))
-                    _report(report, "minTrain is " + str(minTrain))
-                    _report(report, "SLOO is " + str(SLOO))
-                    _report(report, "maxIter is " + str(maxIter))
+                    _report(report, "distance array shape is " + str(distance_matrix.shape))
+                    _report(report, "minTrain is " + str(min_train))
+                    _report(report, "SLOO is " + str(sloo_enabled))
+                    _report(report, "maxIter is " + str(max_iter))
 
                     # Import distanceCV dynamically when needed
                     try:
@@ -1968,27 +1992,27 @@ class LearnModel:
                     except ImportError:
                         from .function_vector import DistanceCV
 
-                    rawCV = DistanceCV(
-                        distanceArray,
+                    raw_cv = DistanceCV(
+                        distance_matrix,
                         label,
                         distanceThresold=distance,
-                        minTrain=minTrain,
-                        SLOO=SLOO,
-                        maxIter=maxIter,
+                        minTrain=min_train,
+                        SLOO=sloo_enabled,
+                        maxIter=max_iter,
                         stats=False,
                     )
 
                     _report(report, "Computing SLOO Cross Validation")
 
-                    for tr, vl in rawCV:
+                    for tr, vl in raw_cv:
                         _report(report, "Training size is " + str(tr.shape))
                         _report(report, "Validation size is " + str(vl.shape))
                         # sts.append(stat)
-                        cvDistance.append((tr, vl))
+                        cv_distance.append((tr, vl))
                     """
-                    for tr,vl,stat in rawCV :
+                    for tr,vl,stat in raw_cv :
                         sts.append(stat)
-                        cvDistance.append((tr,vl))
+                        cv_distance.append((tr,vl))
                     """
                     #
 
@@ -2023,7 +2047,6 @@ class LearnModel:
 
                     if "param_algo" in locals():
                         classifier = SVC(probability=True, random_state=random_seed, **param_algo)
-                        print("Found param algo : " + str(param_algo))
                     else:
                         classifier = SVC(probability=True, kernel="rbf", random_state=random_seed)
                     n_splits = config["n_splits"]
@@ -2232,7 +2255,7 @@ class LearnModel:
             max_samples = np.max(class_counts)
             sample_count = int(x.shape[0])
             imbalance_ratio = float(max_samples / max(min_samples, 1))
-            fast_mode_enabled = bool(extraParam.get("FAST_MODE", True))
+            fast_mode_enabled = bool(extra_param.get("FAST_MODE", True))
             fast_mode_active = fast_mode_enabled and (sample_count > 20000 or imbalance_ratio > 50 or min_samples < 30)
 
             if fast_mode_active:
@@ -2253,13 +2276,13 @@ class LearnModel:
             # Initialize cross-validation after validation and potential n_splits adjustment
             # Use StratifiedGroupKFold for polygon-based CV (POLYGON_GROUP mode)
             polygon_groups_for_cv = polygon_groups
-            if polygon_groups_for_cv is not None and isinstance(SPLIT, int):
+            if polygon_groups_for_cv is not None and isinstance(split_value, int):
                 try:
                     self._ensure_polygon_group_counts(y, polygon_groups_for_cv, n_splits)
                 except PolygonCoverageInsufficientError as exc:
                     _report(report, str(exc))
                     raise
-            if polygon_groups_for_cv is not None and isinstance(SPLIT, int):
+            if polygon_groups_for_cv is not None and isinstance(split_value, int):
                 # Polygon-based cross-validation: ensure pixels from same polygon stay together
                 n_unique_groups = len(np.unique(polygon_groups_for_cv))
                 if n_unique_groups < n_splits:
@@ -2274,14 +2297,14 @@ class LearnModel:
                     report,
                     f"Using StratifiedGroupKFold: {n_splits} folds across {n_unique_groups} polygons (spatial CV)",
                 )
-            elif isinstance(SPLIT, int):
+            elif isinstance(split_value, int):
                 cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
                 groups_for_cv = None
-            elif SPLIT in ("STAND", "SLOO"):
-                cv = cvDistance
+            elif split_value in ("STAND", "SLOO"):
+                cv = cv_distance
                 groups_for_cv = None
             else:
-                # SPLIT is a validation vector path or other non-standard value;
+                # split_value is a validation vector path or other non-standard value;
                 # use StratifiedKFold for hyperparameter search CV.
                 cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
                 groups_for_cv = None
@@ -2290,7 +2313,7 @@ class LearnModel:
             y_search = y
             cv_search = cv
             groups_search = groups_for_cv
-            if fast_mode_active and isinstance(SPLIT, int) and sample_count > FAST_MODE_MAX_SAMPLES:
+            if fast_mode_active and isinstance(split_value, int) and sample_count > FAST_MODE_MAX_SAMPLES:
                 tune_idx = _build_tuning_subset_indices(y, FAST_MODE_MAX_SAMPLES, random_seed)
                 x_search = x[tune_idx, :]
                 y_search = y[tune_idx]
@@ -2306,8 +2329,8 @@ class LearnModel:
                 )
 
             # Check if Optuna should be used for hyperparameter optimization
-            use_optuna = extraParam.get("USE_OPTUNA", False) if extraParam else False
-            optuna_trials = extraParam.get("OPTUNA_TRIALS", 100) if extraParam else 100
+            use_optuna = extra_param.get("USE_OPTUNA", False) if extra_param else False
+            optuna_trials = extra_param.get("OPTUNA_TRIALS", 100) if extra_param else 100
             # Note: optuna_stats is initialized at the top of __init__ for all classifiers
             if fast_mode_active and use_optuna and optuna_trials > FAST_MODE_MAX_OPTUNA_TRIALS:
                 optuna_trials = FAST_MODE_MAX_OPTUNA_TRIALS
@@ -2337,7 +2360,11 @@ class LearnModel:
 
                     # Run optimization
                     best_params = optimizer.optimize(
-                        X=x_search, y=y_search, cv=cv_search, scoring="f1_weighted", groups=groups_search,
+                        X=x_search,
+                        y=y_search,
+                        cv=cv_search,
+                        scoring="f1_weighted",
+                        groups=groups_search,
                     )
                     selected_hyperparameters = dict(best_params)
                     optimization_method = "optuna"
@@ -2424,9 +2451,9 @@ class LearnModel:
 
             # Use GridSearchCV if Optuna is not used
             if not use_optuna:
-                custom_param_grid = bool(extraParam and "param_grid" in extraParam)
-                if extraParam and "param_grid" in extraParam:
-                    param_grid = extraParam["param_grid"]
+                custom_param_grid = bool(extra_param and "param_grid" in extra_param)
+                if extra_param and "param_grid" in extra_param:
+                    param_grid = extra_param["param_grid"]
 
                     _report(report, "Custom param for Grid Search CV has been found : " + str(param_grid))
                 elif fast_mode_active:
@@ -2482,12 +2509,12 @@ class LearnModel:
                         progress.reset()
                     return
 
-            if isinstance(SPLIT, str):
+            if isinstance(split_value, str):
                 CM = []
                 testIndex = []
-                # Get saveDir from extraParam if available
-                saveDir = extraParam.get("saveDir", tempfile.gettempdir())
-                for train_index, test_index in (cv.split(X, y) if hasattr(cv, 'split') else cv):
+                # Get save_dir from extra_param if available
+                save_dir = extra_param.get("saveDir", tempfile.gettempdir())
+                for train_index, test_index in cv.split(X, y) if hasattr(cv, "split") else cv:
                     X_train, X_test = X[train_index], X[test_index]
                     y_train, y_test = y[train_index], y[test_index]
 
@@ -2496,17 +2523,17 @@ class LearnModel:
                     CM.append(confusion_matrix(y_test, X_pred))
                     testIndex.append(test_index)
                 for i, _j in enumerate(CM):
-                    if SPLIT == "SLOO":
-                        # np.savetxt((saveDir+'matrix/'+str(distance)+'_'+str(class_field)+'_'+str(minTrain)+'_'+str(i)+'.csv'),CM[i],delimiter=',',fmt='%.d')
+                    if split_value == "SLOO":
+                        # np.savetxt((save_dir+'matrix/'+str(distance)+'_'+str(class_field)+'_'+str(min_train)+'_'+str(i)+'.csv'),CM[i],delimiter=',',fmt='%.d')
                         np.savetxt(
                             os.path.join(
-                                saveDir,
+                                save_dir,
                                 "matrix/"
                                 + str(distance)
                                 + "_"
                                 + str(class_field)
                                 + "_"
-                                + str(minTrain)
+                                + str(min_train)
                                 + "_"
                                 + str(i)
                                 + ".csv",
@@ -2515,14 +2542,14 @@ class LearnModel:
                             delimiter=",",
                             fmt="%.d",
                         )
-                        if otherLevel is not False:
-                            otherLevelFolder = os.path.join(saveDir, "matrix/level3/")
-                            if not os.path.exists(otherLevelFolder):
-                                os.makedirs(otherLevelFolder)
+                        if other_level is not False:
+                            other_level_folder = os.path.join(save_dir, "matrix/level3/")
+                            if not os.path.exists(other_level_folder):
+                                os.makedirs(other_level_folder)
                             bigCM = np.zeros([14, 14], dtype=np.byte)
 
                             arr = CM[i]
-                            curLevel = otherLevel[testIndex[i]]
+                            curLevel = other_level[testIndex[i]]
                             curLevel = np.sort(curLevel, axis=0)
                             for lvl in range(curLevel.shape[0]):
                                 bigCM[
@@ -2531,12 +2558,12 @@ class LearnModel:
                                 ] = arr[:, lvl].reshape(-1, 1)
                             np.savetxt(
                                 os.path.join(
-                                    otherLevelFolder,
+                                    other_level_folder,
                                     str(distance)
                                     + "_"
                                     + str(class_field)
                                     + "_"
-                                    + str(minTrain)
+                                    + str(min_train)
                                     + "_"
                                     + str(i)
                                     + ".csv",
@@ -2546,11 +2573,11 @@ class LearnModel:
                                 fmt="%.d",
                             )
 
-                    elif SPLIT == "STAND":
-                        # np.savetxt((saveDir+'matrix/stand_'+str(class_field)+'_'+str(i)+'.csv'),CM[i],delimiter=',',fmt='%.d')
+                    elif split_value == "STAND":
+                        # np.savetxt((save_dir+'matrix/stand_'+str(class_field)+'_'+str(i)+'.csv'),CM[i],delimiter=',',fmt='%.d')
                         np.savetxt(
                             os.path.join(
-                                saveDir,
+                                save_dir,
                                 "matrix/stand_" + str(class_field) + "_" + str(i) + ".csv",
                             ),
                             CM[i],
@@ -2564,21 +2591,21 @@ class LearnModel:
         if feedback == "gui":
             progress.prgBar.setValue(90)
 
-        if (vector_test_path or isinstance(SPLIT, int)) and (SPLIT != 100 or vector_test_path):
+        if (vector_test_path or isinstance(split_value, int)) and (split_value != 100 or vector_test_path):
             # from sklearn.metrics import cohen_kappa_score,accuracy_score,f1_score
             # if classifier == 'GMM':
             #          = model.predict(xt)[0]
             # else:
             yp = model.predict(xt)
-            CONF = ai.ConfusionMatrix()
-            CONF.compute_confusion_matrix(yp, yt)
+            conf = ai.ConfusionMatrix()
+            conf.compute_confusion_matrix(yp, yt)
 
             if matrix_path is not None:
                 if not os.path.exists(os.path.dirname(matrix_path)):
                     os.makedirs(os.path.dirname(matrix_path))
                 np.savetxt(
                     matrix_path,
-                    CONF.confusion_matrix,
+                    conf.confusion_matrix,
                     delimiter=",",
                     header="Columns=prediction,Lines=reference.",
                     fmt="%1.4d",
@@ -2594,18 +2621,18 @@ class LearnModel:
                 self.oa = accuracy_score(yp,yt)
                 """
             res = {
-                "Overall Accuracy": CONF.OA,
-                "F1 macro": CONF.F1mean,
+                "Overall Accuracy": conf.OA,
+                "F1 macro": conf.F1mean,
             }
 
             for estim in res:
                 _report(report, f"{estim}: {res[estim]:.2f}")
 
-            self.shap_was_enabled, self.shap_sample_size = _extract_shap_settings(extraParam)
+            self.shap_was_enabled, self.shap_sample_size = _extract_shap_settings(extra_param)
             _report(
                 report,
                 f"DEBUG: SHAP config - enabled={self.shap_was_enabled}, sample_size={self.shap_sample_size}, "
-                f"extraParam_COMPUTE_SHAP={extraParam.get('COMPUTE_SHAP') if extraParam else 'N/A'}",
+                f"extra_param_COMPUTE_SHAP={extra_param.get('COMPUTE_SHAP') if extra_param else 'N/A'}",
             )
             if self.shap_was_enabled:
                 self._compute_shap_importance(
@@ -2613,12 +2640,12 @@ class LearnModel:
                     raster_path=raster_path,
                     X_train=x if "x" in locals() else X,
                     feature_names=None,
-                    shap_output_path=extraParam.get("SHAP_OUTPUT"),
+                    shap_output_path=extra_param.get("SHAP_OUTPUT"),
                     sample_size=self.shap_sample_size,
                 )
 
-            if extraParam.get("GENERATE_REPORT_BUNDLE", False):
-                report_dir = str(extraParam.get("REPORT_OUTPUT_DIR", "")).strip()
+            if extra_param.get("GENERATE_REPORT_BUNDLE", False):
+                report_dir = str(extra_param.get("REPORT_OUTPUT_DIR", "")).strip()
                 if not report_dir:
                     report_dir = tempfile.mkdtemp(prefix="dzetsaka_report_")
                 yt_report = _labels_to_1d(yt)
@@ -2635,19 +2662,19 @@ class LearnModel:
 
                 labels_order = np.unique(np.concatenate((yt_report, yp_report))).tolist()
                 cm_report = _confusion_matrix_from_labels(yt_report, yp_report, labels_order)
-                manual_map = _parse_label_map_text(str(extraParam.get("REPORT_LABEL_MAP", "")))
-                label_column = str(extraParam.get("REPORT_LABEL_COLUMN", "")).strip()
+                manual_map = _parse_label_map_text(str(extra_param.get("REPORT_LABEL_MAP", "")))
+                label_column = str(extra_param.get("REPORT_LABEL_COLUMN", "")).strip()
                 label_name_map = _build_label_name_map(vector_path, class_field, label_column, manual_map)
                 class_names = [label_name_map.get(_value_key(v), str(v)) for v in labels_order]
                 metrics = _compute_metrics_from_cm(cm_report)
-                metrics["overall_accuracy_conf"] = CONF.OA
-                metrics["f1_mean_conf"] = CONF.F1mean
+                metrics["overall_accuracy_conf"] = conf.OA
+                metrics["f1_mean_conf"] = conf.F1mean
                 config_meta = {
                     "classifier_code": classifier_code_input,
                     "classifier_name": classifier_config.get_classifier_name(classifier_code_input),
                     "execution_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "split_mode": str(extraParam.get("CV_MODE", "RANDOM_SPLIT")),
-                    "split_config": SPLIT,
+                    "split_mode": str(extra_param.get("CV_MODE", "RANDOM_SPLIT")),
+                    "split_config": split_value,
                     "class_field": class_field,
                     "vector_path": vector_path,
                     "raster_path": raster_path,
@@ -2658,7 +2685,7 @@ class LearnModel:
                     "feature_importance": getattr(self, "feature_importance", None),
                     "shap_config": {
                         "enabled": getattr(self, "shap_was_enabled", False),
-                        "sample_size": getattr(self, "shap_sample_size", 1000),
+                        "sample_size": getattr(self, "shap_sample_size", SHAP_SAMPLE_SIZE_DEFAULT),
                     },
                     "matrix_path": matrix_path,
                 }
@@ -2673,7 +2700,7 @@ class LearnModel:
                     y_pred=yp_report,
                 )
                 _report(report, f"Detailed report bundle saved to: {report_dir}")
-                open_report = bool(extraParam.get("OPEN_REPORT_IN_BROWSER", True))
+                open_report = bool(extra_param.get("OPEN_REPORT_IN_BROWSER", True))
                 if open_report:
                     report_html = Path(report_dir) / "classification_report.html"
                     if report_html.exists():
@@ -2849,7 +2876,7 @@ class LearnModel:
         X: np.ndarray,
         Y: np.ndarray,
         classifier: str,
-        extraParam: Dict[str, Any],
+        extra_param: Dict[str, Any],
     ) -> None:
         """Analyze class imbalance and log recommendations.
 
@@ -2861,7 +2888,7 @@ class LearnModel:
             Training labels
         classifier : str
             Classifier code
-        extraParam : dict
+        extra_param : dict
             Extra parameters
 
         """
@@ -2884,7 +2911,7 @@ class LearnModel:
         _report(report, f"  Imbalance ratio: {ratio:.2f}")
 
         # Recommend strategy if not already configured
-        if not extraParam.get("USE_SMOTE", False) and not extraParam.get("USE_CLASS_WEIGHTS", False):
+        if not extra_param.get("USE_SMOTE", False) and not extra_param.get("USE_CLASS_WEIGHTS", False):
             strategy = recommend_strategy(Y)
             if strategy == "smote":
                 _report(
@@ -2903,7 +2930,7 @@ class LearnModel:
         self,
         X: np.ndarray,
         Y: np.ndarray,
-        extraParam: Dict[str, Any],
+        extra_param: Dict[str, Any],
     ) -> tuple:
         """Apply SMOTE oversampling if conditions are met.
 
@@ -2913,7 +2940,7 @@ class LearnModel:
             Training features
         Y : np.ndarray
             Training labels
-        extraParam : dict
+        extra_param : dict
             Extra parameters
 
         Returns
@@ -2932,7 +2959,7 @@ class LearnModel:
             )
             return X, Y
 
-        k_neighbors = extraParam.get("SMOTE_K_NEIGHBORS", 5)
+        k_neighbors = extra_param.get("SMOTE_K_NEIGHBORS", 5)
 
         try:
             _report(report, "Applying SMOTE oversampling...")
@@ -2956,7 +2983,7 @@ class LearnModel:
     def _compute_weights(
         self,
         Y: np.ndarray,
-        extraParam: Dict[str, Any],
+        extra_param: Dict[str, Any],
     ) -> Optional[Dict[int, float]]:
         """Compute class weights for cost-sensitive learning.
 
@@ -2964,7 +2991,7 @@ class LearnModel:
         ----------
         Y : np.ndarray
             Training labels
-        extraParam : dict
+        extra_param : dict
             Extra parameters
 
         Returns
@@ -2976,8 +3003,8 @@ class LearnModel:
         if not SAMPLING_AVAILABLE:
             return None
 
-        strategy = extraParam.get("CLASS_WEIGHT_STRATEGY", "balanced")
-        custom_weights = extraParam.get("CUSTOM_CLASS_WEIGHTS")
+        strategy = extra_param.get("CLASS_WEIGHT_STRATEGY", "balanced")
+        custom_weights = extra_param.get("CUSTOM_CLASS_WEIGHTS")
 
         try:
             weights = compute_class_weights(Y, strategy=strategy, custom_weights=custom_weights)
@@ -3028,7 +3055,7 @@ class LearnModel:
         vector_path: Union[str, np.ndarray],
         class_field: str,
         split_config: Union[int, float, str],
-        extraParam: Dict[str, Any],
+        extra_param: Dict[str, Any],
         feedback,
     ) -> Tuple[
         np.ndarray,
@@ -3039,10 +3066,10 @@ class LearnModel:
         Optional[str],
     ]:
         """Load and prepare training data."""
-        needXY = True
+        need_xy = True
         coords = None
-        distanceArray = None
-        STDs = None
+        distance_matrix = None
+        stand_ids = None
         vector_test_path = None
 
         _report(self.report, "Learning model...")
@@ -3050,7 +3077,7 @@ class LearnModel:
 
         # Handle numpy array inputs
         if isinstance(raster_path, np.ndarray):
-            needXY = False
+            need_xy = False
             X = raster_path
             if isinstance(vector_path, np.ndarray):
                 Y = vector_path
@@ -3061,94 +3088,99 @@ class LearnModel:
             X, Y = None, None
 
             # Setup save directory if specified
-            if "saveDir" in extraParam:
-                self._setup_save_directory(extraParam["saveDir"])
+            if "saveDir" in extra_param:
+                self._setup_save_directory(extra_param["saveDir"])
 
             # Check for test vector
             if isinstance(split_config, str) and split_config.endswith((".shp", ".sqlite")):
                 vector_test_path = split_config
 
-            # Handle special ROI reading
-            if extraParam.get("readROIFromVector", False):
-                X, Y = self._read_roi_from_vector(vector_path, extraParam, class_field, feedback)
-                needXY = False
-                coords = extraParam.get("coords")
+            # Handle special roi reading
+            if extra_param.get("readROIFromVector", False):
+                X, Y = self._read_roi_from_vector(vector_path, extra_param, class_field, feedback)
+                need_xy = False
+                coords = extra_param.get("coords")
 
             # Standard rasterization approach
-            if needXY:
-                ROI = rasterize(raster_path, vector_path, class_field)
+            if need_xy:
+                roi = rasterize(raster_path, vector_path, class_field)
 
                 # Check CV mode for polygon-based cross-validation
-                cv_mode = extraParam.get("CV_MODE", "RANDOM_SPLIT") if extraParam else "RANDOM_SPLIT"
+                cv_mode = extra_param.get("CV_MODE", "RANDOM_SPLIT") if extra_param else "RANDOM_SPLIT"
                 polygon_groups = None  # Will store polygon IDs if CV_MODE is POLYGON_GROUP
 
                 if split_config == "SLOO":
-                    X, Y, coords, distanceArray = self._prepare_sloo_data(raster_path, ROI, extraParam, feedback)
+                    X, Y, coords, distance_matrix = self._prepare_sloo_data(raster_path, roi, extra_param, feedback)
                 elif split_config == "STAND":
-                    X, Y, STDs = self._prepare_stand_data(
-                        raster_path, vector_path, ROI, class_field, extraParam, feedback,
+                    X, Y, stand_ids = self._prepare_stand_data(
+                        raster_path,
+                        vector_path,
+                        roi,
+                        class_field,
+                        extra_param,
+                        feedback,
                     )
                 elif cv_mode == "POLYGON_GROUP" and isinstance(split_config, (int, float)):
                     # Use polygon-based CV: extract polygon IDs for StratifiedGroupKFold
-                    X, Y, polygon_groups = self._prepare_polygon_group_data(raster_path, vector_path, ROI, feedback)
+                    X, Y, polygon_groups = self._prepare_polygon_group_data(raster_path, vector_path, roi, feedback)
                 else:
-                    X, Y = dataraster.get_samples_from_roi(raster_path, ROI)
+                    X, Y = dataraster.get_samples_from_roi(raster_path, roi)
 
                 # Handle test vector if specified
                 if vector_test_path:
-                    ROIt = rasterize(raster_path, vector_test_path, class_field)
-                    Xt, yt = dataraster.get_samples_from_roi(raster_path, ROIt)
+                    roi_test = rasterize(raster_path, vector_test_path, class_field)
+                    Xt, yt = dataraster.get_samples_from_roi(raster_path, roi_test)
                     # Store test data for later use
                     self._test_data = (Xt, yt)
 
-        return X, Y, coords, distanceArray, STDs, polygon_groups, vector_test_path
+        return X, Y, coords, distance_matrix, stand_ids, polygon_groups, vector_test_path
 
-    def _setup_save_directory(self, saveDir: str) -> None:
+    def _setup_save_directory(self, save_dir: str) -> None:
         """Create save directory and subdirectories."""
-        if not os.path.exists(saveDir):
-            os.makedirs(saveDir)
-        matrix_dir = os.path.join(saveDir, "matrix/")
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        matrix_dir = os.path.join(save_dir, "matrix/")
         if not os.path.exists(matrix_dir):
             os.makedirs(matrix_dir)
 
-    def _read_roi_from_vector(self, vector_path, extraParam, class_field, feedback):
-        """Read ROI data from vector using custom function."""
+    def _read_roi_from_vector(self, vector_path, extra_param, class_field, feedback):
+        """Read roi data from vector using custom function."""
         try:
             from function_vector import readROIFromVector
 
-            return readROIFromVector(vector_path, extraParam["readROIFromVector"], class_field)
+            return readROIFromVector(vector_path, extra_param["readROIFromVector"], class_field)
         except ImportError:
             msg = "Problem when importing readFieldVector from functions in dzetsaka"
             _report(self.report, msg)
             raise
 
-    def _prepare_sloo_data(self, raster_path, ROI, extraParam, feedback):
+    def _prepare_sloo_data(self, raster_path, roi, extra_param, feedback):
         """Prepare data for Spatial Leave-One-Out cross-validation."""
         try:
             from function_vector import distMatrix
         except ImportError:
             from .function_vector import distMatrix
 
-        if extraParam.get("readROIFromVector", False):
-            coords = extraParam.get("coords")
+        if extra_param.get("readROIFromVector", False):
+            coords = extra_param.get("coords")
             if coords is None:
                 _report(self.report, "Can't read coords array")
-                raise ValueError("Coordinates not found in extraParam")
+                raise ValueError("Coordinates not found in extra_param")
             X, Y = None, None  # Will be set elsewhere
         else:
-            X, Y, coords = dataraster.get_samples_from_roi(raster_path, ROI, getCoords=True)
+            X, Y, coords = dataraster.get_samples_from_roi(raster_path, roi, getCoords=True)
 
-        distanceArray = distMatrix(coords)
-        return X, Y, coords, distanceArray
+        distance_matrix = distMatrix(coords)
+        return X, Y, coords, distance_matrix
 
-    def _prepare_stand_data(self, raster_path, vector_path, ROI, class_field, extraParam, feedback):
+    def _prepare_stand_data(self, raster_path, vector_path, roi, class_field, extra_param, feedback):
         """Prepare data for stand-based cross-validation."""
-        inStand = extraParam.get("inStand", "stand")
-        STAND = rasterize(raster_path, vector_path, inStand)
-        X, Y, STDs = dataraster.get_samples_from_roi(raster_path, ROI, STAND)
-        return X, Y, STDs
+        in_stand = extra_param.get("inStand", "stand")
+        stand_raster = rasterize(raster_path, vector_path, in_stand)
+        X, Y, stand_ids = dataraster.get_samples_from_roi(raster_path, roi, stand_raster)
+        return X, Y, stand_ids
 
-    def _prepare_polygon_group_data(self, raster_path, vector_path, ROI, feedback):
+    def _prepare_polygon_group_data(self, raster_path, vector_path, roi, feedback):
         """Prepare data for polygon-based cross-validation using feature IDs.
 
         This extracts polygon IDs (FID) for each training sample to enable
@@ -3201,10 +3233,10 @@ class LearnModel:
             vector_ds = None
 
             # Rasterize the polygon_id field
-            POLYGON_IDS = rasterize(raster_path, temp_vector, "polygon_id")
+            polygon_id_raster = rasterize(raster_path, temp_vector, "polygon_id")
 
             # Get samples with polygon IDs
-            X, Y, polygon_groups = dataraster.get_samples_from_roi(raster_path, ROI, POLYGON_IDS)
+            X, Y, polygon_groups = dataraster.get_samples_from_roi(raster_path, roi, polygon_id_raster)
 
             # Clean up temporary files
             with contextlib.suppress(Exception):
@@ -3221,7 +3253,7 @@ class LearnModel:
         except Exception as e:
             _report(report, f"Warning: Could not extract polygon IDs: {e}. Using standard data loading.")
             # Fallback to standard loading without polygon IDs
-            X, Y = dataraster.get_samples_from_roi(raster_path, ROI)
+            X, Y = dataraster.get_samples_from_roi(raster_path, roi)
             return X, Y, None
 
     def _classes_with_too_few_polygons(self, y, polygon_groups, min_polygons):
@@ -3255,7 +3287,7 @@ class LearnModel:
             )
         else:
             msg = (
-                f"Problem with getting samples from ROI: {error}\n"
+                f"Problem with getting samples from roi: {error}\n"
                 "Common causes:\n"
                 "- Shapefile and raster have different projections\n"
                 "- Invalid geometry in shapefile\n"
@@ -3365,7 +3397,6 @@ class ClassifyImage:
         )
         # except:
         #   QgsMessageLog.logMessage("Problem while predicting "+raster_path+" in temp"+rasterTemp)
-
 
     def _load_model(self, model_path: str) -> Tuple[Any, np.ndarray, np.ndarray, str]:
         """Load pickled model with proper error handling.
@@ -3781,10 +3812,10 @@ class ConfusionMatrix:
 
     def __init__(self):
         self.confusion_matrix: Optional[np.ndarray] = None
-        self.OA: Optional[float] = None
-        self.Kappa: Optional[float] = None
+        self.overall_accuracy: Optional[float] = None
+        self.kappa: Optional[float] = None
 
-    def computeStatistics(
+    def compute_statistics(
         self,
         raster_path: Optional[str] = None,
         shapefile_path: Optional[str] = None,
@@ -3815,12 +3846,12 @@ class ConfusionMatrix:
 
         try:
             rasterized = rasterize(raster_path, shapefile_path, class_field)
-            Yp, Yt = dataraster.get_samples_from_roi(raster_path, rasterized)
-            CONF = ai.ConfusionMatrix()
-            CONF.compute_confusion_matrix(Yp, Yt)
-            self.confusion_matrix = CONF.confusion_matrix
-            self.Kappa = CONF.Kappa
-            self.OA = CONF.OA
+            y_pred, y_true = dataraster.get_samples_from_roi(raster_path, rasterized)
+            conf = ai.ConfusionMatrix()
+            conf.compute_confusion_matrix(y_pred, y_true)
+            self.confusion_matrix = conf.confusion_matrix
+            self.kappa = conf.Kappa
+            self.overall_accuracy = conf.OA
 
             # Clean up temporary raster
             with contextlib.suppress(OSError):
@@ -3891,8 +3922,8 @@ def rasterize(
         dst_ds.SetGeoTransform(data.GetGeoTransform())
         dst_ds.SetProjection(data.GetProjection())
 
-        OPTIONS = f"ATTRIBUTE={class_field}"
-        result = gdal.RasterizeLayer(dst_ds, [1], lyr, None, options=[OPTIONS])
+        rasterize_options = f"ATTRIBUTE={class_field}"
+        result = gdal.RasterizeLayer(dst_ds, [1], lyr, None, options=[rasterize_options])
 
         if result != gdal.CE_None:
             raise RuntimeError(f"Rasterization failed for field {class_field}")
@@ -3908,84 +3939,3 @@ def rasterize(
         data, dst_ds, shp, lyr = None, None, None, None
 
     return filename
-
-
-if __name__ == "__main__":
-    # Example using new parameter names
-    RASTER_PATH = "/mnt/DATA/demo/map.tif"
-    VECTOR_PATH = "/mnt/DATA/demo/train.shp"
-    CLASS_FIELD = "Class"
-    MODEL_PATH = "/mnt/DATA/demo/test/model.RF"
-    SPLIT_PERCENT = 50
-    MATRIX_PATH = "/mnt/DATA/demo/test/matrix.csv"
-    CLASSIFIER_TYPE = "RF"
-    CONFIDENCE_PATH = "/mnt/DATA/demo/test/confidence.tif"
-    MASK_PATH = None
-    OUTPUT_PATH = "/mnt/DATA/demo/test/class.tif"
-
-    # Using new parameter names
-    temp = LearnModel(
-        raster_path=RASTER_PATH,
-        vector_path=VECTOR_PATH,
-        class_field=CLASS_FIELD,
-        model_path=MODEL_PATH,
-        split_config=SPLIT_PERCENT,
-        random_seed=0,
-        matrix_path=MATRIX_PATH,
-        classifier=CLASSIFIER_TYPE,
-        extraParam=None,
-        feedback=None,
-    )
-    print("learned")
-
-    temp = ClassifyImage()
-    temp.initPredict(
-        raster_path=RASTER_PATH,
-        model_path=MODEL_PATH,
-        output_path=OUTPUT_PATH,
-        mask_path=MASK_PATH,
-        confidenceMap=CONFIDENCE_PATH,
-    )
-    print("classified")
-
-    # Advanced testing examples
-    Test = "SLOO"
-
-    if Test == "STAND":
-        extra_param = {
-            "inStand": "Stand",
-            "saveDir": os.path.join(tempfile.gettempdir(), "test1") + os.sep,
-            "maxIter": 5,
-            "SLOO": False,
-        }
-        LearnModel(
-            raster_path=RASTER_PATH,
-            vector_path=VECTOR_PATH,
-            class_field=CLASS_FIELD,
-            model_path=MODEL_PATH,
-            split_config="STAND",
-            random_seed=0,
-            matrix_path=None,
-            classifier=CLASSIFIER_TYPE,
-            feedback=None,
-            extraParam=extra_param,
-        )
-
-    if Test == "SLOO":
-        RASTER_PATH = "/mnt/DATA/Test/DA/SITS/SITS_2013.tif"
-        VECTOR_PATH = "/mnt/DATA/Test/DA/ROI_2154.sqlite"
-        CLASS_FIELD = "level1"
-
-        extra_param = {"distance": 100, "maxIter": 5, "saveDir": tempfile.gettempdir() + os.sep}
-        LearnModel(
-            raster_path=RASTER_PATH,
-            vector_path=VECTOR_PATH,
-            class_field=CLASS_FIELD,
-            model_path=MODEL_PATH,
-            split_config="SLOO",
-            random_seed=0,
-            matrix_path=None,
-            classifier=CLASSIFIER_TYPE,
-            feedback=None,
-            extraParam=extra_param,
-        )

@@ -206,7 +206,11 @@ class OptunaOptimizer:
         )
 
         self.study.optimize(
-            objective, n_trials=self.n_trials, timeout=self.timeout, n_jobs=self.n_jobs, show_progress_bar=self.verbose,
+            objective,
+            n_trials=self.n_trials,
+            timeout=self.timeout,
+            n_jobs=self.n_jobs,
+            show_progress_bar=self.verbose,
         )
 
         self.log.info(

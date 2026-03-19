@@ -34,7 +34,13 @@
       "Bash(powershell -Command:*)",
       "Bash(git checkout:*)",
       "Bash(git stash:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "mcp__qgis__execute_code",
+      "mcp__qgis__reload_plugin",
+      "Bash(ln -s /home/nkk/git/dzetsaka ~/.local/share/QGIS/QGIS4/profiles/default/python/plugins/dzetsaka)",
+      "Read(//home/nkk/.local/share/QGIS/QGIS4/profiles/default/python/plugins/dzetsaka/**)",
+      "mcp__qgis__ping",
+      "mcp__qgis__get_message_log"
     ],
     "deny": []
   }

@@ -17,7 +17,6 @@ INCLUDED_TOP_LEVEL_DIRS = {
     "domain",
     "factories",
     "img",
-    "processing",
     "scripts",
     "services",
     "src",

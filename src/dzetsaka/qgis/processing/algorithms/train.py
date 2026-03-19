@@ -127,7 +127,9 @@ class TrainAlgorithm(QgsProcessingAlgorithm):
         # SAVE CONFUSION MATRIX
         self.addParameter(
             QgsProcessingParameterFileDestination(
-                self.OUTPUT_MATRIX, self.tr("Output confusion matrix"), fileFilter="csv",
+                self.OUTPUT_MATRIX,
+                self.tr("Output confusion matrix"),
+                fileFilter="csv",
             ),
         )  # ,
         # ext='csv'))
@@ -162,11 +164,11 @@ class TrainAlgorithm(QgsProcessingAlgorithm):
 
             PARAMGRID = self.parameterAsString(parameters, self.PARAMGRID, context)
             if PARAMGRID != "":
-                extraParam = {}
+                extra_param = {}
                 try:
                     # Use ast.literal_eval() for safe evaluation of parameter grid
                     # Only supports Python literals (dict, list, str, int, float, bool, None)
-                    extraParam["param_grid"] = ast.literal_eval(PARAMGRID)
+                    extra_param["param_grid"] = ast.literal_eval(PARAMGRID)
                 except (ValueError, SyntaxError) as e:
                     error_msg = (
                         f"Invalid parameter grid syntax: {e}\n"
@@ -177,7 +179,7 @@ class TrainAlgorithm(QgsProcessingAlgorithm):
                     show_error_dialog("dzetsaka Train Error", error_msg)
                     return {}
             else:
-                extraParam = None
+                extra_param = None
 
             if SELECTED_ALGORITHM == "RF" or SELECTED_ALGORITHM == "SVM" or SELECTED_ALGORITHM == "KNN":
                 import importlib.util
@@ -205,7 +207,7 @@ class TrainAlgorithm(QgsProcessingAlgorithm):
                 random_seed=0,
                 matrix_path=OUTPUT_MATRIX,
                 classifier=SELECTED_ALGORITHM,
-                extra_params=extraParam,
+                extra_params=extra_param,
                 feedback=feedback,
             )
             return {self.OUTPUT_MATRIX: OUTPUT_MATRIX, self.OUTPUT_MODEL: OUTPUT_MODEL}

@@ -55,7 +55,6 @@ import contextlib
 import traceback
 
 # Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
-from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QDialog
 
 from dzetsaka.qgis.runtime_bootstrap import initialize_runtime_state
@@ -330,7 +329,7 @@ class DzetsakaGUI(QDialog):
         try:
             from dzetsaka.qgis.dashboard_dock import open_dashboard_dock
 
-            open_dashboard_dock(self, _LEFT_DOCK_AREA)
+            open_dashboard_dock(self)
         except Exception as exc:
             self._report_unhandled_exception(
                 error_title="Dashboard Open Failed",
@@ -496,23 +495,6 @@ class DzetsakaGUI(QDialog):
                 exc=exc,
             )
 
-    def modifyConfig(self, section, option, value):
-        """Modify configuration file with new section/option/value.
-
-        Parameters
-        ----------
-        section : str
-            Configuration section name
-        option : str
-            Configuration option name
-        value : str
-            New value to set
-
-        """
-        from dzetsaka.qgis.runtime_utils import write_plugin_config
-
-        write_plugin_config(self.configFile, self.Config, section, option, value)
-
     def _report_unhandled_exception(
         self,
         *,
@@ -537,10 +519,3 @@ class DzetsakaGUI(QDialog):
             from dzetsaka.logging import show_error_dialog
 
             show_error_dialog(error_title, details)
-
-
-# Qt5/Qt6 enum compatibility (QGIS 4 / PyQt6)
-try:
-    _LEFT_DOCK_AREA = Qt.DockWidgetArea.LeftDockWidgetArea
-except AttributeError:
-    _LEFT_DOCK_AREA = Qt.LeftDockWidgetArea

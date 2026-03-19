@@ -426,7 +426,6 @@ class ModelExplainer:
         # Convert to native Python floats so sorting/logging works with scalars
         return {name: float(value) for name, value in zip(self.feature_names, importance_values.tolist())}
 
-
     def create_importance_raster(
         self,
         raster_path: str,
