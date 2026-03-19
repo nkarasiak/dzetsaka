@@ -12,7 +12,7 @@ qgisMinimumVersion=3.0
 qgisMaximumVersion=4.99
 supportsQt6=True
 description=Next-generation AI for Earth Observation in QGIS with 11 ML algorithms, major runtime optimizations, advanced UX workflows, recipe-driven configuration, and rich report generation.
-version=5.0.8
+version=5.0.9
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -43,6 +43,12 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+    5.0.9
+      * FIX: Fix split rounding crash with odd sample counts and hardcoded shapefile driver
+      * FIX: Fix training failures from undefined SVM variable and missing relative import
+      * FIX: Fix duplicate dock widget on plugin reload
+      * REFACTOR: Extract constants, remove ~4200 lines of dead code
+      * TEST: Add unit tests for classifier_config, accuracy_index, validation_metrics, label_encoders
     5.0.8
       * FIX: Replace all sync dependency installer calls with async QgsTask to prevent macOS ARM64 crash (issue #48)
       * FIX: Fix StratifiedKFold not iterable with scikit-learn 1.x (issue #51)
