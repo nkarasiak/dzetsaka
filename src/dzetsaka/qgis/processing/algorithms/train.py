@@ -127,7 +127,9 @@ class TrainAlgorithm(QgsProcessingAlgorithm):
         # SAVE CONFUSION MATRIX
         self.addParameter(
             QgsProcessingParameterFileDestination(
-                self.OUTPUT_MATRIX, self.tr("Output confusion matrix"), fileFilter="csv",
+                self.OUTPUT_MATRIX,
+                self.tr("Output confusion matrix"),
+                fileFilter="csv",
             ),
         )  # ,
         # ext='csv'))

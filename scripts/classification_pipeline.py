@@ -732,13 +732,19 @@ def _write_report_bundle(
             f1 = metrics["f1_per_class"][i]
 
             def metric_cell(value):
-                color = COLOR_SUCCESS if value >= ACCURACY_GOOD_THRESHOLD else COLOR_WARNING if value >= ACCURACY_FAIR_THRESHOLD else COLOR_ERROR
+                color = (
+                    COLOR_SUCCESS
+                    if value >= ACCURACY_GOOD_THRESHOLD
+                    else COLOR_WARNING
+                    if value >= ACCURACY_FAIR_THRESHOLD
+                    else COLOR_ERROR
+                )
                 return f"<td style='color:{color};font-weight:600;'>{_fmt_metric(value)}</td>"
 
             rows.append(
                 "<tr>"
-                 f"<td style='text-align:center;'>{html.escape(str(cls_val))}</td>"
-                 f"<td style='text-align:left;'>{html.escape(str(names[i]))}</td>"
+                f"<td style='text-align:center;'>{html.escape(str(cls_val))}</td>"
+                f"<td style='text-align:left;'>{html.escape(str(names[i]))}</td>"
                 + metric_cell(precision)
                 + metric_cell(recall)
                 + metric_cell(f1)
@@ -1070,7 +1076,10 @@ def _write_report_bundle(
         )
 
     def _generate_classification_abstract(
-        summary_metrics: Dict[str, Any], config_meta: Dict[str, Any], class_values: List[Any], class_names: List[str],
+        summary_metrics: Dict[str, Any],
+        config_meta: Dict[str, Any],
+        class_values: List[Any],
+        class_names: List[str],
     ) -> str:
         """Generate an AI-style executive summary of classification results."""
         # 1. Classify accuracy level
@@ -1508,7 +1517,9 @@ def _write_report_bundle(
             )
             handle.write("<h3>🎯 Feature Importance (SHAP Analysis)</h3>")
             handle.write("<p><strong>Method:</strong> SHAP (SHapley Additive exPlanations) values computed on ")
-            handle.write(f"{shap_config.get('sample_size', SHAP_SAMPLE_SIZE_DEFAULT):,} randomly sampled training pixels.</p>")
+            handle.write(
+                f"{shap_config.get('sample_size', SHAP_SAMPLE_SIZE_DEFAULT):,} randomly sampled training pixels.</p>",
+            )
             handle.write("<p><strong>Interpretation:</strong> Higher values indicate features that contribute more ")
             handle.write("to the model's predictions. SHAP values represent the marginal contribution of each ")
             handle.write("feature to the prediction, based on Shapley values from cooperative game theory.</p>")
@@ -1937,7 +1948,6 @@ class LearnModel:
                         from function_vector import StandCV
 
                     raw_cv = StandCV(label, stand_ids, max_iter, sloo_enabled, seed=random_seed)
-                    print(raw_cv)
                     cv_distance = []
                     for tr, vl in raw_cv:
                         # sts.append(stat)
@@ -2035,7 +2045,6 @@ class LearnModel:
 
                     if "param_algo" in locals():
                         classifier = SVC(probability=True, random_state=random_seed, **param_algo)
-                        print("Found param algo : " + str(param_algo))
                     else:
                         classifier = SVC(probability=True, kernel="rbf", random_state=random_seed)
                     n_splits = config["n_splits"]
@@ -2349,7 +2358,11 @@ class LearnModel:
 
                     # Run optimization
                     best_params = optimizer.optimize(
-                        X=x_search, y=y_search, cv=cv_search, scoring="f1_weighted", groups=groups_search,
+                        X=x_search,
+                        y=y_search,
+                        cv=cv_search,
+                        scoring="f1_weighted",
+                        groups=groups_search,
                     )
                     selected_hyperparameters = dict(best_params)
                     optimization_method = "optuna"
@@ -2499,7 +2512,7 @@ class LearnModel:
                 testIndex = []
                 # Get save_dir from extra_param if available
                 save_dir = extra_param.get("saveDir", tempfile.gettempdir())
-                for train_index, test_index in (cv.split(X, y) if hasattr(cv, 'split') else cv):
+                for train_index, test_index in cv.split(X, y) if hasattr(cv, "split") else cv:
                     X_train, X_test = X[train_index], X[test_index]
                     y_train, y_test = y[train_index], y[test_index]
 
@@ -3098,7 +3111,12 @@ class LearnModel:
                     X, Y, coords, distance_matrix = self._prepare_sloo_data(raster_path, roi, extra_param, feedback)
                 elif split_config == "STAND":
                     X, Y, stand_ids = self._prepare_stand_data(
-                        raster_path, vector_path, roi, class_field, extra_param, feedback,
+                        raster_path,
+                        vector_path,
+                        roi,
+                        class_field,
+                        extra_param,
+                        feedback,
                     )
                 elif cv_mode == "POLYGON_GROUP" and isinstance(split_config, (int, float)):
                     # Use polygon-based CV: extract polygon IDs for StratifiedGroupKFold
@@ -3377,7 +3395,6 @@ class ClassifyImage:
         )
         # except:
         #   QgsMessageLog.logMessage("Problem while predicting "+raster_path+" in temp"+rasterTemp)
-
 
     def _load_model(self, model_path: str) -> Tuple[Any, np.ndarray, np.ndarray, str]:
         """Load pickled model with proper error handling.
@@ -3920,84 +3937,3 @@ def rasterize(
         data, dst_ds, shp, lyr = None, None, None, None
 
     return filename
-
-
-if __name__ == "__main__":
-    # Example using new parameter names
-    RASTER_PATH = "/mnt/DATA/demo/map.tif"
-    VECTOR_PATH = "/mnt/DATA/demo/train.shp"
-    CLASS_FIELD = "Class"
-    MODEL_PATH = "/mnt/DATA/demo/test/model.RF"
-    SPLIT_PERCENT = 50
-    MATRIX_PATH = "/mnt/DATA/demo/test/matrix.csv"
-    CLASSIFIER_TYPE = "RF"
-    CONFIDENCE_PATH = "/mnt/DATA/demo/test/confidence.tif"
-    MASK_PATH = None
-    OUTPUT_PATH = "/mnt/DATA/demo/test/class.tif"
-
-    # Using new parameter names
-    temp = LearnModel(
-        raster_path=RASTER_PATH,
-        vector_path=VECTOR_PATH,
-        class_field=CLASS_FIELD,
-        model_path=MODEL_PATH,
-        split_config=SPLIT_PERCENT,
-        random_seed=0,
-        matrix_path=MATRIX_PATH,
-        classifier=CLASSIFIER_TYPE,
-        extra_param=None,
-        feedback=None,
-    )
-    print("learned")
-
-    temp = ClassifyImage()
-    temp.initPredict(
-        raster_path=RASTER_PATH,
-        model_path=MODEL_PATH,
-        output_path=OUTPUT_PATH,
-        mask_path=MASK_PATH,
-        confidenceMap=CONFIDENCE_PATH,
-    )
-    print("classified")
-
-    # Advanced testing examples
-    Test = "SLOO"
-
-    if Test == "STAND":
-        extra_param = {
-            "inStand": "Stand",
-            "saveDir": os.path.join(tempfile.gettempdir(), "test1") + os.sep,
-            "maxIter": 5,
-            "SLOO": False,
-        }
-        LearnModel(
-            raster_path=RASTER_PATH,
-            vector_path=VECTOR_PATH,
-            class_field=CLASS_FIELD,
-            model_path=MODEL_PATH,
-            split_config="STAND",
-            random_seed=0,
-            matrix_path=None,
-            classifier=CLASSIFIER_TYPE,
-            feedback=None,
-            extra_param=extra_param,
-        )
-
-    if Test == "SLOO":
-        RASTER_PATH = "/mnt/DATA/Test/DA/SITS/SITS_2013.tif"
-        VECTOR_PATH = "/mnt/DATA/Test/DA/ROI_2154.sqlite"
-        CLASS_FIELD = "level1"
-
-        extra_param = {"distance": 100, "maxIter": 5, "saveDir": tempfile.gettempdir() + os.sep}
-        LearnModel(
-            raster_path=RASTER_PATH,
-            vector_path=VECTOR_PATH,
-            class_field=CLASS_FIELD,
-            model_path=MODEL_PATH,
-            split_config="SLOO",
-            random_seed=0,
-            matrix_path=None,
-            classifier=CLASSIFIER_TYPE,
-            feedback=None,
-            extra_param=extra_param,
-        )

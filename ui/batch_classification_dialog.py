@@ -19,9 +19,9 @@ Author:
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
-from qgis.core import Qgis, QgsMessageLog, QgsProject, QgsRasterLayer, QgsTask
+from qgis.core import Qgis, QgsMessageLog, QgsProject, QgsRasterLayer
 from qgis.PyQt.QtCore import Qt, QTimer
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
@@ -35,7 +35,6 @@ from qgis.PyQt.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
 )

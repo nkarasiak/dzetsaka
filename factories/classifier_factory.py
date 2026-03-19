@@ -128,7 +128,8 @@ class ClassifierFactory:
         if code not in cls._registry:
             available = ", ".join(cls.get_available_classifiers())
             raise ConfigurationError(
-                f"Unknown classifier code: {code}. Available classifiers: {available}", config_key="classifier",
+                f"Unknown classifier code: {code}. Available classifiers: {available}",
+                config_key="classifier",
             )
 
         registry_entry = cls._registry[code]
@@ -146,7 +147,8 @@ class ClassifierFactory:
             return classifier_class(**final_params)
         except Exception as e:
             raise ConfigurationError(
-                f"Failed to create classifier {code}: {e!s}", config_key="classifier_params",
+                f"Failed to create classifier {code}: {e!s}",
+                config_key="classifier_params",
             ) from e
 
     @classmethod
@@ -250,7 +252,9 @@ class ClassifierFactory:
                 import xgboost  # noqa: F401
             except ImportError as e:
                 raise DependencyError(
-                    "xgboost", f"Classifier {metadata.code} requires XGBoost", required_version=">=1.0.0",
+                    "xgboost",
+                    f"Classifier {metadata.code} requires XGBoost",
+                    required_version=">=1.0.0",
                 ) from e
 
         if getattr(metadata, "requires_catboost", False):

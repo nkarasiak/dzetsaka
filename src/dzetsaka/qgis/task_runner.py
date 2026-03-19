@@ -426,7 +426,9 @@ class ClassificationTask(QgsTask):
                 if self.enhanced_widget:
                     self.enhanced_widget.set_main_task(f"Training {classifier_name}...")
                     self.enhanced_widget.set_progress(
-                        PROGRESS_STAGES["training"]["start"], 100, "Preparing training data...",
+                        PROGRESS_STAGES["training"]["start"],
+                        100,
+                        "Preparing training data...",
                     )
 
                 run_training(
@@ -466,7 +468,9 @@ class ClassificationTask(QgsTask):
             if self.enhanced_widget:
                 self.enhanced_widget.set_main_task("Classifying raster...")
                 self.enhanced_widget.set_progress(
-                    PROGRESS_STAGES["classifying"]["start"], 100, "Loading model and preparing data...",
+                    PROGRESS_STAGES["classifying"]["start"],
+                    100,
+                    "Loading model and preparing data...",
                 )
 
             prediction_result = run_classification(

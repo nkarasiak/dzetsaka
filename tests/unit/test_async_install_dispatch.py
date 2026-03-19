@@ -17,7 +17,7 @@ import pytest
 # ---------------------------------------------------------------------------
 
 _WORKFLOW_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "ui", "classification_workflow_ui.py")
+    os.path.join(os.path.dirname(__file__), "..", "..", "ui", "classification_workflow_ui.py"),
 )
 
 
@@ -145,6 +145,7 @@ try:
     MODULE_AVAILABLE = True
 except Exception:
     import traceback
+
     traceback.print_exc()
 finally:
     sys.modules.pop("ui.classification_workflow_ui", None)
@@ -172,24 +173,18 @@ class TestRunAsyncInstall:
 
         _run_async_install(installer, self.PACKAGES, on_complete=callback)
 
-        installer._try_install_dependencies_async.assert_called_once_with(
-            self.PACKAGES, on_complete=callback
-        )
+        installer._try_install_dependencies_async.assert_called_once_with(self.PACKAGES, on_complete=callback)
 
     def test_async_installer_without_callback(self):
         installer = Mock(spec=["_try_install_dependencies_async"])
 
         _run_async_install(installer, self.PACKAGES, on_complete=None)
 
-        installer._try_install_dependencies_async.assert_called_once_with(
-            self.PACKAGES, on_complete=None
-        )
+        installer._try_install_dependencies_async.assert_called_once_with(self.PACKAGES, on_complete=None)
 
     def test_async_takes_precedence_over_sync(self):
         """When both methods exist, async is preferred."""
-        installer = Mock(
-            spec=["_try_install_dependencies_async", "_try_install_dependencies"]
-        )
+        installer = Mock(spec=["_try_install_dependencies_async", "_try_install_dependencies"])
         callback = Mock()
 
         _run_async_install(installer, self.PACKAGES, on_complete=callback)

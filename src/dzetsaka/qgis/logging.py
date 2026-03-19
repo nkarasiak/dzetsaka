@@ -24,17 +24,12 @@ from qgis.PyQt.QtWidgets import (
 from dzetsaka.logging import (
     DEFAULT_LOG_TAG,
     Logger,
+    _format_message,
     build_issue_template,
     register_error_handler,
     register_issue_popup_handler,
     register_logger_factory,
 )
-
-
-def _format_message(message: Any) -> str:
-    if isinstance(message, str):
-        return message
-    return repr(message)
 
 
 @dataclass(frozen=True)

@@ -49,7 +49,9 @@ def execute_dashboard_config(plugin, config) -> None:
         ):
             return
         if not plugin._ensure_classifier_runtime_ready(
-            classifier_code, source_label="Dashboard", fallback_to_gmm=False,
+            classifier_code,
+            source_label="Dashboard",
+            fallback_to_gmm=False,
         ):
             return
 

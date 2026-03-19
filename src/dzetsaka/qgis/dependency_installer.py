@@ -961,7 +961,7 @@ def try_install_dependencies(plugin, missing_deps):
                                 progress.append_output(f"  Version: {imported.__version__}\n")
                         except ImportError:
                             progress.append_output(
-                                f"  (will be available after QGIS restart)\n",
+                                "  (will be available after QGIS restart)\n",
                             )
                         if target == package_name and not dep_installed:
                             success_count += 1
@@ -1102,9 +1102,7 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
 
         from qgis.PyQt.QtCore import QTimer
 
-        plugin.log.info(
-            f"[on_task_finished] thread={threading.current_thread().name} success={success}"
-        )
+        plugin.log.info(f"[on_task_finished] thread={threading.current_thread().name} success={success}")
 
         # Clean up constraints file (safe — no GUI)
         if runtime_constraints_file:
@@ -1112,9 +1110,7 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
                 os.remove(runtime_constraints_file)
 
         def _show_result():
-            plugin.log.info(
-                f"[on_task_finished._show_result] thread={threading.current_thread().name}"
-            )
+            plugin.log.info(f"[on_task_finished._show_result] thread={threading.current_thread().name}")
             if success:
                 QMessageBox.information(
                     plugin.iface.mainWindow(),

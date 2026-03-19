@@ -6,7 +6,6 @@ import logging
 import platform
 import sys
 import traceback
-import urllib.parse
 from collections import deque
 from configparser import ConfigParser
 from dataclasses import dataclass
@@ -142,19 +141,6 @@ def get_system_info() -> str:
         info_lines.append(f"  - {pkg}: {version}")
 
     return "\n".join(info_lines)
-
-
-def create_github_issue_url(title: str, body: str) -> str:
-    """Return a GitHub issue URL prefilled with title/body."""
-    try:
-        from . import constants
-
-        github_url = constants.GITHUB_NEW_ISSUE_URL
-    except (ImportError, ModuleNotFoundError):
-        github_url = "https://github.com/nkarasiak/dzetsaka/issues/new"
-    params = {"title": title, "body": body}
-    query_string = urllib.parse.urlencode(params)
-    return f"{github_url}?{query_string}"
 
 
 def build_issue_template(

@@ -156,23 +156,6 @@ def show_batch_classification_started(iface, raster_count: int):
     messenger.info(f"Starting batch classification of {raster_count} rasters...", duration=3)
 
 
-def show_batch_classification_progress(iface, current: int, total: int):
-    """Show batch classification progress.
-
-    Parameters
-    ----------
-    iface : QgisInterface
-        QGIS interface
-    current : int
-        Current raster number
-    total : int
-        Total number of rasters
-    """
-    messenger = StatusBarMessenger(iface)
-    progress_pct = int((current / total) * 100)
-    messenger.info(f"Batch classification: {current}/{total} complete ({progress_pct}%)", duration=2)
-
-
 def show_batch_classification_completed(iface, success_count: int, total_count: int):
     """Show message when batch classification completes.
 
@@ -199,21 +182,3 @@ def show_batch_classification_completed(iface, success_count: int, total_count: 
         )
 
 
-def show_confidence_analysis_ready(iface):
-    """Show message when confidence analysis is ready."""
-    messenger = StatusBarMessenger(iface)
-    messenger.info("Confidence map analysis ready. Open the HTML report for details.", duration=5)
-
-
-def show_dialog_opened(iface, dialog_name: str):
-    """Show message when a dialog opens.
-
-    Parameters
-    ----------
-    iface : QgisInterface
-        QGIS interface
-    dialog_name : str
-        Name of the dialog
-    """
-    messenger = StatusBarMessenger(iface)
-    messenger.info(f"Opening {dialog_name}...", duration=2)

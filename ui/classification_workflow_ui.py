@@ -42,7 +42,6 @@ from qgis.PyQt.QtWidgets import (
     QListWidgetItem,
     QMessageBox,
     QPushButton,
-    QScrollArea,
     QShortcut,
     QSizePolicy,
     QSpinBox,
@@ -83,7 +82,7 @@ except AttributeError:
     _QSizePolicy_Fixed = QSizePolicy.Fixed
 
 # Import validated widgets for real-time validation feedback
-from .validated_widgets import ValidatedSpinBox, ValidatedDoubleSpinBox
+from .validated_widgets import ValidatedSpinBox
 
 from constants import (
     OPTUNA_N_TRIALS_DEFAULT,
@@ -524,28 +523,6 @@ def build_fast_recipe():
     return recipe
 
 
-def build_catboost_recipe():
-    # type: () -> Dict[str, object]
-    recipe = _recipe_template()
-    recipe.update(
-        {
-            "name": "CatBoost Strong Baseline (2026)",
-            "description": "High-performing tree boosting baseline with balanced class weighting.",
-            "classifier": {"code": "CB"},
-            "extraParam": dict(
-                _recipe_template()["extraParam"],
-                USE_OPTUNA=False,
-                COMPUTE_SHAP=False,
-                USE_CLASS_WEIGHTS=True,
-                CLASS_WEIGHT_STRATEGY="balanced",
-            ),
-            "validation": dict(_recipe_template()["validation"], split_percent=75, cv_mode="POLYGON_GROUP"),
-            "postprocess": {"confidence_map": True, "save_model": True, "confusion_matrix": True},
-        }
-    )
-    return recipe
-
-
 def build_best_accuracy_recipe():
     # type: () -> Dict[str, object]
     recipe = _recipe_template()
@@ -607,35 +584,6 @@ def build_explainability_recipe():
     return recipe
 
 
-def build_polygon_group_cv_recipe():
-    # type: () -> Dict[str, object]
-    recipe = _recipe_template()
-    recipe.update(
-        {
-            "name": "Polygon Group CV (No Pixel Leakage)",
-            "description": (
-                "Group-based cross-validation by polygon identifier to reduce within-polygon spatial autocorrelation bias."
-            ),
-            "classifier": {"code": "CB"},
-            "extraParam": dict(
-                _recipe_template()["extraParam"],
-                CV_MODE="POLYGON_GROUP",
-                USE_OPTUNA=True,
-                OPTUNA_TRIALS=120,
-                USE_CLASS_WEIGHTS=True,
-                CLASS_WEIGHT_STRATEGY="balanced",
-            ),
-            "validation": dict(
-                _recipe_template()["validation"],
-                cv_mode="POLYGON_GROUP",
-                split_percent=75,
-            ),
-            "postprocess": {"confidence_map": False, "save_model": True, "confusion_matrix": True},
-        }
-    )
-    return recipe
-
-
 def build_imbalanced_fast_recipe():
     # type: () -> Dict[str, object]
     recipe = _recipe_template()
@@ -657,37 +605,6 @@ def build_imbalanced_fast_recipe():
                 CLASS_WEIGHT_STRATEGY="balanced",
             ),
             "validation": dict(_recipe_template()["validation"], split_percent=70),
-            "postprocess": {"confidence_map": False, "save_model": True, "confusion_matrix": True},
-        }
-    )
-    return recipe
-
-
-def build_nested_cv_recipe():
-    # type: () -> Dict[str, object]
-    recipe = _recipe_template()
-    recipe.update(
-        {
-            "name": "Nested CV Benchmark (XGBoost)",
-            "description": "Leakage-resistant benchmark with nested CV and Optuna on XGBoost.",
-            "classifier": {"code": "XGB"},
-            "extraParam": dict(
-                _recipe_template()["extraParam"],
-                USE_OPTUNA=True,
-                OPTUNA_TRIALS=120,
-                USE_NESTED_CV=True,
-                NESTED_INNER_CV=3,
-                NESTED_OUTER_CV=5,
-                CV_MODE="POLYGON_GROUP",
-            ),
-            "validation": dict(
-                _recipe_template()["validation"],
-                nested_cv=True,
-                nested_inner_cv=3,
-                nested_outer_cv=5,
-                cv_mode="POLYGON_GROUP",
-                split_percent=75,
-            ),
             "postprocess": {"confidence_map": False, "save_model": True, "confusion_matrix": True},
         }
     )

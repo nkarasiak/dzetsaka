@@ -55,7 +55,6 @@ import contextlib
 import traceback
 
 # Use qgis.PyQt for forward compatibility with QGIS 4.0 (PyQt6)
-from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QDialog
 
 from dzetsaka.qgis.runtime_bootstrap import initialize_runtime_state
@@ -495,23 +494,6 @@ class DzetsakaGUI(QDialog):
                 context="execute_dashboard_config()",
                 exc=exc,
             )
-
-    def modifyConfig(self, section, option, value):
-        """Modify configuration file with new section/option/value.
-
-        Parameters
-        ----------
-        section : str
-            Configuration section name
-        option : str
-            Configuration option name
-        value : str
-            New value to set
-
-        """
-        from dzetsaka.qgis.runtime_utils import write_plugin_config
-
-        write_plugin_config(self.configFile, self.Config, section, option, value)
 
     def _report_unhandled_exception(
         self,

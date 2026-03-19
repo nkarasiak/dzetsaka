@@ -10,7 +10,7 @@ Author:
 
 import os
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 try:
     from osgeo import gdal
