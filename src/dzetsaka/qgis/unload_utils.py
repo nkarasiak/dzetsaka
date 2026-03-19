@@ -22,6 +22,7 @@ def unload_plugin(plugin) -> None:
         dock.hide()
         plugin.iface.removeDockWidget(dock)
         dock.setParent(None)
+        dock.deleteLater()
 
     # Disconnect toolbar action signal
     if plugin.dashboard_toolbar_action is not None:

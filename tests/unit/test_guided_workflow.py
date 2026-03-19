@@ -94,7 +94,8 @@ except Exception:
     pass
 
 pytestmark = pytest.mark.skipif(
-    not WORKFLOW_MODULE_AVAILABLE, reason="classification_workflow_ui helpers not importable",
+    not WORKFLOW_MODULE_AVAILABLE,
+    reason="classification_workflow_ui helpers not importable",
 )
 
 

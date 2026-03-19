@@ -126,7 +126,9 @@ All dzetsaka algorithms are supported:
 
         # Output importance raster
         self.addParameter(
-            QgsProcessingParameterRasterDestination(self.OUTPUT_IMPORTANCE, self.tr("Output feature importance raster")),
+            QgsProcessingParameterRasterDestination(
+                self.OUTPUT_IMPORTANCE, self.tr("Output feature importance raster"),
+            ),
         )
 
     def processAlgorithm(self, parameters, context, feedback):

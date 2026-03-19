@@ -270,7 +270,6 @@ class NestedCrossValidator:
             "inner_scores_per_fold": inner_scores_per_fold,
         }
 
-
     def _tune_with_gridsearch(
         self,
         X: np.ndarray,

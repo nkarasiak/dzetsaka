@@ -44,7 +44,9 @@ class ClassifyAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterRasterDestination(self.OUTPUT_RASTER, self.tr("Output raster"), optional=False),
         )
         self.addParameter(
-            QgsProcessingParameterRasterDestination(self.CONFIDENCE_RASTER, self.tr("Confidence raster"), optional=True),
+            QgsProcessingParameterRasterDestination(
+                self.CONFIDENCE_RASTER, self.tr("Confidence raster"), optional=True,
+            ),
         )
 
     def processAlgorithm(self, parameters, context, feedback):

@@ -191,9 +191,6 @@ class DistanceCV:
         if self.iterPos < self.maxIter:
             ROItoRemove = []
             for _iterPosition in range(self.maxIter):
-                if self.verbose:
-                    print((53 * "=" + "\n") * 4)
-
                 validation = np.array([]).astype("int")
                 train = np.array([]).astype("int")
 
@@ -209,10 +206,7 @@ class DistanceCV:
 
                     CTtemp = np.copy(CT)
 
-                    if self.verbose:
-                        print("C = " + str(C))
-                        print("len total class : " + str(len(CT)))
-                        fmt = "" if self.minTrain > 1 else ".0%"
+                    fmt = "" if self.minTrain > 1 else ".0%"
 
                     trained = np.array([]).astype("int")
                     validate = np.array([]).astype("int")
@@ -249,36 +243,6 @@ class DistanceCV:
                             validateTemp = CTtemp[distanceROI > self.distanceThresold]
                             # trainedTemp = trainedTemp[trainedTemp!=self.ROI]
 
-                        """
-                        elif self.SLOO:
-                            validateTemp = sp.array([self.ROI]) # validate ROI
-                            trainedTemp = CTtemp[(distanceROI>=self.distanceThresold)] # Train in a buffer
-                        """
-                        # trainedTemp = sp.array([self.ROI]) # train is the current ROI
-                        """
-                        if self.SLOO is True and self.maxIter != self.minEffectiveClass:
-                            #print('self.SLOO true but no LeRest')
-                            print('ici')
-                            CTtoRemove = np.concatenate((validateTemp,trainedTemp))
-
-                            # Remove ROI for further selection ROI (but keep in Y list)
-                            for i in np.nditer(CTtoRemove):
-                                CTtemp = np.delete(CTtemp,np.where(CTtemp==i)[0])
-
-                            #if self.verbose : print('len CTtemp is : '+str(len(CTtemp)))
-
-                            trained = np.concatenate((trained,trainedTemp))
-                            validate = np.concatenate((validate,validateTemp))
-
-
-                        else:
-                            trained = trainedTemp
-                            validate = validateTemp
-
-
-
-                            CTtemp = []
-                        """
                         trained = trainedTemp
                         validate = validateTemp
 
@@ -299,18 +263,9 @@ class DistanceCV:
                             if self.SLOO:  # with SLOO we keep 1 single validation ROI
                                 trained = np.random.permutation(trained)[0 : self.minTrain]
                             else:
-                                if self.verbose:
-                                    print(
-                                        "len validate before split ("
-                                        + format(self.minTrain, fmt)
-                                        + ") : "
-                                        + str(len(validate)),
-                                    )
                                 validate = CT[distanceROI <= distToCut]
 
                     elif self.onlyVaryingTrain:
-                        if self.verbose:
-                            print("only varying train size : First Time init")
                         if len(validate) > int(self.onlyVaryingTrain * len(CT)):
                             nValidateToRemove = int(len(validate) - self.onlyVaryingTrain * len(CT))
                             indToMove = np.random.permutation(trained)[:nValidateToRemove]
@@ -348,9 +303,6 @@ class DistanceCV:
                         # if train size if less than split% of whole class
                         # (i.e. 30% for exemple)
                         if (len(trained) != self.minTrain * len(CT)) or (self.SLOO and len(trained) == 0):
-                            if self.verbose:
-                                print("len trained before " + format(self.minTrain, fmt) + " : " + str(len(trained)))
-
                             # distanceROI = (self.distanceArray[int(self.ROI),:])[CT]
                             if self.furtherSplit:
                                 if len(trained) > self.minTrain * len(CT):
@@ -418,10 +370,6 @@ class DistanceCV:
                             ],
                         )
 
-                    if self.verbose:
-                        print("len validate : " + str(len(validate)))
-                        print("len trained : " + str(len(trained)))
-
                     validation = np.concatenate((validation, validate))
                     train = np.concatenate((train, trained))
                     # allDist[sp.where(y[allDist]==C)[0]]
@@ -448,13 +396,6 @@ class DistanceCV:
 
                 self.iterPos += 1
 
-                if self.verbose:
-                    print(53 * "=")
-                # Remove ROI for further selection ROI (but keep in Y list)
-                """
-                for i in ROItoRemove:
-                    self.T = sp.delete(self.T,sp.where(self.T==i)[0])
-                """
                 if self.stats and self.stats is True:
                     return validation, train, Cstats
                 return validation, train
@@ -507,23 +448,6 @@ def distMatrix(inCoords, distanceMetric=False):
         distArray = distance.cdist(inCoords, inCoords, "euclidean")
 
     return distArray
-
-
-def convertToDistanceMatrix(coords, sr=False, convertTo4326=False):
-    """Convert coordinates to distance matrix."""
-    if convertTo4326:
-        from pyproj import Proj, transform
-
-        # initProj = Proj(sr.ExportToProj4())
-        # convert points coords to 4326
-        # if vector
-        initProj = Proj(sr.ExportToProj4())
-        # http://epsg.io/4326
-        destProj = Proj("+proj=longlat +datum=WGS84 +no_defs")
-
-        coords[:, 0], coords[:, 1] = transform(initProj, destProj, coords[:, 0], coords[:, 1])
-
-    return distMatrix(coords, distanceMetric=True)
 
 
 class StandCV:
@@ -642,7 +566,6 @@ def readFieldVector(inShape, inField, inStand=False, getFeatures=False):
             FIDs[i] = j.GetField(inField)
             Features.append(j)
         if getFeatures:
-            print(i)
             getFeaturesList.append(j)
 
         # current += 1
@@ -656,40 +579,6 @@ def readFieldVector(inShape, inField, inStand=False, getFeatures=False):
     if getFeatures is True:
         return Features, srs, getFeaturesList
     return Features, srs
-
-
-def saveToShape(array, srs, outShapeFile):
-    """Save array data to shapefile format."""
-    # Parse a delimited text file of volcano data and create a shapefile
-    # use a dictionary reader so we can access by field name
-    # set up the shapefile driver
-    import ogr
-
-    outDriver = ogr.GetDriverByName("ESRI Shapefile")
-
-    # create the data source
-    if os.path.exists(outShapeFile):
-        outDriver.DeleteDataSource(outShapeFile)
-    # Remove output shapefile if it already exists
-
-    # options = ['SPATIALITE=YES'])
-    ds = outDriver.CreateDataSource(outShapeFile)
-
-    # create the spatial reference, WGS84
-
-    lyrout = ds.CreateLayer("randomSubset", srs, ogr.wkbPoint)
-    fields = [array[1].GetFieldDefnRef(i).GetName() for i in range(array[1].GetFieldCount())]
-
-    for i, f in enumerate(fields):
-        field_name = ogr.FieldDefn(f, array[1].GetFieldDefnRef(i).GetType())
-        field_name.SetWidth(array[1].GetFieldDefnRef(i).GetWidth())
-        lyrout.CreateField(field_name)
-
-    for k in array:
-        lyrout.CreateFeature(k)
-
-    # Save and close the data source
-    ds = None
 
 
 def readROIFromVector(vector, roiprefix, *args):
@@ -749,59 +638,3 @@ def readROIFromVector(vector, roiprefix, *args):
     report.error(f'ROI field "{roiprefix}" do not exists. These fields are available : ')
     report.info(listFields)
     return None
-
-
-if __name__ == "__main__":
-    in_raster = "/mnt/DATA/Sentinel-2/SITS/SITS_TCJ.tif"
-    in_field = "level3"
-    in_vector = "/mnt/DATA/Formosat_2006-2014/v2/ROI/ROI_2154.sqlite"
-
-    in_raster = "/mnt/DATA/Test/DA/SITS/SITS_2013.tif"
-    in_vector = "/mnt/DATA/Test/DA/ROI_2154.sqlite"
-    in_field = "level1"
-
-    levels = ["level1", "level2", "level3"]
-    in_stand = "spjoin_rif"
-    """
-    FIDs,STDs,srs,fts=readFieldVector(inVector,inField,inStand,getFeatures=True)
-    StandCV(FIDs,STDs)
-
-    for tr,vl in StandCV(FIDs,STDs,SLOO=True,maxIter=5):
-        print(tr,vl)
-
-    trFeat = [fts[i] for i in tr]
-    vlFeat= [fts[i] for i in vl]
-    saveToShape(trFeat,srs,'/tmp/train_{}.shp'.format(1))
-    saveToShape(vlFeat,srs,'/tmp/valid_{}.shp'.format(1))
-    """
-    """
-    inShape = '/mnt/DATA/demo/train.shp'
-    inField = 'Class'
-    number = 50
-    percent = True
-
-    outValidation = '/tmp/valid1.shp'
-    outTrain ='/tmp/train.shp'
-
-    RandomInSubset(inShape,inField,outValidation,outTrain,number,percent)
-
-    """
-
-    import tempfile
-
-    import function_dataraster
-
-    roi_path = os.path.join(tempfile.gettempdir(), "roi.tif")
-    function_dataraster.rasterize(in_raster, in_vector, in_field, roi_path)
-    X, Y, coords = function_dataraster.get_samples_from_roi(in_raster, roi_path, getCoords=True)
-
-    distance_array = distMatrix(coords)
-    raw_cv = DistanceCV(distance_array, Y, 32, minTrain=-1, SLOO=True)
-
-    # rawCV = DistanceCV(distanceArray,label,distanceThresold=distance,minTrain=minTrain,SLOO=SLOO,maxIter=maxIter,verbose=False,stats=True)
-
-    for tr, vl in raw_cv:
-        print(tr.shape)
-        print(vl.shape)
-
-    # randomInSubset('/tmp/valid.shp','level3','/tmp/processingd62a83be114a482aaa14ca317e640586/f99783a424984860ac9998b5027be604/OUTPUTVALIDATION.shp','/tmp/processingd62a83be114a482aaa14ca317e640586/1822187d819e450fa9ad9995d6757e09/OUTPUTTRAIN.shp',50,True)

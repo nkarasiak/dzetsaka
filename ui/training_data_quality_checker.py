@@ -17,7 +17,7 @@ Author:
 
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import (

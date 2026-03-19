@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 
 # import scipy as sp
-import os
-
 import numpy as np
 
 try:
@@ -57,14 +55,6 @@ def get_layer_source_path(layer):
         # or if decodeUri fails
         uri = layer.dataProvider().dataSourceUri()
         return uri.split("|")[0]
-
-
-def convertGdalDataTypeToOTB(gdalDT):
-    """Convert GDAL data type to OTB code."""
-    # availableCode = uint8/uint16/int16/uint32/int32/float/double
-    code = ["uint8", "uint16", "int16", "uint32", "int32", "float", "double"]
-
-    return code[gdalDT]
 
 
 # GDAL to NumPy datatype mapping for efficient lookup.
@@ -133,124 +123,6 @@ def open_data(filename):
     data = None
     return im, GeoTransform, Projection
 
-
-def open_data_band(filename):
-    """Open and load the image given its name.
-
-    The function open and load the image given its name.
-    The type of the data is checked from the file and the scipy array is initialized accordingly.
-        Input:
-            filename: the name of the file
-        Output:
-            data : the opened data with gdal.Open() method
-            im : empty table with right dimension (array).
-    """
-    data = gdal.Open(filename, gdal.GA_Update)
-    if data is None:
-        print("Impossible to open " + filename)
-        # exit()
-    nc = data.RasterXSize
-    nl = data.RasterYSize
-    #    d  = data.RasterCount
-
-    # Get the type of the data
-    gdal_dt = data.GetRasterBand(1).DataType
-    dt = getDTfromGDAL(gdal_dt)
-
-    # Initialize the array
-    im = np.empty((nl, nc), dtype=dt)
-    return data, im
-
-
-"""
-Old function that open all the bands
-"""
-#
-#    for i in range(d):
-#        im[:,:,i]=data.GetRasterBand(i+1).ReadAsArray()
-#
-#    GeoTransform = data.GetGeoTransform()
-#    Projection = data.GetProjection()
-#    data = None
-
-
-def write_data(outname, im, GeoTransform, Projection):
-    """Write the image to the hard drive.
-
-    Input:
-        outname: the name of the file to be written
-        im: the image cube
-        GeoTransform: the geotransform information
-        Projection: the projection information
-    Output:
-        Nothing --.
-    """
-    nl = im.shape[0]
-    nc = im.shape[1]
-    d = 1 if im.ndim == 2 else im.shape[2]
-
-    driver = gdal.GetDriverByName("GTiff")
-    dt = im.dtype.name
-    # Get the data type
-    gdal_dt = getGDALGDT(dt)
-
-    dst_ds = driver.Create(outname, nc, nl, d, gdal_dt)
-    dst_ds.SetGeoTransform(GeoTransform)
-    dst_ds.SetProjection(Projection)
-
-    if d == 1:
-        out = dst_ds.GetRasterBand(1)
-        out.WriteArray(im)
-        out.FlushCache()
-    else:
-        for i in range(d):
-            out = dst_ds.GetRasterBand(i + 1)
-            out.WriteArray(im[:, :, i])
-            out.FlushCache()
-    dst_ds = None
-
-
-def create_empty_tiff(outname, im, d, GeoTransform, Projection):
-    """!@brief Write an empty image on the hard drive.
-
-    Input:
-        outname: the name of the file to be written
-        im: the image cube
-        GeoTransform: the geotransform information
-        Projection: the projection information
-    Output:
-        Nothing --
-    """
-    nl = im.shape[0]
-    nc = im.shape[1]
-
-    driver = gdal.GetDriverByName("GTiff")
-    dt = im.dtype.name
-    # Get the data type
-    gdal_dt = getGDALGDT(dt)
-
-    dst_ds = driver.Create(outname, nc, nl, d, gdal_dt)
-    dst_ds.SetGeoTransform(GeoTransform)
-    dst_ds.SetProjection(Projection)
-
-    return dst_ds
-
-    """
-    Old function that cannot manage to write on each band outside the script
-    """
-    return None
-
-
-#    if d==1:
-#        out = dst_ds.GetRasterBand(1)
-#        out.WriteArray(im)
-#        out.FlushCache()
-#    else:
-#        for i in range(d):
-#            out = dst_ds.GetRasterBand(i+1)
-#            out.WriteArray(im[:,:,i])
-#            out.FlushCache()
-#    dst_ds = None
 
 
 def get_samples_from_roi(raster_name, roi_name, stand_name=False, getCoords=False):
@@ -347,9 +219,6 @@ def get_samples_from_roi(raster_name, roi_name, stand_name=False, getCoords=Fals
                     # coords = sp.append(coords,(i,j))
                     # coordsTp = sp.array(([[cols,lines]]))
                     # coords = sp.concatenate((coords,coordsTp))
-                    # print(t[1])
-                    # print(i)
-                    # sp.array([[t[1],i]])
                     coordsTp = np.empty((t[0].shape[0], 2))
                     coordsTp[:, 0] = t[1]
                     coordsTp[:, 1] = [i] * t[1].shape[0]
@@ -370,25 +239,6 @@ def get_samples_from_roi(raster_name, roi_name, stand_name=False, getCoords=Fals
                 except MemoryError:
                     print("Impossible to allocate memory: ROI too big")
                     exit()
-
-    """
-    # No conversion anymore as it computes pixel distance and not metrics
-    if convertTo4326:
-        import osr
-        from pyproj import Proj,transform
-        # convert points coords to 4326
-        # if vector
-        ## inShapeOp = ogr.Open(inVector)
-        ## inShapeLyr = inShapeOp.GetLayer()
-        ## initProj = Proj(inShapeLyr.GetSpatialRef().ExportToProj4()) # proj to Proj4
-
-        sr = osr.SpatialReference()
-        sr.ImportFromWkt(roi.GetProjection())
-        initProj = Proj(sr.ExportToProj4())
-        destProj = Proj("+proj=longlat +datum=WGS84 +no_defs") # http://epsg.io/4326
-
-        coords[:,0],coords[:,1] = transform(initProj,destProj,coords[:,0],coords[:,1])
-    """
 
     # Clean/Close variables
     del Xtp
@@ -420,201 +270,6 @@ _NUMPY_TO_GDAL_DTYPE = {
     "float64": gdal.GDT_Float64,
     "complex64": gdal.GDT_CFloat64,
 }
-
-
-def getDTfromGDAL(gdal_dt):
-    """Convert GDAL datatype to numpy datatype string.
-
-    Parameters
-    ----------
-    gdal_dt : int
-        GDAL datatype constant (e.g., gdal.GDT_Byte).
-
-    Returns
-    -------
-    dt : str
-        Numpy datatype string (e.g., 'uint8').
-
-    """
-    dt = _GDAL_TO_NUMPY_DTYPE.get(gdal_dt)
-    if dt is None:
-        print("Data type unknown")
-        dt = "float64"  # Fallback
-    return dt
-
-
-def getGDALGDT(dt):
-    """Convert numpy datatype string to GDAL datatype.
-
-    Parameters
-    ----------
-    dt : str
-        Numpy datatype string (e.g., 'float32', from arr.dtype.name).
-
-    Returns
-    -------
-    gdal_dt : int
-        GDAL datatype constant.
-
-    """
-    gdal_dt = _NUMPY_TO_GDAL_DTYPE.get(dt)
-    if gdal_dt is None:
-        print("Data type non-supported: " + str(dt))
-        gdal_dt = gdal.GDT_Float64  # Fallback
-    return gdal_dt
-
-
-def predict_image(raster_name, classif_name, classifier, mask_name=None):
-    """Classify the whole raster image using per block analysis.
-
-    The classifier is given in classifier and options in kwargs.
-
-    Input:
-        raster_name (str)
-        classif_name (str)
-        classifier (str)
-        mask_name(str)
-
-    Return:
-        Nothing but raster written on disk
-    Written by Mathieu Fauvel.
-
-    """
-    # Parameters
-    block_sizes = 512
-
-    # Open Raster and get additionnal information
-    raster = gdal.Open(raster_name, gdal.GA_ReadOnly)
-    if raster is None:
-        print("Impossible to open " + raster_name)
-        # exit()
-
-    # If provided, open mask
-    if mask_name is None:
-        mask = None
-    else:
-        mask = gdal.Open(mask_name, gdal.GA_ReadOnly)
-        if mask is None:
-            print("Impossible to open " + mask_name)
-            # exit()
-        # Check size
-        if (raster.RasterXSize != mask.RasterXSize) or (raster.RasterYSize != mask.RasterYSize):
-            print("Image and mask should be of the same size")
-            # exit()
-
-    # Get the size of the image
-    d = raster.RasterCount
-    nc = raster.RasterXSize
-    nl = raster.RasterYSize
-
-    # Get the geoinformation
-    GeoTransform = raster.GetGeoTransform()
-    Projection = raster.GetProjection()
-
-    # Set the block size
-    x_block_size = block_sizes
-    y_block_size = block_sizes
-
-    # Initialize the output
-    driver = gdal.GetDriverByName("GTiff")
-    dst_ds = driver.Create(classif_name, nc, nl, 1, gdal.GDT_UInt16)
-    dst_ds.SetGeoTransform(GeoTransform)
-    dst_ds.SetProjection(Projection)
-    out = dst_ds.GetRasterBand(1)
-
-    # Set the classifiers
-    if classifier["name"] == "NPFS":
-        # With GMM
-        model = classifier["model"]
-        ids = classifier["ids"]
-        nv = len(ids)
-    elif classifier["name"] == "GMM":
-        model = classifier["model"]
-
-    # Perform the classification
-    for i in range(0, nl, y_block_size):
-        lines = y_block_size if i + y_block_size < nl else nl - i  # Check for size consistency in Y
-        for j in range(0, nc, x_block_size):  # Check for size consistency in X
-            cols = x_block_size if j + x_block_size < nc else nc - j
-
-            # Do the prediction
-            if classifier["name"] == "NPFS":
-                # Load the data
-                X = np.empty((cols * lines, nv))
-                for ind, v in enumerate(ids):
-                    X[:, ind] = raster.GetRasterBand(int(v + 1)).ReadAsArray(j, i, cols, lines).reshape(cols * lines)
-
-                # Do the prediction
-                if mask is None:
-                    yp = model.predict_gmm(X)[0].astype("uint16")
-                else:
-                    mask_temp = mask.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols * lines)
-                    t = np.where(mask_temp != 0)[0]
-                    yp = np.zeros((cols * lines,))
-                    yp[t] = model.predict_gmm(X[t, :])[0].astype("uint16")
-
-            elif classifier["name"] == "GMM":
-                # Load the data
-                X = np.empty((cols * lines, d))
-                for ind in range(d):
-                    X[:, ind] = raster.GetRasterBand(int(ind + 1)).ReadAsArray(j, i, cols, lines).reshape(cols * lines)
-
-                # Do the prediction
-                if mask is None:
-                    yp = model.predict_gmm(X)[0].astype("uint16")
-                else:
-                    mask_temp = mask.GetRasterBand(1).ReadAsArray(j, i, cols, lines).reshape(cols * lines)
-                    t = np.where(mask_temp != 0)[0]
-                    yp = np.zeros((cols * lines,))
-                    yp[t] = model.predict_gmm(X[t, :])[0].astype("uint16")
-
-            # Write the data
-            out.WriteArray(yp.reshape(lines, cols), j, i)
-            out.FlushCache()
-            del X, yp
-
-    # Clean/Close variables
-    raster = None
-    dst_ds = None
-
-
-def create_uniquevalue_tiff(outname, im, d, GeoTransform, Projection, wholeValue=1, gdal_dt=False):
-    """!@brief Write an empty image on the hard drive.
-
-    Input:
-        outname: the name of the file to be written
-        im: the image cube
-        GeoTransform: the geotransform information
-        Projection: the projection information
-    Output:
-        Nothing --
-    """
-    nl = im.shape[0]
-    nc = im.shape[1]
-
-    driver = gdal.GetDriverByName("GTiff")
-    # Get the data type
-    if not gdal_dt:
-        gdal_dt = gdal.GDT_Byte
-
-    dst_ds = driver.Create(outname, nc, nl, d, gdal_dt)
-    dst_ds.SetGeoTransform(GeoTransform)
-    dst_ds.SetProjection(Projection)
-
-    if d == 1:
-        im[:] = wholeValue
-        out = dst_ds.GetRasterBand(1)
-        out.WriteArray(im)
-        out.FlushCache()
-    else:
-        for i in range(d):
-            im[:, :, i] = wholeValue
-            out = dst_ds.GetRasterBand(i + 1)
-            out.WriteArray(im[:, :, i])
-            out.FlushCache()
-    dst_ds = None
-
-    return outname
 
 
 def rasterize(data, vectorSrc, field, outFile):
@@ -685,23 +340,3 @@ def scale(x, M=None, m=None):
     if minMax:
         return xs, M, m
     return xs
-
-
-if __name__ == "__main__":
-    import tempfile
-
-    Raster = "/mnt/DATA/Test/dzetsaka/map.tif"
-    ROI = "/home/nicolas/Bureau/train_300class.gpkg"
-    roi_path = os.path.join(tempfile.gettempdir(), "roi.tif")
-    rasterize(Raster, ROI, "Class", roi_path)
-
-    #    X, Y, coords = get_samples_from_roi(Raster, roi_path, getCoords=True)
-    X, Y = get_samples_from_roi(Raster, roi_path)
-    print(np.amax(Y))
-    """
-    import accuracy_index as ai
-    print(X.shape)
-    print(Y.shape)
-    worker=ai.ConfusionMatrix()
-    worker.compute_confusion_matrix(X,Y)
-    """

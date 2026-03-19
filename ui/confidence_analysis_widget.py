@@ -18,7 +18,7 @@ Author:
 
 import csv
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 
 import numpy as np
 from qgis.PyQt.QtCore import Qt
@@ -374,8 +374,8 @@ class ConfidenceAnalysisWidget(ThemeAwareWidget, QWidget):
             # Redraw canvas
             self.ax.figure.canvas.draw()
 
-        except Exception as e:
-            print(f"Error updating histogram: {e}")
+        except Exception:
+            pass
 
     def _export_statistics(self):
         """Export confidence statistics to CSV file."""

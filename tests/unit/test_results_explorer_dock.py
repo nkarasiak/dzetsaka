@@ -2,11 +2,21 @@
 
 import pytest
 
+# Check if real QGIS environment is available (not just the stub package)
+try:
+    from qgis.PyQt.QtCore import QSettings  # noqa: F401
+    from qgis.core import QgsApplication  # noqa: F401
+
+    QGIS_AVAILABLE = True
+except (ImportError, AttributeError):
+    QGIS_AVAILABLE = False
+
+pytestmark = pytest.mark.skipif(not QGIS_AVAILABLE, reason="Full QGIS environment not available")
+
 
 @pytest.mark.qgis
 def test_results_explorer_import():
     """Test that ResultsExplorerDock can be imported."""
-    pytest.importorskip("qgis")
     from ui.results_explorer_dock import ResultsExplorerDock, open_results_explorer
 
     assert ResultsExplorerDock is not None
@@ -16,7 +26,7 @@ def test_results_explorer_import():
 @pytest.mark.qgis
 def test_build_result_data():
     """Test result data building helper."""
-    pytest.importorskip("qgis")
+
     from datetime import datetime
 
     from dzetsaka.qgis.task_launcher import _build_result_data
@@ -44,7 +54,7 @@ def test_build_result_data():
 @pytest.mark.qgis
 def test_result_data_no_optional_fields():
     """Test result data building with no optional fields."""
-    pytest.importorskip("qgis")
+
     from dzetsaka.qgis.task_launcher import _build_result_data
 
     result = _build_result_data(
@@ -67,7 +77,7 @@ def test_result_data_no_optional_fields():
 @pytest.mark.qgis
 def test_result_data_with_report_dir(tmp_path):
     """Test result data building with report directory."""
-    pytest.importorskip("qgis")
+
 
     from dzetsaka.qgis.task_launcher import _build_result_data
 
@@ -97,7 +107,7 @@ def test_result_data_with_report_dir(tmp_path):
 @pytest.mark.qgis
 def test_results_explorer_dock_creation():
     """Test creating results explorer dock with minimal data."""
-    pytest.importorskip("qgis")
+
     from ui.results_explorer_dock import ResultsExplorerDock
 
     result_data = {

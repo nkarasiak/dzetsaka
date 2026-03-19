@@ -24,7 +24,6 @@ def initialize_runtime_state(gui, iface) -> None:
     gui.provider = DzetsakaProvider()
     gui.plugin_dir = str(Path(__file__).resolve().parents[4])
     gui.plugin_version = gui._read_plugin_version()
-    gui.settings.value("/dzetsaka/onboardingShownVersion", "", str) or ""
     gui._auto_open_dashboard_on_init = True
 
     gui.actions = []
@@ -32,4 +31,3 @@ def initialize_runtime_state(gui, iface) -> None:
     gui.pluginIsActive = False
     gui.dashboard_dock = None
     gui._active_classification_task = None
-    gui.lastSaveDir = ""
