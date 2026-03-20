@@ -1870,6 +1870,20 @@ class LearnModel:
             _report(report, f"Problem during train/test split: {e}")
             raise
 
+        # When a separate test vector was provided, scale its data with
+        # the same M/m used for the training set and expose it as xt/yt
+        # so the accuracy-assessment block (line ~2599) can use them.
+        if vector_test_path and hasattr(self, "_test_data"):
+            Xt_raw, yt = self._test_data
+            if np.float64 != Xt_raw.dtype.type:
+                Xt_raw = Xt_raw.astype("float")
+            den = M - m
+            den_safe = np.where(den != 0, den, 1.0)
+            xt = 2.0 * (Xt_raw - m) / den_safe - 1.0
+            zero_range_mask = den == 0
+            if np.any(zero_range_mask):
+                xt[:, zero_range_mask] = Xt_raw[:, zero_range_mask]
+
         _report(report, int(2 * total))
         if feedback == "gui":
             progress.prgBar.setValue(20)

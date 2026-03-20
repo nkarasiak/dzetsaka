@@ -10,9 +10,8 @@
 name=dzetsaka : AI-Powered Remote Sensing Classification
 qgisMinimumVersion=3.0
 qgisMaximumVersion=4.99
-supportsQt6=True
 description=Next-generation AI for Earth Observation in QGIS with 11 ML algorithms, major runtime optimizations, advanced UX workflows, recipe-driven configuration, and rich report generation.
-version=5.0.9
+version=5.0.10
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -43,6 +42,9 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+    5.0.10
+      * FIX: Fix UnboundLocalError on 'xt' with separate validation vector (issue #52)
+      * TEST: Add regression tests for vector_test_path code path
     5.0.9
       * FIX: Fix split rounding crash with odd sample counts and hardcoded shapefile driver
       * FIX: Fix training failures from undefined SVM variable and missing relative import
