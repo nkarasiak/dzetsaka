@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.10] - 2026-03-20
+
+### Fixed
+- Fix `UnboundLocalError: cannot access local variable 'xt'` when using a separate validation vector with any classifier (issue #52)
+
+### Added
+- Regression tests for `vector_test_path` code path (GMM and sklearn classifiers)
+
 ## [5.0.9] - 2026-03-19
 
 ### Fixed
