@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.11] - 2026-04-01
+
+### Fixed
+- Fix confusion matrix CSV transposed relative to HTML report — legacy `ConfusionMatrix` class now follows sklearn convention (rows=reference, columns=predicted) (issue #53)
+
+### Changed
+- Convert `[project.optional-dependencies]` to PEP 735 `[dependency-groups]` with `include-group` references
+
 ## [5.0.10] - 2026-03-20
 
 ### Fixed
