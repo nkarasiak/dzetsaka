@@ -57,53 +57,43 @@ dependencies = [
     "numba>=0.55.2",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 # Core machine learning algorithms (scikit-learn based)
 sklearn = [
     "scikit-learn>=1.0.0",
     "joblib>=1.0.0",
 ]
-
 # Advanced gradient boosting algorithms
 advanced = [
     "xgboost>=1.5.0",
     "catboost>=1.2.0",
 ]
-
 # Hyperparameter optimization (Optuna)
 optuna = [
     "optuna>=3.0.0",
 ]
-
 # Model explainability (SHAP)
 explainability = [
     "shap>=0.41.0",
 ]
-
 # Class imbalance handling
 imbalanced = [
     "imbalanced-learn>=0.10.0",
 ]
-
 # Visualization for metrics
 visualization = [
     "matplotlib>=3.5.0",
     "seaborn>=0.11.0",
 ]
-
 # Full feature set (all algorithms + optimization + explainability + imbalance)
 full = [
-    "scikit-learn>=1.0.0",
-    "joblib>=1.0.0",
-    "xgboost>=1.5.0",
-    "catboost>=1.2.0",
-    "optuna>=3.0.0",
-    "shap>=0.41.0",
-    "imbalanced-learn>=0.10.0",
-    "matplotlib>=3.5.0",
-    "seaborn>=0.11.0",
+    {include-group = "sklearn"},
+    {include-group = "advanced"},
+    {include-group = "optuna"},
+    {include-group = "explainability"},
+    {include-group = "imbalanced"},
+    {include-group = "visualization"},
 ]
-
 # Development dependencies
 dev = [
     "ruff>=0.1.0",
@@ -115,22 +105,19 @@ dev = [
     "sphinx>=5.0.0",
     "sphinx-rtd-theme>=1.2.0",
 ]
-
 # Testing dependencies
 test = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
 ]
-
-# Documentation dependencies  
+# Documentation dependencies
 docs = [
     "sphinx>=5.0.0",
     "sphinx-rtd-theme>=1.2.0",
     "myst-parser>=2.0.0",
     "sphinx-autodoc-typehints>=1.20.0",
 ]
-
 # Geospatial helpers (GeoParquet assets)
 geo = [
     "pyarrow>=11.0.0",

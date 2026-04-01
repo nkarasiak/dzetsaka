@@ -12,3 +12,4 @@ htmlcov/
 # Type/check/lint caches
 .mypy_cache/
 .ruff_cache/
+catboost_info/
