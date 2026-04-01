@@ -69,6 +69,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ github.event.release.tag_name || inputs.tag || github.ref_name }}"
+          # Create the release if it doesn't exist yet (tag-push triggers
+          # don't automatically create a GitHub Release).
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --title "$TAG" --generate-notes
           gh release upload "$TAG" \
             "dzetsaka_${{ steps.version.outputs.version }}.zip" \
             --clobber

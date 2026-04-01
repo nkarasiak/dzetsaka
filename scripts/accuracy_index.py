@@ -60,7 +60,7 @@ class ConfusionMatrix:
         Notes
         -----
         This method assumes class labels start from 1 (not 0). The confusion matrix
-        rows represent predicted classes and columns represent reference classes.
+        rows represent reference (true) classes and columns represent predicted classes.
 
         The method computes:
         - Confusion matrix
@@ -76,7 +76,7 @@ class ConfusionMatrix:
 
         # Compute confusion matrix
         for i in range(n):
-            self.confusion_matrix[yp[i].astype(int) - 1, yr[i].astype(int) - 1] += 1
+            self.confusion_matrix[yr[i].astype(int) - 1, yp[i].astype(int) - 1] += 1
 
         # Compute overall accuracy
         self.OA = np.sum(np.diag(self.confusion_matrix)) / n
