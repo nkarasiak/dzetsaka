@@ -26,6 +26,7 @@ from dzetsaka.logging import (
     Logger,
     _format_message,
     build_issue_template,
+    record_log_entry,
     register_error_handler,
     register_issue_popup_handler,
     register_logger_factory,
@@ -39,6 +40,7 @@ class QgisLogger(Logger):
     tag: str = DEFAULT_LOG_TAG
 
     def _log(self, level: int | None, message: Any) -> None:
+        record_log_entry(self.tag, level, message)
         text = _format_message(message)
         if QgsMessageLog is None:
             return

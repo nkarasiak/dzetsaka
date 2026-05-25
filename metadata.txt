@@ -10,8 +10,8 @@
 name=dzetsaka : AI-Powered Remote Sensing Classification
 qgisMinimumVersion=3.0
 qgisMaximumVersion=4.99
-description=Next-generation AI for Earth Observation in QGIS with 11 ML algorithms, major runtime optimizations, advanced UX workflows, recipe-driven configuration, and rich report generation.
-version=5.0.11
+description=Next-generation AI for Earth Observation in QGIS with 12 ML algorithms, major runtime optimizations, advanced UX workflows, recipe-driven configuration, and rich report generation.
+version=5.1.0
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -42,6 +42,10 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+    5.1.0
+      * PERF: Dynamic block size uses available system RAM (up to 4 GB) instead of hardcoded 512 MB limit
+      * FIX: QgisLogger now feeds QGIS log messages into issue-report buffer (logs were missing from bug reports)
+      * UX: Success dialog after classification shows output filename, confidence map, and elapsed duration
     5.0.11
       * FIX: Fix confusion matrix CSV transposed relative to HTML report (issue #53)
       * REFACTOR: Convert optional-dependencies to PEP 735 dependency-groups

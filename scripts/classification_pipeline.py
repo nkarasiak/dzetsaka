@@ -423,6 +423,46 @@ CLASSIFIER_CONFIGS = {
     },
 }
 
+def _get_available_memory_mb() -> int:
+    """Return a safe fraction of available system RAM for block sizing (capped at 4096 MB)."""
+    try:
+        import psutil
+        available_mb = psutil.virtual_memory().available // (1024 * 1024)
+        return min(int(available_mb * 0.25), 4096)
+    except Exception:
+        pass
+    try:
+        import ctypes
+        import platform
+        if platform.system() == "Windows":
+            class _MEMSTATUS(ctypes.Structure):
+                _fields_ = [
+                    ("dwLength", ctypes.c_ulong),
+                    ("dwMemoryLoad", ctypes.c_ulong),
+                    ("ullTotalPhys", ctypes.c_ulonglong),
+                    ("ullAvailPhys", ctypes.c_ulonglong),
+                    ("ullTotalPageFile", ctypes.c_ulonglong),
+                    ("ullAvailPageFile", ctypes.c_ulonglong),
+                    ("ullTotalVirtual", ctypes.c_ulonglong),
+                    ("ullAvailVirtual", ctypes.c_ulonglong),
+                    ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+                ]
+            stat = _MEMSTATUS()
+            stat.dwLength = ctypes.sizeof(stat)
+            ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat))
+            available_mb = stat.ullAvailPhys // (1024 * 1024)
+            return min(int(available_mb * 0.25), 4096)
+        else:
+            with open("/proc/meminfo") as fh:
+                for line in fh:
+                    if line.startswith("MemAvailable:"):
+                        available_kb = int(line.split()[1])
+                        return min(int(available_kb // 1024 * 0.25), 4096)
+    except Exception:
+        pass
+    return 2048
+
+
 MAX_MEMORY_MB = MEMORY_LIMIT_MB
 MIN_CROSS_VALIDATION_SPLITS = 2
 LOG_TAG = "Dzetsaka"
@@ -3755,7 +3795,7 @@ class ClassifyImage:
         # Memory optimization for large multi-band images
         if num_bands > 3:
             pixel_size_bytes = 8 * num_bands  # Assume 8 bytes per pixel per band
-            max_pixels_per_block = (MAX_MEMORY_MB * 1024 * 1024) // pixel_size_bytes
+            max_pixels_per_block = (_get_available_memory_mb() * 1024 * 1024) // pixel_size_bytes
 
             current_block_pixels = x_block_size * y_block_size
             if current_block_pixels > max_pixels_per_block:

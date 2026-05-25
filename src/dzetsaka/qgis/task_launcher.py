@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
 from qgis.core import QgsApplication, QgsTask
 from qgis.PyQt.QtWidgets import QMessageBox
@@ -88,11 +89,32 @@ def start_classification_task(
 
         plugin.log.info(f"[{success_prefix}] Classification completed successfully")
 
+        duration_str = ""
+        try:
+            elapsed = datetime.now() - task._start_time
+            secs = int(elapsed.total_seconds())
+            duration_str = f"{secs // 60}m {secs % 60}s"
+        except Exception:
+            pass
+
         def _add_layers():
             plugin.iface.addRasterLayer(out_raster)
             if out_confidence:
                 plugin.iface.addRasterLayer(out_confidence)
             plugin._active_classification_task = None
+
+            lines = [f"Output: {Path(out_raster).name}"]
+            if out_confidence:
+                lines.append(f"Confidence map: {Path(out_confidence).name}")
+            if duration_str:
+                lines.append(f"Duration: {duration_str}")
+
+            QMessageBox.information(
+                plugin.iface.mainWindow(),
+                "Classification Complete",
+                "\n".join(lines),
+                QMessageBox.StandardButton.Ok,
+            )
 
         QTimer.singleShot(0, _add_layers)
 
