@@ -13,9 +13,6 @@ DEFAULT_OUTPUT = "dzetsaka.zip"
 PLUGIN_DIR_NAME = "dzetsaka"
 
 INCLUDED_TOP_LEVEL_DIRS = {
-    "config",
-    "domain",
-    "factories",
     "img",
     "scripts",
     "services",
@@ -25,9 +22,6 @@ INCLUDED_TOP_LEVEL_DIRS = {
 
 INCLUDED_TOP_LEVEL_FILES = {
     "__init__.py",
-    "classifier_config.py",
-    "config.txt",
-    "constants.py",
     "dzetsaka.py",
     "dzetsaka_provider.py",
     "icon.png",
@@ -61,15 +55,31 @@ EXCLUDED_FILE_PATTERNS = [
     "*.pyo",
     ".coverage",
     ".pre-commit-config.yaml",
+    "conftest.py",
     "coverage.*",
     "Makefile",
     "pyproject.toml",
-    "zip_file.py",
 ]
 
 EXCLUDED_PATH_PATTERNS = [
     "*.egg-info/*",
 ]
+
+
+def _version_from_metadata(metadata_file: Path) -> str | None:
+    if not metadata_file.exists():
+        return None
+    content = metadata_file.read_text(encoding="utf-8")
+    match = re.search(r"^version=(.+)$", content, flags=re.MULTILINE)
+    return match.group(1).strip() if match else None
+
+
+def _validate_resources(repo_root: Path) -> tuple[bool, str]:
+    if not (repo_root / "resources.qrc").exists():
+        return False, "Error: resources.qrc not found"
+    if not (repo_root / "resources.py").exists():
+        return False, "Error: resources.py not found. Compile resources.qrc before packaging."
+    return True, ""
 
 
 def _resource_image_paths(repo_root: Path) -> set[str]:
@@ -146,11 +156,36 @@ def build_plugin_zip(repo_root: Path, output_zip: Path) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build dzetsaka plugin zip")
-    parser.add_argument("--output", default=DEFAULT_OUTPUT, help="Output zip path (default: dzetsaka.zip)")
+    parser.add_argument(
+        "--output",
+        help="Output zip path (default: dzetsaka.zip, or dzetsaka_<version>.zip with --versioned)",
+    )
+    parser.add_argument(
+        "--versioned",
+        action="store_true",
+        help="Name the zip after the version in metadata.txt",
+    )
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[1]
-    output_zip = (repo_root / args.output).resolve()
+
+    ok, message = _validate_resources(repo_root)
+    if not ok:
+        print(message)
+        return 1
+
+    if args.output:
+        output_name = args.output
+    elif args.versioned:
+        version = _version_from_metadata(repo_root / "metadata.txt")
+        if not version:
+            print("Error: could not determine version from metadata.txt")
+            return 1
+        output_name = f"dzetsaka_{version}.zip"
+    else:
+        output_name = DEFAULT_OUTPUT
+
+    output_zip = (repo_root / output_name).resolve()
     count = build_plugin_zip(repo_root=repo_root, output_zip=output_zip)
     print(f"Created {output_zip} with {count} files")
     return 0

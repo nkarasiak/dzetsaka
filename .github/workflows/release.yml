@@ -62,7 +62,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build plugin zip
-        run: python zip_file.py --output dzetsaka_${{ steps.version.outputs.version }}.zip --skip-resource-check
+        run: python tools/build_plugin.py --output dzetsaka_${{ steps.version.outputs.version }}.zip
 
       - name: Upload zip to release
         env:

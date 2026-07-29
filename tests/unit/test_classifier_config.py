@@ -5,7 +5,7 @@ Tests classifier codes, name mappings, dependency lookups, and validation functi
 
 import pytest
 
-from classifier_config import (
+from dzetsaka.classifier_config import (
     CATBOOST_DEPENDENT,
     CLASSIFIER_CODES,
     CLASSIFIER_NAMES,

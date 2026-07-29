@@ -3,6 +3,16 @@ __pycache__/
 **/__pycache__/
 *.py[cod]
 
+# Virtual environments
+.venv/
+venv/
+
+# Build and packaging artifacts
+build/
+dist/
+*.egg-info/
+dzetsaka*.zip
+
 # Test and coverage artifacts
 .pytest_cache/
 .coverage
@@ -13,3 +23,8 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 catboost_info/
+
+# Tooling and IDE local state
+.spyproject/
+.serena/
+logs/

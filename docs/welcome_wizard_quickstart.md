@@ -240,5 +240,5 @@ python -c "from qgis.PyQt.QtCore import QSettings; \
 
 * Tests: `tests/unit/test_welcome_wizard.py`
 
-* Summary: `WELCOME_WIZARD_SUMMARY.md`
+* Summary: `docs/WELCOME_WIZARD_SUMMARY.md`
 

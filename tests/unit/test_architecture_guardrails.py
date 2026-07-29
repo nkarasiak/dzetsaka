@@ -109,14 +109,15 @@ def test_removed_experimental_processing_modules_stay_deleted() -> None:
 
 
 def test_packaging_flow_is_canonicalized() -> None:
-    """Packaging should be driven by tools/build_plugin.py with root zip script as compatibility only."""
+    """Packaging must be driven solely by tools/build_plugin.py."""
     build_script = REPO_ROOT / "tools" / "build_plugin.py"
     makefile = REPO_ROOT / "Makefile"
-    zip_wrapper = REPO_ROOT / "zip_file.py"
 
     assert build_script.exists(), "Missing canonical packaging script tools/build_plugin.py"
+    assert not (REPO_ROOT / "zip_file.py").exists(), "Legacy root packaging wrapper should stay deleted"
+
     makefile_text = makefile.read_text(encoding="utf-8")
     assert "python tools/build_plugin.py --output dzetsaka.zip" in makefile_text
 
-    wrapper_text = zip_wrapper.read_text(encoding="utf-8")
-    assert "from tools.build_plugin import build_plugin_zip" in wrapper_text
+    workflow_text = (REPO_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    assert "python tools/build_plugin.py" in workflow_text

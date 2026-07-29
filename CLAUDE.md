@@ -206,7 +206,7 @@ Each algorithm has a classifier code:
 - `5`: XGB, `7`: CB
 - `8`: ET, `9`: GBC, `10`: LR, `11`: NB, `12`: MLP
 
-Check `classifier_config.py` for capability matrix (which algorithms need which dependencies).
+Check `src/dzetsaka/classifier_config.py` for capability matrix (which algorithms need which dependencies).
 
 ## Testing Strategy
 
@@ -238,7 +238,7 @@ pytest tests/unit/test_recipe_schema_v2.py::test_v1_migration  # Single test
 ## Common Patterns
 
 ### Adding a New Algorithm
-1. Add entry to `classifier_config.py::CLASSIFIER_NAMES` and dependency checks
+1. Add entry to `src/dzetsaka/classifier_config.py::CLASSIFIER_NAMES` and dependency checks
 2. Add to `scripts/classification_pipeline.py::LearnModel()` train logic
 3. Update `_CLASSIFIER_META` in `ui/classification_workflow_ui.py`
 4. Add dependency to `dependency_catalog.py::FULL_DEPENDENCY_BUNDLE`
@@ -265,7 +265,7 @@ pytest tests/unit/test_recipe_schema_v2.py::test_v1_migration  # Single test
 - **Dashboard UI**: `ui/classification_workflow_ui.py`
 - **Dependency installer**: `src/dzetsaka/presentation/qgis/dependency_installer.py`
 - **Recipe schema**: `src/dzetsaka/domain/value_objects/recipe_schema_v2.py`
-- **Config**: `pyproject.toml`, `classifier_config.py`
+- **Config**: `pyproject.toml`, `src/dzetsaka/classifier_config.py`, `src/dzetsaka/constants.py`
 
 ## QGIS Best Practices Compliance
 
@@ -295,6 +295,6 @@ pytest tests/unit/test_recipe_schema_v2.py::test_v1_migration  # Single test
 
 ## Current Development Focus
 
-See `PLAN.md` for the active roadmap. Current phase: implementing recipe schema v2, trust artifacts, and local recommendation system for reproducible, shareable classification workflows.
+See `docs/PLAN.md` for the active roadmap. Current phase: implementing recipe schema v2, trust artifacts, and local recommendation system for reproducible, shareable classification workflows.
 
 

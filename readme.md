@@ -1,177 +1,135 @@
-# dzetsaka : classification tool
-[![DOI](https://zenodo.org/badge/59029116.svg)](https://zenodo.org/badge/latestdoi/59029116)
+# dzetsaka: classification tool
 
-![Inselberg in Guiana Amazonian Park](https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/guyane.jpg)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3463523.svg)](https://doi.org/10.5281/zenodo.3463523)
 
-dzetsaka <img src="https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/icon.png" alt="dzetsaka logo" width="30px"/> is very fast and easy to use but also a **powerful classification plugin for Qgis**. Initially based on Gaussian Mixture Model classifier developed by [Mathieu Fauvel](http://fauvel.mathieu.free.fr), this plugin now supports **11 machine learning algorithms** including advanced gradient boosting methods like XGBoost and CatBoost. This plugin is a more generalist tool than [Historical Map](https://github.com/lennepkade/HistoricalMap) which was dedicated to classify forests from old maps.
-This plugin has by developped by [Nicolas Karasiak](https://github.com/nkarasiak/dzetsaka).
-Somewhere between writing too much Python and caring about every sentient being on the map, I built dzetsaka, a QGIS plugin that puts machine learning classification one click away from your raster.
-## 🚀 What's New In 5.0.0 (Awesome Milestone)
+![Inselberg in Guiana Amazonian Park](https://raw.githubusercontent.com/nkarasiak/dzetsaka/main/img/guyane.jpg)
 
-Version **5.0.0** is a major leap in capability and usability:
+dzetsaka <img src="https://raw.githubusercontent.com/nkarasiak/dzetsaka/main/img/icon.png" alt="dzetsaka logo" width="30px"/> is a raster classification plugin for QGIS. It started around the Gaussian Mixture Model classifier written by [Mathieu Fauvel](http://fauvel.mathieu.free.fr) and now ships 11 machine learning algorithms, hyperparameter search, SHAP explanations, and class imbalance handling. It is maintained by [Nicolas Karasiak](https://github.com/nkarasiak/dzetsaka).
 
-- **11 production-ready ML algorithms** from classic baselines to modern boosting methods.
-- **Major optimization upgrades** for faster training/inference and improved runtime behavior.
-- **Advanced optimization workflows** with Optuna-based hyperparameter search.
-- **Explainable AI support** with SHAP-based feature importance.
-- **Imbalance-aware validation stack** with SMOTE, class weights, and nested CV.
-- **Much better UI/UX** with guided wizard workflows, compact dashboard modes, and smart defaults.
-- **Recipe-driven workflows** for quick, reusable, and shareable configuration patterns.
-- **Richer reporting outputs** for clearer, reproducible, and more actionable classification results.
+If you only need to classify forests on old maps, [Historical Map](https://github.com/lennepkade/HistoricalMap) is the narrower tool for that job.
 
-In short: faster, smarter, cleaner, and much more productive end-to-end.
+See [CHANGELOG.md](CHANGELOG.md) for release history.
 
-## QGIS vs core runtime
+## What you need
 
-The QGIS plugin UI now lives under `src/dzetsaka/qgis`, and everything that previously imported from `dzetsaka.presentation.qgis` is rerouted through a tiny shim (`src/dzetsaka/presentation/qgis/__init__.py`). The heavy ML logic (classification, training, SHAP, Optuna, SMOTE) is part of the shared `dzetsaka` package and can run without QGIS, which opens the door to CLI or batch usage. See `docs/runtime_split.md` for the high-level architecture and to understand how imports resolve.
+Two inputs are enough:
+
+- a **raster**
+- a **shapefile** holding your ROI (Region Of Interest)
+
+The shapefile needs a column with class numbers (1, 3, 4...). Text labels will not work.
+
+Most algorithms need scikit-learn. GMM runs without it. You can [download samples](https://github.com/lennepkade/dzetsaka/archive/docs.zip) to try the plugin on real data.
+
+## Supported algorithms
+
+Available without extra packages beyond scikit-learn:
+
+- Gaussian Mixture Model (GMM), the fastest baseline and the only one with no scikit-learn requirement
+- Random Forest (RF)
+- Support Vector Machine (SVM)
+- K-Nearest Neighbors (KNN)
+- Extra Trees (ET)
+- Gradient Boosting Classifier (GBC)
+- Logistic Regression (LR)
+- Naive Bayes (NB)
+- Multi-layer Perceptron (MLP)
+
+Available once their own library is installed:
+
+- XGBoost (XGB)
+- CatBoost (CB)
+
+### Automatic dependency installation
+
+When you pick an algorithm whose packages are missing, dzetsaka detects it, offers to install them, and runs pip in the background while printing progress to the QGIS log. This covers scikit-learn, XGBoost, and CatBoost, so in most cases you never have to open a terminal.
+
+## Installing dependencies by hand
+
+### Linux
+
+```
+python3 -m pip install scikit-learn -U --user
+```
+
+### macOS
+
+From the QGIS Python console (Plugins > Python Console):
+
+```
+import subprocess; subprocess.check_call(["/Applications/QGIS.app/Contents/MacOS/bin/pip3", "install", "scikit-learn", "--user"])
+```
+
+Or from a terminal, if you have a system Python 3:
+
+```
+python3 -m pip install scikit-learn -U --user
+```
+
+Some macOS setups also need joblib installed separately (`python3 -m pip install joblib -U --user`). Restart QGIS afterwards so the libraries are picked up.
+
+### Windows
+
+Open the OSGeo4W shell, then run `o4w_env` (QGIS 3.20 and above) or `py3_env.bat` (QGIS 3.18 and below), followed by:
+
+```
+python3 -m pip install scikit-learn -U --user
+```
+
+Thanks to Alexander Bruy for the tip.
+
+For QGIS 2, install PIP through the OSGeo4W setup (Advanced install), open the OSGeo4W Shell as administrator, and run `pip install scikit-learn`.
+
+## Hyperparameter tuning
+
+dzetsaka tunes parameters with cross-validated grid search:
+
+- RF: 5-fold CV over n_estimators and max_features
+- SVM: 3-fold CV over gamma (0.25 to 4.0) and C (0.1 to 100)
+- KNN: 3-fold CV over n_neighbors (1 to 17)
+- XGB: 3-fold CV over n_estimators (50 to 200), max_depth (3 to 9), learning_rate (0.01 to 0.2)
+- CB: 3-fold CV over iterations, depth, learning_rate, l2_leaf_reg
+- ET: 3-fold CV over n_estimators and max_features
+- GBC: 3-fold CV over n_estimators and max_depth
+- LR: 3-fold CV over C and penalty
+- MLP: 3-fold CV over hidden_layer_sizes and learning_rate
+- GMM and NB are not tuned
+
+Optuna-based search is available for larger parameter spaces. If you want to define your own grid, use the parameter grid field in the processing interface.
+
+### Sparse class labels
+
+Classes do not have to be contiguous. If your labels are 0, 1, 3 with no 2, the scikit-learn algorithms handle it directly, and XGBoost and CatBoost get their labels encoded and decoded around training so you do not have to renumber anything.
+
+## QGIS UI and core runtime
+
+The QGIS plugin UI lives under `src/dzetsaka/qgis`. Anything that used to import from `dzetsaka.presentation.qgis` goes through a small shim at `src/dzetsaka/presentation/qgis/__init__.py`. The ML code (classification, training, SHAP, Optuna, SMOTE) sits in the shared `dzetsaka` package and runs without QGIS, which is what makes CLI and batch use possible. `docs/runtime_split.md` explains how the imports resolve.
 
 ## CLI usage
 
-Install dzetsaka with `pip install -e .` (or build/distribute the wheel) and call the CLI commands:
+Install with `pip install -e .` (or build a wheel), then:
 
 ```
 dzetsaka classify --raster input.tif --model model.pkl --output classification.tif
 dzetsaka train --raster train.tif --vector train.shp --model model.pkl
 ```
 
-Both commands accept the same `--nodata`, `--confidence`, `--classifier`, and `--matrix-path` arguments that the QGIS UI exposes and print progress feedback to stdout. Supply JSON for `--extra` or point to a file with `@extras.json` to activate SHAP explainability, Optuna, SMOTE, or any other advanced flag recognized by `scripts/classification_pipeline.py`.
-
-You can [download samples](https://github.com/lennepkade/dzetsaka/archive/docs.zip) to test the plugin on your own.
-
-## What does dzetsaka mean ?
-As this tool was developped during my work in the Guiana Amazonian Park to classify different kind of vegetation, I gave an Teko name (a native-american language from a nation which lives in french Guiana) which represent the objects we use to see the world through, such as satellites, microscope, camera... 
-
-## Discover dzetsaka
-`dzetsaka : Classification tool` runs with scipy library. You can download package like [Spider by Anaconda](https://docs.continuum.io/anaconda/) for a very easy setup. 
-
-Then, as this plugin is very simple, you will just need two things for making a good classification : 
-- A **raster**
-- A **shapefile** which contains your **ROI** (Region Of Interest)
-
-The shapefile must have a column which contains your classification numbers *(1,3,4...)*. Otherwise if you use text or anything else it certainly won't work.
-
-## 🎯 Supported Algorithms
-
-dzetsaka now supports **11 powerful machine learning algorithms**:
-
-### **Core Algorithms** (built-in)
-- **Gaussian Mixture Model (GMM)** - Fast baseline classifier
-- **Random Forest (RF)** - Robust ensemble method
-- **Support Vector Machine (SVM)** - High-accuracy classifier
-- **K-Nearest Neighbors (KNN)** - Simple distance-based classifier
-
-### **Advanced Algorithms**
-- **XGBoost (XGB)** - State-of-the-art gradient boosting
-- **CatBoost (CB)** - Gradient boosting with strong defaults
-- **Extra Trees (ET)** - Extremely randomized trees
-- **Gradient Boosting Classifier (GBC)** - Scikit-learn gradient boosting
-- **Logistic Regression (LR)** - Linear probabilistic classifier
-- **Naive Bayes (NB)** - Fast probabilistic classifier
-- **Multi-layer Perceptron (MLP)** - Neural network classifier
-
-### **🚀 Automatic Dependency Installation**
-
-dzetsaka can automatically install missing dependencies when possible.
-
-When you select an algorithm that requires additional packages (XGBoost, CatBoost), dzetsaka will:
-1. **Detect missing dependencies** automatically
-2. **Offer to install them** with one click
-3. **Handle the installation process** in the background
-4. **Provide real-time progress** in the QGIS log
-
-**Supported auto-installation**:
-- ✅ scikit-learn (for RF, SVM, KNN, ET, GBC, LR, NB, MLP)
-- ✅ XGBoost (for XGB classifier)
-- ✅ CatBoost (for CB classifier)
-
-**No more manual pip commands!** Just select your algorithm and let dzetsaka handle the rest.
-
-## Manual Installation (if needed)
-
-### On Linux
-Simply open terminal and type: 
-`python3 -m pip install scikit-learn -U --user`
-
-### On macOS
-**Method 1 - Using QGIS Python console (Recommended):**
-1. Open QGIS
-2. Go to Plugins → Python Console
-3. Type: `import subprocess; subprocess.check_call(["/Applications/QGIS.app/Contents/MacOS/bin/pip3", "install", "scikit-learn", "--user"])`
-
-**Method 2 - Using Terminal:**
-If you have Python 3 installed globally:
-`python3 -m pip install scikit-learn -U --user`
-
-**Note:** On some macOS systems, you may also need to install joblib separately:
-`python3 -m pip install joblib -U --user`
-
-After installation, restart QGIS to ensure the libraries are properly loaded.
-
-### On Windows
-**For QGIS 3.20 and higher:** 
-Open OsGeo shell, then :
-
-`o4w_env`
-
-`python3 -m pip install scikit-learn -U --user`
-
-**For Qgis 3.18 and lower**: 
-Open OsGeo shell, then :
-
-`py3_env.bat`
-
-`python3 -m pip install scikit-learn -U --user`
-
-Thanks to Alexander Bruy for the tip.
-
-**For Qgis 2**:
-In the OsGeo setup, search for PIP and install it. Then you have few more steps to do. In the explorer, search for OsGeo4W Shell, right click to open it as an administrator. Now use pip in OsGeo Shell like on Linux. Just type :<br/>
-`pip install scikit-learn`
-
-If you do not have pip installed, open osgeo4w-setup-x86_64.exe, select Advanced install and install *pip*.
-
-
-You can now use **all 11 machine learning algorithms** including XGBoost and CatBoost!
-
-## 🔧 Algorithm Parameters & Performance
-
-### **Hyperparameter Optimization**
-dzetsaka automatically optimizes algorithm parameters using **cross-validation grid search**:
-
-**Core Algorithms:**
-- **Random Forest (RF)**: 5-fold CV, optimizes n_estimators and max_features
-- **SVM**: 3-fold CV, optimizes gamma (0.25-4.0) and C (0.1-100)
-- **KNN**: 3-fold CV, optimizes n_neighbors (1-17)
-- **GMM**: No tuning (fastest baseline)
-
-**Advanced Algorithms** ⭐:
-- **XGBoost (XGB)**: 3-fold CV, optimizes n_estimators (50-200), max_depth (3-9), learning_rate (0.01-0.2)
-- **CatBoost (CB)**: 3-fold CV, optimizes iterations, depth, learning_rate, l2_leaf_reg
-- **Extra Trees (ET)**: 3-fold CV, optimizes n_estimators and max_features
-- **Gradient Boosting (GBC)**: 3-fold CV, optimizes n_estimators and max_depth
-- **Logistic Regression (LR)**: 3-fold CV, optimizes C and penalty
-- **Naive Bayes (NB)**: Uses optimal default parameters
-- **MLP**: 3-fold CV, optimizes hidden_layer_sizes and learning_rate
-
-### **🎯 Label Handling**
-dzetsaka automatically handles **sparse class labels** (e.g., classes 0, 1, 3 - missing class 2):
-- **Core algorithms**: Work natively with sparse labels
-- **XGBoost/CatBoost**: Automatic label encoding/decoding for compatibility
-- **Seamless workflow**: No manual preprocessing required
-
-### Custom Parameters
-Advanced users can provide custom parameters through the processing interface using the parameter grid functionality.
+Both commands take the same `--nodata`, `--confidence`, `--classifier`, and `--matrix-path` arguments as the QGIS UI, and print progress to stdout. Pass JSON to `--extra`, or point at a file with `@extras.json`, to switch on SHAP, Optuna, SMOTE, or any other flag that `scripts/classification_pipeline.py` recognizes.
 
 ## Tips
 
-- If your raster is *spot6scene.tif*, you can create your mask under the name *spot6scene_mask.tif* and the script will detect it automatically.
-- If you want to keep your spectral ROI model from an image, you can save your model to use it on another image.
+- If your raster is *spot6scene.tif*, name your mask *spot6scene_mask.tif* and the script will find it on its own.
+- Save your model if you want to reuse a spectral ROI on another image.
 
-Online dev documentation is available throught the [doxygen branch](https://rawgit.com/lennepkade/dzetsaka/doxygen/index.html).
+Development documentation is generated on the [doxygen branch](https://rawgit.com/lennepkade/dzetsaka/doxygen/index.html).
 
-## Like us, use us ? Cite us !
+## What does dzetsaka mean?
 
-If you use dzetsaka in your research and find it useful, please cite Dzetsaka using the following bibtex reference:
+I wrote this tool while working in the Guiana Amazonian Park, classifying kinds of vegetation, so I named it in Teko, a native-american language spoken by a nation living in French Guiana. It refers to the objects we look at the world through: satellites, microscopes, cameras.
+
+## Citing dzetsaka
+
+If dzetsaka is useful in your research, please cite it:
 
 ```
 @misc{karasiak2016dzetsaka,
@@ -183,9 +141,8 @@ doi={10.5281/zenodo.2552284}
 }
 ```
 
-### Thanks to...
-I would like to thank the [Guiana Amazonian Park](http://www.parc-amazonien-guyane.fr/) for their trust in my work, and the Master 2 Geomatics [Sigma](http://sigma.univ-toulouse.fr/en/welcome.html) for their excellent lessons in geomatics.
+## Thanks to...
 
-![Sponsors of Qgis](https://cdn.rawgit.com/lennepkade/dzetsaka/master/img/logo.png)
+Thanks to the [Guiana Amazonian Park](http://www.parc-amazonien-guyane.fr/) for trusting my work, and to the Master 2 Geomatics [Sigma](http://sigma.univ-toulouse.fr/en/welcome.html) for their lessons in geomatics.
 
-
+![Sponsors of QGIS](https://raw.githubusercontent.com/nkarasiak/dzetsaka/main/img/logo.png)

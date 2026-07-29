@@ -22,7 +22,7 @@ Author:
 from dataclasses import dataclass
 from typing import Any, ClassVar, Dict, List, Optional, Type
 
-from domain.exceptions import ConfigurationError, DependencyError
+from ..domain.exceptions import ConfigurationError, DependencyError
 
 
 @dataclass
