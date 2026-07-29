@@ -30,4 +30,4 @@ dzetsaka train     --raster train.tif --vector train.shp --model model.pkl [--sp
 - The plugin’s compatibility layer (`dzetsaka.py`, `dzetsaka_provider.py`) now point to `src/dzetsaka/qgis`.
 - The CLI runner is installed alongside the wheel, so users installing the package once can switch between CLI batches and opening the plugin in QGIS.
 
-For more background, refer to `docs/runtime_split.md`; to run the CLI, see `readme.md`.
+For more background, refer to `docs/runtime_split.md`; to run the CLI, see `README.md`.
