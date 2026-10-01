@@ -6,7 +6,6 @@ avoiding eager imports of QGIS-heavy modules at package import time.
 
 from __future__ import annotations
 
-from importlib import import_module
 
 __all__ = [
     "ClassificationDashboardDock",
@@ -42,6 +41,12 @@ _KNOWN_SUBMODULES = {
     "recommendation_dialog",
     "results_explorer_dock",
 }
+
+
+def import_module(name: str, package: str):
+    # Builtin __import__ (not importlib) so QGIS's import hook tracks the module
+    # and purges it on plugin reload; importlib bypasses the hook and leaves stale code.
+    return __import__(package + name, fromlist=["_"])
 
 
 def __getattr__(name: str):
