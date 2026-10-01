@@ -117,7 +117,7 @@ class OverviewPage(QWizardPage):
         self.plugin = plugin
 
         self.setTitle("Welcome to dzetsaka")
-        self.setSubTitle("A powerful QGIS plugin for machine learning-based raster classification")
+        self.setSubTitle("Raster classification with machine learning")
 
         self._setup_ui()
 
@@ -137,26 +137,25 @@ class OverviewPage(QWizardPage):
         # Introduction text
         intro_label = QLabel(
             "<p style='font-size: 11pt;'>"
-            "dzetsaka helps you classify satellite imagery and other raster data using "
-            "state-of-the-art machine learning algorithms. Whether you're mapping land cover, "
-            "identifying crops, or analyzing multispectral data, dzetsaka provides the tools "
-            "you need for accurate classification."
+            "dzetsaka classifies satellite images and other multiband rasters with algorithms "
+            "such as Random Forest, SVM, XGBoost and CatBoost. You train a model on samples "
+            "of known classes, then apply it to the whole image."
             "</p>"
         )
         intro_label.setWordWrap(True)
         content_layout.addWidget(intro_label)
 
         # Feature highlights section
-        features_label = QLabel("<b style='font-size: 12pt;'>Key Features</b>")
+        features_label = QLabel("<b style='font-size: 12pt;'>Features</b>")
         content_layout.addWidget(features_label)
 
         # Feature grid
         features = [
             ("🤖", "11 ML Algorithms", "GMM, RF, SVM, KNN, XGBoost, CatBoost, Extra Trees, Gradient Boosting, Logistic Regression, Naive Bayes, MLP"),
-            ("⚡", "Automatic Optimization", "Optuna-powered hyperparameter tuning with cross-validation"),
-            ("🔍", "Model Explainability", "SHAP values to understand feature importance and predictions"),
-            ("⚖️", "Class Imbalance Handling", "SMOTE and other techniques for balanced training"),
-            ("📊", "Comprehensive Reports", "Confusion matrices, accuracy metrics, and visual heatmaps"),
+            ("⚡", "Hyperparameter Tuning", "Optuna search scored by cross-validation"),
+            ("🔍", "Model Explainability", "SHAP values show which features drive each prediction"),
+            ("⚖️", "Class Imbalance Handling", "SMOTE oversampling and class weights"),
+            ("📊", "HTML Reports", "Confusion matrix, accuracy metrics and heatmaps"),
             ("🎯", "Recipe System", "Save and share complete classification workflows"),
         ]
 
@@ -286,8 +285,9 @@ class DependencyCheckPage(QWizardPage):
         # Explanation text
         explanation = QLabel(
             "<p>dzetsaka uses several Python libraries for different algorithms. "
-            "Core features work without additional installations, but installing "
-            "the full bundle unlocks all capabilities.</p>"
+            "GMM runs without any of them. Most other algorithms need scikit-learn, and "
+            "XGBoost, CatBoost, Optuna, SHAP and SMOTE each need their own library. "
+            "The full bundle installs all of them.</p>"
         )
         explanation.setWordWrap(True)
         layout.addWidget(explanation)
@@ -456,8 +456,8 @@ class DependencyCheckPage(QWizardPage):
         self.install_button.setEnabled(False)
         self.install_button.setText("Installing...")
         self.progress_label.setText(
-            "Installing dependencies... This may take several minutes. "
-            "The wizard will remain responsive, and you'll be notified when complete."
+            "Installing dependencies. This can take several minutes. "
+            "The wizard stays usable while it runs, and a message appears when it finishes."
         )
         self.progress_label.show()
 
@@ -483,8 +483,8 @@ class DependencyCheckPage(QWizardPage):
                     }
                 """)
                 self.progress_label.setText(
-                    "<b>✓ Installation complete!</b> All dependencies are now available. "
-                    "Note: You may need to restart QGIS for all changes to take effect."
+                    "<b>✓ Installation finished.</b> "
+                    "If a library is still reported as missing, restart QGIS."
                 )
                 self.progress_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
 
@@ -493,8 +493,8 @@ class DependencyCheckPage(QWizardPage):
             else:
                 self.install_button.setText("Install Full Bundle")
                 self.progress_label.setText(
-                    "Installation encountered issues. You can try again or skip for now. "
-                    "Dependencies can also be installed later from the dashboard."
+                    "Installation did not finish. Try again, or skip and install "
+                    "the libraries later from the dashboard."
                 )
                 self.progress_label.setStyleSheet("color: #FF9800; font-weight: bold;")
 
@@ -543,7 +543,7 @@ class QuickStartPage(QWizardPage):
         self.plugin = plugin
 
         self.setTitle("Get Started")
-        self.setSubTitle("Choose how you'd like to begin using dzetsaka")
+        self.setSubTitle("Choose how to start")
 
         self._setup_ui()
 
@@ -554,7 +554,7 @@ class QuickStartPage(QWizardPage):
 
         # Introduction
         intro_label = QLabel(
-            "<p>You're all set! Choose one of the options below to start classifying.</p>"
+            "<p>Setup is done. Start with the sample data or with your own.</p>"
         )
         intro_label.setWordWrap(True)
         layout.addWidget(intro_label)
@@ -563,7 +563,7 @@ class QuickStartPage(QWizardPage):
         sample_widget = self._create_option_widget(
             "🎓",
             "Try Sample Data",
-            "Load example raster and training data to explore dzetsaka's features",
+            "Load a sample raster and training data to try the plugin",
             self._on_sample_data_clicked,
             "#2196F3"
         )
@@ -585,10 +585,10 @@ class QuickStartPage(QWizardPage):
         layout.addWidget(tips_label)
 
         tips = [
-            "Use the Recipe system to save and share complete classification workflows",
-            "Enable Optuna optimization for automatic hyperparameter tuning",
-            "Check SHAP explainability to understand which features drive predictions",
-            "Use spatial validation to avoid overestimating accuracy with spatial data",
+            "Save a recipe to reuse or share your classification settings",
+            "Turn on Optuna to tune hyperparameters automatically",
+            "Turn on SHAP to see which features drive predictions",
+            "Use spatial validation: random splits of nearby pixels overestimate accuracy",
         ]
 
         tips_widget = QWidget()

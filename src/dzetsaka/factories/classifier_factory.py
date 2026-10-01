@@ -451,7 +451,7 @@ def initialize_factory() -> None:
             metadata=ClassifierMetadata(
                 code="XGB",
                 name="XGBoost",
-                description="State-of-the-art gradient boosting, highest accuracy",
+                description="Gradient boosting, often the most accurate",
                 requires_xgboost=True,
                 supports_probability=True,
                 supports_feature_importance=True,

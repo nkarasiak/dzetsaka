@@ -297,5 +297,5 @@ class TestBuildComparisonData:
         rows = build_comparison_data(self._all_deps())
         rec_map = {row[0]: row[4] for row in rows}
         assert "no dependencies" in rec_map["GMM"].lower()
-        assert "state-of-the-art" in rec_map["XGB"].lower()
+        assert "gradient boosting" in rec_map["XGB"].lower()
         assert "best default parameters" in rec_map["CB"].lower()

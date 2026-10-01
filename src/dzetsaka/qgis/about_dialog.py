@@ -56,9 +56,9 @@ def show_about_dialog(plugin) -> None:
     layout.addWidget(title)
 
     about = QLabel(
-        "dzetsaka is an AI-powered remote sensing classification plugin for QGIS. "
-        "It provides modern machine learning workflows, advanced optimization, "
-        "guided UI/UX, reusable recipes, and rich report generation.",
+        "dzetsaka is a raster classification plugin for QGIS. "
+        "It offers 11 machine learning algorithms, hyperparameter search, "
+        "a guided wizard, reusable recipes, and HTML reports.",
     )
     about.setWordWrap(True)
     about.setAlignment(_AlignLeft | _AlignTop)

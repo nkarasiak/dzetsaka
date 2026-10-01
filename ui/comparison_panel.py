@@ -72,7 +72,7 @@ _RECOMMENDATIONS = {
     "RF": "Balanced speed/accuracy, robust to overfitting",
     "SVM": "High accuracy on small datasets",
     "KNN": "Simple, interpretable, good for irregular boundaries",
-    "XGB": "State-of-the-art, large datasets, best overall accuracy",
+    "XGB": "Gradient boosting, large datasets, often the most accurate",
     "CB": "Best default parameters, minimal tuning needed",
     "ET": "Fast, high variance data, parallel training",
     "GBC": "Smooth probability estimates, calibrated confidence",
@@ -188,7 +188,7 @@ _ALGORITHM_EXPLANATIONS = {
         ],
     },
     "XGB": {
-        "description": "XGBoost (Extreme Gradient Boosting) is a highly optimized gradient boosting implementation that often achieves state-of-the-art results. It builds trees sequentially, with each tree correcting errors of previous ones.",
+        "description": "XGBoost (Extreme Gradient Boosting) is a highly optimized gradient boosting implementation that often gives the best accuracy on tabular data. It builds trees sequentially, with each tree correcting errors of previous ones.",
         "when_to_use": [
             "When you need the highest possible accuracy",
             "When you have large datasets with many features",

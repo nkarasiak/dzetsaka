@@ -2506,7 +2506,7 @@ class DataInputPage(QWizardPage):
             "<h4>Popular choices:</h4>"
             "<ul>"
             "<li><b>Random Forest:</b> Balanced accuracy, fast training, good default choice for most cases</li>"
-            "<li><b>XGBoost/CatBoost:</b> State-of-the-art accuracy, excellent with Optuna optimization</li>"
+            "<li><b>XGBoost/CatBoost:</b> Often the most accurate, works well with Optuna optimization</li>"
             "<li><b>SVM:</b> High accuracy for smaller datasets, slower on large datasets</li>"
             "<li><b>GMM:</b> Fast, probabilistic, good for quick exploration</li>"
             "</ul>"

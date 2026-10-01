@@ -1,8 +1,8 @@
 """dzetsaka: Classification Tool for QGIS.
 
-A powerful and fast classification plugin for QGIS that supports 11 machine learning
-algorithms for remote sensing image classification. Originally based on Gaussian
-Mixture Model classifier, dzetsaka now includes state-of-the-art algorithms like
+A classification plugin for QGIS that supports 11 machine learning algorithms
+for remote sensing image classification. Originally based on Gaussian
+Mixture Model classifier, dzetsaka now includes algorithms like
 XGBoost and CatBoost with automatic dependency installation.
 
 Features:

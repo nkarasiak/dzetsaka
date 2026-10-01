@@ -1121,7 +1121,7 @@ def _write_report_bundle(
         class_values: List[Any],
         class_names: List[str],
     ) -> str:
-        """Generate an AI-style executive summary of classification results."""
+        """Generate a rule-based executive summary of classification results."""
         # 1. Classify accuracy level
         accuracy = summary_metrics.get("accuracy", 0.0)
         if accuracy >= ACCURACY_EXCELLENT_THRESHOLD:
@@ -1336,7 +1336,7 @@ def _write_report_bundle(
         )
         handle.write("</div>")
 
-        # Generate and write AI executive summary
+        # Generate and write executive summary
         abstract_html = _generate_classification_abstract(summary_metrics, config_meta, class_values, class_names)
         handle.write(abstract_html)
 
@@ -1422,7 +1422,7 @@ def _write_report_bundle(
             handle.write(f"<p><strong>Bayesian optimization with Optuna</strong>: Explored {n_trials} hyperparameter ")
             handle.write("combinations using Tree-structured Parzen Estimator (TPE) algorithm. ")
             handle.write(f"Best cross-validation F1-weighted score: <strong>{best_score:.4f}</strong>. ")
-            handle.write("TPE intelligently samples the parameter space, focusing on promising regions and pruning ")
+            handle.write("TPE samples the parameter space, focusing on promising regions and pruning ")
             handle.write("poor-performing trials early (2-10x faster than exhaustive grid search).</p>")
 
             # Show best parameters found by Optuna
@@ -1541,7 +1541,7 @@ def _write_report_bundle(
             handle.write(
                 "<p><strong>Search strategy:</strong> Tree-structured Parzen Estimator (TPE) with median pruning. ",
             )
-            handle.write("Optuna intelligently samples the hyperparameter space, focusing on promising regions and ")
+            handle.write("Optuna samples the hyperparameter space, focusing on promising regions and ")
             handle.write("pruning poor-performing trials early. This is 2-10x faster than exhaustive GridSearchCV.</p>")
             handle.write("</div>")
 
