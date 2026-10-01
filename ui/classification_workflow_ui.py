@@ -22,7 +22,7 @@ from urllib.parse import urlparse
 from collections import Counter
 from typing import Any, Dict, List, Optional, Tuple
 
-from qgis.PyQt.QtCore import QSettings, QSize, Qt, pyqtSignal
+from qgis.PyQt.QtCore import QPoint, QSettings, QSize, Qt, pyqtSignal
 from qgis.PyQt.QtGui import QColor, QIcon, QKeySequence, QPainter, QPixmap
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
@@ -928,6 +928,21 @@ def _qt_align_right():
     if hasattr(Qt, "AlignmentFlag"):
         return Qt.AlignmentFlag.AlignRight
     return Qt.AlignRight
+
+
+class _InWindowPopupComboBox(QComboBox):
+    """QComboBox whose popup list stays inside its top-level window.
+
+    Under XWayland with display scaling, Qt can report the screen larger than it is
+    and open the list below the visible screen. The window geometry is reliable, so
+    flip the list above the combo when it would overflow the window bottom.
+    """
+
+    def showPopup(self):
+        super().showPopup()
+        popup = self.view().window()
+        if popup.geometry().bottom() > self.window().frameGeometry().bottom():
+            popup.move(popup.x(), self.mapToGlobal(QPoint(0, 0)).y() - popup.height())
 
 
 class _CoverPixmapLabel(QLabel):
@@ -5552,10 +5567,13 @@ class QuickClassificationPanel(QWidget):
                 fallback_resource=":/plugins/dzetsaka/img/filter.png",
             )
         )
-        self.recipeCombo = QComboBox()
+        self.recipeCombo = _InWindowPopupComboBox()
         self.recipeCombo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.recipeCombo.setMinimumContentsLength(20)
         self.recipeCombo.setMaximumWidth(360)
+        # Scrollable popup: some styles otherwise list every item and run off-screen.
+        self.recipeCombo.setStyleSheet("QComboBox { combobox-popup: 0; }")
+        self.recipeCombo.setMaxVisibleItems(10)
         self.recipeCombo.currentIndexChanged.connect(self._apply_selected_recipe)
         self.recipeCombo.setToolTip(
             "<b>Classification Recipe</b><br>"
