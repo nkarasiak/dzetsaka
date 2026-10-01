@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Fix Recipe Hub crash on QGIS 4 / PyQt6 (`Qt.RichText` and other unscoped enums)
+- Fix feature toggles (Optuna/SHAP/SMOTE) never offering dependency install on PyQt6
+- Fix plugin reload serving stale dashboard code (ui submodules now tracked by QGIS)
+- Fix plugin version reading as `unknown` and missing processing provider icon (wrong plugin root)
+
+### Changed
+- Browse Hub is a regular button styled like Quality… (no longer looks disabled)
+- Recipe selector is a plain list, like the raster and vector selectors
+
+### Added
+- Release workflow publishes the plugin zip to plugins.qgis.org (`QGIS_PLUGIN_TOKEN` secret)
+
 ## [5.0.11] - 2026-04-01
 
 ### Fixed
