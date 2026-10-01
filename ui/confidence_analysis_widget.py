@@ -16,6 +16,7 @@ Author:
     Nicolas Karasiak
 """
 
+import contextlib
 import csv
 from pathlib import Path
 from typing import Dict, Optional
@@ -329,7 +330,7 @@ class ConfidenceAnalysisWidget(ThemeAwareWidget, QWidget):
         if not MATPLOTLIB_AVAILABLE or self.confidence_data is None:
             return
 
-        try:
+        with contextlib.suppress(Exception):
             self.ax.clear()
 
             # Apply theme to matplotlib
@@ -373,9 +374,6 @@ class ConfidenceAnalysisWidget(ThemeAwareWidget, QWidget):
 
             # Redraw canvas
             self.ax.figure.canvas.draw()
-
-        except Exception:
-            pass
 
     def _export_statistics(self):
         """Export confidence statistics to CSV file."""

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from datetime import datetime
 from pathlib import Path
 
@@ -90,12 +91,10 @@ def start_classification_task(
         plugin.log.info(f"[{success_prefix}] Classification completed successfully")
 
         duration_str = ""
-        try:
+        with contextlib.suppress(Exception):
             elapsed = datetime.now() - task._start_time
             secs = int(elapsed.total_seconds())
             duration_str = f"{secs // 60}m {secs % 60}s"
-        except Exception:
-            pass
 
         def _add_layers():
             plugin.iface.addRasterLayer(out_raster)

@@ -225,7 +225,7 @@ class DependencyInstallTask(QgsTask):
 
     def _ensure_pip(self, py: str) -> bool:
         """Bootstrap pip via get-pip.py if it is missing for *py*."""
-        try:
+        with contextlib.suppress(Exception):
             probe = subprocess.run(  # nosec B603
                 [py, "-m", "pip", "--version"],
                 capture_output=True,
@@ -235,8 +235,6 @@ class DependencyInstallTask(QgsTask):
             )
             if probe.returncode == 0:
                 return True
-        except Exception:
-            pass
 
         self.log.info(f"pip not found for {py}, attempting bootstrap via get-pip.py")
         try:

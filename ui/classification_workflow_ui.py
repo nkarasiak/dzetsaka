@@ -16,6 +16,7 @@ Author:
 
 import json
 import os
+import re
 from pathlib import Path
 import urllib.request
 from urllib.parse import urlparse

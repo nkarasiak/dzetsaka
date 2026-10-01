@@ -240,7 +240,6 @@ def _get_catboost_wrapper():
 
 def _get_xgboost_wrapper():
     """Return a usable XGBoost wrapper, refreshing runtime state if needed."""
-    global XGBLabelWrapper
     if XGBLabelWrapper is None:
         _refresh_runtime_dependency_state()
     return XGBLabelWrapper
@@ -425,13 +424,12 @@ CLASSIFIER_CONFIGS = {
 
 def _get_available_memory_mb() -> int:
     """Return a safe fraction of available system RAM for block sizing (capped at 4096 MB)."""
-    try:
+    with contextlib.suppress(Exception):
         import psutil
+
         available_mb = psutil.virtual_memory().available // (1024 * 1024)
         return min(int(available_mb * 0.25), 4096)
-    except Exception:
-        pass
-    try:
+    with contextlib.suppress(Exception):
         import ctypes
         import platform
         if platform.system() == "Windows":
@@ -458,8 +456,6 @@ def _get_available_memory_mb() -> int:
                     if line.startswith("MemAvailable:"):
                         available_kb = int(line.split()[1])
                         return min(int(available_kb // 1024 * 0.25), 4096)
-    except Exception:
-        pass
     return 2048
 
 

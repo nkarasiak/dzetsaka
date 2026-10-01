@@ -44,9 +44,6 @@ except ImportError:
 
 # Label encoding wrapper classes
 # Only define these classes if sklearn is available
-XGBLabelWrapper = None
-CBClassifierWrapper = None
-
 if SKLEARN_AVAILABLE:
 
     class XGBLabelWrapper(BaseEstimator, ClassifierMixin):
@@ -251,3 +248,6 @@ if SKLEARN_AVAILABLE:
             if self.cb_classifier is not None:
                 self.cb_classifier.set_params(**params)
             return self
+else:
+    XGBLabelWrapper = None
+    CBClassifierWrapper = None
