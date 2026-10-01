@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix feature toggles (Optuna/SHAP/SMOTE) never offering dependency install on PyQt6
 - Fix plugin reload serving stale dashboard code (ui submodules now tracked by QGIS)
 - Fix plugin version reading as `unknown` and missing processing provider icon (wrong plugin root)
+- Newly installed dependencies are usable right away, no QGIS restart needed
+
+### Performance
+- Prediction with a confidence map runs the model once per block instead of twice (up to 4x faster, identical output)
 
 ### Changed
 - Browse Hub is a regular button styled like Quality… (no longer looks disabled)
