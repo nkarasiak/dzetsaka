@@ -1142,6 +1142,7 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
 
         def _show_result():
             plugin.log.info(f"[on_task_finished._show_result] thread={threading.current_thread().name}")
+            progress_dialog.close()
             if success:
                 restart_note = (
                     "Important: Please restart QGIS to load the new libraries.\n\n"
@@ -1195,6 +1196,20 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
         runtime_constraints=runtime_constraints_file,
         on_finished=on_task_finished,
     )
+
+    # Visible feedback while pip runs; non-modal so the user can keep working.
+    # No Cancel: pip runs as one blocking subprocess and can't be interrupted mid-install.
+    from dzetsaka.ui.install_progress_dialog import InstallProgressDialog
+
+    # total_packages=0 -> busy bar: the bundle installs in one pip step, so there is no real percentage.
+    progress_dialog = InstallProgressDialog(plugin.iface.mainWindow(), total_packages=0)
+    progress_dialog.status_label.setText(
+        f"Installing {', '.join(package_order)}...\n"
+        "This can take a few minutes. You can keep working; this window closes when done.",
+    )
+    progress_dialog.cancel_button.setVisible(False)
+    progress_dialog.details_button.setVisible(False)
+    progress_dialog.show()
 
     # Submit to task manager
     QgsApplication.taskManager().addTask(task)
