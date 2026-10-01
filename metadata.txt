@@ -7,29 +7,23 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=dzetsaka : AI-Powered Remote Sensing Classification
+name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
 qgisMaximumVersion=4.99
-description=Next-generation AI for Earth Observation in QGIS with 12 ML algorithms, major runtime optimizations, advanced UX workflows, recipe-driven configuration, and rich report generation.
+description=Raster classification in QGIS with 11 machine learning algorithms, Optuna hyperparameter search, SHAP explanations, class imbalance handling, and HTML reports.
 version=5.1.0
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
 about=
-      dzetsaka is a compact AI for Earth Observation plugin for remote sensing classification in QGIS.
+      dzetsaka is a QGIS plugin that classifies remote sensing images and other multiband rasters.
 
-      Built for fast map production and practical operations:
-      - 11 production-ready ML classifiers (GMM, RF, SVM, KNN, XGBoost, CatBoost, ET, GBC, LR, NB, MLP)
-      - Optuna hyperparameter optimization
-      - SHAP explainability and confidence outputs
-      - Class-imbalance workflow (SMOTE, class weights, nested CV)
-      - Guided/compact dashboard for rapid results
-
-      2025 trend-aligned focus:
-      - AI for Earth Observation and Earth Intelligence workflows
-      - Multimodal EO feature pipelines
-      - Vision-transformer-ready ecosystem language
-      - Trustworthy AI: interpretability, uncertainty awareness, and reproducible validation
+      - 11 classifiers: GMM, RF, SVM, KNN, XGBoost, CatBoost, ET, GBC, LR, NB, MLP
+      - Optuna hyperparameter search
+      - SHAP explanations and confidence maps
+      - Class imbalance handling (SMOTE, class weights, nested CV)
+      - Guided wizard and compact dashboard
+      - Reusable recipes and HTML reports
 
       For documentation and updates: https://github.com/nkarasiak/dzetsaka/
 
@@ -70,7 +64,7 @@ changelog=
       * FIX: Defer all GUI calls from QgsTask callbacks via QTimer.singleShot to prevent macOS ARM64 SIGABRT crash (issue #48)
       * FIX: Add thread-identity diagnostic logging for dependency install task debugging
     5.0.5
-      * FIX: Prevent QGIS crash on macOS ARM64 during dependency auto-install — use main-thread callback instead of cross-thread signals (issue #48)
+      * FIX: Prevent QGIS crash on macOS ARM64 during dependency auto-install by using a main-thread callback instead of cross-thread signals (issue #48)
       * FIX: Handle missing legacy GDT_* constants in GDAL 4.x to prevent AttributeError at import time
       * FIX: Remove pkexec apt fallback that requested admin password on Linux
       * FIX: Add --break-system-packages for PEP 668 compatibility (Debian 13+, Ubuntu 24+)
@@ -81,112 +75,17 @@ changelog=
     5.0.2
       * FIX: Harden dependency installer runtime constraints to avoid NumPy conflicts with QGIS bundled stack (issue #46)
     5.0.1
-      * FIX: QAction imported from wrong Qt module (QtGui → QtWidgets) — fixes crash on QGIS 3.28+ startup (issue #45)
-      * FIX: Qt5/Qt6 compatibility audit — exec_() fallback, enum aliases, matplotlib backend detection
+      * FIX: Import QAction from QtWidgets instead of QtGui, which crashed QGIS 3.28+ at startup (issue #45)
+      * FIX: Qt5/Qt6 compatibility: exec_() fallback, enum aliases, matplotlib backend detection
     5.0.0
-      * MAJOR: Milestone release with substantial architecture, performance, and UX upgrades
-      * NEW: 12 production-ready ML algorithms with optimization and explainability workflows
-      * NEW: Guided wizard + compact dashboard UX, smart defaults, algorithm comparison, and recipe-driven setup
-      * NEW: Integrated reporting and diagnostics pipeline for clearer, reproducible results
-      * ENHANCED: Faster training/inference paths, stronger validation workflows, and broader optional dependency support
-    4.6.0
-      * NEW: ui/classification_workflow_ui.py - 5-page QWizard with DataInput, Algorithm, AdvancedOptions, OutputConfig, Review pages
-      * NEW: ui/comparison_panel.py - AlgorithmComparisonPanel QDialog with dependency-aware colouring
-      * NEW: Standalone helper functions (check_dependency_availability, build_smart_defaults, build_review_summary)
-    4.5.0
-      *  NEW: SMOTE oversampling for imbalanced datasets (automatic ratio detection)
-      *  NEW: Class weight computation (balanced, uniform, custom strategies)
-      *  NEW: Nested cross-validation for unbiased model evaluation
-      *  NEW: Enhanced metrics (per-class F1, ROC curves, learning curves)
-      *  NEW: "Nested Cross-Validation" processing algorithm for batch evaluation
-      *  NEW: 8 new extraParam keys for imbalance handling and validation
-      *  ENHANCED: Automatic imbalance ratio detection and strategy recommendations
-      *  ENHANCED: Cost-sensitive learning for all supported algorithms
-      *  ENHANCED: Comprehensive unit and integration tests for imbalance handling
-    4.4.0
-      *  NEW: SHAP explainability - feature importance computation for model interpretability
-      *  NEW: "Explain Model (SHAP)" processing algorithm - generate feature importance rasters
-      *  NEW: ModelExplainer class with automatic explainer selection (TreeExplainer/KernelExplainer)
-      *  NEW: Feature importance raster generation - visualize which bands matter most
-      *  NEW: COMPUTE_SHAP, SHAP_OUTPUT, SHAP_SAMPLE_SIZE parameters in extraParam
-      *  NEW: scripts/explainability module with comprehensive SHAP integration
-      *  PERFORMANCE: Fast TreeExplainer for tree-based models (RF, XGB, LGB, ET, GBC)
-      *  PERFORMANCE: KernelExplainer fallback for other models (SVM, KNN, LR, NB, MLP)
-      *  ENHANCED: Detailed help strings and usage examples for SHAP algorithm
-      *  ENHANCED: Graceful fallback when SHAP unavailable with clear installation instructions
-    4.3.0
-      *  NEW: Optuna hyperparameter optimization - 2-10x faster training with Bayesian optimization (TPE algorithm)
-      *  NEW: Factory pattern for classifiers - clean, extensible registry replacing 700+ line if/elif chains
-      *  NEW: Custom exception hierarchy with rich context (DataLoadError, ProjectionMismatchError, etc.)
-      *  NEW: Clean architecture with separated modules (optimization, domain, factories)
-      *  NEW: USE_OPTUNA and OPTUNA_TRIALS parameters (fully backward compatible)
-      *  ENHANCED: Comprehensive type hints and docstrings for new modules
-      *  ENHANCED: Intelligent trial pruning and parallel execution for Optuna
-      *  PERFORMANCE: 2-5%% accuracy improvement from superior parameter combinations
-      *  PERFORMANCE: Random Forest ~3x faster, SVM ~5-8x faster, MLP ~4-6x faster
-      *  IMPROVED: Better error messages with actionable suggestions
-      * FIX: Improved auto-install for Debian/Ubuntu systems where pip module is not available
-      * FIX: Auto-install now tries multiple methods: pip module, ensurepip bootstrap, apt via pkexec
-      * FIX: Installation failure dialog now shows manual installation commands directly
-      * COMPAT: Full QGIS 4.0 forward compatibility - migrated all PyQt5 imports to qgis.PyQt
-      * PERF: Vectorized scale() functions - ~60%% CPU reduction for data normalization
-      * PERF: Vectorized Shannon entropy calculation - ~95%% speedup (minutes to seconds)
-      * PERF: Vectorized raster band reading with GDAL ReadAsArray() - ~30%% I/O improvement
-      * PERF: Optimized GMM prediction with NumPy einsum - ~40%% CPU reduction
-      * PERF: Vectorized geodesic distance matrix computation - ~50%% speedup
-      * PERF: Replaced repeated array concatenation with pre-allocation - ~30%% memory reduction
-      * PERF: Replaced if-elif chains with dict lookups for GDAL/NumPy type conversion
-      * FIX: Robust layer source path extraction using QgsProviderRegistry (handles GeoPackage, etc.)
-      * CODE: Added get_layer_source_path() helper for safe URI parsing
-    4.2.2
-      *  FIX: Fixed import errors for splitTrain and trainAlgorithm class names
-      *  FIX: Fixed progress_bar.progressBar attribute error (corrected case to ProgressBar)
-      *  FIX: Restored missing toolbar icons by fixing Qt resources import
-      *  FIX: Fixed incorrect resource path in sieve_area.py 
-      *  ENHANCED: Applied ruff linting fixes and improved code quality
-      *  ENHANCED: Added proper docstrings to sklearn fallback classes
-      *  ENHANCED: Better exception chaining for improved debugging
-    4.2.0
-      *  NEW: 7 additional machine learning algorithms - XGBoost, LightGBM, Extra Trees, Gradient Boosting, Logistic Regression, Naive Bayes, MLP
-      *  NEW: Automatic dependency installation system - one-click install of scikit-learn, XGBoost, LightGBM
-      *  NEW: Automatic hyperparameter optimization with cross-validation grid search for all algorithms
-      *  NEW: Smart sparse label handling - automatically handles missing class labels (e.g., 0,1,3)
-      *  NEW: GitHub issue integration - automatic error reporting templates with system info
-      *  IMPROVED: Better log levels (INFO vs WARNING) and more informative progress messages
-      *  FIX: Resolved parameter delegation issues for XGBoost/LightGBM wrappers
-      *  FIX: Fixed model serialization/pickling for new wrapper classes
-      *  ENHANCED: Real-time pip installation progress with detailed logging
-      *  ENHANCED: Comprehensive error handling with specific exception types and user guidance
-    4.1.0
-      * Major code refactoring and optimization of scripts/classification_pipeline.py
-      * Replaced Hungarian notation prefixes (in/out) with descriptive parameter names
-      * Significant memory optimizations for large multi-band image processing
-      * Enhanced error handling with specific exception types and detailed error messages
-      * Added comprehensive type hints and improved documentation
-      * Broke down 1279-line method into focused, maintainable helper methods
-      * Added configuration constants for better maintainability
-      * Created parameter migration guide for transition support
-      * Standardized APIs on descriptive parameter names
-    4.0.0
-      * Major version with comprehensive improvements
-    3.70
-      * Fix bug with new gdal import from osgeo
-    3.64
-      * add closing filter in the processing toolbox
-    3.63
-      * fix bug in train algorithm (split waspercent of train not of validation)
-    3.62
-      * fig bug when loading cursor was not removed after unsucessful learning.
-    3.61
-      * fix bug #19 with self.addAlgorithm(alg).
-    3.6
-      * Add confidence map in processing
-      * Add median filter and shannon entropy
-      * Fix bug with GMM confidence map
-      * Move dzetsaka icons to extension toolbar
+      * NEW: 11 classifiers with Optuna search and SHAP explanations
+      * NEW: Guided wizard, compact dashboard, Smart Defaults, algorithm comparison, and recipes
+      * NEW: HTML report with diagnostics
+      * PERF: Faster training and prediction
+    Full history: https://github.com/nkarasiak/dzetsaka/blob/main/CHANGELOG.md
 
 # Tags are comma separated with spaces allowed
-tags=ai for earth observation,earth observation,remote sensing,classification,machine learning,deep learning,multimodal,vision transformer,self-supervised learning,vision-language model,open-vocabulary mapping,trustworthy ai,uncertainty,mlops,reproducibility,xgboost,catboost,random forest,svm,knn,neural network,optuna,bayesian optimization,shap,explainability,smote,class imbalance,nested cross-validation,processing
+tags=earth observation,remote sensing,classification,machine learning,land cover,xgboost,catboost,random forest,svm,knn,neural network,optuna,shap,explainability,smote,class imbalance,cross-validation,processing
 
 homepage=http://www.github.com/nkarasiak/dzetsaka
 category=Raster

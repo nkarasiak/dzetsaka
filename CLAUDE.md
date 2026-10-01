@@ -81,6 +81,7 @@ python tools/build_plugin.py --output dzetsaka.zip
 **Always update `metadata.txt` before tagging a release:**
 1. Bump `version=X.Y.Z` in `metadata.txt`
 2. Add a `changelog=` entry for the new version (above the previous one)
+   - Keep only the current and previous minor lines (e.g. 5.1.x + 5.0.x); drop older ones, full history lives in `CHANGELOG.md`
 3. Commit, tag, and push — the QGIS plugin repository reads `metadata.txt` for version info
 
 ## Architecture
