@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dzetsaka"
-version = "5.0.11"
+version = "5.1.0"
 description = "Raster classification plugin for QGIS with 11 machine learning algorithms, Optuna hyperparameter search, SHAP explanations, and HTML reports."
 readme = "README.md"
 license = {text = "GPL-2.0-or-later"}

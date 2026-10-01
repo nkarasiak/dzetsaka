@@ -37,7 +37,15 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 # Uncomment the following line and add your changelog:
 changelog=
     5.1.0
+      * FIX: QGIS 4 / PyQt6 crash when opening the Recipe Hub (unscoped Qt enums)
+      * FIX: Optuna/SHAP/SMOTE toggles never offered to install missing dependencies on PyQt6
+      * FIX: Plugin reload kept serving stale dashboard code
+      * FIX: Plugin version read as 'unknown' and missing processing provider icon
+      * FIX: Recipe dropdown list ran off-screen; it now scrolls and opens upward when needed
+      * PERF: Prediction with a confidence map runs the model once per block (up to 4x faster, identical output)
       * PERF: Dynamic block size uses available system RAM (up to 4 GB) instead of hardcoded 512 MB limit
+      * UX: Newly installed dependencies work without restarting QGIS, with a progress window while installing
+      * UX: Browse Hub looks like a regular button; recipe selector is a plain list; dashboard can be narrower
       * FIX: QgisLogger now feeds QGIS log messages into issue-report buffer (logs were missing from bug reports)
       * UX: Success dialog after classification shows output filename, confidence map, and elapsed duration
     5.0.11

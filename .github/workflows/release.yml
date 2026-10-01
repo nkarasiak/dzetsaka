@@ -28,6 +28,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - uses: actions/setup-python@v5
         with:
@@ -50,38 +52,63 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Get version from metadata.txt
+      # The tag is the release version; a forgotten bump would ship a plugin whose
+      # metadata.txt disagrees with its own tag (and the Hub rejects duplicate versions).
+      - name: Check the tag matches the declared version
         id: version
         run: |
-          VERSION=$(grep -m1 '^version=' metadata.txt | cut -d= -f2 | tr -d '[:space:]')
+          TAG="${{ inputs.tag || github.ref_name }}"
+          VERSION="${TAG#v}"
+          grep -qxF "version=${VERSION}" metadata.txt \
+            || { echo "::error::metadata.txt is not version=${VERSION}"; exit 1; }
+          grep -qxF "version = \"${VERSION}\"" pyproject.toml \
+            || { echo "::error::pyproject.toml is not version = \"${VERSION}\""; exit 1; }
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "zip=dzetsaka_${VERSION}.zip" >> "$GITHUB_OUTPUT"
 
       - name: Build plugin zip
-        run: python tools/build_plugin.py --output dzetsaka_${{ steps.version.outputs.version }}.zip
+        run: python tools/build_plugin.py --output "${{ steps.version.outputs.zip }}"
 
-      - name: Upload zip to release
+      - name: Upload zip to GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${{ github.event.release.tag_name || inputs.tag || github.ref_name }}"
-          # Create the release if it doesn't exist yet (tag-push triggers
-          # don't automatically create a GitHub Release).
+          TAG="${{ steps.version.outputs.tag }}"
+          # Tag pushes don't create a GitHub Release by themselves.
           gh release view "$TAG" >/dev/null 2>&1 || \
             gh release create "$TAG" --title "$TAG" --generate-notes
-          gh release upload "$TAG" \
-            "dzetsaka_${{ steps.version.outputs.version }}.zip" \
-            --clobber
+          gh release upload "$TAG" "${{ steps.version.outputs.zip }}" --clobber
 
+      # Needs a per-plugin token from https://plugins.qgis.org/plugins/dzetsaka/tokens/
+      # stored as the QGIS_PLUGIN_TOKEN repository secret; skipped without it so the
+      # GitHub release still works. auto_approve_after_scan only applies to uploaders
+      # with the can_approve permission; otherwise the version waits for manual approval.
       - name: Publish to plugins.qgis.org
         env:
           QGIS_PLUGIN_TOKEN: ${{ secrets.QGIS_PLUGIN_TOKEN }}
         run: |
-          curl --fail-with-body -X POST \
+          if [ -z "$QGIS_PLUGIN_TOKEN" ]; then
+            echo "QGIS_PLUGIN_TOKEN is not set - skipping the plugin repository upload."
+            exit 0
+          fi
+          status=$(curl -sS -w '%{http_code}' -o response.txt -X POST \
+            "https://plugins.qgis.org/plugins/api/dzetsaka/version/add/" \
             -H "Authorization: Bearer $QGIS_PLUGIN_TOKEN" \
-            -F "package=@dzetsaka_${{ steps.version.outputs.version }}.zip" \
-            https://plugins.qgis.org/plugins/api/dzetsaka/version/add/
+            -F "package=@${{ steps.version.outputs.zip }}" \
+            -F "auto_approve_after_scan=true")
+          echo "HTTP $status"
+          cat response.txt
+          if [ "$status" -ge 300 ]; then
+            echo "::error::plugins.qgis.org upload failed with HTTP $status"
+            exit 1
+          fi
+          echo "Uploaded; the security scan runs asynchronously:"
+          echo "https://plugins.qgis.org/plugins/dzetsaka/version/${{ steps.version.outputs.version }}/"

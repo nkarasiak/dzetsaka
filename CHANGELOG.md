@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.1.0] - 2026-10-01
+
 ### Fixed
 - Fix Recipe Hub crash on QGIS 4 / PyQt6 (`Qt.RichText` and other unscoped enums)
 - Fix feature toggles (Optuna/SHAP/SMOTE) never offering dependency install on PyQt6
@@ -14,14 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix plugin version reading as `unknown` and missing processing provider icon (wrong plugin root)
 - Newly installed dependencies are usable right away, no QGIS restart needed
 - Fix recipe dropdown list running off-screen (scrolling list, opens upward when needed)
+- QgisLogger now feeds QGIS log messages into the issue-report buffer (logs were missing from bug reports)
 
 ### Performance
 - Prediction with a confidence map runs the model once per block instead of twice (up to 4x faster, identical output)
+- Dynamic block size uses available system RAM (up to 4 GB) instead of a hardcoded 512 MB limit
 
 ### Changed
 - Browse Hub is a regular button styled like Quality… (no longer looks disabled)
 - Recipe selector is a plain list, like the raster and vector selectors
 - Dashboard panel can be made narrower (~260 px instead of ~360 px)
+- Success dialog after classification shows output filename, confidence map and elapsed duration
+- Plain-language plugin description and UI wording
 
 ### Added
 - Progress window while dependencies install
