@@ -3735,8 +3735,15 @@ class ClassifyImage:
                         yp[t], K[t] = model.predict(self.scale(X[t, :], M=M, m=m), None, confidenceMap)
 
                     elif confidenceMap or (confidenceMapPerClass and classifier != "GMM"):
-                        yp[t] = model.predict(self.scale(X[t, :], M=M, m=m))
-                        K[t, :] = model.predict_proba(self.scale(X[t, :], M=M, m=m)) * 100
+                        Xs = self.scale(X[t, :], M=M, m=m)
+                        proba = model.predict_proba(Xs)
+                        # One model pass: class = argmax of proba. SVC.predict uses the decision
+                        # function, which can disagree with its Platt-scaled proba, so keep it separate.
+                        if classifier == "SVM":
+                            yp[t] = model.predict(Xs)
+                        else:
+                            yp[t] = np.asarray(model.classes_)[np.argmax(proba, axis=1)]
+                        K[t, :] = proba * 100
 
                     else:
                         yp[t] = model.predict(self.scale(X[t, :], M=M, m=m))
