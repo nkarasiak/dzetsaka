@@ -26,7 +26,6 @@ from qgis.PyQt.QtCore import QSettings, QSize, Qt, pyqtSignal
 from qgis.PyQt.QtGui import QColor, QIcon, QKeySequence, QPainter, QPixmap
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
-    QCompleter,
     QComboBox,
     QDialog,
     QDockWidget,
@@ -1261,7 +1260,7 @@ class RecipeShopDialog(QDialog):
         btn = QToolButton()
         btn.setText("i")
         btn.setToolTip(tooltip)
-        btn.setCursor(Qt.PointingHandCursor)
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setAutoRaise(True)
         btn.setFixedSize(18, 18)
         return btn
@@ -1417,7 +1416,7 @@ class RecipeShopDialog(QDialog):
 
     def _on_feature_toggle(self, checkbox, dependency_key, feature_name, state):
         # type: (QCheckBox, str, str, int) -> None
-        if state != Qt.Checked:
+        if not checkbox.isChecked():
             return
         dep_available = self._deps.get(dependency_key.lower(), False)
         if dep_available:
@@ -4691,7 +4690,7 @@ class RecipeHubDialog(QDialog):
         details_layout.setContentsMargins(4, 8, 4, 4)
         self.detailsLabel = QLabel("Select a recipe to view details.")
         self.detailsLabel.setWordWrap(True)
-        self.detailsLabel.setTextFormat(Qt.RichText)
+        self.detailsLabel.setTextFormat(Qt.TextFormat.RichText)
         self.detailsLabel.setObjectName("detailsCard")
         details_layout.addWidget(self.detailsLabel)
         footer = QHBoxLayout()
@@ -4960,7 +4959,7 @@ class RecipeHubDialog(QDialog):
             f"<span style='font-size:14px; font-weight:700; color:#102a43;'>{name}</span> "
             f"<span style='color:#5f748a;'>({classifier_name})</span>"
         )
-        top.setTextFormat(Qt.RichText)
+        top.setTextFormat(Qt.TextFormat.RichText)
         layout.addWidget(top)
 
         meta = QLabel(
@@ -4968,7 +4967,7 @@ class RecipeHubDialog(QDialog):
             f"<span style='color:#37516a;'>Runtime: {runtime}</span>  •  "
             f"<span style='color:#37516a;'>Accuracy: {accuracy}</span>"
         )
-        meta.setTextFormat(Qt.RichText)
+        meta.setTextFormat(Qt.TextFormat.RichText)
         layout.addWidget(meta)
 
         desc = QLabel(description)
@@ -5554,24 +5553,20 @@ class QuickClassificationPanel(QWidget):
             )
         )
         self.recipeCombo = QComboBox()
-        self.recipeCombo.setEditable(True)
-        self.recipeCombo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.recipeCombo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.recipeCombo.setMinimumContentsLength(20)
         self.recipeCombo.setMaximumWidth(360)
         self.recipeCombo.currentIndexChanged.connect(self._apply_selected_recipe)
-        if self.recipeCombo.lineEdit() is not None:
-            self.recipeCombo.lineEdit().setPlaceholderText("Select or search recipe...")
         self.recipeCombo.setToolTip(
             "<b>Classification Recipe</b><br>"
             "Pre-configured classifier preset including algorithm, parameters, and advanced features.<br><br>"
-            "<i>Type to search recipes</i>, then choose one from the dropdown.<br>"
             "<i>Browse Hub</i> opens the full recipe catalog and management tools."
         )
         classifier_row.addWidget(self.recipeCombo, 1)
 
-        self.recipeHubBtn = QToolButton()
-        self.recipeHubBtn.setText("Browse Hub")
+        self.recipeHubBtn = QPushButton("Browse Hub")
+        self.recipeHubBtn.setObjectName("quickInlineAction")
+        self.recipeHubBtn.setMinimumHeight(24)
         self.recipeHubBtn.setToolTip(
             "<b>Recipe Hub</b><br>"
             "Open the modern quad recipe hub with categories, recipe list, actions, and details."
@@ -6408,16 +6403,6 @@ class QuickClassificationPanel(QWidget):
             self.recipeCombo.addItem(name, name)
             tooltip = self._build_recipe_tooltip(recipe)
             self.recipeCombo.setItemData(self.recipeCombo.count() - 1, tooltip, _Qt_ToolTipRole)
-
-        # Enable in-field fuzzy search over recipe names.
-        try:
-            completer = QCompleter(self.recipeCombo.model(), self.recipeCombo)
-            completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-            completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-            completer.setFilterMode(Qt.MatchFlag.MatchContains)
-            self.recipeCombo.setCompleter(completer)
-        except Exception as exc:
-            _ = exc
 
         restore_index = 0
         if current_name:
