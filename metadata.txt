@@ -7,7 +7,7 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=dzetsaka : Classification tool
+name=dzetsaka: Image Classification
 qgisMinimumVersion=3.0
 qgisMaximumVersion=4.99
 description=Raster classification in QGIS with 11 machine learning algorithms, Optuna hyperparameter search, SHAP explanations, class imbalance handling, and HTML reports.
