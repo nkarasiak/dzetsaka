@@ -38,11 +38,7 @@ class DzetsakaProvider(QgsProcessingProvider):
 
     def icon(self):
         """Add provider icon."""
-        here = Path(__file__).resolve()
-        repo_icon = here.parents[4] / "icon.png"
-        asset_icon = here.parents[2] / "assets" / "icons" / "icon.png"
-        icon_path = repo_icon if repo_icon.exists() else asset_icon
-        return QIcon(str(icon_path))
+        return QIcon(str(Path(__file__).resolve().parents[3] / "icon.png"))
 
     def unload(self):
         """Unload provider."""

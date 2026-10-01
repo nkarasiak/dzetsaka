@@ -22,7 +22,7 @@ def initialize_runtime_state(gui, iface) -> None:
     gui.loadConfig()
 
     gui.provider = DzetsakaProvider()
-    gui.plugin_dir = str(Path(__file__).resolve().parents[4])
+    gui.plugin_dir = str(Path(__file__).resolve().parents[3])
     gui.plugin_version = gui._read_plugin_version()
     gui._auto_open_dashboard_on_init = True
 
