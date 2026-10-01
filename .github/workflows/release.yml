@@ -76,3 +76,12 @@ jobs:
           gh release upload "$TAG" \
             "dzetsaka_${{ steps.version.outputs.version }}.zip" \
             --clobber
+
+      - name: Publish to plugins.qgis.org
+        env:
+          QGIS_PLUGIN_TOKEN: ${{ secrets.QGIS_PLUGIN_TOKEN }}
+        run: |
+          curl --fail-with-body -X POST \
+            -H "Authorization: Bearer $QGIS_PLUGIN_TOKEN" \
+            -F "package=@dzetsaka_${{ steps.version.outputs.version }}.zip" \
+            https://plugins.qgis.org/plugins/api/dzetsaka/version/add/
