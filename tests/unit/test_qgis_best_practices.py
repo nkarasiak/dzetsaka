@@ -220,6 +220,26 @@ def test_runtime_constraints_fallbacks_to_imported_versions_when_metadata_missin
 
 
 @pytest.mark.unit
+def test_activate_user_site_makes_fresh_user_install_importable(tmp_path, monkeypatch):
+    """A first-ever --user install must be importable without restarting QGIS."""
+    import importlib
+    import sys
+
+    from dzetsaka.qgis.dependency_installer import _activate_user_site
+
+    (tmp_path / "dz_fresh_user_pkg.py").write_text("VALUE = 42\n")
+    monkeypatch.setattr("site.getusersitepackages", lambda: str(tmp_path))
+    monkeypatch.setattr("site.ENABLE_USER_SITE", True)
+    monkeypatch.setattr(sys, "path", list(sys.path))
+
+    assert _activate_user_site() is True
+    assert sys.path[-1] == str(tmp_path)  # appended: QGIS env packages keep precedence
+    assert importlib.import_module("dz_fresh_user_pkg").VALUE == 42
+    assert _activate_user_site() is False  # idempotent
+    sys.modules.pop("dz_fresh_user_pkg", None)
+
+
+@pytest.mark.unit
 def test_dependency_install_task_finished_calls_on_finished_callback():
     """Test that DependencyInstallTask.finished() invokes the on_finished callback."""
     from dzetsaka.qgis.dependency_install_task import DependencyInstallTask

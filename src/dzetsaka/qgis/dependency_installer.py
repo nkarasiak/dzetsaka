@@ -12,6 +12,29 @@ from qgis.PyQt.QtWidgets import QMessageBox
 from dzetsaka.qgis.dependency_catalog import FULL_DEPENDENCY_BUNDLE
 
 _SCIENTIFIC_STACK_PACKAGES = ("numpy", "scipy", "pandas")
+_IMPORT_NAMES = {"scikit-learn": "sklearn", "imbalanced-learn": "imblearn"}
+
+
+def _activate_user_site() -> bool:
+    """Make freshly ``pip install --user`` packages importable without restarting QGIS.
+
+    Python only adds the user site-packages dir at startup if it already exists,
+    so a first-ever ``--user`` install is invisible until restart. Appended (not
+    prepended) so the QGIS environment's own packages keep precedence.
+
+    Returns:
+        True if the user site dir was added to ``sys.path``.
+    """
+    import importlib
+    import site
+    import sys
+
+    user_site = site.getusersitepackages()
+    added = bool(site.ENABLE_USER_SITE) and os.path.isdir(user_site) and user_site not in sys.path
+    if added:
+        site.addsitedir(user_site)
+    importlib.invalidate_caches()
+    return added
 
 
 def _build_runtime_constraints_file(plugin_logger) -> tuple[str | None, list[str]]:
@@ -954,7 +977,7 @@ def try_install_dependencies(plugin, missing_deps):
                         import importlib
 
                         try:
-                            importlib.invalidate_caches()
+                            _activate_user_site()
                             import_target = base_imports.get(target, target)
                             imported = importlib.import_module(import_target)
                             if hasattr(imported, "__version__"):
@@ -1109,15 +1132,28 @@ def try_install_dependencies_async(plugin, missing_deps, on_complete=None):
             with contextlib.suppress(Exception):
                 os.remove(runtime_constraints_file)
 
+        needs_restart = True
+        if success:
+            import importlib.util
+
+            if _activate_user_site():
+                plugin.log.info("Added user site-packages to sys.path; new packages usable without restart")
+            needs_restart = not all(importlib.util.find_spec(_IMPORT_NAMES.get(p, p)) for p in package_order)
+
         def _show_result():
             plugin.log.info(f"[on_task_finished._show_result] thread={threading.current_thread().name}")
             if success:
+                restart_note = (
+                    "Important: Please restart QGIS to load the new libraries.\n\n"
+                    if needs_restart
+                    else "They are ready to use now, no QGIS restart needed.\n\n"
+                )
                 QMessageBox.information(
                     plugin.iface.mainWindow(),
                     "Installation Successful",
                     "Dependencies installed successfully!\n\n"
-                    "Important: Please restart QGIS to load the new libraries.\n\n"
-                    "After restarting, you can use all dzetsaka features including "
+                    + restart_note
+                    + "You can use all dzetsaka features including "
                     "XGBoost, CatBoost, Optuna optimization, and SHAP explainability.",
                     QMessageBox.StandardButton.Ok,
                 )
