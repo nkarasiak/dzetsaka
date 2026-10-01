@@ -11,7 +11,7 @@ name=dzetsaka : Classification tool
 qgisMinimumVersion=3.0
 qgisMaximumVersion=4.99
 description=Raster classification in QGIS with 11 machine learning algorithms, Optuna hyperparameter search, SHAP explanations, class imbalance handling, and HTML reports.
-version=5.1.0
+version=5.1.1
 author=Nicolas Karasiak
 email=karasiak.nicolas@gmail.com
 
@@ -36,6 +36,9 @@ repository=http://www.github.com/nkarasiak/dzetsaka
 
 # Uncomment the following line and add your changelog:
 changelog=
+    5.1.1
+      * FIX: Recipe accuracy tier parsing crashed with NameError (missing 're' import)
+      * FIX: Code-quality findings from the plugins.qgis.org scan (try/except/pass, redefined wrapper names, unused global)
     5.1.0
       * FIX: QGIS 4 / PyQt6 crash when opening the Recipe Hub (unscoped Qt enums)
       * FIX: Optuna/SHAP/SMOTE toggles never offered to install missing dependencies on PyQt6

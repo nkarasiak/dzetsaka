@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.1.1] - 2026-10-01
+
+### Fixed
+- Fix `NameError` when parsing recipe accuracy tiers (missing `re` import)
+- Address plugins.qgis.org scan findings: replace `try/except/pass` with `contextlib.suppress`, remove redefined `XGBLabelWrapper`/`CBClassifierWrapper` placeholders and an unused `global`
+
 ## [5.1.0] - 2026-10-01
 
 ### Fixed
