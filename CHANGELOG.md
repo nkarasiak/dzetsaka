@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix plugin reload serving stale dashboard code (ui submodules now tracked by QGIS)
 - Fix plugin version reading as `unknown` and missing processing provider icon (wrong plugin root)
 - Newly installed dependencies are usable right away, no QGIS restart needed
+- Fix recipe dropdown list running off-screen (scrolling list, opens upward when needed)
 
 ### Performance
 - Prediction with a confidence map runs the model once per block instead of twice (up to 4x faster, identical output)
@@ -22,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Recipe selector is a plain list, like the raster and vector selectors
 
 ### Added
+- Progress window while dependencies install
 - Release workflow publishes the plugin zip to plugins.qgis.org (`QGIS_PLUGIN_TOKEN` secret)
 
 ## [5.0.11] - 2026-04-01
