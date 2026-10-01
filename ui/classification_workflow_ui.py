@@ -5526,6 +5526,7 @@ class QuickClassificationPanel(QWidget):
         root.addLayout(field_row)
 
         self.fieldStatusLabel = QLabel("")
+        self.fieldStatusLabel.setWordWrap(True)
         self.fieldStatusLabel.setVisible(False)
         root.addWidget(self.fieldStatusLabel)
 
@@ -5569,7 +5570,7 @@ class QuickClassificationPanel(QWidget):
         )
         self.recipeCombo = _InWindowPopupComboBox()
         self.recipeCombo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-        self.recipeCombo.setMinimumContentsLength(20)
+        self.recipeCombo.setMinimumContentsLength(8)  # long names elide so the dock can be narrow
         self.recipeCombo.setMaximumWidth(360)
         # Scrollable popup: some styles otherwise list every item and run off-screen.
         self.recipeCombo.setStyleSheet("QComboBox { combobox-popup: 0; }")

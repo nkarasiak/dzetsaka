@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Browse Hub is a regular button styled like Quality… (no longer looks disabled)
 - Recipe selector is a plain list, like the raster and vector selectors
+- Dashboard panel can be made narrower (~260 px instead of ~360 px)
 
 ### Added
 - Progress window while dependencies install
